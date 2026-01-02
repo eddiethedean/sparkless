@@ -260,15 +260,28 @@ class DataFrame:
         return self._transformations.selectExpr(*exprs)
 
     def filter(
-        self, condition: Union[ColumnOperation, Column, "Literal"]
+        self, condition: Union[ColumnOperation, Column, "Literal", str]
     ) -> "SupportsDataFrameOps":
-        """Filter rows based on condition."""
+        """Filter rows based on condition.
+
+        Args:
+            condition: Filter condition. Can be:
+                - ColumnOperation or Column (e.g., df.salary > 55000)
+                - String SQL expression (e.g., "salary > 55000")
+                - Literal boolean value
+        """
         return self._transformations.filter(condition)
 
     def where(
-        self, condition: Union[ColumnOperation, Column]
+        self, condition: Union[ColumnOperation, Column, str]
     ) -> "SupportsDataFrameOps":
-        """Alias for filter() - Filter rows based on condition."""
+        """Alias for filter() - Filter rows based on condition.
+
+        Args:
+            condition: Filter condition. Can be:
+                - ColumnOperation or Column (e.g., df.salary > 55000)
+                - String SQL expression (e.g., "salary > 55000")
+        """
         return self._transformations.where(condition)
 
     def withColumn(
