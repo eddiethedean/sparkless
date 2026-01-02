@@ -1,5 +1,5 @@
 from sparkless import SparkSession
-from sparkless.spark_types import StructType, StructField, StringType, LongType
+from sparkless.spark_types import StringType, LongType
 
 
 class TestIssue203FilterWithString:
