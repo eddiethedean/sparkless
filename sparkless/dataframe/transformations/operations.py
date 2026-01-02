@@ -56,6 +56,7 @@ class TransformationOperations(Generic[SupportsDF]):
         Args:
             *columns: Column names, Column objects, or expressions to select.
                      Use "*" to select all columns.
+                     Can also accept a list/tuple of column names: df.select(["col1", "col2"])
 
         Returns:
             New DataFrame with selected columns.
@@ -65,11 +66,23 @@ class TransformationOperations(Generic[SupportsDF]):
 
         Example:
             >>> df.select("name", "age")
+            >>> df.select(["name", "age"])  # PySpark-compatible: list of column names
             >>> df.select("*")
             >>> df.select(F.col("name"), F.col("age") * 2)
         """
         if not columns:
             return self
+
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.select(["col1", "col2"]) to work like df.select("col1", "col2")
+        if (
+            len(columns) == 1
+            and isinstance(columns[0], (list, tuple))
+            and all(isinstance(col, str) for col in columns[0])
+        ):
+            # Only unpack if all elements are strings (column names)
+            # If it contains Column objects or other types, treat as single column
+            columns = tuple(columns[0])
 
         # Validate column names eagerly (even in lazy mode) to match PySpark behavior
         # But skip validation if there are pending join operations (columns might come from other DF)
