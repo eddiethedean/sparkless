@@ -140,7 +140,7 @@ class LazyEvaluationEngine:
                 from ..functions.core.column import ColumnOperation
 
                 # expr.operation is guaranteed to be a string in ColumnOperation
-                op_str: str = expr.operation  # type: ignore[assignment]
+                op_str: str = expr.operation
                 return ColumnOperation(underlying_expr, op_str, None)
             # Otherwise return original if no match found
             return expr
@@ -161,7 +161,7 @@ class LazyEvaluationEngine:
                     from ..functions.core.column import ColumnOperation
 
                     # expr.operation is guaranteed to be a string in ColumnOperation
-                    new_op_str: str = expr.operation  # type: ignore[assignment]
+                    new_op_str: str = expr.operation
                     new_op = ColumnOperation(
                         new_column, new_op_str, getattr(expr, "value", None)
                     )
@@ -182,7 +182,7 @@ class LazyEvaluationEngine:
                     from ..functions.core.column import ColumnOperation
 
                     # expr.operation is guaranteed to be a string in ColumnOperation
-                    new_op_str2: str = expr.operation  # type: ignore[assignment]
+                    new_op_str2: str = expr.operation
                     new_op = ColumnOperation(expr.column, new_op_str2, new_value)
                     # Check if this new expression matches a computed column
                     new_expr_signature = LazyEvaluationEngine._normalize_expression(
@@ -583,23 +583,52 @@ class LazyEvaluationEngine:
 
         Returns:
             Post-processed data with string concatenation results set to None
+
+        Note:
+            This implementation uses a heuristic-based approach to detect string
+            concatenation by looking for the "+" operator in expressions. The heuristic
+            marks any "+" operation as potential string concatenation, then verifies
+            the result is actually a string before setting it to None.
+
+            Limitations of the heuristic approach:
+            - Cannot distinguish between string concatenation and numeric addition at
+              the expression level (relies on runtime type checking of results)
+            - Nested operations are detected recursively, but complex expression trees
+              might have edge cases
+            - Only detects string concatenation in withColumn operations, not in other
+              contexts where + might be used
+
+            This matches PySpark's behavior where string concatenation with + returns
+            None for cached DataFrames. For reliable string concatenation, use F.concat()
+            instead of the + operator.
         """
         # Find columns that are the result of string concatenation with +
         # by examining withColumn operations
         string_concat_columns = set()
 
         def _has_string_concatenation(expr: Any) -> bool:
-            """Recursively check if expression contains string concatenation with +."""
+            """Recursively check if expression contains string concatenation with +.
+
+            This is a heuristic that detects the "+" operator in expressions. It cannot
+            distinguish between string concatenation and numeric addition at the expression
+            level, so the caller verifies the result is actually a string before applying
+            the cache behavior.
+
+            Args:
+                expr: Expression to check
+
+            Returns:
+                True if expression contains a "+" operation (potential string concat)
+            """
             if not hasattr(expr, "operation"):
                 return False
 
             if expr.operation == "+":
-                # Check if both operands are strings or string-like
-                # This is a heuristic - we'll mark any + operation as potential string concat
-                # and then verify the result is a string
+                # Mark any + operation as potential string concat
+                # The caller will verify the result is actually a string
                 return True
 
-            # Check nested operations
+            # Check nested operations recursively
             if (
                 hasattr(expr, "column")
                 and hasattr(expr.column, "operation")
@@ -620,11 +649,12 @@ class LazyEvaluationEngine:
                     string_concat_columns.add(col_name)
 
         # Set string concatenation columns to None in cached DataFrames
+        # Only set to None if the result is actually a string (to avoid affecting numeric addition)
         if string_concat_columns:
             for row in data:
                 for col_name in string_concat_columns:
-                    # Check if the value is a string (result of concatenation)
-                    # If it's a string and was created with +, set to None
+                    # Verify the result is actually a string before setting to None
+                    # This prevents numeric addition (which also uses +) from being affected
                     if col_name in row and isinstance(row[col_name], str):
                         row[col_name] = None
 
