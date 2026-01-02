@@ -25,7 +25,7 @@ fi
 echo ""
 
 # Check if pytest-xdist is available for parallel execution
-if python3 -c "import pytest_xdist" 2>/dev/null; then
+if python3 -c "import xdist" 2>/dev/null; then
     # Allow override of worker count via SPARKLESS_TEST_WORKERS, default to 8
     WORKERS="${SPARKLESS_TEST_WORKERS:-8}"
     echo "✅ pytest-xdist available - using parallel execution (${WORKERS} workers)"
