@@ -27,6 +27,7 @@ Example:
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import shutil
 import uuid
@@ -34,6 +35,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import polars as pl
+
+logger = logging.getLogger(__name__)
 
 from sparkless.backend.polars.schema_utils import align_frame_to_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
@@ -799,6 +802,9 @@ class DataFrameWriter:
             raise
         except Exception:
             # Schema retrieval failed - continue to next check
+            logger.debug(
+                "Schema retrieval failed, continuing to next check", exc_info=True
+            )
             pass
 
         # Check 2: Verify table_exists() returns True
@@ -817,6 +823,10 @@ class DataFrameWriter:
             except Exception:
                 # Schema retrieval failed, but table_exists returned True
                 # Continue to next check
+                logger.debug(
+                    "Schema retrieval failed after table_exists check, continuing",
+                    exc_info=True,
+                )
                 pass
 
         # Check 3: Verify table appears in list_tables() (comprehensive check)
@@ -826,6 +836,9 @@ class DataFrameWriter:
                 # Table is in the list - it's visible
                 return
         except Exception:
+            logger.debug(
+                "list_tables check failed, continuing to next check", exc_info=True
+            )
             pass
 
         # Check 4: Try to rehydrate from disk if using persistent storage
@@ -843,6 +856,7 @@ class DataFrameWriter:
                 ):
                     return
             except Exception:
+                logger.debug("Rehydration check failed, continuing", exc_info=True)
                 pass
 
         # All checks failed - table is not immediately accessible
@@ -873,6 +887,9 @@ class DataFrameWriter:
         try:
             from sparkless.session.core.session import SparkSession
         except Exception:
+            logger.debug(
+                "Failed to import SparkSession for sync, skipping", exc_info=True
+            )
             return
 
         active_sessions = getattr(SparkSession, "_active_sessions", [])
@@ -895,6 +912,9 @@ class DataFrameWriter:
                     target_storage.insert_data(schema, table, data)
             except Exception:
                 # Best-effort sync; do not block the primary write path
+                logger.debug(
+                    "Best-effort sync failed for session, continuing", exc_info=True
+                )
                 continue
 
     def _extract_schema_for_catalog(self, df: DataFrame) -> StructType:
@@ -926,6 +946,10 @@ class DataFrameWriter:
                     return schema
         except Exception:
             # If standard extraction fails, try alternative methods
+            logger.debug(
+                "Standard schema extraction failed, trying alternative methods",
+                exc_info=True,
+            )
             pass
 
         # For aggregated or transformed DataFrames, try to materialize first
@@ -944,6 +968,10 @@ class DataFrameWriter:
             ):
                 return materialized.schema
         except Exception:
+            logger.debug(
+                "Materialization-based schema extraction failed, continuing",
+                exc_info=True,
+            )
             pass
 
         # Try to infer schema from a sample of the data
@@ -966,6 +994,9 @@ class DataFrameWriter:
                 ):
                     return inferred_schema
         except Exception:
+            logger.debug(
+                "Schema inference from sample failed, continuing", exc_info=True
+            )
             pass
 
         # Last resort: try to get schema from DataFrame's internal representation
@@ -982,6 +1013,7 @@ class DataFrameWriter:
                 ):
                     return cast("StructType", internal_schema)
         except Exception:
+            logger.debug("Internal schema extraction failed", exc_info=True)
             pass
 
         # If all else fails, raise error with helpful message

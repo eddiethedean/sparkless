@@ -808,7 +808,7 @@ class Row:
                     if not hasattr(other, key) or getattr(other, key) != value:
                         return False
                 return True
-            except:  # noqa: E722
+            except Exception:
                 return False
         else:
             return False

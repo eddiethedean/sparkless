@@ -7,12 +7,15 @@ to Polars expressions (pl.Expr) for DataFrame operations.
 
 from typing import Any, Optional, cast
 from datetime import datetime, date
+import logging
 import polars as pl
 import math
 import threading
 from collections import OrderedDict
 from sparkless import config
 from sparkless.functions import Column, ColumnOperation, Literal
+
+logger = logging.getLogger(__name__)
 from sparkless.functions.base import AggregateFunction
 from sparkless.functions.window_execution import WindowFunction
 
@@ -484,6 +487,7 @@ class PolarsExpressionTranslator:
                     # This is a workaround - we'll handle it by creating the literal with dtype
                     pass
         except Exception:
+            logger.debug("Exception in cast type detection, continuing", exc_info=True)
             pass
 
         # For string to int/long casting, Polars needs float intermediate step
@@ -514,6 +518,10 @@ class PolarsExpressionTranslator:
                 try:
                     return expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 except Exception:
+                    logger.debug(
+                        "strptime failed for date parsing, using map_elements fallback",
+                        exc_info=True,
+                    )
                     return expr.map_elements(parse_date, return_dtype=pl.Date)
             else:  # TimestampType
                 # Parse timestamp string
@@ -537,6 +545,10 @@ class PolarsExpressionTranslator:
                         pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False
                     )
                 except Exception:
+                    logger.debug(
+                        "strptime failed for timestamp parsing, using map_elements fallback",
+                        exc_info=True,
+                    )
                     return expr.map_elements(
                         parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
                     )
@@ -564,12 +576,18 @@ class PolarsExpressionTranslator:
         except Exception:
             # Fallback: try to create typed None if cast fails
             # This handles the case where pl.lit(None) can't be cast directly
+            logger.debug(
+                "Initial cast failed, trying typed None fallback", exc_info=True
+            )
             try:
                 # Check if expr represents a None value
                 # For Polars, we need pl.lit(None, dtype=...) for typed nulls
                 return pl.lit(None, dtype=polars_dtype)
             except Exception:
                 # Last resort: try regular cast
+                logger.debug(
+                    "Typed None creation failed, using regular cast", exc_info=True
+                )
                 return expr.cast(polars_dtype, strict=False)
 
     def _translate_string_operation(
@@ -610,6 +628,7 @@ class PolarsExpressionTranslator:
         try:
             return self._serialize_expression(expr)
         except Exception:
+            logger.debug("Failed to build cache key for expression", exc_info=True)
             return None
 
     def _serialize_expression(self, expr: Any) -> tuple[Any, ...]:
@@ -1382,6 +1401,10 @@ class PolarsExpressionTranslator:
                                     all_cols.append(pl.col(col))
                                 except Exception:
                                     # If it fails, treat as literal
+                                    logger.debug(
+                                        f"Failed to create column reference for '{col}', treating as literal",
+                                        exc_info=True,
+                                    )
                                     all_cols.append(pl.lit(col))
                         elif hasattr(col, "value"):  # Literal
                             # Resolve lazy literals before translating
@@ -2228,6 +2251,9 @@ class PolarsExpressionTranslator:
                     return col_expr.list.get(index_expr.cast(pl.Int64) - 1)
                 except Exception:
                     # Map access: use key directly
+                    logger.debug(
+                        "Array access failed, falling back to map access", exc_info=True
+                    )
                     return col_expr.map_elements(
                         lambda x, idx=index_expr: x.get(idx)
                         if isinstance(x, dict)
@@ -3003,10 +3029,14 @@ class PolarsExpressionTranslator:
                     # Try parsing as datetime (most common format)
                     parsed = dt_module.datetime.fromisoformat(value.replace(" ", "T"))
                 except Exception:
+                    logger.debug("fromisoformat failed, trying strptime", exc_info=True)
                     try:
                         # Try parsing as date
                         parsed = dt_module.datetime.strptime(value, "%Y-%m-%d")
                     except Exception:
+                        logger.debug(
+                            "All datetime parsing methods failed", exc_info=True
+                        )
                         return None
             else:
                 return None
