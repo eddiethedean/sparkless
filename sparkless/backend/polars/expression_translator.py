@@ -14,10 +14,10 @@ import threading
 from collections import OrderedDict
 from sparkless import config
 from sparkless.functions import Column, ColumnOperation, Literal
-
-logger = logging.getLogger(__name__)
 from sparkless.functions.base import AggregateFunction
 from sparkless.functions.window_execution import WindowFunction
+
+logger = logging.getLogger(__name__)
 
 
 def _is_mock_case_when(expr: Any) -> bool:

@@ -36,8 +36,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 import polars as pl
 
-logger = logging.getLogger(__name__)
-
 from sparkless.backend.polars.schema_utils import align_frame_to_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
 
@@ -46,6 +44,8 @@ if TYPE_CHECKING:
     from .dataframe import DataFrame
 
 from ..spark_types import StructField, StructType
+
+logger = logging.getLogger(__name__)
 
 
 class DataFrameWriter:
@@ -939,11 +939,11 @@ class DataFrameWriter:
             # Verify schema is valid (has fields and is a StructType)
             if schema and isinstance(schema, StructType):
                 if hasattr(schema, "fields") and len(schema.fields) > 0:
-                    return schema
+                    return cast("StructType", schema)
                 elif len(schema.fields) == 0:
                     # Empty schema - this might be valid for empty DataFrames
                     # but we should still return it
-                    return schema
+                    return cast("StructType", schema)
         except Exception:
             # If standard extraction fails, try alternative methods
             logger.debug(
@@ -966,7 +966,7 @@ class DataFrameWriter:
                 and hasattr(materialized.schema, "fields")
                 and len(materialized.schema.fields) > 0
             ):
-                return materialized.schema
+                return cast("StructType", materialized.schema)
         except Exception:
             logger.debug(
                 "Materialization-based schema extraction failed, continuing",
@@ -992,7 +992,7 @@ class DataFrameWriter:
                     and hasattr(inferred_schema, "fields")
                     and len(inferred_schema.fields) > 0
                 ):
-                    return inferred_schema
+                    return cast("StructType", inferred_schema)
         except Exception:
             logger.debug(
                 "Schema inference from sample failed, continuing", exc_info=True
@@ -1005,13 +1005,14 @@ class DataFrameWriter:
         try:
             if hasattr(df, "_schema"):
                 internal_schema = getattr(df, "_schema")
+                internal_schema_typed = cast("StructType", internal_schema)
                 if (
-                    internal_schema
-                    and isinstance(internal_schema, StructType)
-                    and hasattr(internal_schema, "fields")
-                    and len(internal_schema.fields) > 0
+                    internal_schema_typed
+                    and isinstance(internal_schema_typed, StructType)
+                    and hasattr(internal_schema_typed, "fields")
+                    and len(internal_schema_typed.fields) > 0
                 ):
-                    return cast("StructType", internal_schema)
+                    return internal_schema_typed
         except Exception:
             logger.debug("Internal schema extraction failed", exc_info=True)
             pass
