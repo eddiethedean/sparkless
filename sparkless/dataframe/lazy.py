@@ -140,7 +140,7 @@ class LazyEvaluationEngine:
                 from ..functions.core.column import ColumnOperation
 
                 # expr.operation is guaranteed to be a string in ColumnOperation
-                op_str: str = expr.operation
+                op_str: str = cast("str", expr.operation)
                 return ColumnOperation(underlying_expr, op_str, None)
             # Otherwise return original if no match found
             return expr
@@ -159,9 +159,10 @@ class LazyEvaluationEngine:
                 if new_column is not expr.column:
                     # Create new ColumnOperation with replaced column
                     from ..functions.core.column import ColumnOperation
+                    from typing import cast
 
                     # expr.operation is guaranteed to be a string in ColumnOperation
-                    new_op_str: str = expr.operation
+                    new_op_str: str = cast("str", expr.operation)
                     new_op = ColumnOperation(
                         new_column, new_op_str, getattr(expr, "value", None)
                     )
@@ -180,9 +181,10 @@ class LazyEvaluationEngine:
                 if new_value is not expr.value:
                     # Create new ColumnOperation with replaced value
                     from ..functions.core.column import ColumnOperation
+                    from typing import cast
 
                     # expr.operation is guaranteed to be a string in ColumnOperation
-                    new_op_str2: str = expr.operation
+                    new_op_str2: str = cast("str", expr.operation)
                     new_op = ColumnOperation(expr.column, new_op_str2, new_value)
                     # Check if this new expression matches a computed column
                     new_expr_signature = LazyEvaluationEngine._normalize_expression(

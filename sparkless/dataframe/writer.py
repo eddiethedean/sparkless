@@ -939,11 +939,11 @@ class DataFrameWriter:
             # Verify schema is valid (has fields and is a StructType)
             if schema and isinstance(schema, StructType):
                 if hasattr(schema, "fields") and len(schema.fields) > 0:
-                    return cast("StructType", schema)
+                    return schema
                 elif len(schema.fields) == 0:
                     # Empty schema - this might be valid for empty DataFrames
                     # but we should still return it
-                    return cast("StructType", schema)
+                    return schema
         except Exception:
             # If standard extraction fails, try alternative methods
             logger.debug(
@@ -966,7 +966,7 @@ class DataFrameWriter:
                 and hasattr(materialized.schema, "fields")
                 and len(materialized.schema.fields) > 0
             ):
-                return cast("StructType", materialized.schema)
+                return materialized.schema
         except Exception:
             logger.debug(
                 "Materialization-based schema extraction failed, continuing",
@@ -992,7 +992,7 @@ class DataFrameWriter:
                     and hasattr(inferred_schema, "fields")
                     and len(inferred_schema.fields) > 0
                 ):
-                    return cast("StructType", inferred_schema)
+                    return inferred_schema
         except Exception:
             logger.debug(
                 "Schema inference from sample failed, continuing", exc_info=True
