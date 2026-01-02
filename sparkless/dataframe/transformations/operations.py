@@ -247,9 +247,22 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def filter(
         self: SupportsDF,
-        condition: Union[ColumnOperation, Column, "Literal"],
+        condition: Union[ColumnOperation, Column, "Literal", str],
     ) -> SupportsDF:
-        """Filter rows based on condition."""
+        """Filter rows based on condition.
+
+        Args:
+            condition: Filter condition. Can be:
+                - ColumnOperation or Column (e.g., df.salary > 55000)
+                - String SQL expression (e.g., "salary > 55000")
+                - Literal boolean value
+        """
+        # PySpark compatibility: if condition is a string, parse it as SQL expression
+        if isinstance(condition, str):
+            from ...functions import F
+
+            condition = F.expr(condition)  # type: ignore[assignment]
+
         # Pre-validation: validate filter expression
         self._validate_filter_expression(condition, "filter")
 
@@ -257,12 +270,14 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def where(
         self: SupportsDF,
-        condition: Union[ColumnOperation, Column],
+        condition: Union[ColumnOperation, Column, str],
     ) -> SupportsDF:
         """Alias for filter() - Filter rows based on condition (all PySpark versions).
 
         Args:
-            condition: Boolean condition to filter rows
+            condition: Filter condition. Can be:
+                - ColumnOperation or Column (e.g., df.salary > 55000)
+                - String SQL expression (e.g., "salary > 55000")
 
         Returns:
             Filtered DataFrame
