@@ -5,7 +5,8 @@ This service handles DataFrame creation, schema inference, and validation
 following the Single Responsibility Principle.
 """
 
-from typing import Any, Optional, Union
+from collections.abc import Sequence
+from typing import Any, Optional, Union, cast
 from sparkless.spark_types import (
     StructType,
     StructField,
@@ -84,8 +85,14 @@ class DataFrameFactory:
             if not data:
                 raise ValueError("can not infer schema from empty dataset")
 
-            # Convert tuples to dictionaries using provided column names first
-            if data and isinstance(data[0], tuple):
+            def _is_positional_row(obj: Any) -> bool:
+                """Check if object is a positional row (sequence but not str/bytes/dict)."""
+                return isinstance(obj, Sequence) and not isinstance(
+                    obj, (str, bytes, dict)
+                )
+
+            # Convert positional rows (list/tuple/etc.) to dicts using provided column names
+            if data and _is_positional_row(data[0]):
                 # IMPORTANT (BUG-57): When users provide a column-name list,
                 # PySpark preserves that order in the resulting schema.
                 # We therefore:
@@ -103,10 +110,12 @@ class DataFrameFactory:
                 reordered_data: list[dict[str, Any]] = []
                 column_names = schema
                 for row in data:
-                    if isinstance(row, tuple):
+                    if _is_positional_row(row):
+                        # Type narrowing: row is a Sequence that supports indexing
+                        row_seq = cast("Sequence[Any]", row)
                         row_dict = {
-                            column_names[i]: row[i]
-                            for i in range(min(len(column_names), len(row)))
+                            column_names[i]: row_seq[i]
+                            for i in range(min(len(column_names), len(row_seq)))
                         }
                         reordered_data.append(row_dict)
                     else:
@@ -242,13 +251,16 @@ class DataFrameFactory:
 
         # Ensure schema is always StructType at this point
         # IMPORTANT: When explicit schema is provided with empty data, preserve it!
+        # Note: At this point, schema should always be StructType due to all previous
+        # transformations, but we check for safety and to satisfy type checking
         if not isinstance(schema, StructType):
             # This should never happen, but provide a fallback
             schema = StructType([])  # type: ignore[unreachable]
 
         # Validate that schema is properly initialized with fields attribute
         # This ensures empty DataFrames with explicit schemas preserve column information
-        if isinstance(schema, StructType) and not hasattr(schema, "fields"):
+        # Note: After the above check, schema is guaranteed to be StructType
+        if not hasattr(schema, "fields"):
             # This shouldn't happen, but handle edge case
             schema = StructType([])
             # fields can be empty list, but that's valid for empty schemas
@@ -274,7 +286,8 @@ class DataFrameFactory:
             return SchemaInferenceEngine.infer_from_data(data)
         else:
             # Schema provided, return as-is
-            return schema, data
+            # Schema should be StructType at this point, but ensure it's typed correctly
+            return cast("StructType", schema), data
 
     def _apply_validation_and_coercion(
         self,
