@@ -398,6 +398,14 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
+### Version 3.20.0 - Logic Bug Fixes & Code Quality Improvements
+
+- 🐛 **Exception Handling Fixes** – Fixed critical exception handling issues (issue #183): replaced bare `except:` clause with `except Exception:` and added comprehensive logging to exception handlers for better debuggability.
+- 🧪 **Comprehensive Test Coverage** – Added 10 comprehensive test cases for string concatenation cache handling edge cases (issue #188), covering empty strings, None values, nested operations, and numeric vs string operations.
+- 📚 **Improved Documentation** – Enhanced documentation for string concatenation cache heuristic, documenting limitations and expected behavior vs PySpark.
+- 🔍 **Code Quality Review** – Systematic review of dictionary.get() usage patterns throughout codebase, confirming all patterns are safe with appropriate default values.
+- ✅ **Type Safety** – Fixed mypy errors in CI: improved type narrowing for ColumnOperation.operation and removed redundant casts in writer.py.
+
 ### Version 3.7.0 - Full SQL DDL/DML Support
 
 - 🗄️ **Complete SQL DDL/DML** – Full implementation of `CREATE TABLE`, `DROP TABLE`, `INSERT INTO`, `UPDATE`, and `DELETE FROM` statements in the SQL executor.
