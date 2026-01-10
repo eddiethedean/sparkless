@@ -117,7 +117,9 @@ class DataFrameFactory:
         # This allows createDataFrame to accept Row objects (PySpark compatibility)
         # Only do this if we haven't already converted the data above
         if data and not all(isinstance(row, dict) for row in data):
-            converted_data_list: list[Union[dict[str, Any], tuple[Any, ...], list[Any]]] = []
+            converted_data_list: list[
+                Union[dict[str, Any], tuple[Any, ...], list[Any]]
+            ] = []
             for row in data:
                 if isinstance(row, Row):
                     # Convert Row object to dict using asDict()
