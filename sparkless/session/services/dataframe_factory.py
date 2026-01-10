@@ -11,6 +11,7 @@ from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,
+    DataType,
 )
 from sparkless.dataframe import DataFrame
 from sparkless.session.config import SparkConfig
@@ -54,11 +55,43 @@ class DataFrameFactory:
         # Check if it's a PySpark StructType (has 'fields' attribute but not StructType)
         if (
             schema is not None
-            and not isinstance(schema, (StructType, str, list))
+            and not isinstance(schema, (StructType, str, list, DataType))
             and hasattr(schema, "fields")  # type: ignore[unreachable]
         ):
             # This is likely a PySpark StructType - convert it
             schema = self._convert_pyspark_struct_type(schema)  # type: ignore[unreachable]
+
+        # Handle single DataType schema (PySpark compatibility)
+        # Example: createDataFrame([date1, date2], DateType()).toDF("dates")
+        if schema is not None and isinstance(schema, DataType) and not isinstance(schema, StructType):
+            # Convert single DataType to StructType with a single unnamed field
+            # Use "_c0" as the default column name (PySpark convention)
+            single_data_type = schema
+            schema = StructType([StructField("_c0", single_data_type, nullable=True)])
+            
+            # If data is positional (not dicts), convert to dicts with "_c0" key
+            # This handles cases like createDataFrame([date1, date2], DateType())
+            if data:
+                def _is_positional_row(obj: Any) -> bool:
+                    """Check if object is a positional row (sequence but not str/bytes/dict)."""
+                    return isinstance(obj, Sequence) and not isinstance(
+                        obj, (str, bytes, dict)
+                    )
+                
+                # Check if first row is positional (primitive value or sequence)
+                first_row = data[0]
+                if not isinstance(first_row, dict):
+                    # Convert positional data to dicts with "_c0" key
+                    converted_data: list[dict[str, Any]] = []
+                    for row in data:
+                        if _is_positional_row(row):
+                            # Multi-value positional row (tuple/list with multiple values)
+                            row_seq = cast("Sequence[Any]", row)
+                            converted_data.append({"_c0": row_seq[0] if len(row_seq) > 0 else None})
+                        else:
+                            # Primitive value (single date, string, etc.)
+                            converted_data.append({"_c0": row})
+                    data = converted_data
 
         # Handle DDL schema strings
         if isinstance(schema, str):
