@@ -27,6 +27,7 @@ class AggregationService:
 
         Args:
             *columns: Column names or Column objects to group by.
+                     Can also accept a list/tuple of column names: df.groupBy(["col1", "col2"])
 
         Returns:
             GroupedData for aggregation operations.
@@ -34,7 +35,18 @@ class AggregationService:
         Example:
             >>> df.groupBy("category").count()
             >>> df.groupBy("dept", "year").avg("salary")
+            >>> df.groupBy(["dept", "year"]).count()  # PySpark-compatible: list of column names
         """
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.groupBy(["col1", "col2"]) to work like df.groupBy("col1", "col2")
+        # Also supports df.groupBy(df.columns)
+        if (
+            len(columns) == 1
+            and isinstance(columns[0], (list, tuple))
+        ):
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])
+
         col_names = []
         for col in columns:
             if isinstance(col, Column):
@@ -70,13 +82,24 @@ class AggregationService:
 
         Args:
             *columns: Columns to rollup.
+                     Can also accept a list/tuple of column names: df.rollup(["col1", "col2"])
 
         Returns:
             RollupGroupedData for hierarchical grouping.
 
         Example:
             >>> df.rollup("country", "state").sum("sales")
+            >>> df.rollup(["country", "state"]).sum("sales")  # PySpark-compatible: list of column names
         """
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.rollup(["col1", "col2"]) to work like df.rollup("col1", "col2")
+        if (
+            len(columns) == 1
+            and isinstance(columns[0], (list, tuple))
+        ):
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])
+
         col_names = []
         for col in columns:
             if isinstance(col, Column):
@@ -100,13 +123,24 @@ class AggregationService:
 
         Args:
             *columns: Columns to cube.
+                     Can also accept a list/tuple of column names: df.cube(["col1", "col2"])
 
         Returns:
             CubeGroupedData for multi-dimensional grouping.
 
         Example:
             >>> df.cube("year", "month").sum("revenue")
+            >>> df.cube(["year", "month"]).sum("revenue")  # PySpark-compatible: list of column names
         """
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.cube(["col1", "col2"]) to work like df.cube("col1", "col2")
+        if (
+            len(columns) == 1
+            and isinstance(columns[0], (list, tuple))
+        ):
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])
+
         col_names = []
         for col in columns:
             if isinstance(col, Column):
