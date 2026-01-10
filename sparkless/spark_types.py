@@ -665,13 +665,26 @@ class Row:
         {'name': 'Alice', 'age': 25}
     """
 
-    def __init__(self, data: Any, schema: Optional["StructType"] = None):
+    def __init__(self, data: Any = None, schema: Optional["StructType"] = None, **kwargs):
         """Initialize Row.
 
         Args:
             data: Row data. Accepts dict, list of tuples, or sequence-like.
+                  If None and kwargs are provided, kwargs are used as data (PySpark-compatible).
             schema: Optional schema providing ordered field names for index access.
+            **kwargs: Optional keyword arguments for kwargs-style initialization (PySpark-compatible).
+                     Example: Row(Column1="Value1", Column2=2)
+
+        Example:
+            >>> row = Row({"name": "Alice", "age": 25})
+            >>> row = Row(name="Alice", age=25)  # kwargs-style
+            >>> row.name
+            'Alice'
         """
+        # PySpark compatibility: if data is None and kwargs are provided, use kwargs as data
+        if data is None and kwargs:
+            data = kwargs
+        
         self._schema = schema
 
         # Handle list of tuples - preserves duplicate column names
