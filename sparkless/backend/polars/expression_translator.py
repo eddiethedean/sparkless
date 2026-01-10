@@ -2579,8 +2579,8 @@ class PolarsExpressionTranslator:
             "ltrim": lambda e: e.str.strip_chars_start(" "),
             "rtrim": lambda e: e.str.strip_chars_end(" "),
             "btrim": lambda e: e.str.strip_chars(),  # btrim without trim_string is same as trim
-            "bit_length": lambda e: (e.str.len_bytes() * 8),
-            "octet_length": lambda e: e.str.len_bytes(),  # Byte length (octet = 8 bits, but octet_length is bytes)
+            "bit_length": lambda e: (e.str.len_bytes() * 8).cast(pl.Int64),  # Cast to Int64 for PySpark compatibility
+            "octet_length": lambda e: e.str.len_bytes().cast(pl.Int64),  # Byte length (octet = 8 bits, but octet_length is bytes), cast to Int64 for PySpark compatibility
             "char": lambda e: e.map_elements(
                 lambda x: chr(int(x))
                 if x is not None and isinstance(x, (int, float))
@@ -2666,7 +2666,8 @@ class PolarsExpressionTranslator:
             "isNotNull": lambda e: e.is_not_null(),
             "last_day": lambda e: self._last_day_expr(e),
             # Array functions
-            "size": lambda e: e.list.len(),
+            # Note: "size" is already defined above (line 2639) with _size_expr() helper
+            # which handles both arrays and maps correctly. Do not duplicate here.
             "array_max": lambda e: e.list.max(),
             "array_min": lambda e: e.list.min(),
             "array_distinct": lambda e: e.map_elements(
@@ -2876,8 +2877,8 @@ class PolarsExpressionTranslator:
 
         if is_array:
             # For arrays, use list.len() which returns UInt32
-            # The type mapper will handle UInt32 -> IntegerType conversion
-            return expr.list.len()
+            # Cast to Int64 for PySpark compatibility (consistent with length() fix)
+            return expr.list.len().cast(pl.Int64)
         elif is_map:
             # For maps (dicts), use map_elements to get length
             return expr.map_elements(
@@ -2887,7 +2888,8 @@ class PolarsExpressionTranslator:
         else:
             # Default to array size (F.size() defaults to ArrayFunctions)
             # Try array first, fall back to map if that fails
-            return expr.list.len()
+            # Cast to Int64 for PySpark compatibility (consistent with length() fix)
+            return expr.list.len().cast(pl.Int64)
 
     def _parse_simple_case_when(self, sql_expr: str) -> pl.Expr:
         """Parse simple CASE WHEN expression and convert to Polars expression.
