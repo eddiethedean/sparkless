@@ -579,9 +579,19 @@ class PolarsMaterializer:
                     columns, ascending = payload
                 else:
                     # Payload is just columns, default to ascending=True
-                    columns = (
-                        payload if isinstance(payload, (tuple, list)) else (payload,)
-                    )
+                    # Handle case where payload is a tuple containing a single list/tuple
+                    # (e.g., when df.sort(["col1", "col2"]) is called)
+                    if (
+                        isinstance(payload, tuple)
+                        and len(payload) == 1
+                        and isinstance(payload[0], (list, tuple))
+                    ):
+                        # Unpack the nested list/tuple
+                        columns = tuple(payload[0])
+                    elif isinstance(payload, (tuple, list)):
+                        columns = tuple(payload) if isinstance(payload, list) else payload
+                    else:
+                        columns = (payload,)
                     ascending = True
 
                 # Optimize orderBy columns to use computed columns if available

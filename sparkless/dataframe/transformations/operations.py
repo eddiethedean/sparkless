@@ -427,6 +427,15 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def orderBy(self: SupportsDF, *columns: Union[str, Column]) -> SupportsDF:
         """Order by columns."""
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.orderBy(["col1", "col2"]) to work like df.orderBy("col1", "col2")
+        # Also supports df.orderBy(df.columns)
+        if (
+            len(columns) == 1
+            and isinstance(columns[0], (list, tuple))
+        ):
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])
         return cast("SupportsDF", self._queue_op("orderBy", columns))  # type: ignore[redundant-cast,unused-ignore]
 
     def sort(
@@ -441,6 +450,15 @@ class TransformationOperations(Generic[SupportsDF]):
         Returns:
             Sorted DataFrame
         """
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.sort(["col1", "col2"]) to work like df.sort("col1", "col2")
+        # Also supports df.sort(df.columns)
+        if (
+            len(columns) == 1
+            and isinstance(columns[0], (list, tuple))
+        ):
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])
         return cast("SupportsDF", self.orderBy(*columns))  # type: ignore[redundant-cast,unused-ignore]
 
     def limit(self: SupportsDF, n: int) -> SupportsDF:
