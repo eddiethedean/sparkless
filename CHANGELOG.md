@@ -1,5 +1,44 @@
 # Changelog
 
+## 3.21.0 — 2025-01-10
+
+### Fixed
+- **Issue #212** - Fixed `DataFrame.select()` to properly handle lists of `psf.col()` statements, matching PySpark's behavior
+- **Issue #213** - Fixed `createDataFrame()` to support single `DataType` schemas with `toDF()` syntax (e.g., `createDataFrame([date1, date2], DateType()).toDF("dates")`)
+- **Issue #214** - Fixed `df.sort()` and `df.orderBy()` to properly handle list parameters (e.g., `df.sort(["col1", "col2"])`)
+- **Issue #215** - Fixed `sparkless.sql.Row` to support kwargs-style initialization (e.g., `Row(name="Alice", age=30)`)
+- **List Unpacking** - Fixed `groupBy()`, `rollup()`, and `cube()` methods to properly unpack list/tuple arguments, matching PySpark compatibility
+- **Type System** - Fixed Python 3.9 compatibility by replacing `|` union syntax with `Union` type hints in mypy configuration
+- **Type Mapping** - Fixed unsigned integer type mapping (`UInt32`, `UInt64`, `UInt16`, `UInt8`) to convert to signed equivalents (`IntegerType`, `LongType`, `ShortType`, `ByteType`)
+- **Function Return Types** - Fixed `size()`, `length()`, `bit_length()`, and `octet_length()` functions to return `Int64` instead of `UInt32` for PySpark compatibility
+- **Date/Time Type Preservation** - Fixed Polars materializer to preserve `datetime.date` and `datetime.datetime` objects when converting back to Row objects (Polars `to_dicts()` converts them to strings)
+- **Schema Inference** - Fixed schema inference to correctly identify `DateType` for `datetime.date` objects
+- **LongType.typeName()** - Fixed `LongType.typeName()` to return `"long"` instead of `"bigint"` for PySpark compatibility
+
+### Changed
+- **Code Formatting** - Applied ruff code formatting across all files, ensuring consistent code style
+- **Type Annotations** - Improved type annotations for better Python 3.9 compatibility and mypy validation
+- **Row Object Handling** - Enhanced `createDataFrame()` to properly handle Row objects initialized with kwargs
+- **DataFrame Factory** - Improved data validation to accept Row objects, lists, tuples, and dictionaries as positional rows
+
+### Testing
+- Added comprehensive test coverage for issues #212, #213, #214, #215
+- Added test coverage for `groupBy()`, `rollup()`, and `cube()` with list parameters
+- All tests passing with full test suite execution
+- All CI checks passing (ruff format, ruff lint, mypy type checking)
+
+### Technical Details
+- Updated `select()`, `sort()`, `orderBy()` methods in both `transformation_service.py` and `transformations/operations.py` to unpack list arguments
+- Enhanced `dataframe_factory.py` to handle single `DataType` schemas and Row object conversion
+- Modified `schema_inference.py` to correctly infer `DateType` for `datetime.date` objects
+- Updated `polars/materializer.py` to preserve date/timestamp types when converting Polars DataFrames to Row objects
+- Added type mapper support for unsigned integer types from Polars
+- Enhanced expression translator to cast `size()`, `length()`, `bit_length()`, and `octet_length()` results to `Int64`
+
+### Release
+- Released version 3.21.0 to PyPI: https://pypi.org/project/sparkless/3.21.0/
+- Package available for installation: `pip install sparkless==3.21.0`
+
 ## 3.14.0 — 2025-01-XX
 
 ### Fixed

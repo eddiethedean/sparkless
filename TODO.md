@@ -1,6 +1,18 @@
 # TODO & Future Enhancements
 
-## Recently Completed (2024)
+## Recently Completed (2024-2025)
+
+### Version 3.21.0 (January 2025)
+- [x] Fixed issue #212: `DataFrame.select()` now properly handles lists of `psf.col()` statements
+- [x] Fixed issue #213: `createDataFrame()` with single `DataType` schema now works with `toDF()` syntax
+- [x] Fixed issue #214: `df.sort()` and `df.orderBy()` now properly handle list parameters
+- [x] Fixed issue #215: `sparkless.sql.Row` now supports kwargs-style initialization (e.g., `Row(name="Alice", age=30)`)
+- [x] Fixed list unpacking for `groupBy()`, `rollup()`, and `cube()` methods to support list/tuple arguments
+- [x] Fixed mypy type errors for Python 3.9 compatibility (replaced `|` union syntax with `Union` type hints)
+- [x] Fixed type mapping for unsigned integer types (`UInt32`, `UInt64`, `UInt16`, `UInt8`) to signed equivalents
+- [x] Fixed `size()`, `length()`, `bit_length()`, and `octet_length()` functions to return `Int64` instead of `UInt32`
+- [x] Applied ruff code formatting across all files
+- [x] Released version 3.21.0 to PyPI (https://pypi.org/project/sparkless/3.21.0/)
 
 ### PySpark Compatibility
 - [x] Convert `sparkless/sql/functions.py` to export a proper module instead of Functions class, using `__getattr__` to expose all functions. (Ensures `isinstance(functions, ModuleType)` returns True for PySpark compatibility.)
@@ -35,6 +47,8 @@
 - [x] Ensure all code passes `ruff format`, `ruff check`, and `mypy` validation.
 - [x] All 1088 tests passing with 47 expected skips.
 - [x] Fix mypy error in `MiscellaneousOperations` by accessing columns via schema instead of direct property access.
+- [x] Fixed mypy type errors in version 3.21.0: Python 3.9 compatibility with Union syntax, removed unused type ignore comments, fixed redundant cast warnings.
+- [x] Fixed ruff formatting issues: split long type annotations across multiple lines per formatting rules.
 
 ## Performance & Optimisation
 - [x] Profile Polars execution hot paths (`backend/polars/operation_executor.py`, `dataframe/evaluation/expression_evaluator.py`) and introduce vectorised shortcuts or caching for common operators. (Feature-flagged profiling utilities added in `sparkless/utils/profiling.py`; hot paths instrumented with caching and documented in `docs/performance/profiling.md`.)
