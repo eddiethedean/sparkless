@@ -140,6 +140,18 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
         return ShortType()
     elif polars_dtype == pl.Int8:
         return ByteType()
+    elif polars_dtype == pl.UInt32:
+        # Polars UInt32 from list.len() - convert to IntegerType for PySpark compatibility
+        return IntegerType()
+    elif polars_dtype == pl.UInt64:
+        # Polars UInt64 - convert to LongType for PySpark compatibility
+        return LongType()
+    elif polars_dtype == pl.UInt16:
+        # Polars UInt16 - convert to ShortType for PySpark compatibility
+        return ShortType()
+    elif polars_dtype == pl.UInt8:
+        # Polars UInt8 - convert to ByteType for PySpark compatibility
+        return ByteType()
     elif polars_dtype == pl.Null:
         return NullType()
     else:

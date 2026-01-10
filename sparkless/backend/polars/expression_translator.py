@@ -2572,8 +2572,8 @@ class PolarsExpressionTranslator:
         function_map = {
             "upper": lambda e: e.str.to_uppercase(),
             "lower": lambda e: e.str.to_lowercase(),
-            "length": lambda e: e.str.len_chars(),
-            "char_length": lambda e: e.str.len_chars(),  # Alias for length
+            "length": lambda e: e.str.len_chars().cast(pl.Int64),  # Cast to Int64 for PySpark compatibility
+            "char_length": lambda e: e.str.len_chars().cast(pl.Int64),  # Alias for length
             # PySpark trim only removes ASCII space characters (0x20), not tabs/newlines
             "trim": lambda e: e.str.strip_chars(" "),
             "ltrim": lambda e: e.str.strip_chars_start(" "),
@@ -2636,6 +2636,9 @@ class PolarsExpressionTranslator:
             "reverse": lambda e: self._reverse_expr(
                 e, op
             ),  # Handle both string and array reverse
+            "size": lambda e: self._size_expr(
+                e, op
+            ),  # Handle both array and map size
             "isnan": lambda e: pl.when(e.is_null()).then(None).otherwise(e.is_nan()),
             "bin": lambda e: e.map_elements(
                 lambda x: bin(int(x))[2:]
@@ -2824,6 +2827,67 @@ class PolarsExpressionTranslator:
         else:
             # Default to string reverse (F.reverse() defaults to StringFunctions)
             return expr.str.reverse()
+
+    def _size_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
+        """Handle size for both arrays and maps.
+
+        Args:
+            expr: Polars expression (column reference)
+            op: The ColumnOperation to check column type
+
+        Returns:
+            Polars expression for size (array or map length)
+        """
+        # Check if the column is an array type by inspecting the operation's column
+        from sparkless.spark_types import ArrayType, MapType
+
+        is_array = False
+        is_map = False
+
+        # First, check if column_type is explicitly ArrayType or MapType
+        if hasattr(op, "column"):
+            col = op.column
+            if hasattr(col, "column_type"):
+                column_type = col.column_type
+                is_array = isinstance(column_type, ArrayType)
+                is_map = isinstance(column_type, MapType)
+
+        # If not determined yet, try to infer from the column name
+        # If column name suggests it's an array (e.g., "scores", "tags"), treat as array
+        # If column name suggests it's a map (e.g., "map1", "mapping"), treat as map
+        if not is_array and not is_map and hasattr(op, "column") and hasattr(op.column, "name"):
+            col_name = op.column.name.lower()
+            # Common array column name patterns
+            if (
+                col_name.startswith("arr")
+                or col_name.endswith("_array")
+                or "array" in col_name
+                or col_name in ("scores", "tags", "items", "list")
+            ):
+                is_array = True
+            # Common map column name patterns
+            elif (
+                col_name.startswith("map")
+                or col_name.endswith("_map")
+                or "mapping" in col_name
+                or "dict" in col_name
+            ):
+                is_map = True
+
+        if is_array:
+            # For arrays, use list.len() which returns UInt32
+            # The type mapper will handle UInt32 -> IntegerType conversion
+            return expr.list.len()
+        elif is_map:
+            # For maps (dicts), use map_elements to get length
+            return expr.map_elements(
+                lambda x: len(x) if isinstance(x, dict) and x is not None else None,
+                return_dtype=pl.Int64,
+            )
+        else:
+            # Default to array size (F.size() defaults to ArrayFunctions)
+            # Try array first, fall back to map if that fails
+            return expr.list.len()
 
     def _parse_simple_case_when(self, sql_expr: str) -> pl.Expr:
         """Parse simple CASE WHEN expression and convert to Polars expression.
