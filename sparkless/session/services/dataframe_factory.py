@@ -49,25 +49,9 @@ class DataFrameFactory:
         """
         if not isinstance(data, list):
             raise IllegalArgumentException(
-                "Data must be a list of dictionaries, tuples, or Row objects"
+                "Data must be a list of dictionaries, tuples, lists, or Row objects"
             )
         
-        # Convert Row objects to dictionaries early for consistent handling
-        # This allows createDataFrame to accept Row objects (PySpark compatibility)
-        converted_data: list[dict[str, Any] | tuple[Any, ...]] = []
-        for row in data:
-            if isinstance(row, Row):
-                # Convert Row object to dict using asDict()
-                converted_data.append(row.asDict())
-            elif isinstance(row, (dict, tuple)):
-                # Keep as-is
-                converted_data.append(row)
-            else:
-                raise IllegalArgumentException(
-                    "Data must be a list of dictionaries, tuples, or Row objects"
-                )
-        data = converted_data
-
         # Handle PySpark StructType - convert to StructType
         # Check if it's a PySpark StructType (has 'fields' attribute but not StructType)
         if (
@@ -80,6 +64,7 @@ class DataFrameFactory:
 
         # Handle single DataType schema (PySpark compatibility)
         # Example: createDataFrame([date1, date2], DateType()).toDF("dates")
+        # This must be checked BEFORE Row conversion because raw values are allowed here
         if schema is not None and isinstance(schema, DataType) and not isinstance(schema, StructType):
             # Convert single DataType to StructType with a single unnamed field
             # Use "_c0" as the default column name (PySpark convention)
@@ -101,7 +86,10 @@ class DataFrameFactory:
                     # Convert positional data to dicts with "_c0" key
                     converted_data: list[dict[str, Any]] = []
                     for row in data:
-                        if _is_positional_row(row):
+                        if isinstance(row, Row):
+                            # Row objects are also allowed with single DataType schema
+                            converted_data.append({"_c0": row.asDict().get("_c0") if "_c0" in row.asDict() else list(row.asDict().values())[0] if row.asDict() else None})
+                        elif _is_positional_row(row):
                             # Multi-value positional row (tuple/list with multiple values)
                             row_seq = cast("Sequence[Any]", row)
                             converted_data.append({"_c0": row_seq[0] if len(row_seq) > 0 else None})
@@ -109,6 +97,26 @@ class DataFrameFactory:
                             # Primitive value (single date, string, etc.)
                             converted_data.append({"_c0": row})
                     data = converted_data
+        
+        # Convert Row objects to dictionaries for consistent handling
+        # This allows createDataFrame to accept Row objects (PySpark compatibility)
+        # Only do this if we haven't already converted the data above
+        if data and not all(isinstance(row, dict) for row in data):
+            converted_data: list[dict[str, Any] | tuple[Any, ...] | list[Any]] = []
+            for row in data:
+                if isinstance(row, Row):
+                    # Convert Row object to dict using asDict()
+                    converted_data.append(row.asDict())
+                elif isinstance(row, (dict, tuple, list)):
+                    # Keep as-is (lists and tuples are positional rows)
+                    converted_data.append(row)
+                else:
+                    # At this point, if we still have non-dict/tuple/list/Row values,
+                    # it's an error (unless we already handled single DataType above)
+                    raise IllegalArgumentException(
+                        "Data must be a list of dictionaries, tuples, lists, or Row objects"
+                    )
+            data = converted_data
 
         # Handle DDL schema strings
         if isinstance(schema, str):
