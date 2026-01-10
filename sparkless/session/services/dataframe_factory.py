@@ -12,6 +12,7 @@ from sparkless.spark_types import (
     StructField,
     StringType,
     DataType,
+    Row,
 )
 from sparkless.dataframe import DataFrame
 from sparkless.session.config import SparkConfig
@@ -48,8 +49,24 @@ class DataFrameFactory:
         """
         if not isinstance(data, list):
             raise IllegalArgumentException(
-                "Data must be a list of dictionaries or tuples"
+                "Data must be a list of dictionaries, tuples, or Row objects"
             )
+        
+        # Convert Row objects to dictionaries early for consistent handling
+        # This allows createDataFrame to accept Row objects (PySpark compatibility)
+        converted_data: list[dict[str, Any] | tuple[Any, ...]] = []
+        for row in data:
+            if isinstance(row, Row):
+                # Convert Row object to dict using asDict()
+                converted_data.append(row.asDict())
+            elif isinstance(row, (dict, tuple)):
+                # Keep as-is
+                converted_data.append(row)
+            else:
+                raise IllegalArgumentException(
+                    "Data must be a list of dictionaries, tuples, or Row objects"
+                )
+        data = converted_data
 
         # Handle PySpark StructType - convert to StructType
         # Check if it's a PySpark StructType (has 'fields' attribute but not StructType)
@@ -243,12 +260,12 @@ class DataFrameFactory:
                 raise ValueError("can not infer schema from empty dataset")
             else:
                 # Check if data is in expected format
-                sample_row = data[0]
-                if not isinstance(sample_row, (dict, tuple)):
-                    raise IllegalArgumentException(
-                        "Data must be a list of dictionaries or tuples"
-                    )
+                # Note: Row objects have already been converted to dicts above
+                sample_row = data[0] if data else None
 
+                if sample_row is None:
+                    raise ValueError("can not infer schema from empty dataset")
+                
                 if isinstance(sample_row, dict):
                     # Use SchemaInferenceEngine for dictionary data
                     from sparkless.core.schema_inference import SchemaInferenceEngine

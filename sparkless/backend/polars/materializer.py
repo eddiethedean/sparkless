@@ -911,11 +911,49 @@ class PolarsMaterializer:
         # For joins with duplicate columns, Polars uses _right suffix
         # We need to convert these to match PySpark's duplicate column handling
         rows = []
-
+        
+        # Convert Polars DataFrame to dicts and preserve date/timestamp types
+        # Polars to_dicts() converts dates to strings, we need to convert them back
+        import datetime as dt_module
+        from .type_mapper import polars_dtype_to_mock_type
+        from sparkless.spark_types import DateType, TimestampType
+        
+        # Get column types from Polars DataFrame schema
+        polars_schema = result_df.schema
+        column_types = {col: polars_dtype_to_mock_type(dtype) for col, dtype in polars_schema.items()}
+        
         for row_dict in result_df.to_dicts():
+            # Convert date/timestamp strings back to date/datetime objects
+            # Polars to_dicts() converts dates to ISO format strings
+            converted_row_dict: dict[str, Any] = {}
+            for col, value in row_dict.items():
+                col_type = column_types.get(col)
+                if isinstance(col_type, DateType) and isinstance(value, str):
+                    # Convert ISO date string back to date object
+                    try:
+                        converted_row_dict[col] = dt_module.date.fromisoformat(value)
+                    except (ValueError, AttributeError):
+                        # If parsing fails, keep as string
+                        converted_row_dict[col] = value
+                elif isinstance(col_type, TimestampType) and isinstance(value, str):
+                    # Convert ISO timestamp string back to datetime object
+                    try:
+                        # Handle various ISO formats
+                        if "T" in value:
+                            converted_row_dict[col] = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
+                        else:
+                            converted_row_dict[col] = dt_module.datetime.fromisoformat(value)
+                    except (ValueError, AttributeError):
+                        # If parsing fails, keep as string
+                        converted_row_dict[col] = value
+                else:
+                    converted_row_dict[col] = value
+            
             # Create Row from dict - Row will handle the conversion
             # The schema will be applied later in _convert_materialized_rows
-            rows.append(Row(row_dict, schema=None))
+            rows.append(Row(converted_row_dict, schema=None))
 
         return rows
 

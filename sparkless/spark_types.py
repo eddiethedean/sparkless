@@ -113,7 +113,7 @@ class DataType(_DataTypeBase):  # type: ignore[misc,valid-type]
         type_mapping = {
             "StringType": "string",
             "IntegerType": "int",  # Fixed: was "integer", should be "int"
-            "LongType": "bigint",
+            "LongType": "long",  # PySpark uses "long", not "bigint"
             "DoubleType": "double",
             "BooleanType": "boolean",
             "DateType": "date",
