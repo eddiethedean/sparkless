@@ -46,12 +46,9 @@ class AggregationOperations(Generic[SupportsDF]):
         # PySpark compatibility: if a single list/tuple is passed, unpack it
         # This allows df.groupBy(["col1", "col2"]) to work like df.groupBy("col1", "col2")
         # Also supports df.groupBy(df.columns)
-        if (
-            len(columns) == 1
-            and isinstance(columns[0], (list, tuple))
-        ):
+        if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
             # Unpack list/tuple of columns
-            columns = tuple(columns[0])
+            columns = tuple(columns[0])  # type: ignore[unreachable]
 
         col_names = []
         for col in columns:
@@ -100,12 +97,9 @@ class AggregationOperations(Generic[SupportsDF]):
         """
         # PySpark compatibility: if a single list/tuple is passed, unpack it
         # This allows df.rollup(["col1", "col2"]) to work like df.rollup("col1", "col2")
-        if (
-            len(columns) == 1
-            and isinstance(columns[0], (list, tuple))
-        ):
+        if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
             # Unpack list/tuple of columns
-            columns = tuple(columns[0])
+            columns = tuple(columns[0])  # type: ignore[unreachable]
 
         col_names = []
         for col in columns:
@@ -142,12 +136,9 @@ class AggregationOperations(Generic[SupportsDF]):
         """
         # PySpark compatibility: if a single list/tuple is passed, unpack it
         # This allows df.cube(["col1", "col2"]) to work like df.cube("col1", "col2")
-        if (
-            len(columns) == 1
-            and isinstance(columns[0], (list, tuple))
-        ):
+        if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
             # Unpack list/tuple of columns
-            columns = tuple(columns[0])
+            columns = tuple(columns[0])  # type: ignore[unreachable]
 
         col_names = []
         for col in columns:

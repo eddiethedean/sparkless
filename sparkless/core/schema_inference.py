@@ -173,8 +173,10 @@ class SchemaInferenceEngine:
         else:
             # Check for date/datetime objects
             import datetime as dt_module
-            
-            if isinstance(value, dt_module.date) and not isinstance(value, dt_module.datetime):
+
+            if isinstance(value, dt_module.date) and not isinstance(
+                value, dt_module.datetime
+            ):
                 # Pure date object (not datetime)
                 return DateType()
             elif isinstance(value, dt_module.datetime):

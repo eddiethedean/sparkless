@@ -665,7 +665,9 @@ class Row:
         {'name': 'Alice', 'age': 25}
     """
 
-    def __init__(self, data: Any = None, schema: Optional["StructType"] = None, **kwargs):
+    def __init__(
+        self, data: Any = None, schema: Optional["StructType"] = None, **kwargs: Any
+    ):
         """Initialize Row.
 
         Args:
@@ -684,7 +686,7 @@ class Row:
         # PySpark compatibility: if data is None and kwargs are provided, use kwargs as data
         if data is None and kwargs:
             data = kwargs
-        
+
         self._schema = schema
 
         # Handle list of tuples - preserves duplicate column names

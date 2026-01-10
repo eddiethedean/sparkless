@@ -235,7 +235,7 @@ class GroupedData:
                     # Cast to help mypy understand the type in Python 3.9
                     result_key, result_value = self._evaluate_column_expression(
                         cast("Union[Column, ColumnOperation]", expr),
-                        group_rows,  # type: ignore[redundant-cast,unused-ignore]
+                        group_rows,
                     )
                     # Track result key order (same for all groups)
                     if result_key not in result_key_order:

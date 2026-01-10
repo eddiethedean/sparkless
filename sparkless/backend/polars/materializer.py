@@ -589,7 +589,9 @@ class PolarsMaterializer:
                         # Unpack the nested list/tuple
                         columns = tuple(payload[0])
                     elif isinstance(payload, (tuple, list)):
-                        columns = tuple(payload) if isinstance(payload, list) else payload
+                        columns = (
+                            tuple(payload) if isinstance(payload, list) else payload
+                        )
                     else:
                         columns = (payload,)
                     ascending = True
@@ -911,17 +913,20 @@ class PolarsMaterializer:
         # For joins with duplicate columns, Polars uses _right suffix
         # We need to convert these to match PySpark's duplicate column handling
         rows = []
-        
+
         # Convert Polars DataFrame to dicts and preserve date/timestamp types
         # Polars to_dicts() converts dates to strings, we need to convert them back
         import datetime as dt_module
         from .type_mapper import polars_dtype_to_mock_type
         from sparkless.spark_types import DateType, TimestampType
-        
+
         # Get column types from Polars DataFrame schema
         polars_schema = result_df.schema
-        column_types = {col: polars_dtype_to_mock_type(dtype) for col, dtype in polars_schema.items()}
-        
+        column_types = {
+            col: polars_dtype_to_mock_type(dtype)
+            for col, dtype in polars_schema.items()
+        }
+
         for row_dict in result_df.to_dicts():
             # Convert date/timestamp strings back to date/datetime objects
             # Polars to_dicts() converts dates to ISO format strings
@@ -944,13 +949,15 @@ class PolarsMaterializer:
                                 value.replace("Z", "+00:00")
                             )
                         else:
-                            converted_row_dict[col] = dt_module.datetime.fromisoformat(value)
+                            converted_row_dict[col] = dt_module.datetime.fromisoformat(
+                                value
+                            )
                     except (ValueError, AttributeError):
                         # If parsing fails, keep as string
                         converted_row_dict[col] = value
                 else:
                     converted_row_dict[col] = value
-            
+
             # Create Row from dict - Row will handle the conversion
             # The schema will be applied later in _convert_materialized_rows
             rows.append(Row(converted_row_dict, schema=None))

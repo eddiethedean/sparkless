@@ -51,7 +51,7 @@ class DataFrameFactory:
             raise IllegalArgumentException(
                 "Data must be a list of dictionaries, tuples, lists, or Row objects"
             )
-        
+
         # Handle PySpark StructType - convert to StructType
         # Check if it's a PySpark StructType (has 'fields' attribute but not StructType)
         if (
@@ -65,21 +65,26 @@ class DataFrameFactory:
         # Handle single DataType schema (PySpark compatibility)
         # Example: createDataFrame([date1, date2], DateType()).toDF("dates")
         # This must be checked BEFORE Row conversion because raw values are allowed here
-        if schema is not None and isinstance(schema, DataType) and not isinstance(schema, StructType):
+        if (
+            schema is not None
+            and isinstance(schema, DataType)
+            and not isinstance(schema, StructType)
+        ):
             # Convert single DataType to StructType with a single unnamed field
             # Use "_c0" as the default column name (PySpark convention)
             single_data_type = schema
             schema = StructType([StructField("_c0", single_data_type, nullable=True)])
-            
+
             # If data is positional (not dicts), convert to dicts with "_c0" key
             # This handles cases like createDataFrame([date1, date2], DateType())
             if data:
+
                 def _is_positional_row(obj: Any) -> bool:
                     """Check if object is a positional row (sequence but not str/bytes/dict)."""
                     return isinstance(obj, Sequence) and not isinstance(
                         obj, (str, bytes, dict)
                     )
-                
+
                 # Check if first row is positional (primitive value or sequence)
                 first_row = data[0]
                 if not isinstance(first_row, dict):
@@ -88,35 +93,46 @@ class DataFrameFactory:
                     for row in data:
                         if isinstance(row, Row):
                             # Row objects are also allowed with single DataType schema
-                            converted_data.append({"_c0": row.asDict().get("_c0") if "_c0" in row.asDict() else list(row.asDict().values())[0] if row.asDict() else None})
+                            converted_data.append(
+                                {
+                                    "_c0": row.asDict().get("_c0")
+                                    if "_c0" in row.asDict()
+                                    else list(row.asDict().values())[0]
+                                    if row.asDict()
+                                    else None
+                                }
+                            )
                         elif _is_positional_row(row):
                             # Multi-value positional row (tuple/list with multiple values)
                             row_seq = cast("Sequence[Any]", row)
-                            converted_data.append({"_c0": row_seq[0] if len(row_seq) > 0 else None})
+                            converted_data.append(
+                                {"_c0": row_seq[0] if len(row_seq) > 0 else None}
+                            )
                         else:
                             # Primitive value (single date, string, etc.)
                             converted_data.append({"_c0": row})
                     data = converted_data
-        
+
         # Convert Row objects to dictionaries for consistent handling
         # This allows createDataFrame to accept Row objects (PySpark compatibility)
         # Only do this if we haven't already converted the data above
         if data and not all(isinstance(row, dict) for row in data):
-            converted_data: list[dict[str, Any] | tuple[Any, ...] | list[Any]] = []
+            converted_data_list: list[Union[dict[str, Any], tuple[Any, ...], list[Any]]] = []
             for row in data:
                 if isinstance(row, Row):
                     # Convert Row object to dict using asDict()
-                    converted_data.append(row.asDict())
+                    converted_data_list.append(row.asDict())
                 elif isinstance(row, (dict, tuple, list)):
                     # Keep as-is (lists and tuples are positional rows)
-                    converted_data.append(row)
+                    # These will be converted to dicts later by normalize_data_for_schema
+                    converted_data_list.append(row)
                 else:
                     # At this point, if we still have non-dict/tuple/list/Row values,
                     # it's an error (unless we already handled single DataType above)
                     raise IllegalArgumentException(
                         "Data must be a list of dictionaries, tuples, lists, or Row objects"
                     )
-            data = converted_data
+            data = converted_data_list
 
         # Handle DDL schema strings
         if isinstance(schema, str):
@@ -177,7 +193,8 @@ class DataFrameFactory:
                         }
                         reordered_data.append(row_dict)
                     else:
-                        reordered_data.append(row)
+                        # row could be tuple/list that gets converted later
+                        reordered_data.append(row)  # type: ignore[arg-type]
                 data = reordered_data
 
                 # Infer types without changing the user-provided column order
@@ -258,7 +275,7 @@ class DataFrameFactory:
 
                 schema = StructType(inferred_fields)
                 # Normalize data so every row has every column in schema order
-                data = normalize_data_for_schema(data, schema)
+                data = normalize_data_for_schema(data, schema)  # type: ignore[arg-type]
 
         if schema is None:
             # Infer schema from data using SchemaInferenceEngine
@@ -273,12 +290,12 @@ class DataFrameFactory:
 
                 if sample_row is None:
                     raise ValueError("can not infer schema from empty dataset")
-                
+
                 if isinstance(sample_row, dict):
                     # Use SchemaInferenceEngine for dictionary data
                     from sparkless.core.schema_inference import SchemaInferenceEngine
 
-                    schema, data = SchemaInferenceEngine.infer_from_data(data)
+                    schema, data = SchemaInferenceEngine.infer_from_data(data)  # type: ignore[arg-type]
                 elif isinstance(sample_row, tuple):
                     # For tuples, we need column names - this should have been handled earlier
                     # If we get here, it's an error
@@ -301,11 +318,11 @@ class DataFrameFactory:
 
             # Validate if in strict mode
             if engine_config.validation_mode == "strict":
-                validator.validate(data)
+                validator.validate(data)  # type: ignore[arg-type]
 
             # Coerce if enabled
             if engine_config.enable_type_coercion:
-                data = validator.coerce(data)
+                data = validator.coerce(data)  # type: ignore[arg-type]
 
         # Ensure schema is always StructType at this point
         # IMPORTANT: When explicit schema is provided with empty data, preserve it!
@@ -313,7 +330,7 @@ class DataFrameFactory:
         # transformations, but we check for safety and to satisfy type checking
         if not isinstance(schema, StructType):
             # This should never happen, but provide a fallback
-            schema = StructType([])  # type: ignore[unreachable]
+            schema = StructType([])
 
         # Validate that schema is properly initialized with fields attribute
         # This ensures empty DataFrames with explicit schemas preserve column information
@@ -324,7 +341,7 @@ class DataFrameFactory:
             # fields can be empty list, but that's valid for empty schemas
             # If schema was provided explicitly, trust it even if fields is empty
 
-        return DataFrame(data, schema, storage)
+        return DataFrame(data, schema, storage)  # type: ignore[arg-type]
 
     def _handle_schema_inference(
         self, data: list[dict[str, Any]], schema: Optional[Any]

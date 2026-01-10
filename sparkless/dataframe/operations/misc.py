@@ -1244,14 +1244,14 @@ class MiscellaneousOperations:
         if isinstance(numPartitions, int):
             result = self.orderBy(*cols)
             return cast(
-                "SupportsDataFrameOps",  # type: ignore[redundant-cast,unused-ignore]
+                "SupportsDataFrameOps",
                 result,
             )
         else:
             # numPartitions is actually the first column
             result = self.orderBy(numPartitions, *cols)
             return cast(
-                "SupportsDataFrameOps",  # type: ignore[redundant-cast,unused-ignore]
+                "SupportsDataFrameOps",
                 result,
             )
 
@@ -1271,7 +1271,7 @@ class MiscellaneousOperations:
 
         result = self.orderBy(*cols, **kwargs)
         return cast(
-            "SupportsDataFrameOps",  # type: ignore[redundant-cast,unused-ignore]
+            "SupportsDataFrameOps",
             result,
         )
 

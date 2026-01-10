@@ -2572,15 +2572,23 @@ class PolarsExpressionTranslator:
         function_map = {
             "upper": lambda e: e.str.to_uppercase(),
             "lower": lambda e: e.str.to_lowercase(),
-            "length": lambda e: e.str.len_chars().cast(pl.Int64),  # Cast to Int64 for PySpark compatibility
-            "char_length": lambda e: e.str.len_chars().cast(pl.Int64),  # Alias for length
+            "length": lambda e: e.str.len_chars().cast(
+                pl.Int64
+            ),  # Cast to Int64 for PySpark compatibility
+            "char_length": lambda e: e.str.len_chars().cast(
+                pl.Int64
+            ),  # Alias for length
             # PySpark trim only removes ASCII space characters (0x20), not tabs/newlines
             "trim": lambda e: e.str.strip_chars(" "),
             "ltrim": lambda e: e.str.strip_chars_start(" "),
             "rtrim": lambda e: e.str.strip_chars_end(" "),
             "btrim": lambda e: e.str.strip_chars(),  # btrim without trim_string is same as trim
-            "bit_length": lambda e: (e.str.len_bytes() * 8).cast(pl.Int64),  # Cast to Int64 for PySpark compatibility
-            "octet_length": lambda e: e.str.len_bytes().cast(pl.Int64),  # Byte length (octet = 8 bits, but octet_length is bytes), cast to Int64 for PySpark compatibility
+            "bit_length": lambda e: (e.str.len_bytes() * 8).cast(
+                pl.Int64
+            ),  # Cast to Int64 for PySpark compatibility
+            "octet_length": lambda e: e.str.len_bytes().cast(
+                pl.Int64
+            ),  # Byte length (octet = 8 bits, but octet_length is bytes), cast to Int64 for PySpark compatibility
             "char": lambda e: e.map_elements(
                 lambda x: chr(int(x))
                 if x is not None and isinstance(x, (int, float))
@@ -2636,9 +2644,7 @@ class PolarsExpressionTranslator:
             "reverse": lambda e: self._reverse_expr(
                 e, op
             ),  # Handle both string and array reverse
-            "size": lambda e: self._size_expr(
-                e, op
-            ),  # Handle both array and map size
+            "size": lambda e: self._size_expr(e, op),  # Handle both array and map size
             "isnan": lambda e: pl.when(e.is_null()).then(None).otherwise(e.is_nan()),
             "bin": lambda e: e.map_elements(
                 lambda x: bin(int(x))[2:]
@@ -2856,7 +2862,12 @@ class PolarsExpressionTranslator:
         # If not determined yet, try to infer from the column name
         # If column name suggests it's an array (e.g., "scores", "tags"), treat as array
         # If column name suggests it's a map (e.g., "map1", "mapping"), treat as map
-        if not is_array and not is_map and hasattr(op, "column") and hasattr(op.column, "name"):
+        if (
+            not is_array
+            and not is_map
+            and hasattr(op, "column")
+            and hasattr(op.column, "name")
+        ):
             col_name = op.column.name.lower()
             # Common array column name patterns
             if (

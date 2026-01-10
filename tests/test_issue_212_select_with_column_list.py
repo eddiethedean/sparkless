@@ -17,11 +17,13 @@ def spark():
 
 def test_select_with_list_of_column_objects(spark):
     """Test that select() works with a list of Column objects."""
-    df = spark.createDataFrame([
-        {"name": "Alice", "dept": "IT", "salary": 50000},
-        {"name": "Bob", "dept": "HR", "salary": 60000},
-        {"name": "Charlie", "dept": "IT", "salary": 70000},
-    ])
+    df = spark.createDataFrame(
+        [
+            {"name": "Alice", "dept": "IT", "salary": 50000},
+            {"name": "Bob", "dept": "HR", "salary": 60000},
+            {"name": "Charlie", "dept": "IT", "salary": 70000},
+        ]
+    )
 
     # This should work without TypeError
     columns_to_select = [psf.col("name"), psf.col("dept")]
@@ -30,12 +32,12 @@ def test_select_with_list_of_column_objects(spark):
     # Verify the result
     result.show(999)
     rows = result.collect()
-    
+
     assert len(rows) == 3
     assert "name" in result.columns
     assert "dept" in result.columns
     assert "salary" not in result.columns
-    
+
     # Verify the data
     assert rows[0]["name"] == "Alice"
     assert rows[0]["dept"] == "IT"
@@ -47,10 +49,12 @@ def test_select_with_list_of_column_objects(spark):
 
 def test_select_with_list_of_strings(spark):
     """Test that select() still works with a list of strings (existing functionality)."""
-    df = spark.createDataFrame([
-        {"name": "Alice", "dept": "IT", "salary": 50000},
-        {"name": "Bob", "dept": "HR", "salary": 60000},
-    ])
+    df = spark.createDataFrame(
+        [
+            {"name": "Alice", "dept": "IT", "salary": 50000},
+            {"name": "Bob", "dept": "HR", "salary": 60000},
+        ]
+    )
 
     # This should still work
     columns_to_select = ["name", "dept"]
@@ -63,10 +67,12 @@ def test_select_with_list_of_strings(spark):
 
 def test_select_with_mixed_list(spark):
     """Test that select() works with a mixed list of strings and Column objects."""
-    df = spark.createDataFrame([
-        {"name": "Alice", "dept": "IT", "salary": 50000},
-        {"name": "Bob", "dept": "HR", "salary": 60000},
-    ])
+    df = spark.createDataFrame(
+        [
+            {"name": "Alice", "dept": "IT", "salary": 50000},
+            {"name": "Bob", "dept": "HR", "salary": 60000},
+        ]
+    )
 
     # Mixed list of strings and Column objects
     columns_to_select = ["name", psf.col("dept")]
@@ -75,4 +81,3 @@ def test_select_with_mixed_list(spark):
     assert len(result.collect()) == 2
     assert "name" in result.columns
     assert "dept" in result.columns
-
