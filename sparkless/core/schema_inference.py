@@ -27,6 +27,7 @@ from ..spark_types import (
     MapType,
     BinaryType,
     TimestampType,
+    DateType,
     NullType,
 )
 
@@ -170,8 +171,17 @@ class SchemaInferenceEngine:
             # Users must explicitly cast strings to date/timestamp types
             return StringType()
         else:
-            # Check for datetime objects
-            if hasattr(value, "date") and hasattr(value, "time"):
+            # Check for date/datetime objects
+            import datetime as dt_module
+            
+            if isinstance(value, dt_module.date) and not isinstance(value, dt_module.datetime):
+                # Pure date object (not datetime)
+                return DateType()
+            elif isinstance(value, dt_module.datetime):
+                # datetime object
+                return TimestampType()
+            elif hasattr(value, "date") and hasattr(value, "time"):
+                # Other datetime-like objects
                 return TimestampType()
             return StringType()  # Default fallback
 
