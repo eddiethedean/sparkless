@@ -1,14 +1,15 @@
 import pytest
+from typing import cast
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
 
 def _is_pyspark_mode() -> bool:
     """Check if running in PySpark mode."""
-    backend = get_backend_type()
-    return backend == BackendType.PYSPARK
+    backend: BackendType = get_backend_type()
+    return cast(bool, backend == BackendType.PYSPARK)
 
 
-@pytest.mark.skipif(  # type: ignore[misc]
+@pytest.mark.skipif(  # type: ignore[untyped-decorator]
     _is_pyspark_mode(),
     reason="UPDATE TABLE is not supported in PySpark - this is a sparkless-specific feature",
 )

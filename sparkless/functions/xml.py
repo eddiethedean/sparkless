@@ -53,7 +53,7 @@ class XMLFunctions:
             col_obj = col
         else:
             # For other types, convert to Column
-            col_obj = Column(str(col))  # type: ignore[unreachable]
+            col_obj = Column(str(col))
 
         if isinstance(col_obj, Column):
             base_col = col_obj
