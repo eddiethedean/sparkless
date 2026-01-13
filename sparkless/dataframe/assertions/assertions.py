@@ -5,7 +5,7 @@ This module provides assertion methods for testing DataFrames.
 Extracted from dataframe.py to improve organization and maintainability.
 """
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 from ..protocols import SupportsDataFrameOps
 
@@ -18,7 +18,7 @@ class DataFrameAssertions:
 
     @staticmethod
     def assert_has_columns(
-        df: SupportsDataFrameOps, expected_columns: list[str]
+        df: SupportsDataFrameOps, expected_columns: List[str]
     ) -> None:
         """Assert that DataFrame has the expected columns.
 
@@ -72,7 +72,7 @@ class DataFrameAssertions:
 
     @staticmethod
     def assert_data_equals(
-        df: SupportsDataFrameOps, expected_data: list[dict[str, Any]]
+        df: SupportsDataFrameOps, expected_data: List[Dict[str, Any]]
     ) -> None:
         """Assert that DataFrame data equals the expected data.
 

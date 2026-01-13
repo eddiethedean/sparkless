@@ -7,7 +7,7 @@ and provides utilities for caching and accessing them during tests.
 
 import json
 from pathlib import Path
-from typing import Any, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 from functools import lru_cache
 
 
@@ -21,12 +21,12 @@ class ExpectedOutputLoader:
         else:
             base_path = Path(base_dir)
         self.base_dir = base_path
-        self._cache: dict[str, Any] = {}
+        self._cache: Dict[str, Any] = {}
 
     @lru_cache(maxsize=128)
     def load_output(
         self, category: str, test_name: str, pyspark_version: str = "3.2"
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """
         Load expected output for a specific test.
 
@@ -58,12 +58,12 @@ class ExpectedOutputLoader:
             cache_key = f"{category}/{test_name}/{pyspark_version}"
             self._cache[cache_key] = data
 
-            return cast("dict[str, Any]", data)
+            return cast("Dict[str, Any]", data)
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in expected output file {file_path}: {e}")
 
     def _validate_output_schema(
-        self, data: dict[str, Any], category: str, test_name: str
+        self, data: Dict[str, Any], category: str, test_name: str
     ):
         """Validate that the expected output has the required schema."""
         required_fields = [
@@ -99,7 +99,7 @@ class ExpectedOutputLoader:
                     f"Missing required field 'expected_output.schema.{field}' in {category}/{test_name}.json"
                 )
 
-    def load_category(self, category: str) -> dict[str, dict[str, Any]]:
+    def load_category(self, category: str) -> Dict[str, Dict[str, Any]]:
         """
         Load all expected outputs for a category.
 
@@ -124,14 +124,14 @@ class ExpectedOutputLoader:
 
         return results
 
-    def get_available_categories(self) -> list[str]:
+    def get_available_categories(self) -> List[str]:
         """Get list of available test categories."""
         if not self.base_dir.exists():
             return []
 
         return [d.name for d in self.base_dir.iterdir() if d.is_dir()]
 
-    def get_available_tests(self, category: str) -> list[str]:
+    def get_available_tests(self, category: str) -> List[str]:
         """Get list of available tests in a category."""
         category_dir = self.base_dir / category
         if not category_dir.exists():
@@ -139,7 +139,7 @@ class ExpectedOutputLoader:
 
         return [f.stem for f in category_dir.glob("*.json")]
 
-    def get_metadata(self) -> dict[str, Any]:
+    def get_metadata(self) -> Dict[str, Any]:
         """Load metadata about expected outputs."""
         metadata_file = self.base_dir / "metadata.json"
         if not metadata_file.exists():
@@ -147,7 +147,7 @@ class ExpectedOutputLoader:
 
         try:
             with open(metadata_file) as f:
-                return cast("dict[str, Any]", json.load(f))
+                return cast("Dict[str, Any]", json.load(f))
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
@@ -171,21 +171,21 @@ def get_loader() -> ExpectedOutputLoader:
 
 def load_expected_output(
     category: str, test_name: str, pyspark_version: str = "3.2"
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Convenience function to load expected output."""
     return get_loader().load_output(category, test_name, pyspark_version)
 
 
-def load_category_outputs(category: str) -> dict[str, dict[str, Any]]:
+def load_category_outputs(category: str) -> Dict[str, Dict[str, Any]]:
     """Convenience function to load all outputs for a category."""
     return get_loader().load_category(category)
 
 
-def get_available_categories() -> list[str]:
+def get_available_categories() -> List[str]:
     """Convenience function to get available categories."""
     return get_loader().get_available_categories()
 
 
-def get_available_tests(category: str) -> list[str]:
+def get_available_tests(category: str) -> List[str]:
     """Convenience function to get available tests in a category."""
     return get_loader().get_available_tests(category)

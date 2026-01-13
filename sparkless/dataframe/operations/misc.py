@@ -5,8 +5,9 @@ This mixin provides various miscellaneous operations that can be mixed into
 the DataFrame class.
 """
 
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from __future__ import annotations
+from typing import Iterator
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 
 from ...spark_types import (
     ArrayType,
@@ -16,11 +17,11 @@ from ...spark_types import (
     StructField,
     StructType,
 )
-from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
     from ...functions import Column
     from ..dataframe import DataFrame
+    from ..protocols import SupportsDataFrameOps
 
 from ...core.exceptions import IllegalArgumentException
 from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundException
@@ -30,10 +31,10 @@ class MiscellaneousOperations:
     """Mixin providing miscellaneous operations for DataFrame."""
 
     if TYPE_CHECKING:
-        data: list[dict[str, Any]]
+        data: List[Dict[str, Any]]
         schema: StructType
         storage: Any
-        _operations_queue: list[tuple[str, Any]]
+        _operations_queue: List[Tuple[str, Any]]
         _watermark_col: Optional[str]
         _watermark_delay: Optional[str]
 
@@ -48,7 +49,7 @@ class MiscellaneousOperations:
         self: SupportsDataFrameOps,
         how: str = "any",
         thresh: Optional[int] = None,
-        subset: Optional[list[str]] = None,
+        subset: Optional[List[str]] = None,
     ) -> SupportsDataFrameOps:
         """Drop rows with null values."""
         filtered_data = []
@@ -78,7 +79,7 @@ class MiscellaneousOperations:
         )
 
     def fillna(
-        self: SupportsDataFrameOps, value: Union[Any, dict[str, Any]]
+        self: SupportsDataFrameOps, value: Union[Any, Dict[str, Any]]
     ) -> SupportsDataFrameOps:
         """Fill null values."""
         new_data = []
@@ -174,7 +175,7 @@ class MiscellaneousOperations:
     def sampleBy(
         self: SupportsDataFrameOps,
         col: str,
-        fractions: dict[Any, float],
+        fractions: Dict[Any, float],
         seed: Optional[int] = None,
     ) -> SupportsDataFrameOps:
         """Stratified sampling (all PySpark versions).
@@ -207,8 +208,8 @@ class MiscellaneousOperations:
         )
 
     def randomSplit(
-        self: SupportsDataFrameOps, weights: list[float], seed: Optional[int] = None
-    ) -> list[SupportsDataFrameOps]:
+        self: SupportsDataFrameOps, weights: List[float], seed: Optional[int] = None
+    ) -> List[SupportsDataFrameOps]:
         """Randomly split DataFrame into multiple DataFrames.
 
         Args:
@@ -242,13 +243,13 @@ class MiscellaneousOperations:
 
         # Calculate split points
         cumulative_weight = 0.0
-        split_points: list[int] = []
+        split_points: List[int] = []
         for weight in weights:
             cumulative_weight += weight
             split_points.append(int(len(self.data) * cumulative_weight))
 
         # Create splits
-        splits: list[list[dict[str, Any]]] = []
+        splits: List[List[Dict[str, Any]]] = []
         start_idx = 0
 
         for end_idx in split_points:
@@ -472,7 +473,7 @@ class MiscellaneousOperations:
         from collections import defaultdict
 
         # Build cross-tab structure
-        crosstab_data: dict[Any, dict[Any, int]] = defaultdict(lambda: defaultdict(int))
+        crosstab_data: Dict[Any, Dict[Any, int]] = defaultdict(lambda: defaultdict(int))
         col2_values = set()
 
         for row in self.data:
@@ -506,7 +507,7 @@ class MiscellaneousOperations:
         )
 
     def freqItems(
-        self: SupportsDataFrameOps, cols: list[str], support: Optional[float] = None
+        self: SupportsDataFrameOps, cols: List[str], support: Optional[float] = None
     ) -> SupportsDataFrameOps:
         """Find frequent items (all PySpark versions).
 
@@ -547,10 +548,10 @@ class MiscellaneousOperations:
 
     def approxQuantile(
         self: SupportsDataFrameOps,
-        col: Union[str, list[str]],
-        probabilities: list[float],
+        col: Union[str, List[str]],
+        probabilities: List[float],
         relativeError: float,
-    ) -> Union[list[float], list[list[float]]]:
+    ) -> Union[List[float], List[List[float]]]:
         """Calculate approximate quantiles (all PySpark versions).
 
         Args:
@@ -562,8 +563,8 @@ class MiscellaneousOperations:
             List of quantile values, or list of lists if multiple columns
         """
 
-        def calc_quantiles(column_name: str) -> list[float]:
-            values_list: list[float] = []
+        def calc_quantiles(column_name: str) -> List[float]:
+            values_list: List[float] = []
             for row in self.data:
                 val = row.get(column_name)
                 if val is not None:
@@ -748,7 +749,7 @@ class MiscellaneousOperations:
             result_pdfs.append(result_pdf)
 
         # Concatenate all results
-        result_data: list[dict[str, Any]] = []
+        result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
@@ -784,8 +785,8 @@ class MiscellaneousOperations:
 
     def unpivot(
         self: SupportsDataFrameOps,
-        ids: Union[str, list[str]],
-        values: Union[str, list[str]],
+        ids: Union[str, List[str]],
+        values: Union[str, List[str]],
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> SupportsDataFrameOps:
@@ -875,8 +876,8 @@ class MiscellaneousOperations:
 
     def melt(
         self: SupportsDataFrameOps,
-        ids: Optional[list[str]] = None,
-        values: Optional[list[str]] = None,
+        ids: Optional[List[str]] = None,
+        values: Optional[List[str]] = None,
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> SupportsDataFrameOps:
@@ -1182,7 +1183,7 @@ class MiscellaneousOperations:
         setattr(self, "_watermark_delay", delayThreshold)
         return self
 
-    def sameSemantics(self: SupportsDataFrameOps, other: "DataFrame") -> bool:
+    def sameSemantics(self: SupportsDataFrameOps, other: DataFrame) -> bool:
         """Check if this DataFrame has the same semantics as another (PySpark 3.1+).
 
         Simplified implementation that checks schema and data equality.
@@ -1215,7 +1216,7 @@ class MiscellaneousOperations:
         schema_str = ",".join([f"{f.name}:{f.dataType}" for f in self.schema.fields])
         return hash(schema_str)
 
-    def inputFiles(self: SupportsDataFrameOps) -> list[str]:
+    def inputFiles(self: SupportsDataFrameOps) -> List[str]:
         """Return list of input files for this DataFrame (PySpark 3.1+).
 
         Returns:
@@ -1227,8 +1228,8 @@ class MiscellaneousOperations:
     # Partition/Streaming Operations
     def repartitionByRange(
         self: SupportsDataFrameOps,
-        numPartitions: Union[int, str, "Column"],
-        *cols: Union[str, "Column"],
+        numPartitions: Union[int, str, Column],
+        *cols: Union[str, Column],
     ) -> SupportsDataFrameOps:
         """Repartition by range of column values (all PySpark versions).
 
@@ -1256,7 +1257,7 @@ class MiscellaneousOperations:
             )
 
     def sortWithinPartitions(
-        self: SupportsDataFrameOps, *cols: Union[str, "Column"], **kwargs: Any
+        self: SupportsDataFrameOps, *cols: Union[str, Column], **kwargs: Any
     ) -> SupportsDataFrameOps:
         """Sort within partitions (all PySpark versions).
 

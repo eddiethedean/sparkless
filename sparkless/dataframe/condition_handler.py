@@ -5,7 +5,7 @@ This module provides a centralized handler for all condition evaluation logic,
 ensuring consistency and adherence to the Single Responsibility Principle.
 """
 
-from typing import Any, Union, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from ...functions import Column, ColumnOperation
@@ -42,8 +42,8 @@ class ConditionHandler:
         return self._expression_evaluator
 
     def apply_condition(
-        self, data: list[dict[str, Any]], condition: "ColumnOperation"
-    ) -> list[dict[str, Any]]:
+        self, data: List[Dict[str, Any]], condition: "ColumnOperation"
+    ) -> List[Dict[str, Any]]:
         """Apply condition to filter data.
 
         Args:
@@ -62,7 +62,7 @@ class ConditionHandler:
         return filtered_data
 
     def evaluate_condition(
-        self, row: dict[str, Any], condition: Union["ColumnOperation", "Column"]
+        self, row: Dict[str, Any], condition: Union["ColumnOperation", "Column"]
     ) -> bool:
         """Evaluate condition for a single row.
 
@@ -78,7 +78,7 @@ class ConditionHandler:
         return self._get_expression_evaluator().evaluate_condition(row, condition)
 
     def evaluate_column_expression(
-        self, row: dict[str, Any], column_expression: Any
+        self, row: Dict[str, Any], column_expression: Any
     ) -> Any:
         """Evaluate a column expression for a single row.
 
@@ -93,7 +93,7 @@ class ConditionHandler:
             row, column_expression
         )
 
-    def evaluate_case_when(self, row: dict[str, Any], case_when_obj: Any) -> Any:
+    def evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row.
 
         Args:
@@ -120,7 +120,7 @@ class ConditionHandler:
         return None
 
     def _evaluate_case_when_condition(
-        self, row: dict[str, Any], condition: Any
+        self, row: Dict[str, Any], condition: Any
     ) -> bool:
         """Evaluate a CASE WHEN condition for a row.
 

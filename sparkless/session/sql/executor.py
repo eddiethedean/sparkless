@@ -22,7 +22,7 @@ Example:
 
 import contextlib
 import re
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import Any, Dict, List, TYPE_CHECKING, Union, cast
 from ...core.exceptions.execution import QueryExecutionException
 from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.session import ISession
@@ -147,7 +147,7 @@ class SQLExecutor:
 
             # For now, create a simple DataFrame with one row
             # This is a basic implementation for literal SELECT queries
-            data: list[dict[str, Any]] = [
+            data: List[Dict[str, Any]] = [
                 {}
             ]  # Empty row, we'll populate based on SELECT columns
             schema = StructType([])
@@ -465,7 +465,7 @@ class SQLExecutor:
                     col_name = in_match.group(1)
                     values_str = in_match.group(2).strip()
                     # Parse values (handle both numbers and strings)
-                    values: list[Union[float, int, str]] = []
+                    values: List[Union[float, int, str]] = []
                     for val in values_str.split(","):
                         val = val.strip()
                         # Try to parse as number
@@ -531,7 +531,7 @@ class SQLExecutor:
             # Parse aggregate functions from SELECT columns
             from ...functions import F
 
-            agg_exprs: list[
+            agg_exprs: List[
                 Union[ColumnOperation, AggregateFunction, CaseWhen, Literal]
             ] = []
             select_exprs = []
@@ -973,7 +973,7 @@ class SQLExecutor:
 
             if has_aggregates:
                 # We have aggregate functions without GROUP BY - aggregate over all rows
-                agg_exprs_no_group: list[
+                agg_exprs_no_group: List[
                     Union[ColumnOperation, AggregateFunction, CaseWhen, Literal]
                 ] = []
 
@@ -1044,14 +1044,14 @@ class SQLExecutor:
                 # Aggregate over all rows (no grouping columns)
                 # Convert to DataFrame and group by nothing to aggregate all rows
                 df_dataframe = cast("DataFrame", df_ops)
-                # Type ignore needed because agg accepts Union[str, Column, ColumnOperation, AggregateFunction, dict[str, str]]
+                # Type ignore needed because agg accepts Union[str, Column, ColumnOperation, AggregateFunction, Dict[str, str]]
                 # but we're passing a list that may contain Column which is compatible
                 df = df_dataframe.groupBy().agg(*agg_exprs_no_group)  # type: ignore[arg-type]
             else:
                 # No GROUP BY, no aggregates - just apply column selection
                 if select_columns != ["*"]:
                     # Parse column expressions with aliases, table prefixes, and CASE WHEN
-                    select_exprs_no_group: list[Any] = []
+                    select_exprs_no_group: List[Any] = []
                     for col in select_columns:
                         col = col.strip()
                         # Extract alias if present (handle both " AS " and " as ")
@@ -1118,8 +1118,30 @@ class SQLExecutor:
                                     if prefixed_col in df.columns:
                                         col_name = prefixed_col
                                     else:
-                                        # Fallback to base column name
-                                        col_name = base_col
+                                        # If join happened, we should have prefixed columns
+                                        # Try to find any column with this base name that matches the alias
+                                        # This handles cases where the alias might be different
+                                        matching_cols = [
+                                            c
+                                            for c in df.columns
+                                            if c.endswith(f"_{base_col}")
+                                            or c == base_col
+                                        ]
+                                        if matching_cols:
+                                            # Prefer the one that matches the alias prefix
+                                            alias_matches: List[str] = [
+                                                c
+                                                for c in matching_cols
+                                                if c.startswith(f"{table_alias}_")
+                                            ]
+                                            if alias_matches:
+                                                col_name = alias_matches[0]
+                                            else:
+                                                # Fallback to first matching column
+                                                col_name = matching_cols[0]
+                                        else:
+                                            # No match found, use base column name as last resort
+                                            col_name = base_col
                                 else:
                                     col_name = col
                             else:
@@ -1451,7 +1473,7 @@ class SQLExecutor:
         # The schema field order is the canonical order for mapping VALUES to columns
         expected_column_order = [field.name for field in table_schema.fields]
 
-        data: list[dict[str, Any]] = []
+        data: List[Dict[str, Any]] = []
 
         if insert_type == "VALUES":
             # Parse VALUES-based INSERT
@@ -1463,7 +1485,7 @@ class SQLExecutor:
 
             # Convert string values to Python types
             for row_values in values:
-                row_dict: dict[str, Any] = {}
+                row_dict: Dict[str, Any] = {}
                 for i, value_str in enumerate(row_values):
                     if i >= len(target_columns):
                         break  # Skip extra values
@@ -1620,7 +1642,7 @@ class SQLExecutor:
         from ...core.safe_evaluator import SafeExpressionEvaluator
 
         # Helper function to evaluate condition for a row
-        def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
+        def evaluate_condition(row: Dict[str, Any], condition: str) -> bool:
             """Evaluate WHERE condition for a single row."""
             context = dict(row)
             row_ns = SimpleNamespace(**row)
@@ -1659,7 +1681,7 @@ class SQLExecutor:
             )
 
         # Helper function to parse and evaluate SET value
-        def evaluate_set_value(value_expr: Any, row: dict[str, Any]) -> Any:
+        def evaluate_set_value(value_expr: Any, row: Dict[str, Any]) -> Any:
             """Parse and evaluate SET clause value."""
             if isinstance(value_expr, str):
                 expr = value_expr.strip()
@@ -1700,7 +1722,7 @@ class SQLExecutor:
             return value_expr
 
         # Apply UPDATE to rows
-        updated_rows: list[dict[str, Any]] = []
+        updated_rows: List[Dict[str, Any]] = []
         for row in rows:
             # Check if row matches WHERE condition
             if normalized_condition:
@@ -1808,7 +1830,7 @@ class SQLExecutor:
             )
 
         # Helper function to evaluate condition for a row
-        def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
+        def evaluate_condition(row: Dict[str, Any], condition: str) -> bool:
             """Evaluate WHERE condition for a single row."""
             from ...core.safe_evaluator import SafeExpressionEvaluator
 

@@ -4,7 +4,7 @@ Transformation service for DataFrame operations.
 This service provides transformation operations using composition instead of mixin inheritance.
 """
 
-from typing import TYPE_CHECKING, Any, Optional, Union, cast, overload
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, overload
 
 from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField
@@ -170,7 +170,7 @@ class TransformationService:
             # Check for function calls (contains parentheses)
             return "(" not in text
 
-        columns: list[Union[str, Column, ColumnOperation]] = []
+        columns: List[Union[str, Column, ColumnOperation]] = []
         for expr in exprs:
             text = expr.strip()
             if text == "*":
@@ -293,7 +293,7 @@ class TransformationService:
 
     def withColumns(
         self,
-        colsMap: dict[str, Union[Column, ColumnOperation, Literal, Any]],
+        colsMap: Dict[str, Union[Column, ColumnOperation, Literal, Any]],
     ) -> "SupportsDataFrameOps":
         """Add or replace multiple columns at once (PySpark 3.3+).
 
@@ -345,7 +345,7 @@ class TransformationService:
             "SupportsDataFrameOps", DataFrame(new_data, new_schema, self._df.storage)
         )
 
-    def withColumnsRenamed(self, colsMap: dict[str, str]) -> "SupportsDataFrameOps":
+    def withColumnsRenamed(self, colsMap: Dict[str, str]) -> "SupportsDataFrameOps":
         """Rename multiple columns (PySpark 3.4+).
 
         Args:
@@ -411,7 +411,7 @@ class TransformationService:
         )
 
     def dropDuplicates(
-        self, subset: Optional[list[str]] = None
+        self, subset: Optional[List[str]] = None
     ) -> "SupportsDataFrameOps":
         """Drop duplicate rows."""
         if subset is None:
@@ -433,7 +433,7 @@ class TransformationService:
         )
 
     def drop_duplicates(
-        self, subset: Optional[list[str]] = None
+        self, subset: Optional[List[str]] = None
     ) -> "SupportsDataFrameOps":
         """Alias for dropDuplicates() (all PySpark versions).
 
@@ -495,9 +495,9 @@ class TransformationService:
 
     def replace(
         self,
-        to_replace: Union[int, float, str, list[Any], dict[Any, Any]],
-        value: Optional[Union[int, float, str, list[Any]]] = None,
-        subset: Optional[list[str]] = None,
+        to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
+        value: Optional[Union[int, float, str, List[Any]]] = None,
+        subset: Optional[List[str]] = None,
     ) -> "SupportsDataFrameOps":
         """Replace values in DataFrame (all PySpark versions).
 
@@ -525,7 +525,7 @@ class TransformationService:
         target_columns = subset if subset else self._df.columns
 
         # Build replacement map
-        replace_map: dict[Any, Any] = {}
+        replace_map: Dict[Any, Any] = {}
         if isinstance(to_replace, dict):
             replace_map = to_replace
         elif isinstance(to_replace, list):

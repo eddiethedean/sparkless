@@ -5,7 +5,7 @@ This module provides JSON and CSV processing functions that match PySpark's API.
 Includes parsing, generation, and schema inference for JSON and CSV data.
 """
 
-from typing import Union, Optional, Any
+from typing import Any, Dict, Optional, Union
 from sparkless.functions.base import Column, ColumnOperation
 
 
@@ -16,7 +16,7 @@ class JSONCSVFunctions:
     def from_json(
         column: Union[Column, str],
         schema: Any,
-        options: Optional[dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
     ) -> ColumnOperation:
         """Parse JSON string column into struct/array column.
 
@@ -112,7 +112,7 @@ class JSONCSVFunctions:
     def from_csv(
         column: Union[Column, str],
         schema: Any,
-        options: Optional[dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
     ) -> ColumnOperation:
         """Parse CSV string column into struct column.
 

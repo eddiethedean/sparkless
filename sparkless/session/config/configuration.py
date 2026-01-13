@@ -20,7 +20,7 @@ Example:
     'MyApp'
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
 
@@ -75,7 +75,7 @@ class Configuration:
         """
         self._config[key] = str(value)
 
-    def setAll(self, pairs: dict[str, Any]) -> None:
+    def setAll(self, pairs: Dict[str, Any]) -> None:
         """Set multiple configuration values.
 
         Args:
@@ -100,7 +100,7 @@ class Configuration:
         """
         self.set("spark.app.name", name)
 
-    def getAll(self) -> dict[str, str]:
+    def getAll(self) -> Dict[str, str]:
         """Get all configuration values.
 
         Returns:
@@ -145,7 +145,7 @@ class SparkConfig:
     strongly-typed knobs used by the mock engine.
 
     Attributes:
-        validation_mode: strict | relaxed | minimal
+        validation_mode: Union[strict, relaxed] | minimal
         enable_type_coercion: best-effort coercion during DataFrame creation
     """
 
@@ -211,7 +211,7 @@ class ConfigBuilder:
         self._config.set(key, value)
         return self
 
-    def setAll(self, pairs: dict[str, Any]) -> "ConfigBuilder":
+    def setAll(self, pairs: Dict[str, Any]) -> "ConfigBuilder":
         """Set multiple configuration values.
 
         Args:

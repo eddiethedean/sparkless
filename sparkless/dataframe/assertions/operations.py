@@ -5,7 +5,7 @@ This mixin provides assertion methods that can be mixed into
 the DataFrame class for testing purposes.
 """
 
-from typing import Any
+from typing import Any, Dict, List
 
 from ...spark_types import StructType
 from ..protocols import SupportsDataFrameOps
@@ -15,7 +15,7 @@ class AssertionOperations:
     """Mixin providing assertion operations for DataFrame testing."""
 
     def assert_has_columns(
-        self: SupportsDataFrameOps, expected_columns: list[str]
+        self: SupportsDataFrameOps, expected_columns: List[str]
     ) -> None:
         """Assert that DataFrame has the expected columns."""
         from .assertions import DataFrameAssertions
@@ -37,7 +37,7 @@ class AssertionOperations:
         return DataFrameAssertions.assert_schema_matches(self, expected_schema)
 
     def assert_data_equals(
-        self: SupportsDataFrameOps, expected_data: list[dict[str, Any]]
+        self: SupportsDataFrameOps, expected_data: List[Dict[str, Any]]
     ) -> None:
         """Assert that DataFrame data equals the expected data."""
         from .assertions import DataFrameAssertions

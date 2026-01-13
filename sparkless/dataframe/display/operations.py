@@ -5,7 +5,7 @@ This mixin provides display and collection operations that can be mixed into
 the DataFrame class to add display capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 
 from ...spark_types import Row, StringType, StructField, StructType
 from ..protocols import SupportsDataFrameOps
@@ -18,9 +18,9 @@ class DisplayOperations:
     """Mixin providing display and collection operations for DataFrame."""
 
     if TYPE_CHECKING:
-        data: list[dict[str, Any]]
+        data: List[Dict[str, Any]]
         schema: StructType
-        _operations_queue: list[tuple[str, Any]]
+        _operations_queue: List[Tuple[str, Any]]
         _cached_count: Optional[int]
 
         def _materialize_if_lazy(self) -> SupportsDataFrameOps: ...
@@ -167,7 +167,7 @@ class DisplayOperations:
                 f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})"
             )
 
-    def collect(self) -> list[Row]:
+    def collect(self) -> List[Row]:
         """Collect all data as list of Row objects."""
 
         if self._operations_queue:
@@ -179,7 +179,7 @@ class DisplayOperations:
         result = self._get_collection_handler().collect(self.data, self.schema)
         return result
 
-    def take(self, n: int) -> list[Row]:
+    def take(self, n: int) -> List[Row]:
         """Take first n rows as list of Row objects."""
 
         if self._operations_queue:
@@ -191,7 +191,7 @@ class DisplayOperations:
         result = self._get_collection_handler().take(self.data, self.schema, n)
         return result
 
-    def head(self, n: int = 1) -> list[Row]:
+    def head(self, n: int = 1) -> List[Row]:
         """Return first n rows. Always returns a list, matching PySpark behavior."""
 
         if self._operations_queue:
@@ -208,14 +208,14 @@ class DisplayOperations:
         # always returns a list in practice, but type annotation allows None
         if result is None:
             return []  # type: ignore[unreachable]
-        # result from collection_handler.head() may be Row or list[Row]
+        # result from collection_handler.head() may be Row or List[Row]
         if isinstance(result, list):
             return result
         # Type narrowing: if we reach here, result is not None and not a list
         # Wrap single Row in list (defensive code, unlikely to execute)
         return [result]  # type: ignore[unreachable]
 
-    def tail(self, n: int = 1) -> Union[Row, list[Row], None]:
+    def tail(self, n: int = 1) -> Union[Row, List[Row], None]:
         """Return last n rows."""
         from typing import cast
 
@@ -225,10 +225,10 @@ class DisplayOperations:
                 materialized.data, materialized.schema, n
             )
             # Protocol method returns Union but mypy sees it as Any
-            return cast("Union[Row, list[Row], None]", result)
+            return cast("Union[Row, List[Row], None]", result)
         result = self._get_collection_handler().tail(self.data, self.schema, n)
         # Protocol method returns Union but mypy sees it as Any
-        return cast("Union[Row, list[Row], None]", result)
+        return cast("Union[Row, List[Row], None]", result)
 
     def toPandas(self) -> Any:
         """Convert to pandas DataFrame (requires pandas as optional dependency)."""

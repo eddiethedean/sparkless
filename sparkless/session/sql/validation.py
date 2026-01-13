@@ -20,7 +20,7 @@ Example:
     True
 """
 
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 
 class SQLValidator:
@@ -93,7 +93,7 @@ class SQLValidator:
             "NULLIF",
         }
 
-    def validate(self, query: str) -> tuple[bool, list[str]]:
+    def validate(self, query: str) -> Tuple[bool, List[str]]:
         """Validate SQL query.
 
         Args:
@@ -125,7 +125,7 @@ class SQLValidator:
 
         return len(errors) == 0, errors
 
-    def _validate_syntax(self, query: str) -> list[str]:
+    def _validate_syntax(self, query: str) -> List[str]:
         """Validate SQL syntax.
 
         Args:
@@ -165,7 +165,7 @@ class SQLValidator:
 
         return errors
 
-    def _validate_semantics(self, query: str) -> list[str]:
+    def _validate_semantics(self, query: str) -> List[str]:
         """Validate SQL semantics.
 
         Args:
@@ -174,7 +174,7 @@ class SQLValidator:
         Returns:
             List of semantic error messages.
         """
-        errors: list[str] = []
+        errors: List[str] = []
 
         # Check for reserved keyword usage
         tokens = self._tokenize(query)
@@ -187,7 +187,7 @@ class SQLValidator:
 
         return errors
 
-    def _validate_structure(self, query: str) -> list[str]:
+    def _validate_structure(self, query: str) -> List[str]:
         """Validate SQL structure.
 
         Args:
@@ -264,7 +264,7 @@ class SQLValidator:
 
         return single_quotes % 2 == 0 and double_quotes % 2 == 0
 
-    def _tokenize(self, query: str) -> list[str]:
+    def _tokenize(self, query: str) -> List[str]:
         """Tokenize SQL query.
 
         Args:
@@ -292,8 +292,8 @@ class SQLValidator:
         return f"'{token}'" in query or f'"{token}"' in query
 
     def validate_schema(
-        self, query: str, schema_info: dict[str, Any]
-    ) -> tuple[bool, list[str]]:
+        self, query: str, schema_info: Dict[str, Any]
+    ) -> Tuple[bool, List[str]]:
         """Validate query against schema information.
 
         Args:
@@ -303,14 +303,14 @@ class SQLValidator:
         Returns:
             Tuple of (is_valid, error_messages).
         """
-        errors: list[str] = []
+        errors: List[str] = []
 
         # Mock implementation - in real validator this would check
         # table names, column names, data types, etc. against schema
 
         return len(errors) == 0, errors
 
-    def get_validation_errors(self, query: str) -> list[str]:
+    def get_validation_errors(self, query: str) -> List[str]:
         """Get detailed validation errors for query.
 
         Args:

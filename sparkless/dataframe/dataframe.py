@@ -29,7 +29,7 @@ Example:
     +----+---+
 """
 
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 
 from .protocols import SupportsDataFrameOps
 
@@ -107,20 +107,20 @@ class DataFrame:
         +----+
     """
 
-    data: list[dict[str, Any]]
+    data: List[Dict[str, Any]]
     _schema: StructType
     storage: StorageBackend
-    _operations_queue: list[tuple[str, Any]]
+    _operations_queue: List[Tuple[str, Any]]
     _cached_count: Optional[int]
     _watermark_col: Optional[str]
     _watermark_delay: Optional[str]
 
     def __init__(
         self,
-        data: list[dict[str, Any]],
+        data: List[Dict[str, Any]],
         schema: StructType,
         storage: Optional["StorageBackend"] = None,
-        operations: Optional[list[tuple[str, Any]]] = None,
+        operations: Optional[List[Tuple[str, Any]]] = None,
     ):
         """Initialize DataFrame.
 
@@ -135,12 +135,12 @@ class DataFrame:
         self._schema = schema
         self.storage: StorageBackend = storage or MemoryStorageManager()
         self._cached_count: Optional[int] = None
-        self._operations_queue: list[tuple[str, Any]] = operations or []
+        self._operations_queue: List[Tuple[str, Any]] = operations or []
 
         # Materialization tracking for column availability
         # For DataFrames created from data, all columns are immediately materialized
         self._materialized: bool = bool(data)
-        self._materialized_columns: set[str] = set()
+        self._materialized_columns: Set[str] = set()
         if data:
             # All columns from schema are materialized when DataFrame is created from data
             self._materialized_columns = set(self._schema.fieldNames())
@@ -174,7 +174,7 @@ class DataFrame:
         self._validation_handler: Optional[ValidationHandler] = None
         self._condition_handler: Optional[ConditionHandler] = None
         # Observations for metrics tracking (PySpark 3.3+)
-        self._observations: dict[str, tuple[Column, ...]] = {}
+        self._observations: Dict[str, Tuple[Column, ...]] = {}
 
     def _get_lazy_engine(self) -> "LazyEvaluationEngine":
         """Get or create the lazy evaluation engine."""
@@ -231,7 +231,7 @@ class DataFrame:
         # Update materialized columns from current schema
         self._materialized_columns = set(self._schema.fieldNames())
 
-    def _get_available_columns(self) -> list[str]:
+    def _get_available_columns(self) -> List[str]:
         """Get columns that are actually available (materialized).
 
         For validation purposes, only return columns that have been materialized.
@@ -291,7 +291,7 @@ class DataFrame:
         return self._transformations.withColumn(col_name, col)
 
     def withColumns(
-        self, colsMap: dict[str, Union[Column, ColumnOperation, Literal, Any]]
+        self, colsMap: Dict[str, Union[Column, ColumnOperation, Literal, Any]]
     ) -> "SupportsDataFrameOps":
         """Add or replace multiple columns at once."""
         return self._transformations.withColumns(colsMap)
@@ -300,7 +300,7 @@ class DataFrame:
         """Rename a column."""
         return self._transformations.withColumnRenamed(existing, new)
 
-    def withColumnsRenamed(self, colsMap: dict[str, str]) -> "SupportsDataFrameOps":
+    def withColumnsRenamed(self, colsMap: Dict[str, str]) -> "SupportsDataFrameOps":
         """Rename multiple columns."""
         return self._transformations.withColumnsRenamed(colsMap)
 
@@ -313,13 +313,13 @@ class DataFrame:
         return self._transformations.distinct()
 
     def dropDuplicates(
-        self, subset: Optional[list[str]] = None
+        self, subset: Optional[List[str]] = None
     ) -> "SupportsDataFrameOps":
         """Drop duplicate rows."""
         return self._transformations.dropDuplicates(subset)
 
     def drop_duplicates(
-        self, subset: Optional[list[str]] = None
+        self, subset: Optional[List[str]] = None
     ) -> "SupportsDataFrameOps":
         """Alias for dropDuplicates()."""
         return self._transformations.drop_duplicates(subset)
@@ -352,9 +352,9 @@ class DataFrame:
 
     def replace(
         self,
-        to_replace: Union[int, float, str, list[Any], dict[Any, Any]],
-        value: Optional[Union[int, float, str, list[Any]]] = None,
-        subset: Optional[list[str]] = None,
+        to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
+        value: Optional[Union[int, float, str, List[Any]]] = None,
+        subset: Optional[List[str]] = None,
     ) -> "SupportsDataFrameOps":
         """Replace values in DataFrame."""
         return self._transformations.replace(to_replace, value, subset)
@@ -367,7 +367,7 @@ class DataFrame:
     def join(
         self,
         other: SupportsDataFrameOps,
-        on: Union[str, list[str], "ColumnOperation"],
+        on: Union[str, List[str], "ColumnOperation"],
         how: str = "inner",
     ) -> "SupportsDataFrameOps":
         """Join with another DataFrame."""
@@ -427,7 +427,7 @@ class DataFrame:
         return self._aggregations.cube(*columns)
 
     def agg(
-        self, *exprs: Union[str, Column, ColumnOperation, dict[str, str]]
+        self, *exprs: Union[str, Column, ColumnOperation, Dict[str, str]]
     ) -> "SupportsDataFrameOps":
         """Aggregate DataFrame without grouping (global aggregation)."""
         return self._aggregations.agg(*exprs)
@@ -459,7 +459,7 @@ class DataFrame:
         """Print DataFrame schema."""
         self._display.printSchema()
 
-    def collect(self) -> list["Row"]:
+    def collect(self) -> List["Row"]:
         """Collect all data as list of Row objects."""
         # Materialize if needed (this updates the schema and data)
         if self._operations_queue:
@@ -472,12 +472,12 @@ class DataFrame:
         self._mark_materialized()
         return self._display.collect()
 
-    def take(self, n: int) -> list["Row"]:
+    def take(self, n: int) -> List["Row"]:
         """Take first n rows as list of Row objects."""
         self._mark_materialized()
         return self._display.take(n)
 
-    def head(self, n: Optional[int] = None) -> Union["Row", list["Row"]]:
+    def head(self, n: Optional[int] = None) -> Union["Row", List["Row"]]:
         """
         Return first n rows.
 
@@ -488,20 +488,20 @@ class DataFrame:
         if n is None:
             # No argument provided - return single Row (PySpark behavior)
             result = self._display.head(1)
-            # _display.head(1) always returns list[Row]
+            # _display.head(1) always returns List[Row]
             if isinstance(result, list):
                 return cast("Row", result[0] if result else None)
             return cast("Row", result)  # type: ignore[unreachable]
 
         # Explicit n provided - return list (PySpark behavior)
         result = self._display.head(n)
-        # _display.head(n) always returns list[Row]
+        # _display.head(n) always returns List[Row]
         if isinstance(result, list):
             return result
         # Wrap single Row in list (shouldn't happen, but defensive)
         return [cast("Row", result)]  # type: ignore[unreachable]
 
-    def tail(self, n: int = 1) -> list["Row"]:
+    def tail(self, n: int = 1) -> List["Row"]:
         """Return last n rows. Always returns a list, matching PySpark behavior."""
         result = self._display.tail(n)
         # Ensure we always return a list, even if n=1 (PySpark behavior)
@@ -576,7 +576,7 @@ class DataFrame:
         return self._display.isEmpty()
 
     # Assertion operations
-    def _assert_has_columns(self, expected_columns: list[str]) -> None:
+    def _assert_has_columns(self, expected_columns: List[str]) -> None:
         """Assert that DataFrame has the expected columns."""
         self._assertions.assert_has_columns(expected_columns)
 
@@ -588,7 +588,7 @@ class DataFrame:
         """Assert that DataFrame schema matches the expected schema."""
         self._assertions.assert_schema_matches(expected_schema)
 
-    def _assert_data_equals(self, expected_data: list[dict[str, Any]]) -> None:
+    def _assert_data_equals(self, expected_data: List[Dict[str, Any]]) -> None:
         """Assert that DataFrame data equals the expected data."""
         self._assertions.assert_data_equals(expected_data)
 
@@ -597,12 +597,12 @@ class DataFrame:
         self,
         how: str = "any",
         thresh: Optional[int] = None,
-        subset: Optional[list[str]] = None,
+        subset: Optional[List[str]] = None,
     ) -> "SupportsDataFrameOps":
         """Drop rows with null values."""
         return self._misc.dropna(how, thresh, subset)
 
-    def fillna(self, value: Union[Any, dict[str, Any]]) -> "SupportsDataFrameOps":
+    def fillna(self, value: Union[Any, Dict[str, Any]]) -> "SupportsDataFrameOps":
         """Fill null values."""
         return self._misc.fillna(value)
 
@@ -618,15 +618,15 @@ class DataFrame:
     def sampleBy(
         self,
         col: str,
-        fractions: dict[Any, float],
+        fractions: Dict[Any, float],
         seed: Optional[int] = None,
     ) -> "SupportsDataFrameOps":
         """Stratified sampling."""
         return self._misc.sampleBy(col, fractions, seed)
 
     def randomSplit(
-        self, weights: list[float], seed: Optional[int] = None
-    ) -> list["SupportsDataFrameOps"]:
+        self, weights: List[float], seed: Optional[int] = None
+    ) -> List["SupportsDataFrameOps"]:
         """Randomly split DataFrame into multiple DataFrames."""
         return self._misc.randomSplit(weights, seed)
 
@@ -643,17 +643,17 @@ class DataFrame:
         return self._misc.crosstab(col1, col2)
 
     def freqItems(
-        self, cols: list[str], support: Optional[float] = None
+        self, cols: List[str], support: Optional[float] = None
     ) -> "SupportsDataFrameOps":
         """Find frequent items."""
         return self._misc.freqItems(cols, support)
 
     def approxQuantile(
         self,
-        col: Union[str, list[str]],
-        probabilities: list[float],
+        col: Union[str, List[str]],
+        probabilities: List[float],
         relativeError: float,
-    ) -> Union[list[float], list[list[float]]]:
+    ) -> Union[List[float], List[List[float]]]:
         """Calculate approximate quantiles."""
         return self._misc.approxQuantile(col, probabilities, relativeError)
 
@@ -677,8 +677,8 @@ class DataFrame:
 
     def unpivot(
         self,
-        ids: Union[str, list[str]],
-        values: Union[str, list[str]],
+        ids: Union[str, List[str]],
+        values: Union[str, List[str]],
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> "SupportsDataFrameOps":
@@ -687,8 +687,8 @@ class DataFrame:
 
     def melt(
         self,
-        ids: Optional[list[str]] = None,
-        values: Optional[list[str]] = None,
+        ids: Optional[List[str]] = None,
+        values: Optional[List[str]] = None,
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> "SupportsDataFrameOps":
@@ -732,7 +732,7 @@ class DataFrame:
         """Return semantic hash of this DataFrame."""
         return self._misc.semanticHash()
 
-    def inputFiles(self) -> list[str]:
+    def inputFiles(self) -> List[str]:
         """Return list of input files for this DataFrame."""
         return self._misc.inputFiles()
 
@@ -781,7 +781,7 @@ class DataFrame:
 
     # Schema properties (from SchemaOperations - properties stay on DataFrame)
     @property
-    def columns(self) -> list[str]:
+    def columns(self) -> List[str]:
         """Get column names."""
         # Get schema (handles lazy evaluation)
         current_schema = self.schema
@@ -810,7 +810,7 @@ class DataFrame:
         self._schema = value
 
     @property
-    def dtypes(self) -> list[tuple[str, str]]:
+    def dtypes(self) -> List[Tuple[str, str]]:
         """Get column names and their data types."""
         return [(field.name, field.dataType.typeName()) for field in self.schema.fields]
 
@@ -824,7 +824,7 @@ class DataFrame:
         Returns:
             New DataFrame with the operation queued.
         """
-        new_ops: list[tuple[str, Any]] = self._operations_queue + [(op_name, payload)]
+        new_ops: List[Tuple[str, Any]] = self._operations_queue + [(op_name, payload)]
         return cast(
             "SupportsDataFrameOps",
             DataFrame(
@@ -854,7 +854,7 @@ class DataFrame:
         )
 
     def __getitem__(
-        self, key: Union[str, int, slice, list[str], tuple[str, ...]]
+        self, key: Union[str, int, slice, List[str], Tuple[str, ...]]
     ) -> Union[Column, "SupportsDataFrameOps"]:
         """Access column by name using dictionary-style syntax.
 
@@ -1016,7 +1016,7 @@ class DataFrame:
                     self.schema, column_name, operation
                 )
 
-    def _validate_columns_exist(self, column_names: list[str], operation: str) -> None:
+    def _validate_columns_exist(self, column_names: List[str], operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""
         self._get_validation_handler().validate_columns_exist(
             self.schema, column_names, operation
@@ -1127,13 +1127,13 @@ class DataFrame:
         self.registerTempTable(name)
 
     def _apply_condition(
-        self, data: list[dict[str, Any]], condition: ColumnOperation
-    ) -> list[dict[str, Any]]:
+        self, data: List[Dict[str, Any]], condition: ColumnOperation
+    ) -> List[Dict[str, Any]]:
         """Apply condition to filter data."""
         return self._get_condition_handler().apply_condition(data, condition)
 
     def _evaluate_condition(
-        self, row: dict[str, Any], condition: Union[ColumnOperation, Column]
+        self, row: Dict[str, Any], condition: Union[ColumnOperation, Column]
     ) -> bool:
         """Evaluate condition for a single row.
 
@@ -1143,7 +1143,7 @@ class DataFrame:
 
     def _evaluate_column_expression(
         self,
-        row: dict[str, Any],
+        row: Dict[str, Any],
         column_expression: "ColumnExpression",
     ) -> Any:
         """Evaluate a column expression for a single row.
@@ -1161,15 +1161,15 @@ class DataFrame:
         return cast("Any", result)
 
     def _evaluate_window_functions(
-        self, data: list[dict[str, Any]], window_functions: list[tuple[Any, ...]]
-    ) -> list[dict[str, Any]]:
+        self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
+    ) -> List[Dict[str, Any]]:
         """Evaluate window functions across all rows."""
         return self._get_window_handler().evaluate_window_functions(
             data, window_functions
         )
 
     def _evaluate_lag_lead(
-        self, data: list[dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
+        self, data: List[Dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
     ) -> None:
         """Evaluate lag or lead window function."""
         self._get_window_handler()._evaluate_lag_lead(
@@ -1178,10 +1178,10 @@ class DataFrame:
 
     def _apply_ordering_to_indices(
         self,
-        data: list[dict[str, Any]],
-        indices: list[int],
-        order_by_cols: list[Union[Column, ColumnOperation]],
-    ) -> list[int]:
+        data: List[Dict[str, Any]],
+        indices: List[int],
+        order_by_cols: List[Union[Column, ColumnOperation]],
+    ) -> List[int]:
         """Apply ordering to a list of indices based on order by columns."""
         return self._get_window_handler()._apply_ordering_to_indices(
             data, indices, order_by_cols
@@ -1189,8 +1189,8 @@ class DataFrame:
 
     def _apply_lag_lead_to_partition(
         self,
-        data: list[dict[str, Any]],
-        indices: list[int],
+        data: List[Dict[str, Any]],
+        indices: List[int],
         source_col: str,
         target_col: str,
         offset: int,
@@ -1203,16 +1203,16 @@ class DataFrame:
         )
 
     def _evaluate_rank_functions(
-        self, data: list[dict[str, Any]], window_func: Any, col_name: str
+        self, data: List[Dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate rank or dense_rank window function."""
         self._get_window_handler()._evaluate_rank_functions(data, window_func, col_name)
 
     def _apply_rank_to_partition(
         self,
-        data: list[dict[str, Any]],
-        indices: list[int],
-        order_by_cols: list[Any],
+        data: List[Dict[str, Any]],
+        indices: List[int],
+        order_by_cols: List[Any],
         col_name: str,
         is_dense: bool,
     ) -> None:
@@ -1222,7 +1222,7 @@ class DataFrame:
         )
 
     def _evaluate_aggregate_window_functions(
-        self, data: list[dict[str, Any]], window_func: Any, col_name: str
+        self, data: List[Dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate aggregate window functions like avg, sum, count, etc."""
         self._get_window_handler()._evaluate_aggregate_window_functions(
@@ -1231,8 +1231,8 @@ class DataFrame:
 
     def _apply_aggregate_to_partition(
         self,
-        data: list[dict[str, Any]],
-        indices: list[int],
+        data: List[Dict[str, Any]],
+        indices: List[int],
         window_func: Any,
         col_name: str,
     ) -> None:
@@ -1241,12 +1241,12 @@ class DataFrame:
             data, indices, window_func, col_name
         )
 
-    def _evaluate_case_when(self, row: dict[str, Any], case_when_obj: Any) -> Any:
+    def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row."""
         return self._get_condition_handler().evaluate_case_when(row, case_when_obj)
 
     def _evaluate_case_when_condition(
-        self, row: dict[str, Any], condition: Any
+        self, row: Dict[str, Any], condition: Any
     ) -> bool:
         """Evaluate a CASE WHEN condition for a row."""
         return self._get_condition_handler()._evaluate_case_when_condition(

@@ -6,7 +6,7 @@ table management, and data persistence.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from ..types.schema import ISchema
 from ...spark_types import StructType
 
@@ -39,7 +39,7 @@ class IStorageManager(ABC):
         pass
 
     @abstractmethod
-    def list_schemas(self) -> list[str]:
+    def list_schemas(self) -> List[str]:
         """List all schemas."""
         pass
 
@@ -48,7 +48,7 @@ class IStorageManager(ABC):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[list[Any], StructType],
+        fields: Union[List[Any], StructType],
     ) -> Optional[Any]:
         """Create a new table."""
         pass
@@ -64,7 +64,7 @@ class IStorageManager(ABC):
         pass
 
     @abstractmethod
-    def list_tables(self, schema_name: Optional[str] = None) -> list[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema."""
         pass
 
@@ -77,7 +77,7 @@ class IStorageManager(ABC):
 
     @abstractmethod
     def insert_data(
-        self, schema_name: str, table_name: str, data: list[dict[str, Any]]
+        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
         """Insert data into table."""
         pass
@@ -85,14 +85,14 @@ class IStorageManager(ABC):
     @abstractmethod
     def query_data(
         self, schema_name: str, table_name: str, **filters: Any
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query data from table."""
         pass
 
     @abstractmethod
     def get_table_metadata(
         self, schema_name: str, table_name: str
-    ) -> Union["ITableMetadataLegacy", dict[str, Any]]:
+    ) -> Union["ITableMetadataLegacy", Dict[str, Any]]:
         """Get table metadata."""
         pass
 
@@ -105,7 +105,7 @@ class IStorageManager(ABC):
         """Set current schema (optional)."""
         pass
 
-    def get_data(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
+    def get_data(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
         """Get all data from table (optional)."""
         return self.query_data(schema_name, table_name)
 
@@ -115,12 +115,12 @@ class IStorageManager(ABC):
 
     def query_table(
         self, schema_name: str, table_name: str, filter_expr: Optional[str] = None
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query table with filter (optional)."""
         return self.query_data(schema_name, table_name)
 
     def update_table_metadata(
-        self, schema_name: str, table_name: str, metadata_updates: dict[str, Any]
+        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata (optional)."""
         pass
@@ -143,17 +143,17 @@ class ITable(ABC):
 
     @property
     @abstractmethod
-    def metadata(self) -> Union["ITableMetadataLegacy", dict[str, Any]]:
+    def metadata(self) -> Union["ITableMetadataLegacy", Dict[str, Any]]:
         """Get table metadata."""
         pass
 
     @abstractmethod
-    def insert(self, data: list[dict[str, Any]]) -> None:
+    def insert(self, data: List[Dict[str, Any]]) -> None:
         """Insert data into table."""
         pass
 
     @abstractmethod
-    def query(self, **filters: Any) -> list[dict[str, Any]]:
+    def query(self, **filters: Any) -> List[Dict[str, Any]]:
         """Query data from table."""
         pass
 

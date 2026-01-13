@@ -1,12 +1,13 @@
 """
+from __future__ import annotations
 DataFrame factory service for SparkSession.
 
 This service handles DataFrame creation, schema inference, and validation
 following the Single Responsibility Principle.
 """
 
-from collections.abc import Sequence
-from typing import Any, Optional, Union, cast
+from typing import Sequence
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from sparkless.spark_types import (
     StructType,
     StructField,
@@ -24,8 +25,8 @@ class DataFrameFactory:
 
     def create_dataframe(
         self,
-        data: Union[list[dict[str, Any]], list[Any]],
-        schema: Optional[Union[StructType, list[str], str]],
+        data: Union[List[Dict[str, Any]], List[Any]],
+        schema: Optional[Union[StructType, List[str], str]],
         engine_config: SparkConfig,
         storage: Any,
     ) -> DataFrame:
@@ -89,7 +90,7 @@ class DataFrameFactory:
                 first_row = data[0]
                 if not isinstance(first_row, dict):
                     # Convert positional data to dicts with "_c0" key
-                    converted_data: list[dict[str, Any]] = []
+                    converted_data: List[Dict[str, Any]] = []
                     for row in data:
                         if isinstance(row, Row):
                             # Row objects are also allowed with single DataType schema
@@ -117,8 +118,8 @@ class DataFrameFactory:
         # This allows createDataFrame to accept Row objects (PySpark compatibility)
         # Only do this if we haven't already converted the data above
         if data and not all(isinstance(row, dict) for row in data):
-            converted_data_list: list[
-                Union[dict[str, Any], tuple[Any, ...], list[Any]]
+            converted_data_list: List[
+                Union[Dict[str, Any], Tuple[Any, ...], List[Any]]
             ] = []
             for row in data:
                 if isinstance(row, Row):
@@ -183,7 +184,7 @@ class DataFrameFactory:
                     normalize_data_for_schema,
                 )
 
-                reordered_data: list[dict[str, Any]] = []
+                reordered_data: List[Dict[str, Any]] = []
                 column_names = schema
                 for row in data:
                     if _is_positional_row(row):
@@ -200,7 +201,7 @@ class DataFrameFactory:
                 data = reordered_data
 
                 # Infer types without changing the user-provided column order
-                fields: list[StructField] = []
+                fields: List[StructField] = []
                 for name in column_names:
                     # Collect non-null values for this column
                     values_for_key = [
@@ -242,7 +243,7 @@ class DataFrameFactory:
                     normalize_data_for_schema,
                 )
 
-                inferred_fields: list[StructField] = []
+                inferred_fields: List[StructField] = []
                 for name in schema:
                     # Collect non-null values for this column
                     values_for_key = [
@@ -346,8 +347,8 @@ class DataFrameFactory:
         return DataFrame(data, schema, storage)  # type: ignore[arg-type]
 
     def _handle_schema_inference(
-        self, data: list[dict[str, Any]], schema: Optional[Any]
-    ) -> tuple[StructType, list[dict[str, Any]]]:
+        self, data: List[Dict[str, Any]], schema: Optional[Any]
+    ) -> Tuple[StructType, List[Dict[str, Any]]]:
         """Handle schema inference or conversion.
 
         Args:
@@ -368,10 +369,10 @@ class DataFrameFactory:
 
     def _apply_validation_and_coercion(
         self,
-        data: list[dict[str, Any]],
+        data: List[Dict[str, Any]],
         schema: StructType,
         engine_config: SparkConfig,
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Apply validation and type coercion.
 
         Args:

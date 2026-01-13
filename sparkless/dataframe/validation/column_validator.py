@@ -6,7 +6,7 @@ scattered throughout DataFrame, ensuring consistent validation across
 all operations.
 """
 
-from typing import Any
+from typing import Any, List
 from ...spark_types import StructType
 from ...functions import Column, ColumnOperation
 from ...core.exceptions.operation import SparkColumnNotFoundError
@@ -73,7 +73,7 @@ class ColumnValidator:
 
     @staticmethod
     def validate_columns_exist(
-        schema: StructType, column_names: list[str], operation: str
+        schema: StructType, column_names: List[str], operation: str
     ) -> None:
         """Validate that multiple columns exist in schema.
 

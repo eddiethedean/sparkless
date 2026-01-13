@@ -6,6 +6,8 @@ of all column expressions including arithmetic operations, comparison operations
 logical operations, function calls, conditional expressions, and type casting.
 """
 
+from __future__ import annotations
+
 import csv
 import json
 import math
@@ -13,8 +15,7 @@ import re
 import base64
 import datetime as dt_module
 from decimal import Decimal
-from typing import Any, Optional, Union, cast
-from collections.abc import Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 from sparkless.utils.profiling import profiled
 
@@ -64,7 +65,7 @@ class ExpressionEvaluator:
         self._dataframe_context = dataframe_context
 
     @profiled("expression.evaluate_expression", category="expression")
-    def evaluate_expression(self, row: dict[str, Any], expression: Any) -> Any:
+    def evaluate_expression(self, row: Dict[str, Any], expression: Any) -> Any:
         """Main entry point for expression evaluation."""
         # Handle CaseWhen (when/otherwise expressions)
         if isinstance(expression, CaseWhen):
@@ -83,14 +84,14 @@ class ExpressionEvaluator:
             return self._evaluate_direct_value(expression)
 
     def evaluate_condition(
-        self, row: dict[str, Any], condition: Union[ColumnOperation, Column]
+        self, row: Dict[str, Any], condition: Union[ColumnOperation, Column]
     ) -> bool:
         """Evaluate condition for a single row."""
         from ...core.condition_evaluator import ConditionEvaluator
 
         return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
 
-    def _evaluate_case_when(self, row: dict[str, Any], case_when: CaseWhen) -> Any:
+    def _evaluate_case_when(self, row: Dict[str, Any], case_when: CaseWhen) -> Any:
         """Evaluate when/otherwise expressions."""
         # Evaluate each condition in order
         for condition, value in case_when.conditions:
@@ -109,7 +110,7 @@ class ExpressionEvaluator:
 
         return None
 
-    def _evaluate_mock_column(self, row: dict[str, Any], column: Column) -> Any:
+    def _evaluate_mock_column(self, row: Dict[str, Any], column: Column) -> Any:
         """Evaluate a Column expression."""
         col_name = column.name
 
@@ -129,7 +130,7 @@ class ExpressionEvaluator:
             return row.get(column.name)
 
     @profiled("expression.evaluate_column_operation", category="expression")
-    def _evaluate_column_operation(self, row: dict[str, Any], operation: Any) -> Any:
+    def _evaluate_column_operation(self, row: Dict[str, Any], operation: Any) -> Any:
         """Evaluate a ColumnOperation."""
         op = operation.operation
 
@@ -165,7 +166,7 @@ class ExpressionEvaluator:
                 return self._evaluate_arithmetic_operation(row, operation)
 
     def _evaluate_arithmetic_operation(
-        self, row: dict[str, Any], operation: Any
+        self, row: Dict[str, Any], operation: Any
     ) -> Any:
         """Evaluate arithmetic operations on columns."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
@@ -213,7 +214,7 @@ class ExpressionEvaluator:
             return None
 
     def _evaluate_comparison_operation(
-        self, row: dict[str, Any], operation: Any
+        self, row: Dict[str, Any], operation: Any
     ) -> Any:
         """Evaluate comparison operations like ==, !=, <, >, <=, >=."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
@@ -245,7 +246,7 @@ class ExpressionEvaluator:
             return None
 
     @profiled("expression.evaluate_function_call", category="expression")
-    def _evaluate_function_call(self, row: dict[str, Any], operation: Any) -> Any:
+    def _evaluate_function_call(self, row: Dict[str, Any], operation: Any) -> Any:
         """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
@@ -292,8 +293,8 @@ class ExpressionEvaluator:
         # Handle struct function - collects multiple values into a struct/dict
         if func_name == "struct":
             result = {}
-            all_values: list[Any] = []
-            all_names: list[str] = []  # Store column names for struct fields
+            all_values: List[Any] = []
+            all_names: List[str] = []  # Store column names for struct fields
 
             # Check if operation.value contains all columns (when first is Literal)
             # or if we need to get first from column
@@ -421,7 +422,7 @@ class ExpressionEvaluator:
         # array() creates an array containing the values from each column as elements
         # So array(arr1, arr2) where arr1=[1,2,3] and arr2=[4,5] creates [[1,2,3], [4,5]]
         if func_name == "array":
-            array_result: list[Any] = []
+            array_result: List[Any] = []
             # Add the first value (from column) - this is the value of the first column
             if value is not None:
                 array_result.append(value)
@@ -726,10 +727,10 @@ class ExpressionEvaluator:
         return value
 
     def _evaluate_concat(
-        self, row: dict[str, Any], operation: Any, first_value: Any
+        self, row: Dict[str, Any], operation: Any, first_value: Any
     ) -> Optional[str]:
         """Evaluate concat function with multiple arguments."""
-        result_parts: list[str] = []
+        result_parts: List[str] = []
 
         # Add the first value (from the main column)
         if first_value is not None:
@@ -771,7 +772,7 @@ class ExpressionEvaluator:
         return "".join(result_parts) if result_parts else None
 
     def _evaluate_multi_arg_array_function(
-        self, row: dict[str, Any], operation: Any, first_value: Any, func_name: str
+        self, row: Dict[str, Any], operation: Any, first_value: Any, func_name: str
     ) -> Any:
         """Evaluate multi-argument array functions (array_union, arrays_zip, sequence)."""
         if func_name == "array_union":
@@ -962,7 +963,7 @@ class ExpressionEvaluator:
         return None
 
     def _evaluate_multi_arg_map_function(
-        self, row: dict[str, Any], operation: Any, first_value: Any, func_name: str
+        self, row: Dict[str, Any], operation: Any, first_value: Any, func_name: str
     ) -> Any:
         """Evaluate multi-argument map functions (create_map, map_from_arrays)."""
         if func_name == "create_map":
@@ -1045,13 +1046,12 @@ class ExpressionEvaluator:
         return None
 
     def _evaluate_format_string(
-        self, row: dict[str, Any], operation: Any, value: Any
+        self, row: Dict[str, Any], operation: Any, value: Any
     ) -> Any:
         """Evaluate format_string function."""
-        from typing import Any, Optional
 
         fmt: Optional[str] = None
-        args: list[Any] = []
+        args: List[Any] = []
         if value is not None:
             val = value
             if isinstance(val, tuple) and len(val) >= 1:
@@ -1084,7 +1084,7 @@ class ExpressionEvaluator:
             return None
 
     def _evaluate_expr_function(
-        self, row: dict[str, Any], operation: Any, value: Any
+        self, row: Dict[str, Any], operation: Any, value: Any
     ) -> Any:
         """Evaluate expr function - parse SQL expressions."""
         expr_str = operation.value if hasattr(operation, "value") else ""
@@ -1141,7 +1141,7 @@ class ExpressionEvaluator:
             return expr_str
 
     def _evaluate_function_call_by_name(
-        self, row: dict[str, Any], col_name: str
+        self, row: Dict[str, Any], col_name: str
     ) -> Any:
         """Evaluate function calls by parsing the function name."""
         if col_name.startswith("coalesce("):
@@ -1232,7 +1232,7 @@ class ExpressionEvaluator:
         # Default fallback
         return None
 
-    def _evaluate_to_date_function(self, row: dict[str, Any], col_name: str) -> Any:
+    def _evaluate_to_date_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate to_date function."""
         # Extract column name from function call
         match = re.search(r"to_date\(([^)]+)\)", col_name)
@@ -1254,7 +1254,7 @@ class ExpressionEvaluator:
         return None
 
     def _evaluate_to_timestamp_function(
-        self, row: dict[str, Any], col_name: str
+        self, row: Dict[str, Any], col_name: str
     ) -> Any:
         """Evaluate to_timestamp function."""
         # Extract column name from function call
@@ -1272,7 +1272,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_hour_function(self, row: dict[str, Any], col_name: str) -> Any:
+    def _evaluate_hour_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate hour function."""
         match = re.search(r"hour\(([^)]+)\)", col_name)
         if match:
@@ -1291,7 +1291,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_day_function(self, row: dict[str, Any], col_name: str) -> Any:
+    def _evaluate_day_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate day function."""
         match = re.search(r"day\(([^)]+)\)", col_name)
         if match:
@@ -1310,7 +1310,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_month_function(self, row: dict[str, Any], col_name: str) -> Any:
+    def _evaluate_month_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate month function."""
         match = re.search(r"month\(([^)]+)\)", col_name)
         if match:
@@ -1329,7 +1329,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_year_function(self, row: dict[str, Any], col_name: str) -> Any:
+    def _evaluate_year_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate year function."""
         match = re.search(r"year\(([^)]+)\)", col_name)
         if match:
@@ -1364,7 +1364,7 @@ class ExpressionEvaluator:
             return literal.value
         return literal
 
-    def _evaluate_value(self, row: dict[str, Any], value: Any) -> Any:
+    def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
         """Evaluate a value (could be a column reference, literal, or operation)."""
         if hasattr(value, "operation") and hasattr(value, "column"):
             # It's a ColumnOperation
@@ -1417,7 +1417,7 @@ class ExpressionEvaluator:
         )
         return any(name.startswith(prefix) for prefix in function_prefixes)
 
-    def _build_function_registry(self) -> dict[str, Any]:
+    def _build_function_registry(self) -> Dict[str, Any]:
         """Build registry of supported functions."""
         return {
             # String functions
@@ -1924,7 +1924,7 @@ class ExpressionEvaluator:
         except Exception:
             return b""
 
-    def _func_split(self, value: Any, operation: ColumnOperation) -> list[str]:
+    def _func_split(self, value: Any, operation: ColumnOperation) -> List[str]:
         """Split function."""
         if value is None:
             return []
@@ -1981,7 +1981,7 @@ class ExpressionEvaluator:
         if not isinstance(schema, StructType) or not isinstance(parsed, dict):
             return None
 
-        projected: dict[str, Any] = {
+        projected: Dict[str, Any] = {
             field.name: parsed.get(field.name) for field in schema.fields
         }
 
@@ -2042,7 +2042,7 @@ class ExpressionEvaluator:
             )
             null_value = operation.value.get("nullValue")
 
-        parts: list[str] = []
+        parts: List[str] = []
         for item in struct_dict.values():
             if item is None:
                 parts.append("" if null_value is None else str(null_value))
@@ -2053,10 +2053,10 @@ class ExpressionEvaluator:
 
     def _unpack_schema_and_options(
         self, operation: ColumnOperation
-    ) -> tuple[Any, dict[str, Any]]:
+    ) -> Tuple[Any, Dict[str, Any]]:
         """Extract schema specification and options dictionary."""
         schema_spec: Any = None
-        options: dict[str, Any] = {}
+        options: Dict[str, Any] = {}
 
         raw_value = getattr(operation, "value", None)
         if isinstance(raw_value, tuple):
@@ -2097,7 +2097,7 @@ class ExpressionEvaluator:
             return StructType([StructField(name, StringType()) for name in schema_spec])
 
         if isinstance(schema_spec, (list, tuple)):
-            collected_fields: list[StructField] = []
+            collected_fields: List[StructField] = []
             for item in schema_spec:
                 if isinstance(item, StructField):
                     collected_fields.append(item)
@@ -2110,7 +2110,7 @@ class ExpressionEvaluator:
 
     def _apply_struct_schema(
         self, schema: StructType, data: Any
-    ) -> Optional[dict[str, Any]]:
+    ) -> Optional[Dict[str, Any]]:
         """Coerce dictionaries into StructType layout."""
         if not isinstance(schema, StructType):
             return None  # type: ignore[unreachable]
@@ -2125,7 +2125,7 @@ class ExpressionEvaluator:
             else:
                 return {field.name: None for field in schema.fields}
 
-        result: dict[str, Any] = {}
+        result: Dict[str, Any] = {}
         for field in schema.fields:
             raw_value = source.get(field.name)
             if isinstance(field.dataType, StructType) and isinstance(raw_value, dict):
@@ -2151,9 +2151,9 @@ class ExpressionEvaluator:
 
     def _apply_csv_schema(
         self, schema: StructType, values: Sequence[str], null_value: Optional[str]
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Apply StructType to a CSV row."""
-        result: dict[str, Any] = {}
+        result: Dict[str, Any] = {}
         for idx, field in enumerate(schema.fields):
             raw = values[idx] if idx < len(values) else None
             if raw is None or (null_value is not None and raw == null_value):
@@ -2162,7 +2162,7 @@ class ExpressionEvaluator:
                 result[field.name] = self._coerce_simple_value(raw, field.dataType)
         return result
 
-    def _struct_to_dict(self, value: Any) -> Optional[dict[str, Any]]:
+    def _struct_to_dict(self, value: Any) -> Optional[Dict[str, Any]]:
         """Convert Row-like structures to dictionaries."""
         if value is None:
             return None
@@ -2610,7 +2610,7 @@ class ExpressionEvaluator:
         if not isinstance(value, (list, tuple)):
             return None
 
-        result: list[Any] = []
+        result: List[Any] = []
         for item in value:
             if isinstance(item, (list, tuple)):
                 result.extend(item)
@@ -3866,7 +3866,7 @@ class ExpressionEvaluator:
 
     def _func_json_object_keys(
         self, value: Any, operation: ColumnOperation
-    ) -> Optional[list[Any]]:
+    ) -> Optional[List[Any]]:
         """Json_object_keys function - get keys of JSON object."""
         if value is None:
             return None

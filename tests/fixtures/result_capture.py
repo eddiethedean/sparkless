@@ -7,7 +7,7 @@ and baseline generation.
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Tuple
 from datetime import datetime
 
 
@@ -30,8 +30,8 @@ class ResultCapture:
         test_name: str,
         mock_result: Any,
         pyspark_result: Optional[Any] = None,
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Capture DataFrame result for comparison.
 
         Args:
@@ -62,7 +62,7 @@ class ResultCapture:
 
         return result
 
-    def _serialize_dataframe(self, df: Any) -> dict[str, Any]:
+    def _serialize_dataframe(self, df: Any) -> Dict[str, Any]:
         """Serialize DataFrame to dictionary.
 
         Args:
@@ -97,7 +97,7 @@ class ResultCapture:
         except Exception as e:
             return {"error": str(e)}
 
-    def _serialize_row(self, row: Any) -> dict[str, Any]:
+    def _serialize_row(self, row: Any) -> Dict[str, Any]:
         """Serialize a row to dictionary.
 
         Args:
@@ -115,7 +115,7 @@ class ResultCapture:
             return {}  # Fallback to empty dict if asDict doesn't return dict
         else:
             # Try to convert to dict
-            result: dict[str, Any] = {}
+            result: Dict[str, Any] = {}
             if hasattr(row, "__dict__"):
                 row_dict = row.__dict__
                 if isinstance(row_dict, dict):
@@ -126,7 +126,7 @@ class ResultCapture:
                     result[field] = getattr(row, field, None)
             return result
 
-    def load_baseline(self, test_name: str) -> Optional[dict[str, Any]]:
+    def load_baseline(self, test_name: str) -> Optional[Dict[str, Any]]:
         """Load baseline result for a test.
 
         Args:
@@ -144,7 +144,7 @@ class ResultCapture:
 
     def compare_with_baseline(
         self, test_name: str, current_result: Any
-    ) -> tuple[bool, Optional[str]]:
+    ) -> Tuple[bool, Optional[str]]:
         """Compare current result with baseline.
 
         Args:

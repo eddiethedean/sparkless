@@ -29,7 +29,7 @@ Example:
     3.7 4.0 3.0 0.9999996829318346
 """
 
-from typing import Union, Optional
+from typing import Optional, Union
 from sparkless.functions.base import Column, ColumnOperation
 
 

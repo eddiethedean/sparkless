@@ -5,7 +5,7 @@ This module provides standard patterns for all parity tests that validate
 Sparkless behavior against pre-generated PySpark expected outputs.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from sparkless import SparkSession
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal, compare_dataframes
@@ -23,7 +23,7 @@ class ParityTestBase:
 
     def load_expected(
         self, category: str, test_name: str, pyspark_version: str = "3.2"
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Load expected output for a test case.
 
         Args:
@@ -39,7 +39,7 @@ class ParityTestBase:
     def assert_parity(
         self,
         actual_df: Any,
-        expected_output: dict[str, Any],
+        expected_output: Dict[str, Any],
         tolerance: float = 1e-6,
         msg: str = "",
     ) -> None:
@@ -64,9 +64,9 @@ class ParityTestBase:
     def compare_parity(
         self,
         actual_df: Any,
-        expected_output: dict[str, Any],
+        expected_output: Dict[str, Any],
         tolerance: float = 1e-6,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> Tuple[bool, Optional[str]]:
         """Compare Sparkless result with PySpark expected output.
 
         Args:
@@ -88,7 +88,7 @@ class ParityTestBase:
             return False, "\n".join(result.errors)
 
 
-def create_test_dataframe(spark: SparkSession, data: list[dict[str, Any]]) -> Any:
+def create_test_dataframe(spark: SparkSession, data: List[Dict[str, Any]]) -> Any:
     """Create a DataFrame from test data.
 
     This is a convenience function for creating DataFrames in tests.

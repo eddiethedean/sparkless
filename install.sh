@@ -13,7 +13,7 @@ fi
 
 # Check Python version
 python_version=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-required_version="3.9"
+required_version="3.8"
 
 if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
     echo "❌ Python $required_version or higher is required. Found: $python_version"

@@ -4,7 +4,7 @@ Window function handler for Polars.
 This module handles window functions using Polars `.over()` expressions.
 """
 
-from typing import Optional
+from typing import List, Optional
 import sys
 import polars as pl
 from sparkless.functions.window_execution import WindowFunction
@@ -29,7 +29,7 @@ class PolarsWindowHandler:
         window_spec = window_func.window_spec
 
         # Build partition_by
-        partition_by: list[pl.Expr] = []
+        partition_by: List[pl.Expr] = []
         if hasattr(window_spec, "_partition_by") and window_spec._partition_by:
             for col in window_spec._partition_by:
                 if isinstance(col, str):
@@ -38,7 +38,7 @@ class PolarsWindowHandler:
                     partition_by.append(pl.col(col.name))
 
         # Build order_by - handle multiple columns with different directions
-        order_by: list[pl.Expr] = []
+        order_by: List[pl.Expr] = []
         if hasattr(window_spec, "_order_by") and window_spec._order_by:
             for col in window_spec._order_by:
                 if isinstance(col, str):

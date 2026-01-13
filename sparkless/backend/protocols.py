@@ -6,7 +6,7 @@ must satisfy. Using protocols enables dependency injection and makes modules
 testable independently.
 """
 
-from typing import Protocol, Any
+from typing import Any, Dict, List, Protocol, Tuple
 from sparkless.spark_types import StructType, Row
 from sparkless.core.interfaces.storage import IStorageManager
 
@@ -18,7 +18,7 @@ class QueryExecutor(Protocol):
     Implementations can use different engines.
     """
 
-    def execute_query(self, query: str) -> list[dict[str, Any]]:
+    def execute_query(self, query: str) -> List[Dict[str, Any]]:
         """Execute a SQL query and return results.
 
         Args:
@@ -30,7 +30,7 @@ class QueryExecutor(Protocol):
         ...
 
     def create_table(
-        self, name: str, schema: StructType, data: list[dict[str, Any]]
+        self, name: str, schema: StructType, data: List[Dict[str, Any]]
     ) -> None:
         """Create a table with the given schema and data.
 
@@ -55,10 +55,10 @@ class DataMaterializer(Protocol):
 
     def materialize(
         self,
-        data: list[dict[str, Any]],
+        data: List[Dict[str, Any]],
         schema: StructType,
-        operations: list[tuple[str, Any]],
-    ) -> list[Row]:
+        operations: List[Tuple[str, Any]],
+    ) -> List[Row]:
         """Materialize lazy operations into actual data.
 
         Args:
@@ -84,8 +84,8 @@ class DataMaterializer(Protocol):
         ...
 
     def can_handle_operations(
-        self, operations: list[tuple[str, Any]]
-    ) -> tuple[bool, list[str]]:
+        self, operations: List[Tuple[str, Any]]
+    ) -> Tuple[bool, List[str]]:
         """Check if this materializer can handle a list of operations.
 
         Args:

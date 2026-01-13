@@ -4,7 +4,7 @@ Display service for DataFrame operations.
 This service provides display and collection operations using composition instead of mixin inheritance.
 """
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import Any, List, TYPE_CHECKING, Union, cast
 
 from ...spark_types import Row, StringType, StructField, StructType
 
@@ -175,7 +175,7 @@ class DisplayService:
                 f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})"
             )
 
-    def collect(self) -> list[Row]:
+    def collect(self) -> List[Row]:
         """Collect all data as list of Row objects."""
 
         if self._df._operations_queue:
@@ -189,7 +189,7 @@ class DisplayService:
         )
         return result
 
-    def take(self, n: int) -> list[Row]:
+    def take(self, n: int) -> List[Row]:
         """Take first n rows as list of Row objects."""
 
         if self._df._operations_queue:
@@ -203,7 +203,7 @@ class DisplayService:
         )
         return result
 
-    def head(self, n: int = 1) -> list[Row]:
+    def head(self, n: int = 1) -> List[Row]:
         """Return first n rows. Always returns a list, matching PySpark behavior."""
         if self._df._operations_queue:
             materialized = self._df._materialize_if_lazy()
@@ -222,7 +222,7 @@ class DisplayService:
             return result
         return [result]
 
-    def tail(self, n: int = 1) -> Union[Row, list[Row], None]:
+    def tail(self, n: int = 1) -> Union[Row, List[Row], None]:
         """Return last n rows."""
         if self._df._operations_queue:
             materialized = self._df._materialize_if_lazy()

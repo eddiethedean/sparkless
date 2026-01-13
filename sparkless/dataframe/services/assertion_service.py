@@ -4,7 +4,7 @@ Assertion service for DataFrame operations.
 This service provides assertion methods using composition instead of mixin inheritance.
 """
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, Dict, List, TYPE_CHECKING, cast
 
 from ...spark_types import StructType
 
@@ -20,7 +20,7 @@ class AssertionService:
         """Initialize assertion service with DataFrame instance."""
         self._df = df
 
-    def assert_has_columns(self, expected_columns: list[str]) -> None:
+    def assert_has_columns(self, expected_columns: List[str]) -> None:
         """Assert that DataFrame has the expected columns."""
         from ..assertions.assertions import DataFrameAssertions
 
@@ -44,7 +44,7 @@ class AssertionService:
             cast("SupportsDataFrameOps", self._df), expected_schema
         )
 
-    def assert_data_equals(self, expected_data: list[dict[str, Any]]) -> None:
+    def assert_data_equals(self, expected_data: List[Dict[str, Any]]) -> None:
         """Assert that DataFrame data equals the expected data."""
         from ..assertions.assertions import DataFrameAssertions
 

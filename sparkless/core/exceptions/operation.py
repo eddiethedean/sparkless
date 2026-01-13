@@ -5,7 +5,7 @@ Provides detailed error messages for DataFrame operations,
 SQL generation, and query execution failures.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from .base import SparkException
 
 
@@ -109,7 +109,7 @@ class SparkSQLGenerationError(SparkException):
 class SparkQueryExecutionError(SparkException):
     """Raised when query execution fails."""
 
-    def __init__(self, sql: str, error: str, context: Optional[dict[str, Any]] = None):
+    def __init__(self, sql: str, error: str, context: Optional[Dict[str, Any]] = None):
         """Initialize query execution error.
 
         Args:
@@ -135,7 +135,7 @@ class SparkColumnNotFoundError(SparkException, AttributeError):
     def __init__(
         self,
         column_name: str,
-        available_columns: list[str],
+        available_columns: List[str],
         custom_message: Optional[str] = None,
     ):
         """Initialize column not found error.

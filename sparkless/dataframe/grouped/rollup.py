@@ -5,7 +5,7 @@ This module provides rollup grouped data functionality for hierarchical
 grouping operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, TYPE_CHECKING, Union
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union
 
 from ...functions import Column, ColumnOperation, AggregateFunction
 from ..protocols import SupportsDataFrameOps
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class RollupGroupedData(GroupedData):
     """Mock rollup grouped data for hierarchical grouping operations."""
 
-    def __init__(self, df: SupportsDataFrameOps, rollup_columns: list[str]):
+    def __init__(self, df: SupportsDataFrameOps, rollup_columns: List[str]):
         """Initialize RollupGroupedData.
 
         Args:
@@ -30,7 +30,7 @@ class RollupGroupedData(GroupedData):
 
     def agg(
         self,
-        *exprs: Union[str, Column, ColumnOperation, AggregateFunction, dict[str, str]],
+        *exprs: Union[str, Column, ColumnOperation, AggregateFunction, Dict[str, str]],
     ) -> "DataFrame":
         """Aggregate rollup grouped data with hierarchical grouping.
 
@@ -100,7 +100,7 @@ class RollupGroupedData(GroupedData):
                 inactive_columns = self.rollup_columns[i:]
 
                 # Create groups based on active columns
-                groups: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+                groups: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
                 for row in self.df.data:
                     group_key = tuple(row.get(col) for col in active_columns)
                     if group_key not in groups:

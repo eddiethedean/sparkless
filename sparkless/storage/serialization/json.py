@@ -5,7 +5,7 @@ This module provides JSON serialization and deserialization for storage.
 """
 
 import json
-from typing import Any
+from typing import Any, Dict, List
 from sparkless.spark_types import StructType, StructField
 
 
@@ -13,7 +13,7 @@ class JSONSerializer:
     """JSON serializer for storage operations."""
 
     @staticmethod
-    def serialize_data(data: list[dict[str, Any]], file_path: str) -> None:
+    def serialize_data(data: List[Dict[str, Any]], file_path: str) -> None:
         """Serialize data to JSON file.
 
         Args:
@@ -24,7 +24,7 @@ class JSONSerializer:
             json.dump(data, f, indent=2, default=str)
 
     @staticmethod
-    def deserialize_data(file_path: str) -> list[dict[str, Any]]:
+    def deserialize_data(file_path: str) -> List[Dict[str, Any]]:
         """Deserialize data from JSON file.
 
         Args:

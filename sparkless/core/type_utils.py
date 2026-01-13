@@ -12,7 +12,7 @@ Key Features:
     - Protocol type conversion helpers
 """
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import Any, TYPE_CHECKING, Union, cast
 
 # Try to import TypeGuard from typing (Python 3.10+), fallback to typing_extensions
 try:

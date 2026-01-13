@@ -1,6 +1,6 @@
 """Join operations for DataFrame."""
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
 from ...spark_types import StructType, StructField
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ class JoinOperationsStatic:
     @staticmethod
     def cross_join(
         left_df: "DataFrame", right_df: "DataFrame"
-    ) -> tuple[list[dict[str, Any]], StructType]:
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform cross join (Cartesian product) between two DataFrames.
 
         Args:
@@ -81,8 +81,8 @@ class JoinOperationsStatic:
 
     @staticmethod
     def inner_join(
-        left_df: "DataFrame", right_df: "DataFrame", on_columns: list[str]
-    ) -> tuple[list[dict[str, Any]], StructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform inner join between two DataFrames.
 
         Args:
@@ -132,8 +132,8 @@ class JoinOperationsStatic:
 
     @staticmethod
     def left_join(
-        left_df: "DataFrame", right_df: "DataFrame", on_columns: list[str]
-    ) -> tuple[list[dict[str, Any]], StructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform left join between two DataFrames.
 
         Args:
@@ -195,8 +195,8 @@ class JoinOperationsStatic:
 
     @staticmethod
     def right_join(
-        left_df: "DataFrame", right_df: "DataFrame", on_columns: list[str]
-    ) -> tuple[list[dict[str, Any]], StructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform right join between two DataFrames.
 
         Args:
@@ -212,8 +212,8 @@ class JoinOperationsStatic:
 
     @staticmethod
     def outer_join(
-        left_df: "DataFrame", right_df: "DataFrame", on_columns: list[str]
-    ) -> tuple[list[dict[str, Any]], StructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform outer join between two DataFrames.
 
         Args:
@@ -299,7 +299,7 @@ class JoinOperationsStatic:
 
     @staticmethod
     def infer_join_schema(
-        left_df: "DataFrame", join_params: tuple[Any, Any, str]
+        left_df: "DataFrame", join_params: Tuple[Any, Any, str]
     ) -> StructType:
         """Infer schema for join operation.
 

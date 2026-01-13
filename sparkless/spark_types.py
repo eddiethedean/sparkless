@@ -23,9 +23,23 @@ Example:
     >>> df = spark.createDataFrame(data, schema)
 """
 
-from collections.abc import ItemsView, Iterator, KeysView, ValuesView
-from typing import Any, Optional, Union
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from collections.abc import ItemsView, KeysView, ValuesView
 
 # Try to import PySpark types for compatibility
 try:
@@ -48,16 +62,16 @@ except ImportError:
     # Create dummy base classes for type hints
     # These are only used for type checking when PySpark is not available
     # Use type: ignore[no-redef] to suppress redefinition errors
-    PySparkDataType: type[object] = object  # type: ignore[no-redef]
-    PySparkStructType: type[object] = object  # type: ignore[no-redef]
-    PySparkStructField: type[object] = object  # type: ignore[no-redef]
-    PySparkStringType: type[object] = object  # type: ignore[no-redef]
-    PySparkIntegerType: type[object] = object  # type: ignore[no-redef]
-    PySparkLongType: type[object] = object  # type: ignore[no-redef]
-    PySparkDoubleType: type[object] = object  # type: ignore[no-redef]
-    PySparkBooleanType: type[object] = object  # type: ignore[no-redef]
-    PySparkDateType: type[object] = object  # type: ignore[no-redef]
-    PySparkTimestampType: type[object] = object  # type: ignore[no-redef]
+    PySparkDataType: Type[object] = object  # type: ignore[no-redef]
+    PySparkStructType: Type[object] = object  # type: ignore[no-redef]
+    PySparkStructField: Type[object] = object  # type: ignore[no-redef]
+    PySparkStringType: Type[object] = object  # type: ignore[no-redef]
+    PySparkIntegerType: Type[object] = object  # type: ignore[no-redef]
+    PySparkLongType: Type[object] = object  # type: ignore[no-redef]
+    PySparkDoubleType: Type[object] = object  # type: ignore[no-redef]
+    PySparkBooleanType: Type[object] = object  # type: ignore[no-redef]
+    PySparkDateType: Type[object] = object  # type: ignore[no-redef]
+    PySparkTimestampType: Type[object] = object  # type: ignore[no-redef]
 
 
 _DataTypeBase = PySparkDataType if PYSPARK_AVAILABLE else object
@@ -432,7 +446,7 @@ class StructField(PySparkStructField if PYSPARK_AVAILABLE else object):  # type:
     name: str
     dataType: DataType
     nullable: bool = True
-    metadata: Optional[dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
     default_value: Optional[Any] = None  # PySpark 3.2+ feature
 
     def __post_init__(self) -> None:
@@ -467,7 +481,7 @@ class StructType(
     """
 
     def __init__(
-        self, fields: Optional[list[StructField]] = None, nullable: bool = True
+        self, fields: Optional[List[StructField]] = None, nullable: bool = True
     ):
         if PYSPARK_AVAILABLE:
             # PySpark StructType expects fields as first argument
@@ -489,7 +503,7 @@ class StructType(
                     DataType.__init__(self, nullable)
             else:
                 super().__init__([])
-                self.fields: list[StructField] = []
+                self.fields: List[StructField] = []
             # Always initialize _field_map after fields are set
             if hasattr(self, "fields") and self.fields:
                 self._field_map = {field.name: field for field in self.fields}
@@ -519,7 +533,7 @@ class StructType(
         fields_str = ", ".join(repr(field) for field in self.fields)
         return f"StructType([{fields_str}])"
 
-    def merge_with(self, other: "StructType") -> "StructType":
+    def merge_with(self, other: StructType) -> StructType:
         """Merge this schema with another, adding new fields from other.
 
         Args:
@@ -539,7 +553,7 @@ class StructType(
 
         return StructType(merged_fields)
 
-    def has_same_columns(self, other: "StructType") -> bool:
+    def has_same_columns(self, other: StructType) -> bool:
         """Check if two schemas have the same column names.
 
         Args:
@@ -552,7 +566,7 @@ class StructType(
         other_cols = {f.name for f in other.fields}
         return self_cols == other_cols
 
-    def fieldNames(self) -> list[str]:
+    def fieldNames(self) -> List[str]:
         """Get list of field names."""
         return [field.name for field in self.fields]
 
@@ -620,7 +634,7 @@ def convert_python_type_to_mock_type(python_type: type) -> DataType:
     return type_mapping.get(python_type, StringType())
 
 
-def infer_schema_from_data(data: list[dict[str, Any]]) -> StructType:
+def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
     """Infer schema from data."""
     if not data:
         return StructType([])
@@ -640,7 +654,7 @@ def infer_schema_from_data(data: list[dict[str, Any]]) -> StructType:
     return StructType(fields)
 
 
-def create_schema_from_columns(columns: list[str]) -> StructType:
+def create_schema_from_columns(columns: List[str]) -> StructType:
     """Create schema from column names (all StringType)."""
     fields = [StructField(name=col, dataType=StringType()) for col in columns]
     return StructType(fields)
@@ -666,7 +680,7 @@ class Row:
     """
 
     def __init__(
-        self, data: Any = None, schema: Optional["StructType"] = None, **kwargs: Any
+        self, data: Any = None, schema: Optional[StructType] = None, **kwargs: Any
     ):
         """Initialize Row.
 
@@ -696,7 +710,7 @@ class Row:
             and isinstance(data[0], (list, tuple))
         ):
             # List of (name, value) tuples - preserve duplicates
-            self.data: Union[list[tuple[str, Any]], dict[str, Any]] = list(
+            self.data: Union[List[Tuple[str, Any]], Dict[str, Any]] = list(
                 data
             )  # Keep as list
             self._data_dict = dict(data)  # For backward compatibility
@@ -811,7 +825,7 @@ class Row:
             try:
                 from collections import OrderedDict
 
-                data_dict: Union[dict[str, Any], OrderedDict[str, Any]]
+                data_dict: Union[Dict[str, Any], OrderedDict[str, Any]]
                 if isinstance(self.data, list):
                     data_dict = OrderedDict(self.data)
                 elif isinstance(self.data, dict):
@@ -828,7 +842,7 @@ class Row:
         else:
             return False
 
-    def asDict(self) -> dict[str, Any]:
+    def asDict(self) -> Dict[str, Any]:
         """Convert to dictionary (PySpark compatibility)."""
         # If we have _data_dict, use it (last value for duplicates)
         if hasattr(self, "_data_dict"):
@@ -895,7 +909,7 @@ class Row:
         data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
         return data_dict.get(key, default)
 
-    def _get_field_names_ordered(self) -> list[str]:
+    def _get_field_names_ordered(self) -> List[str]:
         if self._schema is not None and getattr(self._schema, "fields", None):
             return [f.name for f in self._schema.fields]
         # fallback to dict insertion order

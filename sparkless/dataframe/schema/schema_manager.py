@@ -1,6 +1,6 @@
 """Schema management and inference for DataFrame operations."""
 
-from typing import Any, Optional, Union, TYPE_CHECKING, cast
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 
 if TYPE_CHECKING:
     from ...dataframe import DataFrame
@@ -37,7 +37,7 @@ class SchemaManager:
 
     @staticmethod
     def project_schema_with_operations(
-        base_schema: StructType, operations_queue: list[tuple[str, Any]]
+        base_schema: StructType, operations_queue: List[Tuple[str, Any]]
     ) -> StructType:
         """Compute schema after applying queued lazy operations.
 
@@ -49,13 +49,13 @@ class SchemaManager:
         # Ensure base_schema has fields attribute
         if not hasattr(base_schema, "fields"):
             # Fallback to empty schema if fields attribute missing
-            fields_map: dict[str, StructField] = {}
+            fields_map: Dict[str, StructField] = {}
         else:
             # Preserve base schema fields - this works even for empty DataFrames with schemas
             fields_map = {f.name: f for f in base_schema.fields}
 
         # Track whether we're using list-based fields (for joins with duplicates) or dict-based
-        fields_list: Optional[list[StructField]] = None
+        fields_list: Optional[List[StructField]] = None
         using_list = False
 
         for op_name, op_val in operations_queue:
@@ -142,8 +142,8 @@ class SchemaManager:
 
     @staticmethod
     def _handle_select_operation(
-        fields_map: dict[str, StructField], columns: tuple[Any, ...]
-    ) -> dict[str, StructField]:
+        fields_map: Dict[str, StructField], columns: Tuple[Any, ...]
+    ) -> Dict[str, StructField]:
         """Handle select operation schema changes."""
         new_fields_map = {}
 
@@ -172,11 +172,11 @@ class SchemaManager:
 
     @staticmethod
     def _handle_withcolumn_operation(
-        fields_map: dict[str, StructField],
+        fields_map: Dict[str, StructField],
         col_name: str,
         col: Union[Column, ColumnOperation, Literal, Any],
         base_schema: StructType,
-    ) -> dict[str, StructField]:
+    ) -> Dict[str, StructField]:
         """Handle withColumn operation schema changes."""
         col_any = cast("Any", col)
         operation = getattr(col_any, "operation", None)
@@ -309,9 +309,9 @@ class SchemaManager:
 
     @staticmethod
     def _handle_drop_operation(
-        fields_map: dict[str, StructField],
-        columns_to_drop: Union[str, list[str], tuple[str, ...]],
-    ) -> dict[str, StructField]:
+        fields_map: Dict[str, StructField],
+        columns_to_drop: Union[str, List[str], Tuple[str, ...]],
+    ) -> Dict[str, StructField]:
         """Handle drop operation schema changes.
 
         Args:
@@ -338,10 +338,10 @@ class SchemaManager:
 
     @staticmethod
     def _handle_join_operation(
-        fields_map: dict[str, StructField],
+        fields_map: Dict[str, StructField],
         other_df: "DataFrame",
         how: str = "inner",
-    ) -> dict[str, StructField]:
+    ) -> Dict[str, StructField]:
         """Handle join operation schema changes."""
         # For semi/anti joins, only return left DataFrame columns
         if how and how.lower() in ["semi", "anti", "left_semi", "left_anti"]:
@@ -475,7 +475,7 @@ class SchemaManager:
             return StructType([StructField(name, StringType()) for name in schema_spec])
 
         if isinstance(schema_spec, (list, tuple)):
-            collected_fields: list[StructField] = []
+            collected_fields: List[StructField] = []
             for item in schema_spec:
                 if isinstance(item, StructField):
                     collected_fields.append(item)
@@ -501,8 +501,8 @@ class SchemaManager:
         return "struct(...)"
 
     @staticmethod
-    def _extract_struct_field_names(expr: Any) -> list[str]:
-        names: list[str] = []
+    def _extract_struct_field_names(expr: Any) -> List[str]:
+        names: List[str] = []
         if (
             isinstance(expr, ColumnOperation)
             and getattr(expr, "operation", None) == "struct"

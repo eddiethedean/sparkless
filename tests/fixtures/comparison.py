@@ -5,7 +5,7 @@ Provides functions to compare DataFrames, schemas, and other Spark objects
 with appropriate tolerance and normalization.
 """
 
-from typing import Any, Optional
+from typing import Any, List, Optional, Tuple
 import math
 
 
@@ -121,7 +121,7 @@ def compare_dataframes(
     tolerance: float = 1e-6,
     check_schema: bool = True,
     check_order: bool = False,
-) -> tuple[bool, Optional[str]]:
+) -> Tuple[bool, Optional[str]]:
     """Compare DataFrames between mock-spark and PySpark.
 
     Args:
@@ -257,7 +257,7 @@ def _compare_values(mock_val: Any, pyspark_val: Any, tolerance: float = 1e-6) ->
     return bool(mock_val == pyspark_val)
 
 
-def _sort_rows(rows: list[Any], columns: list[str]) -> list[Any]:
+def _sort_rows(rows: List[Any], columns: List[str]) -> List[Any]:
     """Sort rows by all columns for consistent ordering.
 
     Args:

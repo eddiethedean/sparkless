@@ -5,14 +5,14 @@ This service handles SQL parameter binding and formatting
 following the Single Responsibility Principle.
 """
 
-from typing import Any
+from typing import Any, Dict, Tuple
 
 
 class SQLParameterBinder:
     """Service for binding parameters to SQL queries."""
 
     def bind_parameters(
-        self, query: str, args: tuple[Any, ...], kwargs: dict[str, Any]
+        self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]
     ) -> str:
         """Bind parameters to SQL query safely.
 

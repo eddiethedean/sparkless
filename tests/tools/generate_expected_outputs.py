@@ -17,7 +17,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 
 # Add project root to path
@@ -1836,7 +1836,7 @@ class ExpectedOutputGenerator:
         self,
         category: str,
         test_name: str,
-        input_data: list[dict[str, Any]],
+        input_data: List[Dict[str, Any]],
         result_df: Any,
         sql_query: Optional[str] = None,
     ):

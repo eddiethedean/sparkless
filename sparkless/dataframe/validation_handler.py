@@ -6,7 +6,7 @@ following the Single Responsibility Principle by extracting validation concerns
 from the main DataFrame class.
 """
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..spark_types import StructType
@@ -39,7 +39,7 @@ class ValidationHandler:
         ColumnValidator.validate_column_exists(schema, column_name, operation)
 
     def validate_columns_exist(
-        self, schema: "StructType", column_names: list[str], operation: str
+        self, schema: "StructType", column_names: List[str], operation: str
     ) -> None:
         """Validate that multiple columns exist in schema.
 

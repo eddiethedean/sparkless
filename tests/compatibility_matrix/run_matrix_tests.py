@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -32,10 +32,10 @@ class CompatibilityTester:
 
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self.results: list[TestResult] = []
+        self.results: List[TestResult] = []
         self.start_time = time.time()
 
-    def get_pyspark_versions(self) -> list[tuple[str, str]]:
+    def get_pyspark_versions(self) -> List[Tuple[str, str]]:
         """
         Get PySpark versions to test.
         Returns list of (version, java_version) tuples.
@@ -48,11 +48,11 @@ class CompatibilityTester:
             # ("4.0.0", "17"), # PySpark 4.0 if available (commented out for now)
         ]
 
-    def get_python_versions(self) -> list[str]:
+    def get_python_versions(self) -> List[str]:
         """Get Python versions to test."""
         return ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
-    def get_working_combinations(self) -> list[tuple[str, str, str]]:
+    def get_working_combinations(self) -> List[Tuple[str, str, str]]:
         """
         Get only the combinations that passed in the initial test.
         Returns list of (python_version, pyspark_version, java_version) tuples.

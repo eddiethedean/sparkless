@@ -26,7 +26,7 @@ Example:
     ...     spark.table("nonexistent.table")
 """
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from .errors import AnalysisException, PySparkValueError
 
 
@@ -53,8 +53,8 @@ class MockErrorSimulator:
             spark_session: SparkSession instance to simulate errors on.
         """
         self.spark_session = spark_session
-        self.error_rules: dict[str, list[tuple[Callable[..., bool], Exception]]] = {}
-        self._original_methods: dict[str, Any] = {}
+        self.error_rules: Dict[str, List[Tuple[Callable[..., bool], Exception]]] = {}
+        self._original_methods: Dict[str, Any] = {}
 
     def add_rule(
         self, method_name: str, condition: Callable[..., bool], exception: Exception

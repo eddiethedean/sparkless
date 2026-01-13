@@ -11,6 +11,7 @@ import subprocess
 import sys
 from functools import lru_cache
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import pytest
 from importlib.metadata import PackageNotFoundError, version
@@ -29,12 +30,12 @@ OPTIONAL_DEPENDENCIES_TO_VALIDATE = ("pandas", "pandas-stubs")
 
 
 @lru_cache(maxsize=1)
-def _optional_dependency_requirements() -> dict[str, list[Requirement]]:
+def _optional_dependency_requirements() -> Dict[str, List[Requirement]]:
     """Parse optional dependency requirements from pyproject.toml."""
     data = tomllib.loads(PYPROJECT_PATH.read_text())
     optional = data.get("project", {}).get("optional-dependencies", {})
 
-    requirements: dict[str, list[Requirement]] = {}
+    requirements: Dict[str, List[Requirement]] = {}
     for entries in optional.values():
         for entry in entries:
             req = Requirement(entry)
@@ -42,7 +43,7 @@ def _optional_dependency_requirements() -> dict[str, list[Requirement]]:
     return requirements
 
 
-def _validate_optional_dependency(package: str) -> Version | None:
+def _validate_optional_dependency(package: str) -> Optional[Version]:
     """Ensure optional dependency is installed and meets version specifiers."""
     specs = _optional_dependency_requirements().get(package, [])
     if not specs:
@@ -69,10 +70,10 @@ def _validate_optional_dependency(package: str) -> Version | None:
     return installed_version
 
 
-@pytest.fixture(scope="session", autouse=True)  # type: ignore[untyped-decorator]
+@pytest.fixture(scope="session", autouse=True)  # type: ignore[misc]
 def _ensure_documentation_dependencies() -> None:
     """Fail fast (or skip) if optional docs dependencies are missing or stale."""
-    versions: dict[str, Version] = {}
+    versions: Dict[str, Version] = {}
     for package in OPTIONAL_DEPENDENCIES_TO_VALIDATE:
         dep_version = _validate_optional_dependency(package)
         if dep_version is not None:

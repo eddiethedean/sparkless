@@ -5,7 +5,7 @@ This module provides pivot grouped data functionality for pivot table
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, TYPE_CHECKING, Union
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union
 
 from ...functions import Column, ColumnOperation, AggregateFunction
 from ..protocols import SupportsDataFrameOps
@@ -20,9 +20,9 @@ class PivotGroupedData:
     def __init__(
         self,
         df: SupportsDataFrameOps,
-        group_columns: list[str],
+        group_columns: List[str],
         pivot_col: str,
-        pivot_values: list[Any],
+        pivot_values: List[Any],
     ):
         """Initialize PivotGroupedData.
 
@@ -51,7 +51,7 @@ class PivotGroupedData:
             New DataFrame with pivot aggregated results.
         """
         # Group data by group columns
-        groups: dict[Any, list[dict[str, Any]]] = {}
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in self.df.data:
             group_key = tuple(row.get(col) for col in self.group_columns)
             if group_key not in groups:
@@ -123,8 +123,8 @@ class PivotGroupedData:
             return DataFrame(result_data, StructType([]), self.df.storage)
 
     def _evaluate_string_expression(
-        self, expr: str, group_rows: list[dict[str, Any]]
-    ) -> tuple[str, Any]:
+        self, expr: str, group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate string aggregation expression (reused from GroupedData)."""
         if expr.startswith("sum("):
             col_name = expr[4:-1]
@@ -160,8 +160,8 @@ class PivotGroupedData:
             return expr, None
 
     def _evaluate_aggregate_function(
-        self, expr: AggregateFunction, group_rows: list[dict[str, Any]]
-    ) -> tuple[str, Any]:
+        self, expr: AggregateFunction, group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate AggregateFunction (reused from GroupedData)."""
         func_name = expr.function_name
         col_name = (
@@ -214,8 +214,8 @@ class PivotGroupedData:
     def _evaluate_column_expression(
         self,
         expr: Union[Column, ColumnOperation],
-        group_rows: list[dict[str, Any]],
-    ) -> tuple[str, Any]:
+        group_rows: List[Dict[str, Any]],
+    ) -> Tuple[str, Any]:
         """Evaluate Column or ColumnOperation (reused from GroupedData)."""
         expr_name = expr.name
         if expr_name.startswith("sum("):

@@ -132,6 +132,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+venv_*/
 venv_test_no_sqlmodel/
 venv_exploration_py38/
 ENV/

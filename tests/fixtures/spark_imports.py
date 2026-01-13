@@ -5,7 +5,7 @@ Provides a single import interface that automatically selects the correct
 imports based on backend configuration.
 """
 
-from typing import Optional, Any
+from typing import Any, Optional, Tuple
 from .spark_backend import BackendType, get_backend_type
 
 
@@ -133,7 +133,7 @@ def get_spark_imports(backend: Optional[BackendType] = None) -> SparkImports:
 
 
 # Convenience function for direct imports
-def get_imports(backend: Optional[BackendType] = None) -> tuple[Any, Any, Any]:
+def get_imports(backend: Optional[BackendType] = None) -> Tuple[Any, Any, Any]:
     """Get SparkSession, F, and StructType as a tuple.
 
     Args:

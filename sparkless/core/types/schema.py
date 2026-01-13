@@ -6,7 +6,7 @@ including struct types, field definitions, and schema management.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .data_types import IDataType
@@ -35,7 +35,7 @@ class IStructField(ABC):
 
     @property
     @abstractmethod
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> Dict[str, Any]:
         """Get field metadata."""
         pass
 
@@ -65,7 +65,7 @@ class IStructType(ABC):
 
     @property
     @abstractmethod
-    def fields(self) -> list[IStructField]:
+    def fields(self) -> List[IStructField]:
         """Get struct fields."""
         pass
 
@@ -85,12 +85,12 @@ class IStructType(ABC):
         pass
 
     @abstractmethod
-    def field_names(self) -> list[str]:
+    def field_names(self) -> List[str]:
         """Get field names."""
         pass
 
     @abstractmethod
-    def field_types(self) -> dict[str, "IDataType"]:
+    def field_types(self) -> Dict[str, "IDataType"]:
         """Get field types."""
         pass
 
@@ -120,7 +120,7 @@ class ISchema(ABC):
 
     @property
     @abstractmethod
-    def fields(self) -> list[IStructField]:
+    def fields(self) -> List[IStructField]:
         """Get schema fields."""
         pass
 
@@ -140,12 +140,12 @@ class ISchema(ABC):
         pass
 
     @abstractmethod
-    def field_names(self) -> list[str]:
+    def field_names(self) -> List[str]:
         """Get field names."""
         pass
 
     @abstractmethod
-    def field_types(self) -> dict[str, "IDataType"]:
+    def field_types(self) -> Dict[str, "IDataType"]:
         """Get field types."""
         pass
 
@@ -179,13 +179,13 @@ class ISchemaBuilder(ABC):
         name: str,
         data_type: "IDataType",
         nullable: bool = True,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> "ISchemaBuilder":
         """Add field to schema."""
         pass
 
     @abstractmethod
-    def add_fields(self, fields: list[IStructField]) -> "ISchemaBuilder":
+    def add_fields(self, fields: List[IStructField]) -> "ISchemaBuilder":
         """Add multiple fields to schema."""
         pass
 
@@ -215,12 +215,12 @@ class ISchemaValidator(ABC):
 
     @abstractmethod
     def validate_data_against_schema(
-        self, data: list[dict[str, Any]], schema: IStructType
+        self, data: List[Dict[str, Any]], schema: IStructType
     ) -> bool:
         """Validate data against schema."""
         pass
 
     @abstractmethod
-    def get_validation_errors(self, schema: IStructType) -> list[str]:
+    def get_validation_errors(self, schema: IStructType) -> List[str]:
         """Get validation errors."""
         pass

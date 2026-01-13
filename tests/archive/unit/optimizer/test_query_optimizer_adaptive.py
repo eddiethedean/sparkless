@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import List, Union
 
 from sparkless.optimizer.query_optimizer import (
     Operation,
@@ -10,14 +11,14 @@ from sparkless.optimizer.query_optimizer import (
 def _make_operation(
     op_type: OperationType,
     *,
-    columns: list[str] | None = None,
-    predicates: list[dict] | None = None,
-    join_conditions: list[dict] | None = None,
-    group_by_columns: list[str] | None = None,
-    order_by_columns: list[str] | None = None,
-    limit_count: int | None = None,
-    window_specs: list[dict] | None = None,
-    metadata: dict | None = None,
+    columns: List[str] | None = None,
+    predicates: List[dict] | None = None,
+    join_conditions: List[dict] | None = None,
+    group_by_columns: List[str] | None = None,
+    order_by_columns: List[str] | None = None,
+    limit_count: Union[int, None] = None,
+    window_specs: List[dict] | None = None,
+    metadata: Union[dict, None] = None,
 ) -> Operation:
     return Operation(
         type=op_type,

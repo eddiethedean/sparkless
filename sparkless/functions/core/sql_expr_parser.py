@@ -7,7 +7,7 @@ which accepts SQL syntax (e.g., "id IS NOT NULL") rather than Python expressions
 """
 
 import re
-from typing import Any, Union, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Union
 
 from .column import Column, ColumnOperation
 from ...core.exceptions.analysis import ParseException
@@ -324,7 +324,7 @@ class SQLExprParser:
         raise ParseException(f"Invalid identifier or literal: {expr}")
 
     @staticmethod
-    def _split_by_operator(expr: str, operator: str) -> list[str]:
+    def _split_by_operator(expr: str, operator: str) -> List[str]:
         """Split expression by operator, handling string literals."""
         parts = []
         current = ""
@@ -359,7 +359,7 @@ class SQLExprParser:
         return parts if len(parts) > 1 else [expr]
 
     @staticmethod
-    def _split_logical_operator(expr: str, op_keyword: str) -> list[str]:
+    def _split_logical_operator(expr: str, op_keyword: str) -> List[str]:
         """Split expression by logical operator (AND/OR), handling parentheses."""
         parts = []
         current = ""
@@ -400,7 +400,7 @@ class SQLExprParser:
         return parts if len(parts) > 1 else [expr]
 
     @staticmethod
-    def _parse_function_args(args_str: str) -> list[Any]:
+    def _parse_function_args(args_str: str) -> List[Any]:
         """Parse function arguments, handling nested parentheses."""
         args = []
         current = ""

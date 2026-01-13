@@ -5,7 +5,7 @@ This module provides materialization of lazy DataFrame operations using Polars,
 replacing SQL-based materialization with Polars DataFrame operations.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 import polars as pl
 from sparkless.spark_types import StructType, Row
 from .expression_translator import PolarsExpressionTranslator
@@ -39,7 +39,7 @@ class PolarsMaterializer:
     }
 
     # Optional: Operation-specific metadata (for future extensibility)
-    OPERATION_METADATA: dict[str, dict[str, Any]] = {}
+    OPERATION_METADATA: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self) -> None:
         """Initialize Polars materializer."""
@@ -48,10 +48,10 @@ class PolarsMaterializer:
 
     def materialize(
         self,
-        data: list[dict[str, Any]],
+        data: List[Dict[str, Any]],
         schema: StructType,
-        operations: list[tuple[str, Any]],
-    ) -> list[Row]:
+        operations: List[Tuple[str, Any]],
+    ) -> List[Row]:
         """Materialize lazy operations into actual data.
 
         Args:
@@ -86,7 +86,7 @@ class PolarsMaterializer:
         else:
             # Create DataFrame from data
             # Handle tuple/list format by converting to dicts using schema field names
-            # Note: Type signature says list[dict], but we defensively handle tuples at runtime
+            # Note: Type signature says List[dict], but we defensively handle tuples at runtime
             if data:
                 first_row: Any = data[0]  # Allow runtime check for tuples/lists
                 if isinstance(first_row, (list, tuple)):
@@ -690,7 +690,7 @@ class PolarsMaterializer:
                 columns_to_drop = existing_columns_to_drop
 
                 # Find all columns that depend on the columns being dropped
-                columns_to_preserve: set[str] = set()
+                columns_to_preserve: Set[str] = set()
                 for col_name, deps in column_dependencies.items():
                     # If this column depends on any column being dropped, we need to preserve it
                     if deps.intersection(columns_to_drop):
@@ -899,7 +899,7 @@ class PolarsMaterializer:
             # Should not happen, but handle gracefully
             raise ValueError("No DataFrame to materialize")
 
-        # Convert to list[Row]
+        # Convert to List[Row]
         # Handle special case: if all columns were dropped, result_df may have a _dummy column
         # We need to convert this to empty dicts to match PySpark's behavior
         if "_dummy" in result_df.columns and len(result_df.columns) == 1:
@@ -930,7 +930,7 @@ class PolarsMaterializer:
         for row_dict in result_df.to_dicts():
             # Convert date/timestamp strings back to date/datetime objects
             # Polars to_dicts() converts dates to ISO format strings
-            converted_row_dict: dict[str, Any] = {}
+            converted_row_dict: Dict[str, Any] = {}
             for col, value in row_dict.items():
                 col_type = column_types.get(col)
                 if isinstance(col_type, DateType) and isinstance(value, str):
@@ -1098,8 +1098,8 @@ class PolarsMaterializer:
         return op_name in self.SUPPORTED_OPERATIONS
 
     def can_handle_operations(
-        self, operations: list[tuple[str, Any]]
-    ) -> tuple[bool, list[str]]:
+        self, operations: List[Tuple[str, Any]]
+    ) -> Tuple[bool, List[str]]:
         """Check if this materializer can handle a list of operations.
 
         Args:
@@ -1110,7 +1110,7 @@ class PolarsMaterializer:
             - can_handle_all: True if all operations are supported
             - unsupported_operations: List of operation names that are unsupported
         """
-        unsupported_operations: list[str] = []
+        unsupported_operations: List[str] = []
         for op_name, op_payload in operations:
             if not self.can_handle_operation(op_name, op_payload):
                 unsupported_operations.append(op_name)

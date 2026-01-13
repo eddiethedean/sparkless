@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 Lazy Evaluation Engine for DataFrames
 
 This module handles lazy evaluation, operation queuing, and materialization
@@ -6,8 +7,8 @@ for DataFrame. Extracted from dataframe.py to improve organization.
 """
 
 import contextlib
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Sequence
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, cast
 from ..spark_types import (
     StringType,
     StructField,
@@ -93,8 +94,8 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _build_computed_expressions_map(
-        operations: list[tuple[str, Any]],
-    ) -> dict[str, str]:
+        operations: List[Tuple[str, Any]],
+    ) -> Dict[str, str]:
         """Build a mapping from expression signatures to column names.
 
         Args:
@@ -103,7 +104,7 @@ class LazyEvaluationEngine:
         Returns:
             Dictionary mapping expression signatures to column names
         """
-        computed_expressions: dict[str, str] = {}
+        computed_expressions: Dict[str, str] = {}
         for op_name, payload in operations:
             if op_name == "withColumn":
                 column_name, expression = payload
@@ -113,7 +114,7 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _replace_with_computed_column(
-        expr: Any, computed_expressions: dict[str, str]
+        expr: Any, computed_expressions: Dict[str, str]
     ) -> Any:
         """Replace expression with computed column reference if match found.
 
@@ -197,7 +198,7 @@ class LazyEvaluationEngine:
         return expr
 
     @staticmethod
-    def _extract_column_names(expr: Any, available_columns: set[str]) -> set[str]:
+    def _extract_column_names(expr: Any, available_columns: Set[str]) -> Set[str]:
         """Extract column names referenced in an expression that aren't in available_columns.
 
         Args:
@@ -209,7 +210,7 @@ class LazyEvaluationEngine:
         """
         from ..functions import Column, ColumnOperation, Literal
 
-        missing_columns: set[str] = set()
+        missing_columns: Set[str] = set()
 
         if isinstance(expr, str):
             # String column name
@@ -240,7 +241,7 @@ class LazyEvaluationEngine:
         return missing_columns
 
     @staticmethod
-    def _extract_all_column_dependencies(expr: Any) -> set[str]:
+    def _extract_all_column_dependencies(expr: Any) -> Set[str]:
         """Extract all column names that an expression depends on.
 
         Args:
@@ -251,7 +252,7 @@ class LazyEvaluationEngine:
         """
         from ..functions import Column, ColumnOperation, Literal
 
-        dependencies: set[str] = set()
+        dependencies: Set[str] = set()
 
         if isinstance(expr, str):
             # String column name
@@ -277,8 +278,8 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _build_column_dependency_graph(
-        operations: list[tuple[str, Any]], available_columns: set[str]
-    ) -> dict[str, set[str]]:
+        operations: List[Tuple[str, Any]], available_columns: Set[str]
+    ) -> Dict[str, Set[str]]:
         """Build a graph of column dependencies.
 
         Args:
@@ -288,8 +289,8 @@ class LazyEvaluationEngine:
         Returns:
             Dictionary mapping column names to sets of columns they depend on
         """
-        dependencies: dict[str, set[str]] = {}
-        current_columns: set[str] = available_columns.copy()
+        dependencies: Dict[str, Set[str]] = {}
+        current_columns: Set[str] = available_columns.copy()
 
         for op_name, payload in operations:
             if op_name == "withColumn":
@@ -359,8 +360,8 @@ class LazyEvaluationEngine:
         )
 
     def optimize_operations(
-        self, operations: list[tuple[str, Any]]
-    ) -> list[tuple[str, Any]]:
+        self, operations: List[Tuple[str, Any]]
+    ) -> List[Tuple[str, Any]]:
         """Optimize operations using the query optimizer.
 
         Args:
@@ -386,8 +387,8 @@ class LazyEvaluationEngine:
             return operations
 
     def _convert_to_optimizer_operations(
-        self, operations: list[tuple[str, Any]]
-    ) -> list[Any]:
+        self, operations: List[Tuple[str, Any]]
+    ) -> List[Any]:
         """Convert operations to optimizer format."""
         from ..optimizer.query_optimizer import Operation, OperationType
 
@@ -428,8 +429,8 @@ class LazyEvaluationEngine:
         return optimizer_ops
 
     def _convert_from_optimizer_operations(
-        self, optimizer_ops: list[Any]
-    ) -> list[tuple[str, Any]]:
+        self, optimizer_ops: List[Any]
+    ) -> List[Tuple[str, Any]]:
         """Convert optimizer operations back to original format."""
         operations = []
         for op in optimizer_ops:
@@ -569,10 +570,10 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _handle_cached_string_concatenation(
-        data: list[dict[str, Any]],
-        operations: list[tuple[str, Any]],
+        data: List[Dict[str, Any]],
+        operations: List[Tuple[str, Any]],
         schema: "StructType",
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Post-process materialized data to handle cached string concatenation.
 
         When a DataFrame is cached, string concatenation with + operator should
@@ -663,7 +664,7 @@ class LazyEvaluationEngine:
         return data
 
     @staticmethod
-    def _has_default_values(data: list[dict[str, Any]], schema: "StructType") -> bool:
+    def _has_default_values(data: List[Dict[str, Any]], schema: "StructType") -> bool:
         """Check if data contains default values that indicate backend couldn't handle the operations.
 
         .. deprecated::
@@ -708,7 +709,7 @@ class LazyEvaluationEngine:
         # This fixes the issue where valid 0 values trigger fallback to manual materialization.
         # For other cases (None in StringType, None in non-nullable fields), return True immediately
         # to catch backend failures quickly.
-        default_value_fields: dict[str, list[Any]] = {}
+        default_value_fields: Dict[str, List[Any]] = {}
         for row in data:
             for field in schema.fields:
                 if field.name in row:
@@ -757,7 +758,7 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _requires_manual_materialization(
-        operations_queue: list[tuple[str, Any]],
+        operations_queue: List[Tuple[str, Any]],
     ) -> bool:
         """Check if operations require manual materialization.
 
@@ -887,8 +888,8 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _convert_materialized_rows(
-        rows: list[Any], schema: "StructType"
-    ) -> list[dict[str, Any]]:
+        rows: List[Any], schema: "StructType"
+    ) -> List[Dict[str, Any]]:
         """Convert materialized rows to proper data format with type conversion.
 
         Args:
@@ -915,7 +916,7 @@ class LazyEvaluationEngine:
             # Build dict matching schema field order, handling _right suffix columns
             schema_field_names = [f.name for f in schema.fields]
             converted_dict = {}
-            seen_field_names: dict[str, int] = {}
+            seen_field_names: Dict[str, int] = {}
 
             for field_name in schema_field_names:
                 # Count occurrences of this field name in schema
@@ -1048,7 +1049,7 @@ class LazyEvaluationEngine:
                 from ..spark_types import StructType, StructField
 
                 # Get keys that exist in the actual data
-                data_keys: set[str] = set()
+                data_keys: Set[str] = set()
                 for row in df.data:
                     if isinstance(row, dict):
                         data_keys.update(row.keys())
@@ -1657,7 +1658,10 @@ class LazyEvaluationEngine:
                             # Add null values for right DataFrame columns that don't exist in left
                             existing_left_cols = set(left_row.keys())
                             for field in other_df.schema.fields:
-                                if field.name not in existing_left_cols:
+                                if (
+                                    field is not None
+                                    and field.name not in existing_left_cols
+                                ):
                                     joined_row[field.name] = None
                             joined_data.append(joined_row)
 
@@ -1676,7 +1680,7 @@ class LazyEvaluationEngine:
                         # Explicitly import StructField and StructType to avoid UnboundLocalError
                         from ..spark_types import StructField, StructType
 
-                        merged_fields: list[StructField] = [
+                        merged_fields: List[StructField] = [
                             existing_field
                             for existing_field in current.schema.fields
                             if existing_field is not None

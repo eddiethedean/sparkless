@@ -5,7 +5,7 @@ This module provides the MockingCoordinator class, which handles
 mocking of methods, error simulation rules, and test coordination.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class MockingCoordinator:
@@ -18,7 +18,7 @@ class MockingCoordinator:
 
     def __init__(self) -> None:
         """Initialize the mocking coordinator."""
-        self._error_rules: dict[str, list[tuple[Any, Exception]]] = {}
+        self._error_rules: Dict[str, List[Tuple[Any, Exception]]] = {}
 
     def setup_mock_impl(
         self,
@@ -56,7 +56,7 @@ class MockingCoordinator:
 
             return mock_impl
 
-    def reset_all_mocks(self, original_impls: dict[str, Any]) -> dict[str, Any]:
+    def reset_all_mocks(self, original_impls: Dict[str, Any]) -> Dict[str, Any]:
         """Reset all mocks to original implementations.
 
         Args:

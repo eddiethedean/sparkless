@@ -5,7 +5,7 @@ This module translates Sparkless column expressions (Column, ColumnOperation)
 to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
-from typing import Any, Optional, cast
+from typing import Any, Optional, Tuple, cast
 from datetime import datetime, date
 import logging
 import polars as pl
@@ -624,14 +624,14 @@ class PolarsExpressionTranslator:
         else:
             raise ValueError(f"Unsupported string operation: {operation}")
 
-    def _build_cache_key(self, expr: Any) -> Optional[tuple[Any, ...]]:
+    def _build_cache_key(self, expr: Any) -> Optional[Tuple[Any, ...]]:
         try:
             return self._serialize_expression(expr)
         except Exception:
             logger.debug("Failed to build cache key for expression", exc_info=True)
             return None
 
-    def _serialize_expression(self, expr: Any) -> tuple[Any, ...]:
+    def _serialize_expression(self, expr: Any) -> Tuple[Any, ...]:
         if isinstance(expr, Column):
             alias = getattr(expr, "_alias_name", None)
             original = getattr(expr, "_original_column", None)
@@ -689,14 +689,14 @@ class PolarsExpressionTranslator:
             return value
         return repr(value)
 
-    def _cache_get(self, key: tuple[Any, ...]) -> Optional[pl.Expr]:
+    def _cache_get(self, key: Tuple[Any, ...]) -> Optional[pl.Expr]:
         with self._cache_lock:
             cached = self._translation_cache.get(key)
             if cached is not None:
                 self._translation_cache.move_to_end(key)
             return cached
 
-    def _cache_set(self, key: tuple[Any, ...], expr: pl.Expr) -> None:
+    def _cache_set(self, key: Tuple[Any, ...], expr: pl.Expr) -> None:
         with self._cache_lock:
             self._translation_cache[key] = expr
             self._translation_cache.move_to_end(key)

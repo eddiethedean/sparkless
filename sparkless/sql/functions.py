@@ -26,13 +26,13 @@ Example:
 """
 
 import warnings
-from typing import Any
+from typing import Any, Dict
 
 # Import F and Functions for backward compatibility
 from ..functions import F, Functions  # noqa: E402
 
 # Cache for dynamically accessed attributes
-_cached_attrs: dict[str, object] = {}
+_cached_attrs: Dict[str, object] = {}
 
 # Build __all__ list with all public functions from F
 __all__ = ["F", "Functions"]

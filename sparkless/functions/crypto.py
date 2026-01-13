@@ -21,7 +21,7 @@ Example:
     ... ).show()
 """
 
-from typing import Union, Optional
+from typing import Optional, Union
 from sparkless.functions.base import Column, ColumnOperation
 
 
