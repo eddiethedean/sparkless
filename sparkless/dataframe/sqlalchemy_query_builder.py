@@ -7,13 +7,15 @@ providing database-agnostic query building that works with any SQLAlchemy backen
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from sqlalchemy import select, Table, and_, or_, func, literal, cast as sa_cast
-from sqlalchemy.sql import Select
 from sqlalchemy.types import Integer, Float, String, Boolean, BigInteger, Date, DateTime
 
 from ..functions import Column, ColumnOperation, Literal
-from ..spark_types import StructType
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql import Select
+    from ..spark_types import StructType
 
 
 class SQLAlchemyQueryBuilder:

@@ -1658,7 +1658,10 @@ class LazyEvaluationEngine:
                             # Add null values for right DataFrame columns that don't exist in left
                             existing_left_cols = set(left_row.keys())
                             for field in other_df.schema.fields:
-                                if field.name not in existing_left_cols:
+                                if (
+                                    field is not None
+                                    and field.name not in existing_left_cols
+                                ):
                                     joined_row[field.name] = None
                             joined_data.append(joined_row)
 

@@ -8,7 +8,7 @@
 - **Issue #214** - Fixed `df.sort()` and `df.orderBy()` to properly handle list parameters (e.g., `df.sort(["col1", "col2"])`)
 - **Issue #215** - Fixed `sparkless.sql.Row` to support kwargs-style initialization (e.g., `Row(name="Alice", age=30)`)
 - **List Unpacking** - Fixed `groupBy()`, `rollup()`, and `cube()` methods to properly unpack list/tuple arguments, matching PySpark compatibility
-- **Type System** - Fixed Python 3.9 compatibility by replacing `|` union syntax with `Union` type hints in mypy configuration
+- **Type System** - Fixed Python 3.8 compatibility by replacing `|` union syntax with `Union` type hints and using `typing` module generics
 - **Type Mapping** - Fixed unsigned integer type mapping (`UInt32`, `UInt64`, `UInt16`, `UInt8`) to convert to signed equivalents (`IntegerType`, `LongType`, `ShortType`, `ByteType`)
 - **Function Return Types** - Fixed `size()`, `length()`, `bit_length()`, and `octet_length()` functions to return `Int64` instead of `UInt32` for PySpark compatibility
 - **Date/Time Type Preservation** - Fixed Polars materializer to preserve `datetime.date` and `datetime.datetime` objects when converting back to Row objects (Polars `to_dicts()` converts them to strings)
@@ -17,7 +17,7 @@
 
 ### Changed
 - **Code Formatting** - Applied ruff code formatting across all files, ensuring consistent code style
-- **Type Annotations** - Improved type annotations for better Python 3.9 compatibility and mypy validation
+- **Type Annotations** - Improved type annotations for better Python 3.8 compatibility and mypy validation
 - **Row Object Handling** - Enhanced `createDataFrame()` to properly handle Row objects initialized with kwargs
 - **DataFrame Factory** - Improved data validation to accept Row objects, lists, tuples, and dictionaries as positional rows
 
@@ -334,7 +334,7 @@
 - Updated README badges and compatibility tables to reflect the curated 396-test suite and PySpark 3.2–3.5 coverage.
 
 ### Changed
-- Finalised the migration to Python 3.9-native typing throughout the Polars executor,
+- Finalised the migration to Python 3.8-compatible typing throughout the Polars executor,
   DataFrame reader/writer, schema manager, and Delta helpers so that `mypy sparkless`
   now completes without suppressions.
 - Consolidated type-only imports behind `TYPE_CHECKING` guards, reducing import
@@ -353,17 +353,17 @@
 ## 3.2.0 — 2025-11-12
 
 ### Changed
-- Raised the minimum supported Python version to 3.9 and aligned Black, Ruff, and mypy
+- Lowered the minimum supported Python version to 3.8 and aligned Black, Ruff, and mypy
   targets so local tooling matches the published wheel.
-- Removed the Python 3.8 compatibility shim in `sparkless.compat.datetime` in favour of
-  native typing support, simplifying downstream imports.
-- Standardised type hints on built-in generics (`list[str]`, `dict[str, Any]`) and
-  `collections.abc` protocols across the codebase, eliminating leftover `typing` fallbacks.
+- Added `typing_extensions` dependency for Python 3.8 compatibility and used `from __future__ import annotations`
+  for deferred type evaluation.
+- Standardised type hints on `typing` module generics (`List[str]`, `Dict[str, Any]`, `Tuple[...]`) and
+  `typing` protocols across the codebase for Python 3.8 compatibility.
 - Adopted `ruff format` as the canonical formatter, bringing the entire repository in line with
   the Ruff style guide.
 
 ### Documentation
-- Updated the README to call out the Python 3.9 baseline and refreshed the “Recent Updates”
+- Updated the README to call out the Python 3.8 baseline and refreshed the "Recent Updates"
   section with the typing/tooling improvements delivered in 3.2.0.
 
 ## 3.1.0 — 2025-11-07

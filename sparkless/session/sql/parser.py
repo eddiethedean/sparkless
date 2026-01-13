@@ -431,7 +431,7 @@ class SQLParser:
         # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
         # The join condition should capture until WHERE, GROUP BY, ORDER BY, LIMIT, or end of query
         from_match = re.search(
-            r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?: Union[INNER, LEFT]|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?: Union[WHERE, GROUP]\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
+            r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?:(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?)?",
             query,
             re.IGNORECASE | re.DOTALL,
         )

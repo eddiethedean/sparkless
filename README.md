@@ -4,7 +4,7 @@
 
 **🚀 Test PySpark code at lightning speed—no JVM required**
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
@@ -438,7 +438,7 @@ Real-world test suite improvements:
 ### Version 3.3.0 - Type Hardening & Clean Type Check
 
 - 🧮 **Zero mypy Debt** – `mypy sparkless` now runs clean after migrating the Polars executor,
-  expression evaluator, Delta merge helpers, and reader/writer stack to Python 3.9 union syntax.
+  expression evaluator, Delta merge helpers, and reader/writer stack to Python 3.8+ compatible type syntax.
 - 🧾 **Accurate DataFrame Interfaces** – `DataFrameReader.load()` and related helpers now return
   `IDataFrame` consistently while keeping type-only imports behind `TYPE_CHECKING`.
 - 🧱 **Safer Delta & Projection Fallbacks** – Python-evaluated select columns always receive string
@@ -446,11 +446,11 @@ Real-world test suite improvements:
 - 📚 **Docs & Metadata Updated** – README highlights the new type guarantees and all packaging
   metadata points to v3.3.0.
 
-### Version 3.2.0 - Python 3.9 Baseline & Tooling Refresh
+### Version 3.2.0 - Python 3.8 Baseline & Tooling Refresh
 
-- 🐍 **Python 3.9+ Required** – Packaging metadata, tooling configs, and installation docs now align on Python 3.9 as the minimum supported runtime.
-- 🧩 **Lean Compatibility Layer** – The Python 3.8 `sitecustomize` shim has been retired; datetime helpers use native typing without runtime fallbacks.
-- 🪄 **Type Hint Modernisation** – Replaced legacy `typing.List`/`Dict` usage with built-in generics (`list`, `dict`, `tuple`) and moved iterators to `collections.abc`.
+- 🐍 **Python 3.8+ Required** – Packaging metadata, tooling configs, and installation docs now align on Python 3.8 as the minimum supported runtime.
+- 🧩 **Compatibility Layer** – Uses `typing_extensions` for Python 3.8 compatibility; datetime helpers use native typing with proper fallbacks.
+- 🪄 **Type Hint Modernisation** – Uses `typing` module generics (`List`, `Dict`, `Tuple`) for Python 3.8 compatibility, with `from __future__ import annotations` for deferred evaluation.
 - 🧼 **Ruff Formatting by Default** – Adopted `ruff format` across the repository, keeping style consistent with the Ruff rule set.
 
 ### Version 3.1.0 - Type-Safe Protocols & Tooling

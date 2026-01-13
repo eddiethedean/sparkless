@@ -25,9 +25,21 @@ Example:
 
 from __future__ import annotations
 
-from collections.abc import ItemsView, KeysView, ValuesView
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from collections.abc import ItemsView, KeysView, ValuesView
 
 # Try to import PySpark types for compatibility
 try:

@@ -17,11 +17,11 @@ from ...spark_types import (
     StructField,
     StructType,
 )
-from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
     from ...functions import Column
     from ..dataframe import DataFrame
+    from ..protocols import SupportsDataFrameOps
 
 from ...core.exceptions import IllegalArgumentException
 from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundException

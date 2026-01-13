@@ -111,7 +111,7 @@
 - Environment setup for PySpark: `tests/setup_spark_env.sh`
 
 ### Environment and Tooling
-- Python 3.9+.
+- Python 3.8+.
 - PySpark 3.2.x installed and Java 11 (macOS homebrew path often used); use `bash tests/setup_spark_env.sh`.
 - Test command examples:
   - Unit: `python3 -m pytest tests/unit -q`

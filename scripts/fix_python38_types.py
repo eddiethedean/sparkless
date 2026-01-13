@@ -86,7 +86,6 @@ def add_typing_imports(content: str, needed: set) -> str:
 
     if existing_typing_match:
         # Add to existing import
-        import_line = existing_typing_match.group(0)
         # Extract what's already imported
         after_import = content[existing_typing_match.end() :]
         # Find the end of the import line

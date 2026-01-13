@@ -1118,8 +1118,30 @@ class SQLExecutor:
                                     if prefixed_col in df.columns:
                                         col_name = prefixed_col
                                     else:
-                                        # Fallback to base column name
-                                        col_name = base_col
+                                        # If join happened, we should have prefixed columns
+                                        # Try to find any column with this base name that matches the alias
+                                        # This handles cases where the alias might be different
+                                        matching_cols = [
+                                            c
+                                            for c in df.columns
+                                            if c.endswith(f"_{base_col}")
+                                            or c == base_col
+                                        ]
+                                        if matching_cols:
+                                            # Prefer the one that matches the alias prefix
+                                            alias_matches: List[str] = [
+                                                c
+                                                for c in matching_cols
+                                                if c.startswith(f"{table_alias}_")
+                                            ]
+                                            if alias_matches:
+                                                col_name = alias_matches[0]
+                                            else:
+                                                # Fallback to first matching column
+                                                col_name = matching_cols[0]
+                                        else:
+                                            # No match found, use base column name as last resort
+                                            col_name = base_col
                                 else:
                                     col_name = col
                             else:
@@ -2045,7 +2067,7 @@ class SQLExecutor:
         # Match: DESCRIBE [EXTENDED|FORMATTED] table_name [column_name]
         # Need to explicitly match EXTENDED/FORMATTED followed by whitespace and table name
         table_match = re.search(
-            r"DESCRIBE\s+(?: Union[EXTENDED, FORMATTED])\s+(\w+(?:\.\w+)?)",
+            r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+(\w+(?:\.\w+)?)",
             original_query,
             re.IGNORECASE,
         )
@@ -2065,7 +2087,7 @@ class SQLExecutor:
         if is_extended:
             # For EXTENDED/FORMATTED, column must come after table name
             col_match = re.search(
-                rf"DESCRIBE\s+(?: Union[EXTENDED, FORMATTED])\s+{re.escape(table_name)}\s+(\w+)",
+                rf"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+{re.escape(table_name)}\s+(\w+)",
                 original_query,
                 re.IGNORECASE,
             )

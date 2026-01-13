@@ -1,6 +1,6 @@
 """XML functions for PySpark 3.2+ compatibility."""
 
-from typing import Union
+from typing import Union, cast
 from sparkless.functions.core.column import Column
 from sparkless.functions.base import ColumnOperation
 
@@ -55,7 +55,11 @@ class XMLFunctions:
             # For other types, convert to Column
             col_obj = Column(str(col))  # type: ignore[unreachable]
 
-        base_col = col_obj if isinstance(col_obj, Column) else col_obj.column
+        if isinstance(col_obj, Column):
+            base_col = col_obj
+        else:
+            # At this point, col_obj must be ColumnOperation
+            base_col = cast(ColumnOperation, col_obj).column
 
         return ColumnOperation(
             base_col,
