@@ -29,7 +29,7 @@ Example:
     ALICE               alice@example.com
 """
 
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 from sparkless.functions.base import Column, ColumnOperation
 
 

@@ -4,7 +4,7 @@ Memory storage backend.
 This module provides an in-memory storage implementation.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from ...core.interfaces.storage import IStorageManager, ITable
 from sparkless.spark_types import StructType, StructField
 
@@ -21,7 +21,7 @@ class MemoryTable(ITable):
         """
         self._name = name
         self._schema = schema
-        self.data: list[dict[str, Any]] = []
+        self.data: List[Dict[str, Any]] = []
         self._metadata = {
             "created_at": "2024-01-01T00:00:00Z",
             "row_count": 0,
@@ -39,11 +39,11 @@ class MemoryTable(ITable):
         return self._schema
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> Dict[str, Any]:
         """Get table metadata."""
         return self._metadata
 
-    def insert_data(self, data: list[dict[str, Any]], mode: str = "append") -> None:
+    def insert_data(self, data: List[Dict[str, Any]], mode: str = "append") -> None:
         """Insert data into table.
 
         Args:
@@ -60,7 +60,7 @@ class MemoryTable(ITable):
 
         self._metadata["row_count"] = len(self.data)
 
-    def query_data(self, filter_expr: Optional[str] = None) -> list[dict[str, Any]]:
+    def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -84,7 +84,7 @@ class MemoryTable(ITable):
         """
         return self.schema
 
-    def get_metadata(self) -> dict[str, Any]:
+    def get_metadata(self) -> Dict[str, Any]:
         """Get table metadata.
 
         Returns:
@@ -92,11 +92,11 @@ class MemoryTable(ITable):
         """
         return self._metadata.copy()
 
-    def insert(self, data: list[dict[str, Any]]) -> None:
+    def insert(self, data: List[Dict[str, Any]]) -> None:
         """Insert data into table."""
         self.insert_data(data)
 
-    def query(self, **filters: Any) -> list[dict[str, Any]]:
+    def query(self, **filters: Any) -> List[Dict[str, Any]]:
         """Query data from table."""
         return self.query_data()
 
@@ -125,10 +125,10 @@ class MemorySchema:
             name: Schema name.
         """
         self.name = name
-        self.tables: dict[str, MemoryTable] = {}
+        self.tables: Dict[str, MemoryTable] = {}
 
     def create_table(
-        self, table: str, columns: Union[list[StructField], StructType]
+        self, table: str, columns: Union[List[StructField], StructType]
     ) -> None:
         """Create a new table in this schema.
 
@@ -160,7 +160,7 @@ class MemorySchema:
         if table in self.tables:
             del self.tables[table]
 
-    def list_tables(self) -> list[str]:
+    def list_tables(self) -> List[str]:
         """List all tables in this schema.
 
         Returns:
@@ -174,7 +174,7 @@ class MemoryStorageManager(IStorageManager):
 
     def __init__(self) -> None:
         """Initialize memory storage manager."""
-        self.schemas: dict[str, MemorySchema] = {}
+        self.schemas: Dict[str, MemorySchema] = {}
         # Create default schema
         self.schemas["default"] = MemorySchema("default")
 
@@ -208,7 +208,7 @@ class MemoryStorageManager(IStorageManager):
         if schema_name in self.schemas and schema_name != "default":
             del self.schemas[schema_name]
 
-    def list_schemas(self) -> list[str]:
+    def list_schemas(self) -> List[str]:
         """List all schemas.
 
         Returns:
@@ -234,7 +234,7 @@ class MemoryStorageManager(IStorageManager):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[list[Any], StructType],
+        fields: Union[List[Any], StructType],
     ) -> None:
         """Create a new table.
 
@@ -259,7 +259,7 @@ class MemoryStorageManager(IStorageManager):
             self.schemas[schema_name].drop_table(table_name)
 
     def insert_data(
-        self, schema_name: str, table_name: str, data: list[dict[str, Any]]
+        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
         """Insert data into table.
 
@@ -276,7 +276,7 @@ class MemoryStorageManager(IStorageManager):
 
     def query_data(
         self, schema_name: str, table_name: str, **filters: Any
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -296,7 +296,7 @@ class MemoryStorageManager(IStorageManager):
 
     def query_table(
         self, schema: str, table: str, filter_expr: Optional[str] = None
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -329,7 +329,7 @@ class MemoryStorageManager(IStorageManager):
         # Return empty schema if table doesn't exist
         return StructType([])
 
-    def get_data(self, schema: str, table: str) -> list[dict[str, Any]]:
+    def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.
 
         Args:
@@ -369,7 +369,7 @@ class MemoryStorageManager(IStorageManager):
         # Insert the data using the public API
         self.insert_data(schema, name, data)
 
-    def list_tables(self, schema_name: Optional[str] = None) -> list[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
 
         Args:
@@ -389,7 +389,7 @@ class MemoryStorageManager(IStorageManager):
             return []
         return self.schemas[schema_name].list_tables()
 
-    def get_table_metadata(self, schema_name: str, table_name: str) -> dict[str, Any]:
+    def get_table_metadata(self, schema_name: str, table_name: str) -> Dict[str, Any]:
         """Get table metadata including Delta-specific fields.
 
         Args:
@@ -406,7 +406,7 @@ class MemoryStorageManager(IStorageManager):
         return self.schemas[schema_name].tables[table_name].get_metadata()
 
     def update_table_metadata(
-        self, schema_name: str, table_name: str, metadata_updates: dict[str, Any]
+        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata fields.
 

@@ -6,9 +6,9 @@ ensuring consistent behavior across all function implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
-RowDict = dict[str, Any]
+RowDict = Dict[str, Any]
 ArgT = TypeVar("ArgT")
 RetT = TypeVar("RetT")
 
@@ -47,11 +47,11 @@ class IColumnFunction(IFunction[RowDict, Any]):
         pass
 
 
-class IAggregateFunction(IFunction[list[Any], Any]):
+class IAggregateFunction(IFunction[List[Any], Any]):
     """Abstract interface for aggregate functions."""
 
     @abstractmethod
-    def apply_to_group(self, values: list[Any]) -> Any:
+    def apply_to_group(self, values: List[Any]) -> Any:
         """Apply function to group of values."""
         pass
 
@@ -61,7 +61,7 @@ class IAggregateFunction(IFunction[list[Any], Any]):
         pass
 
 
-class IWindowFunction(IFunction[list[dict[str, Any]], list[Any]]):
+class IWindowFunction(IFunction[List[Dict[str, Any]], List[Any]]):
     """Abstract interface for window functions."""
 
     @abstractmethod
@@ -70,7 +70,7 @@ class IWindowFunction(IFunction[list[dict[str, Any]], list[Any]]):
         pass
 
     @abstractmethod
-    def apply_to_partition(self, partition: list[Any]) -> list[Any]:
+    def apply_to_partition(self, partition: List[Any]) -> List[Any]:
         """Apply function to partition."""
         pass
 

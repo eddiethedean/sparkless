@@ -20,7 +20,7 @@ Example:
     'SELECT'
 """
 
-from typing import Any
+from typing import Any, Dict, List
 import re
 from ...core.exceptions.analysis import ParseException
 
@@ -28,7 +28,7 @@ from ...core.exceptions.analysis import ParseException
 class SQLAST:
     """Abstract Syntax Tree for SQL queries."""
 
-    def __init__(self, query_type: str, components: dict[str, Any], query: str = ""):
+    def __init__(self, query_type: str, components: Dict[str, Any], query: str = ""):
         """Initialize SQL AST.
 
         Args:
@@ -314,7 +314,7 @@ class SQLParser:
         else:
             return "UNKNOWN"
 
-    def _parse_components(self, query: str, query_type: str) -> dict[str, Any]:
+    def _parse_components(self, query: str, query_type: str) -> Dict[str, Any]:
         """Parse query components based on query type.
 
         Args:
@@ -359,7 +359,7 @@ class SQLParser:
 
         return components
 
-    def _tokenize(self, query: str) -> list[str]:
+    def _tokenize(self, query: str) -> List[str]:
         """Tokenize SQL query.
 
         Args:
@@ -374,7 +374,7 @@ class SQLParser:
         tokens = re.findall(r"\b\w+\b|[(),;=<>!]+", query)
         return tokens
 
-    def _parse_select_query(self, query: str) -> dict[str, Any]:
+    def _parse_select_query(self, query: str) -> Dict[str, Any]:
         """Parse SELECT query components.
 
         Args:
@@ -384,7 +384,7 @@ class SQLParser:
             Dictionary of SELECT components.
         """
         # Mock implementation - in real parser this would be much more sophisticated
-        components: dict[str, Any] = {
+        components: Dict[str, Any] = {
             "select_columns": [],
             "from_tables": [],
             "where_conditions": [],
@@ -431,7 +431,7 @@ class SQLParser:
         # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
         # The join condition should capture until WHERE, GROUP BY, ORDER BY, LIMIT, or end of query
         from_match = re.search(
-            r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
+            r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?: Union[INNER, LEFT]|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?: Union[WHERE, GROUP]\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
             query,
             re.IGNORECASE | re.DOTALL,
         )
@@ -544,7 +544,7 @@ class SQLParser:
 
         return components
 
-    def _parse_create_query(self, query: str) -> dict[str, Any]:
+    def _parse_create_query(self, query: str) -> Dict[str, Any]:
         """Parse CREATE query components.
 
         Args:
@@ -694,7 +694,7 @@ class SQLParser:
             "definition": query,
         }
 
-    def _parse_drop_query(self, query: str) -> dict[str, Any]:
+    def _parse_drop_query(self, query: str) -> Dict[str, Any]:
         """Parse DROP query components.
 
         Args:
@@ -752,7 +752,7 @@ class SQLParser:
             "object_name": "unknown",
         }
 
-    def _parse_insert_query(self, query: str) -> dict[str, Any]:
+    def _parse_insert_query(self, query: str) -> Dict[str, Any]:
         """Parse INSERT query components.
 
         Args:
@@ -856,7 +856,7 @@ class SQLParser:
             "type": "unknown",
         }
 
-    def _parse_update_query(self, query: str) -> dict[str, Any]:
+    def _parse_update_query(self, query: str) -> Dict[str, Any]:
         """Parse UPDATE query components.
 
         Args:
@@ -931,7 +931,7 @@ class SQLParser:
             "where_conditions": [where_clause] if where_clause else [],
         }
 
-    def _parse_delete_query(self, query: str) -> dict[str, Any]:
+    def _parse_delete_query(self, query: str) -> Dict[str, Any]:
         """Parse DELETE query components.
 
         Args:
@@ -967,7 +967,7 @@ class SQLParser:
             "where_conditions": [where_clause] if where_clause else [],
         }
 
-    def _parse_refresh_query(self, query: str) -> dict[str, Any]:
+    def _parse_refresh_query(self, query: str) -> Dict[str, Any]:
         """Parse REFRESH TABLE query components.
 
         Args:
@@ -1001,7 +1001,7 @@ class SQLParser:
             "schema_name": schema,
         }
 
-    def _parse_merge_query(self, query: str) -> dict[str, Any]:
+    def _parse_merge_query(self, query: str) -> Dict[str, Any]:
         """Parse MERGE INTO query components.
 
         Args:
@@ -1090,7 +1090,7 @@ class SQLParser:
 
         return components
 
-    def _parse_union_query(self, query: str) -> dict[str, Any]:
+    def _parse_union_query(self, query: str) -> Dict[str, Any]:
         """Parse UNION query.
 
         Args:
@@ -1099,7 +1099,7 @@ class SQLParser:
         Returns:
             Dictionary of parsed components.
         """
-        components: dict[str, Any] = {}
+        components: Dict[str, Any] = {}
 
         # Split by UNION (case insensitive, match whole word)
         import re

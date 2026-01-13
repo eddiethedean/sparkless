@@ -21,7 +21,7 @@ Example:
     [Database(name='test_db')]
 """
 
-from typing import Any, Optional
+from typing import Any, List, Optional, Set
 from ..core.interfaces.storage import IStorageManager
 from ..core.exceptions.analysis import AnalysisException
 from ..core.exceptions.validation import IllegalArgumentException
@@ -97,7 +97,7 @@ class Catalog:
         """
         self._storage = storage
         self.spark = spark
-        self._cached_tables: set[str] = set()  # Track cached tables
+        self._cached_tables: Set[str] = set()  # Track cached tables
 
     def get_storage_backend(self) -> IStorageManager:
         """Get the storage backend instance.
@@ -110,7 +110,7 @@ class Catalog:
         """
         return self._storage
 
-    def listDatabases(self) -> list[Database]:
+    def listDatabases(self) -> List[Database]:
         """List all databases.
 
         Returns:
@@ -319,7 +319,7 @@ class Catalog:
                 f"Failed to check table existence '{dbName}.{tableName}': {str(e)}"
             )
 
-    def listTables(self, dbName: Optional[str] = None) -> list[Table]:
+    def listTables(self, dbName: Optional[str] = None) -> List[Table]:
         """List tables in database.
 
         Args:

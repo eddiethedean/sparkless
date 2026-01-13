@@ -5,7 +5,7 @@ Provides utilities for converting between Sparkless types and SQLAlchemy types,
 creating tables programmatically, and working with SQLAlchemy Inspector.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from sqlalchemy import (
     Table,
     Column,
@@ -174,7 +174,7 @@ def create_table_from_mock_schema(
             "Provide a schema with at least one field."
         )
 
-    columns: list[Any] = []
+    columns: List[Any] = []
 
     # Iterate over fields - already validated above
     for field in mock_schema.fields:
@@ -219,7 +219,7 @@ def get_column_type_for_value(value: Any) -> Any:
 
 
 def create_table_from_data(
-    table_name: str, data: list[dict[str, Any]], metadata: MetaData, **kwargs: Any
+    table_name: str, data: List[Dict[str, Any]], metadata: MetaData, **kwargs: Any
 ) -> Table:
     """
     Create SQLAlchemy Table by inferring types from data.
@@ -238,7 +238,7 @@ def create_table_from_data(
 
     # Infer types from first row
     first_row = data[0]
-    columns: list[Any] = []
+    columns: List[Any] = []
 
     for key, value in first_row.items():
         col_type = get_column_type_for_value(value)
@@ -247,7 +247,7 @@ def create_table_from_data(
     return Table(table_name, metadata, *columns, **kwargs)
 
 
-def list_all_tables(engine: Engine) -> list[str]:
+def list_all_tables(engine: Engine) -> List[str]:
     """
     List all tables using SQLAlchemy Inspector.
 
@@ -276,7 +276,7 @@ def table_exists(engine: Engine, table_name: str) -> bool:
     return inspector.has_table(table_name)
 
 
-def get_table_columns(engine: Engine, table_name: str) -> list[Any]:
+def get_table_columns(engine: Engine, table_name: str) -> List[Any]:
     """
     Get table column metadata using SQLAlchemy Inspector.
 
@@ -331,13 +331,13 @@ class TableFactory:
         )
 
     def from_data(
-        self, table_name: str, data: list[dict[str, Any]], **kwargs: Any
+        self, table_name: str, data: List[Dict[str, Any]], **kwargs: Any
     ) -> Table:
         """Create table by inferring types from data."""
         return create_table_from_data(table_name, data, self.metadata, **kwargs)
 
     def from_columns(
-        self, table_name: str, columns: list[Column[Any]], **kwargs: Any
+        self, table_name: str, columns: List[Column[Any]], **kwargs: Any
     ) -> Table:
         """Create table from list of Column objects."""
         return Table(table_name, self.metadata, *columns, **kwargs)

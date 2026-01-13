@@ -4,7 +4,7 @@ Aggregation service for DataFrame operations.
 This service provides aggregation operations using composition instead of mixin inheritance.
 """
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import Any, Dict, List, TYPE_CHECKING, Union, cast
 
 from ...core.exceptions.operation import SparkColumnNotFoundError
 from ...functions import Column, ColumnOperation, AggregateFunction
@@ -59,7 +59,7 @@ class AggregationService:
 
         # Cast to SupportsDataFrameOps to satisfy type checker
         # DataFrame implements the protocol at runtime, but mypy can't verify
-        # due to minor signature differences (e.g., approxQuantile accepts list[str])
+        # due to minor signature differences (e.g., approxQuantile accepts List[str])
         return GroupedData(cast("SupportsDataFrameOps", self._df), col_names)
 
     def groupby(self, *cols: Union[str, Column], **kwargs: Any) -> GroupedData:
@@ -151,7 +151,7 @@ class AggregationService:
         return CubeGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
 
     def agg(
-        self, *exprs: Union[str, Column, ColumnOperation, dict[str, str]]
+        self, *exprs: Union[str, Column, ColumnOperation, Dict[str, str]]
     ) -> "SupportsDataFrameOps":
         """Aggregate DataFrame without grouping (global aggregation).
 
@@ -171,7 +171,7 @@ class AggregationService:
             from ...functions import F
 
             agg_dict = exprs[0]
-            converted_exprs: list[
+            converted_exprs: List[
                 Union[str, Column, ColumnOperation, AggregateFunction]
             ] = []
             for col_name, agg_func in agg_dict.items():

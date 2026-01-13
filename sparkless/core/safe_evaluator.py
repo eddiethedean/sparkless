@@ -6,7 +6,7 @@ preventing security vulnerabilities from code injection.
 """
 
 import ast
-from typing import Any
+from typing import Any, Dict
 
 
 class SafeExpressionEvaluator:
@@ -22,7 +22,7 @@ class SafeExpressionEvaluator:
     """
 
     @staticmethod
-    def evaluate(expression: str, context: dict[str, Any]) -> Any:
+    def evaluate(expression: str, context: Dict[str, Any]) -> Any:
         """Evaluate a string expression safely using AST.
 
         Args:
@@ -50,7 +50,7 @@ class SafeExpressionEvaluator:
             return False
 
     @staticmethod
-    def evaluate_boolean(expression: str, context: dict[str, Any]) -> bool:
+    def evaluate_boolean(expression: str, context: Dict[str, Any]) -> bool:
         """Evaluate a boolean expression safely.
 
         Args:
@@ -67,7 +67,7 @@ class SafeExpressionEvaluator:
             return False
 
     @staticmethod
-    def _evaluate_ast(node: ast.AST, context: dict[str, Any]) -> Any:
+    def _evaluate_ast(node: ast.AST, context: Dict[str, Any]) -> Any:
         """Recursively evaluate an AST node.
 
         Args:

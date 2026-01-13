@@ -4,7 +4,7 @@ Storage manager module.
 This module provides a unified storage manager that can use different backends.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 import contextlib
 import gc
@@ -26,7 +26,7 @@ class TableMetadata:
         schema: str,
         created_at: datetime,
         table_schema: StructType,
-        properties: dict[str, Any],
+        properties: Dict[str, Any],
     ):
         """Initialize table metadata.
 
@@ -92,7 +92,7 @@ class UnifiedStorageManager(IStorageManager):
             backend: Storage backend to use.
         """
         self.backend = backend
-        self._table_metadata: dict[str, TableMetadata] = {}
+        self._table_metadata: Dict[str, TableMetadata] = {}
         self._current_schema: str = "default"
         try:
             self._current_schema = backend.get_current_schema()
@@ -129,7 +129,7 @@ class UnifiedStorageManager(IStorageManager):
         if self._current_schema == schema_name:
             self._current_schema = "default"
 
-    def list_schemas(self) -> list[str]:
+    def list_schemas(self) -> List[str]:
         """List all schemas.
 
         Returns:
@@ -174,7 +174,7 @@ class UnifiedStorageManager(IStorageManager):
         self,
         schema: str,
         table: str,
-        columns: Union[list[StructField], StructType],
+        columns: Union[List[StructField], StructType],
     ) -> None:
         """Create a new table.
 
@@ -195,7 +195,7 @@ class UnifiedStorageManager(IStorageManager):
         self.backend.drop_table(schema, table)
 
     def insert_data(
-        self, schema: str, table: str, data: list[dict[str, Any]], mode: str = "append"
+        self, schema: str, table: str, data: List[Dict[str, Any]], mode: str = "append"
     ) -> None:
         """Insert data into table.
 
@@ -209,7 +209,7 @@ class UnifiedStorageManager(IStorageManager):
 
     def query_table(
         self, schema: str, table: str, filter_expr: Optional[str] = None
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -236,7 +236,7 @@ class UnifiedStorageManager(IStorageManager):
         """
         return self.backend.get_table_schema(schema_name, table_name)
 
-    def get_data(self, schema: str, table: str) -> list[dict[str, Any]]:
+    def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.
 
         Args:
@@ -257,7 +257,7 @@ class UnifiedStorageManager(IStorageManager):
         """
         self.backend.create_temp_view(name, dataframe)
 
-    def list_tables(self, schema_name: Optional[str] = None) -> list[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
 
         Args:
@@ -270,7 +270,7 @@ class UnifiedStorageManager(IStorageManager):
 
     def get_table_metadata(
         self, schema_name: str, table_name: str
-    ) -> Union[Any, dict[str, Any]]:
+    ) -> Union[Any, Dict[str, Any]]:
         """Get table metadata including Delta-specific fields.
 
         Args:
@@ -283,7 +283,7 @@ class UnifiedStorageManager(IStorageManager):
         return self.backend.get_table_metadata(schema_name, table_name)
 
     def update_table_metadata(
-        self, schema: str, table: str, metadata_updates: dict[str, Any]
+        self, schema: str, table: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata fields.
 
@@ -324,7 +324,7 @@ class UnifiedStorageManager(IStorageManager):
         """
         return self._table_metadata.get(qualified_name)
 
-    def list_table_metadata(self, schema: str) -> list[TableMetadata]:
+    def list_table_metadata(self, schema: str) -> List[TableMetadata]:
         """List all table metadata for a schema.
 
         Args:
@@ -357,7 +357,7 @@ class UnifiedStorageManager(IStorageManager):
             # Ignore errors during optimization
             pass
 
-    def get_memory_usage(self) -> dict[str, Any]:
+    def get_memory_usage(self) -> Dict[str, Any]:
         """Get current memory usage statistics.
 
         Returns:
@@ -381,7 +381,7 @@ class UnifiedStorageManager(IStorageManager):
         """Force garbage collection to free memory."""
         gc.collect()
 
-    def get_table_sizes(self) -> dict[str, int]:
+    def get_table_sizes(self) -> Dict[str, int]:
         """Get estimated sizes of all tables.
 
         Returns:

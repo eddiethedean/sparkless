@@ -6,7 +6,7 @@ This module provides a file-based storage implementation using JSON files.
 
 import json
 import os
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from ...core.interfaces.storage import IStorageManager, ITable
 from ...core.types.schema import ISchema
 from sparkless.spark_types import StructType, StructField
@@ -44,7 +44,7 @@ class FileTable(ITable):
         return self._schema
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> Dict[str, Any]:
         """Get table metadata."""
         return self._metadata
 
@@ -55,7 +55,7 @@ class FileTable(ITable):
             with open(self.file_path, "w") as f:
                 json.dump([], f)
 
-    def _load_data(self) -> list[dict[str, Any]]:
+    def _load_data(self) -> List[Dict[str, Any]]:
         """Load data from file.
 
         Returns:
@@ -68,7 +68,7 @@ class FileTable(ITable):
         except (FileNotFoundError, json.JSONDecodeError):
             return []
 
-    def _save_data(self, data: list[dict[str, Any]]) -> None:
+    def _save_data(self, data: List[Dict[str, Any]]) -> None:
         """Save data to file.
 
         Args:
@@ -77,7 +77,7 @@ class FileTable(ITable):
         with open(self.file_path, "w") as f:
             json.dump(data, f, indent=2)
 
-    def insert_data(self, data: list[dict[str, Any]], mode: str = "append") -> None:
+    def insert_data(self, data: List[Dict[str, Any]], mode: str = "append") -> None:
         """Insert data into table.
 
         Args:
@@ -100,7 +100,7 @@ class FileTable(ITable):
         self._save_data(current_data)
         self._metadata["row_count"] = len(current_data)
 
-    def query_data(self, filter_expr: Optional[str] = None) -> list[dict[str, Any]]:
+    def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -126,7 +126,7 @@ class FileTable(ITable):
         """
         return self.schema
 
-    def get_metadata(self) -> dict[str, Any]:
+    def get_metadata(self) -> Dict[str, Any]:
         """Get table metadata.
 
         Returns:
@@ -137,11 +137,11 @@ class FileTable(ITable):
         metadata["row_count"] = len(data)
         return metadata
 
-    def insert(self, data: list[dict[str, Any]]) -> None:
+    def insert(self, data: List[Dict[str, Any]]) -> None:
         """Insert data into table."""
         self.insert_data(data)
 
-    def query(self, **filters: Any) -> list[dict[str, Any]]:
+    def query(self, **filters: Any) -> List[Dict[str, Any]]:
         """Query data from table."""
         return self.query_data()
 
@@ -173,11 +173,11 @@ class FileSchema(ISchema):
         """
         self.name = name
         self.base_path = os.path.join(base_path, name)
-        self.tables: dict[str, FileTable] = {}
+        self.tables: Dict[str, FileTable] = {}
         os.makedirs(self.base_path, exist_ok=True)
 
     def create_table(
-        self, table: str, columns: Union[list[StructField], StructType]
+        self, table: str, columns: Union[List[StructField], StructType]
     ) -> None:
         """Create a new table in this schema.
 
@@ -215,7 +215,7 @@ class FileSchema(ISchema):
         if table in self.tables:
             del self.tables[table]
 
-    def list_tables(self) -> list[str]:
+    def list_tables(self) -> List[str]:
         """List all tables in this schema.
 
         Returns:
@@ -233,7 +233,7 @@ class FileSchema(ISchema):
 
     # ISchema interface implementation
     @property
-    def fields(self) -> list[Any]:
+    def fields(self) -> List[Any]:
         """Get schema fields."""
         return []
 
@@ -249,11 +249,11 @@ class FileSchema(ISchema):
         """Get field by name."""
         return None
 
-    def field_names(self) -> list[str]:
+    def field_names(self) -> List[str]:
         """Get field names."""
         return []
 
-    def field_types(self) -> dict[str, Any]:
+    def field_types(self) -> Dict[str, Any]:
         """Get field types."""
         return {}
 
@@ -286,7 +286,7 @@ class FileStorageManager(IStorageManager):
             base_path: Base path for storage files.
         """
         self.base_path = base_path
-        self.schemas: dict[str, FileSchema] = {}
+        self.schemas: Dict[str, FileSchema] = {}
         # Create default schema
         self.schemas["default"] = FileSchema("default", base_path)
 
@@ -326,7 +326,7 @@ class FileStorageManager(IStorageManager):
                 shutil.rmtree(schema_path)
             del self.schemas[schema_name]
 
-    def list_schemas(self) -> list[str]:
+    def list_schemas(self) -> List[str]:
         """List all schemas.
 
         Returns:
@@ -352,7 +352,7 @@ class FileStorageManager(IStorageManager):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[list[StructField], StructType],
+        fields: Union[List[StructField], StructType],
     ) -> None:
         """Create a new table.
 
@@ -377,7 +377,7 @@ class FileStorageManager(IStorageManager):
             self.schemas[schema_name].drop_table(table_name)
 
     def insert_data(
-        self, schema_name: str, table_name: str, data: list[dict[str, Any]]
+        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
         """Insert data into table.
 
@@ -394,7 +394,7 @@ class FileStorageManager(IStorageManager):
 
     def query_data(
         self, schema_name: str, table_name: str, **filters: Any
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -414,7 +414,7 @@ class FileStorageManager(IStorageManager):
 
     def query_table(
         self, schema: str, table: str, filter_expr: Optional[str] = None
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -447,7 +447,7 @@ class FileStorageManager(IStorageManager):
         # Return empty schema if table doesn't exist
         return StructType([])
 
-    def get_data(self, schema: str, table: str) -> list[dict[str, Any]]:
+    def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.
 
         Args:
@@ -480,7 +480,7 @@ class FileStorageManager(IStorageManager):
         # Insert the data
         self.insert_data(schema, name, data)
 
-    def list_tables(self, schema_name: Optional[str] = None) -> list[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
 
         Args:
@@ -500,7 +500,7 @@ class FileStorageManager(IStorageManager):
             return []
         return self.schemas[schema_name].list_tables()
 
-    def get_table_metadata(self, schema_name: str, table_name: str) -> dict[str, Any]:
+    def get_table_metadata(self, schema_name: str, table_name: str) -> Dict[str, Any]:
         """Get table metadata including Delta-specific fields."""
         if schema_name not in self.schemas:
             return {}
@@ -509,7 +509,7 @@ class FileStorageManager(IStorageManager):
         return self.schemas[schema_name].tables[table_name].get_metadata()
 
     def update_table_metadata(
-        self, schema_name: str, table_name: str, metadata_updates: dict[str, Any]
+        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata fields."""
         if (

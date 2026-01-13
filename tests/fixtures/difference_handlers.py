@@ -5,11 +5,11 @@ Provides utilities to normalize results and handle backend-specific
 differences when comparing results.
 """
 
-from typing import Any, Callable
+from typing import Any, Callable, Dict, List
 import re
 
 
-def normalize_row_ordering(rows: list[Any], columns: list[str]) -> list[Any]:
+def normalize_row_ordering(rows: List[Any], columns: List[str]) -> List[Any]:
     """Normalize row ordering for comparison.
 
     PySpark doesn't guarantee row order, so we sort rows before comparison.
@@ -111,7 +111,7 @@ class DifferenceHandler:
 
     def __init__(self):
         """Initialize difference handler."""
-        self.known_differences: dict[str, Callable] = {}
+        self.known_differences: Dict[str, Callable] = {}
 
     def register_handler(self, difference_type: str, handler: Callable) -> None:
         """Register a handler for a known difference type.

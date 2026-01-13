@@ -5,7 +5,7 @@ This module provides the core GroupedData class for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 import statistics
 
 from ...functions import (
@@ -38,7 +38,7 @@ class GroupedData:
     maintaining compatibility with PySpark's GroupedData interface.
     """
 
-    def __init__(self, df: SupportsDataFrameOps, group_columns: list[str]):
+    def __init__(self, df: SupportsDataFrameOps, group_columns: List[str]):
         """Initialize GroupedData.
 
         Args:
@@ -50,7 +50,7 @@ class GroupedData:
 
     def agg(
         self,
-        *exprs: Union[str, Column, ColumnOperation, AggregateFunction, dict[str, str]],
+        *exprs: Union[str, Column, ColumnOperation, AggregateFunction, Dict[str, str]],
     ) -> "DataFrame":
         """Aggregate grouped data.
 
@@ -64,7 +64,7 @@ class GroupedData:
 
         # Track expression processing order to preserve column ordering
         # For dict syntax, PySpark preserves dict order; otherwise we sort alphabetically
-        expression_order: list[str] = []
+        expression_order: List[str] = []
         is_dict_syntax = len(exprs) == 1 and isinstance(exprs[0], dict)
 
         # PySpark-style strict validation: all expressions must be Column or ColumnOperation.
@@ -94,7 +94,7 @@ class GroupedData:
                 raise TypeError(
                     f"Expected dict for dict syntax aggregation, got {type(agg_dict)}"
                 )
-            converted_exprs: list[
+            converted_exprs: List[
                 Union[str, Column, ColumnOperation, AggregateFunction]
             ] = []
             for col_name, agg_func in agg_dict.items():
@@ -143,7 +143,7 @@ class GroupedData:
             self.df = self.df._materialize_if_lazy()
 
         # Group data by group columns
-        groups: dict[Any, list[dict[str, Any]]] = {}
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in self.df.data:
             group_key = tuple(row.get(col) for col in self.group_columns)
             if group_key not in groups:
@@ -154,7 +154,7 @@ class GroupedData:
         non_nullable_keys = set()
 
         # Track result key order for non-dict syntax (PySpark preserves expression order)
-        result_key_order: list[str] = []
+        result_key_order: List[str] = []
 
         # Apply aggregations
         result_data = []
@@ -263,7 +263,7 @@ class GroupedData:
             # - For non-dict syntax: preserves expression order
             if is_dict_syntax and expression_order:
                 # For dict syntax, PySpark sorts by the column name being aggregated first
-                def sort_key(col_name: str) -> tuple[str, str]:
+                def sort_key(col_name: str) -> Tuple[str, str]:
                     """Extract (column_name, function_name) for sorting."""
                     # Column names are like "avg(salary)", "count(id)", etc.
                     import re
@@ -319,7 +319,7 @@ class GroupedData:
 
         # Track which expressions are literals for proper nullable inference
         # (used in both branches)
-        literal_keys: set[str] = set()
+        literal_keys: Set[str] = set()
         for expr in exprs:
             if is_literal_type(expr):
                 lit_key = get_expression_name(expr)
@@ -549,8 +549,8 @@ class GroupedData:
             return DataFrame(result_data, schema, self.df.storage)
 
     def _evaluate_string_expression(
-        self, expr: str, group_rows: list[dict[str, Any]]
-    ) -> tuple[str, Any]:
+        self, expr: str, group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate string aggregation expression.
 
         Args:
@@ -614,8 +614,8 @@ class GroupedData:
             return expr, None
 
     def _evaluate_aggregate_function(
-        self, expr: AggregateFunction, group_rows: list[dict[str, Any]]
-    ) -> tuple[str, Any]:
+        self, expr: AggregateFunction, group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate AggregateFunction.
 
         Args:
@@ -1306,7 +1306,7 @@ class GroupedData:
                 x_col_name = x_col.name if hasattr(x_col, "name") else str(x_col)
 
                 # Get pairs of (y, x) values where both are not None
-                cleaned_pairs: list[tuple[float, float]] = []
+                cleaned_pairs: List[Tuple[float, float]] = []
                 for row in group_rows:
                     y_raw = row.get(y_col_name)
                     x_raw = row.get(x_col_name)
@@ -1325,8 +1325,8 @@ class GroupedData:
                     )
                     return result_key, None
 
-                y_values: list[float] = [pair[0] for pair in cleaned_pairs]
-                x_values: list[float] = [pair[1] for pair in cleaned_pairs]
+                y_values: List[float] = [pair[0] for pair in cleaned_pairs]
+                x_values: List[float] = [pair[1] for pair in cleaned_pairs]
                 n = len(cleaned_pairs)
 
                 # Calculate basic statistics
@@ -1437,8 +1437,8 @@ class GroupedData:
     def _evaluate_column_expression(
         self,
         expr: Union[Column, ColumnOperation],
-        group_rows: list[dict[str, Any]],
-    ) -> tuple[str, Any]:
+        group_rows: List[Dict[str, Any]],
+    ) -> Tuple[str, Any]:
         """Evaluate Column or ColumnOperation.
 
         Args:
@@ -1815,7 +1815,7 @@ class GroupedData:
         return CubeGroupedData(self.df, col_names)
 
     def pivot(
-        self, pivot_col: str, values: Optional[list[Any]] = None
+        self, pivot_col: str, values: Optional[List[Any]] = None
     ) -> "PivotGroupedData":
         """Create pivot grouped data.
 
@@ -1877,7 +1877,7 @@ class GroupedData:
         df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
 
         # Group data by group columns
-        groups: dict[Any, list[dict[str, Any]]] = {}
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in df.data:
             group_key = tuple(row.get(col) for col in self.group_columns)
             if group_key not in groups:
@@ -1901,7 +1901,7 @@ class GroupedData:
             result_pdfs.append(result_pdf)
 
         # Concatenate all results
-        result_data: list[dict[str, Any]] = []
+        result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
@@ -1966,8 +1966,8 @@ class GroupedData:
         df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
 
         # Group data by group columns
-        groups: dict[Any, list[dict[str, Any]]] = {}
-        group_indices: dict[Any, list[int]] = {}  # Track original indices
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        group_indices: Dict[Any, List[int]] = {}  # Track original indices
 
         for idx, row in enumerate(df.data):
             group_key = tuple(row.get(col) for col in self.group_columns)
@@ -1978,7 +1978,7 @@ class GroupedData:
             group_indices[group_key].append(idx)
 
         # Apply function to each group and preserve order
-        result_rows: list[dict[str, Any]] = [{}] * len(df.data)
+        result_rows: List[Dict[str, Any]] = [{}] * len(df.data)
 
         for group_key, group_rows in groups.items():
             # Convert group to pandas DataFrame

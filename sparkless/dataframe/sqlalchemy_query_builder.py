@@ -5,7 +5,9 @@ This module converts DataFrame operations to SQLAlchemy statements,
 providing database-agnostic query building that works with any SQLAlchemy backend.
 """
 
-from typing import Any, Optional, Union
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Tuple, Union
 from sqlalchemy import select, Table, and_, or_, func, literal, cast as sa_cast
 from sqlalchemy.sql import Select
 from sqlalchemy.types import Integer, Float, String, Boolean, BigInteger, Date, DateTime
@@ -29,17 +31,17 @@ class SQLAlchemyQueryBuilder:
         self.select_stmt: Any = select(
             table
         )  # Can be Select or CompoundSelect after union()
-        self._with_columns: dict[str, Any] = {}
-        self._join_tables: list[tuple[Table, Any, str]] = []
+        self._with_columns: Dict[str, Any] = {}
+        self._join_tables: List[Tuple[Table, Any, str]] = []
 
     def add_filter(self, condition: ColumnOperation) -> None:
         """Add a WHERE condition using SQLAlchemy expressions."""
         sql_condition = self._column_to_sqlalchemy(condition)
         self.select_stmt = self.select_stmt.where(sql_condition)
 
-    def add_select(self, columns: tuple[Any, ...]) -> None:
+    def add_select(self, columns: Tuple[Any, ...]) -> None:
         """Add SELECT columns using SQLAlchemy column expressions."""
-        sql_columns: list[Any] = []
+        sql_columns: List[Any] = []
         for col in columns:
             if isinstance(col, str):
                 if col == "*":
@@ -65,7 +67,7 @@ class SQLAlchemyQueryBuilder:
         sql_expression = self._column_to_sqlalchemy(col)
         self._with_columns[col_name] = sql_expression
 
-    def add_group_by(self, columns: tuple[Any, ...]) -> None:
+    def add_group_by(self, columns: Tuple[Any, ...]) -> None:
         """Add GROUP BY columns using SQLAlchemy."""
         group_cols = []
         for col in columns:
@@ -77,7 +79,7 @@ class SQLAlchemyQueryBuilder:
         if group_cols:
             self.select_stmt = self.select_stmt.group_by(*group_cols)
 
-    def add_order_by(self, columns: tuple[Any, ...]) -> None:
+    def add_order_by(self, columns: Tuple[Any, ...]) -> None:
         """Add ORDER BY columns using SQLAlchemy."""
         order_cols = []
         for col in columns:
@@ -96,7 +98,7 @@ class SQLAlchemyQueryBuilder:
             self.select_stmt = self.select_stmt.order_by(*order_cols)
 
     def add_join(
-        self, other_table: Table, on: Union[str, list[str]], how: str = "inner"
+        self, other_table: Table, on: Union[str, List[str]], how: str = "inner"
     ) -> None:
         """Add a JOIN operation using SQLAlchemy."""
         # Build join condition
@@ -217,7 +219,7 @@ class SQLAlchemyQueryBuilder:
 
         return sql_func.over(**over_clause)
 
-    def _window_spec_to_dict(self, window_spec: Any) -> dict[str, Any]:
+    def _window_spec_to_dict(self, window_spec: Any) -> Dict[str, Any]:
         """Convert a window specification to SQLAlchemy over() kwargs."""
         kwargs = {}
 

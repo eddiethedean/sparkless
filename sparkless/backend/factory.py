@@ -6,7 +6,7 @@ enabling dependency injection and easier testing.
 """
 
 import importlib.util
-from typing import Optional, Any, cast
+from typing import Any, List, Optional, cast
 from .protocols import StorageBackend, DataMaterializer, ExportBackend
 
 
@@ -202,7 +202,7 @@ class BackendFactory:
                 raise ValueError(f"Cannot determine backend type for {type(storage)}")
 
     @staticmethod
-    def list_available_backends() -> list[str]:
+    def list_available_backends() -> List[str]:
         """List all available backend types.
 
         Returns:

@@ -1,6 +1,6 @@
 """Aggregation operations for DataFrame."""
 
-from typing import Any, Union
+from typing import Any, Dict, List, Tuple, Union
 import statistics
 from ...spark_types import StructType, StructField, StringType
 
@@ -10,8 +10,8 @@ class AggregationOperationsStatic:
 
     @staticmethod
     def describe(
-        data: list[dict[str, Any]], schema: StructType, cols: list[str]
-    ) -> tuple[list[dict[str, Any]], StructType]:
+        data: List[Dict[str, Any]], schema: StructType, cols: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Compute basic statistics for numeric columns.
 
         Args:
@@ -102,8 +102,8 @@ class AggregationOperationsStatic:
 
     @staticmethod
     def summary(
-        data: list[dict[str, Any]], schema: StructType, stats: list[str]
-    ) -> tuple[list[dict[str, Any]], StructType]:
+        data: List[Dict[str, Any]], schema: StructType, stats: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Compute extended statistics for numeric columns.
 
         Args:
@@ -196,7 +196,7 @@ class AggregationOperationsStatic:
         return result_data, result_schema
 
     @staticmethod
-    def compute_basic_stats(values: list[Union[int, float]]) -> dict[str, str]:
+    def compute_basic_stats(values: List[Union[int, float]]) -> Dict[str, str]:
         """Compute basic statistics for a list of numeric values.
 
         Args:
@@ -226,8 +226,8 @@ class AggregationOperationsStatic:
 
     @staticmethod
     def compute_extended_stats(
-        values: list[Union[int, float]], stats: list[str]
-    ) -> dict[str, str]:
+        values: List[Union[int, float]], stats: List[str]
+    ) -> Dict[str, str]:
         """Compute extended statistics for a list of numeric values.
 
         Args:
@@ -269,7 +269,7 @@ class AggregationOperationsStatic:
         return result
 
     @staticmethod
-    def get_numeric_columns(schema: StructType) -> list[str]:
+    def get_numeric_columns(schema: StructType) -> List[str]:
         """Get list of numeric column names from schema.
 
         Args:
@@ -294,8 +294,8 @@ class AggregationOperationsStatic:
 
     @staticmethod
     def extract_numeric_values(
-        data: list[dict[str, Any]], column: str
-    ) -> list[Union[int, float]]:
+        data: List[Dict[str, Any]], column: str
+    ) -> List[Union[int, float]]:
         """Extract numeric values from a specific column.
 
         Args:

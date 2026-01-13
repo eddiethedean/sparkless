@@ -5,7 +5,7 @@ Provides comprehensive query optimization including filter pushdown,
 column pruning, join optimization, and memory management.
 """
 
-from typing import Any, Optional, cast
+from typing import Any, Dict, List, Optional, Set, cast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -34,14 +34,14 @@ class Operation:
     """Represents a DataFrame operation in the query plan."""
 
     type: OperationType
-    columns: list[str]
-    predicates: list[dict[str, Any]]
-    join_conditions: list[dict[str, Any]]
-    group_by_columns: list[str]
-    order_by_columns: list[str]
+    columns: List[str]
+    predicates: List[Dict[str, Any]]
+    join_conditions: List[Dict[str, Any]]
+    group_by_columns: List[str]
+    order_by_columns: List[str]
     limit_count: Optional[int]
-    window_specs: list[dict[str, Any]]
-    metadata: dict[str, Any]
+    window_specs: List[Dict[str, Any]]
+    metadata: Dict[str, Any]
 
     def __post_init__(self) -> None:
         if self.predicates is None:
@@ -62,12 +62,12 @@ class OptimizationRule(ABC):
     """Base class for optimization rules."""
 
     @abstractmethod
-    def apply(self, operations: list[Operation]) -> list[Operation]:
+    def apply(self, operations: List[Operation]) -> List[Operation]:
         """Apply optimization rule to operations."""
         pass
 
     @abstractmethod
-    def can_apply(self, operations: list[Operation]) -> bool:
+    def can_apply(self, operations: List[Operation]) -> bool:
         """Check if rule can be applied to operations."""
         pass
 
@@ -75,7 +75,7 @@ class OptimizationRule(ABC):
 class FilterPushdownRuleLegacy(OptimizationRule):
     """Legacy inline FilterPushdownRule - use FilterPushdownRule from optimization_rules instead."""
 
-    def apply(self, operations: list[Operation]) -> list[Operation]:
+    def apply(self, operations: List[Operation]) -> List[Operation]:
         """Move filter operations before other operations when possible."""
         if not self.can_apply(operations):
             return operations
@@ -124,7 +124,7 @@ class FilterPushdownRuleLegacy(OptimizationRule):
 
         return optimized
 
-    def can_apply(self, operations: list[Operation]) -> bool:
+    def can_apply(self, operations: List[Operation]) -> bool:
         """Check if filter pushdown can be applied."""
         filter_ops = [op for op in operations if op.type == OperationType.FILTER]
         return len(filter_ops) > 0
@@ -142,7 +142,7 @@ class FilterPushdownRuleLegacy(OptimizationRule):
 class ColumnPruningRuleLegacy(OptimizationRule):
     """Remove unnecessary columns from the query plan."""
 
-    def apply(self, operations: list[Operation]) -> list[Operation]:
+    def apply(self, operations: List[Operation]) -> List[Operation]:
         """Remove columns that are not needed in the final result."""
         if not self.can_apply(operations):
             return operations
@@ -173,12 +173,12 @@ class ColumnPruningRuleLegacy(OptimizationRule):
 
         return optimized
 
-    def can_apply(self, operations: list[Operation]) -> bool:
+    def can_apply(self, operations: List[Operation]) -> bool:
         """Check if column pruning can be applied."""
         select_ops = [op for op in operations if op.type == OperationType.SELECT]
         return len(select_ops) > 0
 
-    def _find_needed_columns(self, operations: list[Operation]) -> set[str]:
+    def _find_needed_columns(self, operations: List[Operation]) -> Set[str]:
         """Find all columns that are actually needed."""
         needed = set()
 
@@ -209,7 +209,7 @@ class ColumnPruningRuleLegacy(OptimizationRule):
 class JoinOptimizationRuleLegacy(OptimizationRule):
     """Optimize join operations for better performance."""
 
-    def apply(self, operations: list[Operation]) -> list[Operation]:
+    def apply(self, operations: List[Operation]) -> List[Operation]:
         """Reorder joins and optimize join conditions."""
         if not self.can_apply(operations):
             return operations
@@ -233,12 +233,12 @@ class JoinOptimizationRuleLegacy(OptimizationRule):
         optimized.extend(other_ops)
         return optimized
 
-    def can_apply(self, operations: list[Operation]) -> bool:
+    def can_apply(self, operations: List[Operation]) -> bool:
         """Check if join optimization can be applied."""
         join_ops = [op for op in operations if op.type == OperationType.JOIN]
         return len(join_ops) > 0
 
-    def _optimize_join_order(self, join_ops: list[Operation]) -> list[Operation]:
+    def _optimize_join_order(self, join_ops: List[Operation]) -> List[Operation]:
         """Optimize the order of join operations."""
 
         # Simple heuristic: sort by estimated size (metadata)
@@ -251,7 +251,7 @@ class JoinOptimizationRuleLegacy(OptimizationRule):
 class PredicatePushdownRuleLegacy(OptimizationRule):
     """Push predicates down to reduce data early."""
 
-    def apply(self, operations: list[Operation]) -> list[Operation]:
+    def apply(self, operations: List[Operation]) -> List[Operation]:
         """Push predicates as early as possible."""
         if not self.can_apply(operations):
             return operations
@@ -287,7 +287,7 @@ class PredicatePushdownRuleLegacy(OptimizationRule):
 
         return optimized
 
-    def can_apply(self, operations: list[Operation]) -> bool:
+    def can_apply(self, operations: List[Operation]) -> bool:
         """Check if predicate pushdown can be applied."""
         return any(op.predicates for op in operations)
 
@@ -300,7 +300,7 @@ class PredicatePushdownRuleLegacy(OptimizationRule):
 class ProjectionPushdownRuleLegacy(OptimizationRule):
     """Push column projections as early as possible."""
 
-    def apply(self, operations: list[Operation]) -> list[Operation]:
+    def apply(self, operations: List[Operation]) -> List[Operation]:
         """Push column selections as early as possible."""
         if not self.can_apply(operations):
             return operations
@@ -329,11 +329,11 @@ class ProjectionPushdownRuleLegacy(OptimizationRule):
 
         return optimized
 
-    def can_apply(self, operations: list[Operation]) -> bool:
+    def can_apply(self, operations: List[Operation]) -> bool:
         """Check if projection pushdown can be applied."""
         return any(op.type == OperationType.SELECT for op in operations)
 
-    def _find_final_columns(self, operations: list[Operation]) -> set[str]:
+    def _find_final_columns(self, operations: List[Operation]) -> Set[str]:
         """Find columns that will be in the final result."""
         # Start from the last SELECT operation
         for op in reversed(operations):
@@ -368,13 +368,13 @@ class QueryOptimizer:
         )
         self._adaptive_threshold = 2.0
         self._adaptive_max_split_factor = 8
-        self._adaptive_settings: dict[str, Any] = {}
+        self._adaptive_settings: Dict[str, Any] = {}
 
     def optimize(
         self,
-        operations: list[Operation],
-        runtime_stats: Optional[dict[str, Any]] = None,
-    ) -> list[Operation]:
+        operations: List[Operation],
+        runtime_stats: Optional[Dict[str, Any]] = None,
+    ) -> List[Operation]:
         """Apply all optimization rules to the query plan."""
         optimized = operations.copy()
 
@@ -413,9 +413,9 @@ class QueryOptimizer:
         self._adaptive_settings.clear()
 
     def _simulate_adaptive_execution(
-        self, operations: list[Operation]
-    ) -> list[Operation]:
-        rewritten: list[Operation] = []
+        self, operations: List[Operation]
+    ) -> List[Operation]:
+        rewritten: List[Operation] = []
 
         for op in operations:
             skew_metrics = self._extract_skew_metrics(op)
@@ -455,7 +455,7 @@ class QueryOptimizer:
 
         return rewritten
 
-    def _extract_skew_metrics(self, op: Operation) -> Optional[dict[str, Any]]:
+    def _extract_skew_metrics(self, op: Operation) -> Optional[Dict[str, Any]]:
         metrics = op.metadata.get("skew_metrics") if op.metadata else None
         if isinstance(metrics, dict):
             return metrics
@@ -468,12 +468,12 @@ class QueryOptimizer:
                 and identifier in hints
                 and isinstance(hints[identifier], dict)
             ):
-                return cast("dict[str, Any]", hints[identifier])
+                return cast("Dict[str, Any]", hints[identifier])
         return None
 
     def _resolve_partition_columns(
-        self, op: Operation, metrics: dict[str, Any]
-    ) -> list[str]:
+        self, op: Operation, metrics: Dict[str, Any]
+    ) -> List[str]:
         columns = metrics.get("partition_columns")
         if isinstance(columns, list) and all(isinstance(col, str) for col in columns):
             return list(columns)
@@ -494,7 +494,7 @@ class QueryOptimizer:
             inferred.extend(op.columns)
 
         # Deduplicate while preserving order
-        seen: set[str] = set()
+        seen: Set[str] = set()
         unique_columns = []
         for col in inferred:
             if col not in seen:
@@ -512,8 +512,8 @@ class QueryOptimizer:
         self.rules = [rule for rule in self.rules if not isinstance(rule, rule_class)]
 
     def get_optimization_stats(
-        self, original: list[Operation], optimized: list[Operation]
-    ) -> dict[str, Any]:
+        self, original: List[Operation], optimized: List[Operation]
+    ) -> Dict[str, Any]:
         """Get statistics about the optimization."""
         return {
             "original_operations": len(original),

@@ -5,7 +5,7 @@ This module provides the Column class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from ...spark_types import DataType, StringType
 
 if TYPE_CHECKING:
@@ -111,7 +111,7 @@ class ColumnOperatorMixin:
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: list[Any]) -> "ColumnOperation":
+    def isin(self, values: List[Any]) -> "ColumnOperation":
         """Check if column value is in list of values."""
         return self._create_operation("isin", values)
 
@@ -179,7 +179,7 @@ class Column(ColumnOperatorMixin):
         self.column_type = column_type or StringType()
         self.operation = None
         self.operand = None
-        self._operations: list[ColumnOperation] = []
+        self._operations: List[ColumnOperation] = []
         # Add expr attribute for PySpark compatibility
         self.expr = f"Column('{name}')"
 
@@ -649,7 +649,7 @@ class ColumnOperation(Column):
             part = "day" if self.operation == "dayofmonth" else self.operation
             return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
         elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
-            part_map: dict[str, str] = {
+            part_map: Dict[str, str] = {
                 "dayofweek": "dow",
                 "dayofyear": "doy",
                 "weekofyear": "week",

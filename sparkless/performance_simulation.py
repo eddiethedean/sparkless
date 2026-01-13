@@ -27,7 +27,7 @@ Example:
 """
 
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional
 from contextlib import contextmanager
 
 
@@ -65,7 +65,7 @@ class MockPerformanceSimulator:
             "slowdown_applied": 0,
             "memory_limits_hit": 0,
         }
-        self._original_methods: dict[str, Any] = {}
+        self._original_methods: Dict[str, Any] = {}
 
     def set_slowdown(self, factor: float) -> None:
         """Set slowdown factor for operations.
@@ -135,7 +135,7 @@ class MockPerformanceSimulator:
 
         return result
 
-    def get_performance_metrics(self) -> dict[str, Any]:
+    def get_performance_metrics(self) -> Dict[str, Any]:
         """Get current performance metrics.
 
         Returns:

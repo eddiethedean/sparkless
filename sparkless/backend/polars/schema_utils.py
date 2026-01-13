@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import List, TYPE_CHECKING
 
 import polars as pl
 
@@ -53,7 +53,7 @@ def align_frame_to_schema(frame: pl.DataFrame, schema: StructType) -> pl.DataFra
         return pl.DataFrame([])
 
     length = frame.height
-    columns: list[pl.Series] = []
+    columns: List[pl.Series] = []
 
     for field in schema.fields:
         expected_dtype = mock_type_to_polars_dtype(field.dataType)

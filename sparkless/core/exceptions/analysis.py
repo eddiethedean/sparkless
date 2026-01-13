@@ -5,7 +5,7 @@ This module provides exception classes for analysis-related errors,
 including SQL parsing, query analysis, and schema validation errors.
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from .base import SparkException
 
 
@@ -30,9 +30,9 @@ class AnalysisException(SparkException):
         message: str,
         stackTrace: Optional[Any] = None,
         error_code: Optional[str] = None,
-        context: Optional[dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
         error_class: Optional[str] = None,
-        message_parameters: Optional[dict[str, Any]] = None,
+        message_parameters: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, stackTrace)
         self.error_code = error_code
@@ -129,7 +129,7 @@ class ColumnNotFoundException(AnalysisException):
     def __init__(
         self,
         column_name: str,
-        available_columns: Optional[list[str]] = None,
+        available_columns: Optional[List[str]] = None,
         table_name: Optional[str] = None,
         message: Optional[str] = None,
         stackTrace: Optional[Any] = None,
@@ -163,8 +163,8 @@ class ColumnNotFoundException(AnalysisException):
 
     @staticmethod
     def _find_similar_columns(
-        target: str, columns: list[str], max_suggestions: int = 3
-    ) -> list[str]:
+        target: str, columns: List[str], max_suggestions: int = 3
+    ) -> List[str]:
         """Find similar column names using Levenshtein-like similarity."""
 
         def similarity_score(s1: str, s2: str) -> float:
@@ -222,7 +222,7 @@ class TableNotFoundException(AnalysisException):
     def __init__(
         self,
         table_name: str,
-        available_tables: Optional[list[str]] = None,
+        available_tables: Optional[List[str]] = None,
         database_name: Optional[str] = None,
         message: Optional[str] = None,
         stackTrace: Optional[Any] = None,

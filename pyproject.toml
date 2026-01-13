@@ -24,6 +24,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -31,11 +32,12 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dependencies = [
     "spark-ddl-parser>=0.1.0",
     "polars>=0.20.0",
     "psutil>=5.8.0",
+    "typing_extensions>=4.0.0; python_version<'3.9'",
 ]
 
 [project.optional-dependencies]
@@ -89,7 +91,7 @@ sparkless = ["py.typed"]
 
 [tool.black]
 line-length = 100
-target-version = ['py39']
+target-version = ['py38']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -115,7 +117,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -219,7 +221,7 @@ markers = [
 ]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py38"
 exclude = [
     "venv",
     ".venv",
@@ -230,3 +232,4 @@ exclude = [
 
 [tool.ruff.lint]
 extend-select = ["C4", "SIM", "TCH", "UP"]
+ignore = ["UP006", "UP007", "UP045"]  # Ignore Python 3.9+ syntax suggestions for Python 3.8 compatibility

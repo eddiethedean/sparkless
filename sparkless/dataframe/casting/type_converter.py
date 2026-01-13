@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Union
+from typing import Any, Dict, List, Union
 
 from ...spark_types import (
     ArrayType,
@@ -35,8 +35,8 @@ class TypeConverter:
         date,
         datetime,
         Decimal,
-        list[Any],
-        dict[Any, Any],
+        List[Any],
+        Dict[Any, Any],
         Any,
     ]:
         """Cast a value to the specified target type."""

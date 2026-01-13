@@ -6,7 +6,7 @@ ensuring type safety and consistency across the system.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .schema import IStructField
@@ -170,7 +170,7 @@ class IArrayType(IDataType):
         pass
 
     @abstractmethod
-    def validate_array(self, value: list[Any]) -> bool:
+    def validate_array(self, value: List[Any]) -> bool:
         """Validate array value."""
         pass
 
@@ -196,7 +196,7 @@ class IMapType(IDataType):
         pass
 
     @abstractmethod
-    def validate_map(self, value: dict[Any, Any]) -> bool:
+    def validate_map(self, value: Dict[Any, Any]) -> bool:
         """Validate map value."""
         pass
 
@@ -216,7 +216,7 @@ class IStructTypeLegacy(IDataType):
 
     @property
     @abstractmethod
-    def fields(self) -> list["IStructField"]:
+    def fields(self) -> List["IStructField"]:
         """Get struct fields."""
         pass
 
@@ -226,7 +226,7 @@ class IStructTypeLegacy(IDataType):
         pass
 
     @abstractmethod
-    def validate_struct(self, value: dict[str, Any]) -> bool:
+    def validate_struct(self, value: Dict[str, Any]) -> bool:
         """Validate struct value."""
         pass
 
@@ -254,7 +254,7 @@ class IDataTypeRegistry(ABC):
         pass
 
     @abstractmethod
-    def list_types(self) -> list[str]:
+    def list_types(self) -> List[str]:
         """List all registered types."""
         pass
 

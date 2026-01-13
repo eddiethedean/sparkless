@@ -5,7 +5,7 @@ This module provides the core SparkSession class for session management,
 maintaining compatibility with PySpark's SparkSession interface.
 """
 
-from typing import Any, Optional, Union, cast, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 from ...core.interfaces.dataframe import IDataFrame
 from ..context import SparkContext
 from ..catalog import Catalog
@@ -58,7 +58,7 @@ class SparkSession:
     # Class attribute for builder pattern
     builder: Optional["SparkSessionBuilder"] = None
     _singleton_session: Optional["SparkSession"] = None
-    _active_sessions: list["SparkSession"] = []
+    _active_sessions: List["SparkSession"] = []
 
     def __init__(
         self,
@@ -129,7 +129,7 @@ class SparkSession:
         self._table_impl = self._real_table
         self._sql_impl = self._real_sql
         # Plugins (Phase 4)
-        self._plugins: list[Any] = []
+        self._plugins: List[Any] = []
 
         # Error simulation
 
@@ -193,8 +193,8 @@ class SparkSession:
 
     def createDataFrame(
         self,
-        data: Union[list[dict[str, Any]], list[Any]],
-        schema: Optional[Union[StructType, list[str]]] = None,
+        data: Union[List[Dict[str, Any]], List[Any]],
+        schema: Optional[Union[StructType, List[str]]] = None,
     ) -> "DataFrame":
         """Create a DataFrame from data (mockable version)."""
         # Use the mock implementation if set, otherwise use the real implementation
@@ -202,8 +202,8 @@ class SparkSession:
 
     def _real_createDataFrame(
         self,
-        data: Union[list[dict[str, Any]], list[Any]],
-        schema: Optional[Union[StructType, list[str], str]] = None,
+        data: Union[List[Dict[str, Any]], List[Any]],
+        schema: Optional[Union[StructType, List[str], str]] = None,
     ) -> "DataFrame":
         """Create a DataFrame from data.
 
@@ -278,7 +278,7 @@ class SparkSession:
             operation_name, func, *args, **kwargs
         )
 
-    def _get_benchmark_results(self) -> dict[str, dict[str, Any]]:
+    def _get_benchmark_results(self) -> Dict[str, Dict[str, Any]]:
         """Return a copy of the latest benchmark results."""
         return self._performance_tracker.get_benchmark_results()
 
@@ -342,7 +342,7 @@ class SparkSession:
         return self._sql_executor.execute(query)
 
     def _bind_parameters(
-        self, query: str, args: tuple[Any, ...], kwargs: dict[str, Any]
+        self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]
     ) -> str:
         """Bind parameters to SQL query safely.
 

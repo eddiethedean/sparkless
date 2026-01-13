@@ -18,7 +18,7 @@ Example:
     >>> optimized_ast = optimizer.optimize(ast)
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 from .parser import SQLAST
 
 
@@ -28,8 +28,8 @@ class QueryPlan:
     def __init__(
         self,
         plan_type: str,
-        children: Optional[list["QueryPlan"]] = None,
-        properties: Optional[dict[str, Any]] = None,
+        children: Optional[List["QueryPlan"]] = None,
+        properties: Optional[Dict[str, Any]] = None,
     ):
         """Initialize query plan.
 
@@ -113,7 +113,7 @@ class SQLQueryOptimizer:
         else:
             return QueryPlan("UNKNOWN", properties={"query_type": ast.query_type})
 
-    def _rule_predicate_pushdown(self, components: dict[str, Any]) -> dict[str, Any]:
+    def _rule_predicate_pushdown(self, components: Dict[str, Any]) -> Dict[str, Any]:
         """Apply predicate pushdown optimization.
 
         Args:
@@ -127,8 +127,8 @@ class SQLQueryOptimizer:
         return components
 
     def _rule_projection_elimination(
-        self, components: dict[str, Any]
-    ) -> dict[str, Any]:
+        self, components: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Apply projection elimination optimization.
 
         Args:
@@ -141,7 +141,7 @@ class SQLQueryOptimizer:
         # unnecessary columns early in the pipeline
         return components
 
-    def _rule_join_reordering(self, components: dict[str, Any]) -> dict[str, Any]:
+    def _rule_join_reordering(self, components: Dict[str, Any]) -> Dict[str, Any]:
         """Apply join reordering optimization.
 
         Args:
@@ -154,7 +154,7 @@ class SQLQueryOptimizer:
         # for better performance
         return components
 
-    def _rule_constant_folding(self, components: dict[str, Any]) -> dict[str, Any]:
+    def _rule_constant_folding(self, components: Dict[str, Any]) -> Dict[str, Any]:
         """Apply constant folding optimization.
 
         Args:
@@ -167,7 +167,7 @@ class SQLQueryOptimizer:
         # constant expressions at compile time
         return components
 
-    def _rule_redundant_operations(self, components: dict[str, Any]) -> dict[str, Any]:
+    def _rule_redundant_operations(self, components: Dict[str, Any]) -> Dict[str, Any]:
         """Apply redundant operations elimination.
 
         Args:

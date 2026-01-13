@@ -24,7 +24,7 @@ Example:
     ['key1', 'key2']
 """
 
-from typing import Union, Callable, Any, Optional
+from typing import Any, Callable, Optional, Union
 from sparkless.functions.base import (
     Column,
     ColumnOperation,

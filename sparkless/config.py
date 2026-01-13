@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from functools import lru_cache
-from typing import Any
+from typing import Any, Dict, Optional
 
 DEFAULT_BACKEND = "polars"
 ENV_BACKEND_KEY = "SPARKLESS_BACKEND"
@@ -13,7 +13,7 @@ ENV_FEATURE_FLAGS_KEY = "SPARKLESS_FEATURE_FLAGS"
 ENV_PROFILE_TOGGLE = "SPARKLESS_PROFILE"
 
 _ENV_FEATURE_PREFIX = "SPARKLESS_FEATURE_"
-_FEATURE_FLAG_DEFAULTS: dict[str, bool] = {
+_FEATURE_FLAG_DEFAULTS: Dict[str, bool] = {
     "enable_performance_profiling": False,
     "enable_polars_vectorized_shortcuts": False,
     "enable_expression_translation_cache": False,
@@ -21,7 +21,7 @@ _FEATURE_FLAG_DEFAULTS: dict[str, bool] = {
 }
 
 
-def resolve_backend_type(explicit_backend: str | None = None) -> str:
+def resolve_backend_type(explicit_backend: Optional[str] = None) -> str:
     """Resolve the backend type using overrides, environment variables, and defaults."""
 
     candidate = explicit_backend or os.getenv(ENV_BACKEND_KEY) or DEFAULT_BACKEND
@@ -34,10 +34,10 @@ def resolve_backend_type(explicit_backend: str | None = None) -> str:
 
 
 @lru_cache(maxsize=1)
-def _load_feature_flag_overrides() -> dict[str, bool]:
+def _load_feature_flag_overrides() -> Dict[str, bool]:
     """Load feature flag overrides from environment variables."""
 
-    overrides: dict[str, bool] = {}
+    overrides: Dict[str, bool] = {}
 
     # Allow simple JSON blob for multiple flags.
     raw_json = os.getenv(ENV_FEATURE_FLAGS_KEY)
@@ -80,7 +80,7 @@ def _coerce_bool(value: Any) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-def get_feature_flags() -> dict[str, bool]:
+def get_feature_flags() -> Dict[str, bool]:
     """Return merged feature flag map (defaults + overrides)."""
 
     merged = dict(_FEATURE_FLAG_DEFAULTS)
@@ -99,7 +99,7 @@ def is_feature_enabled(flag_name: str) -> bool:
     return bool(flags.get(flag, False))
 
 
-def describe_feature_flags() -> dict[str, bool]:
+def describe_feature_flags() -> Dict[str, bool]:
     """Expose feature flags primarily for debugging or documentation."""
 
     return get_feature_flags()

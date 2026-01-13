@@ -1,6 +1,6 @@
 """DataFrame formatting utilities for display operations."""
 
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from ...spark_types import Row
 
@@ -9,7 +9,7 @@ class DataFrameFormatter:
     """Handles DataFrame formatting for display operations."""
 
     @staticmethod
-    def format_row(row: Row, columns: list[str]) -> str:
+    def format_row(row: Row, columns: List[str]) -> str:
         """Format a single row for display."""
         formatted_values = []
         for col in columns:
@@ -24,15 +24,15 @@ class DataFrameFormatter:
 
     @staticmethod
     def format_rows(
-        rows: list[Row], columns: list[str], limit: Optional[int] = None
-    ) -> list[str]:
+        rows: List[Row], columns: List[str], limit: Optional[int] = None
+    ) -> List[str]:
         """Format multiple rows for display."""
         if limit is not None:
             rows = rows[:limit]
         return [DataFrameFormatter.format_row(row, columns) for row in rows]
 
     @staticmethod
-    def format_schema(columns: list[str], types: list[str]) -> str:
+    def format_schema(columns: List[str], types: List[str]) -> str:
         """Format the schema information."""
         schema_parts = []
         for col, col_type in zip(columns, types):

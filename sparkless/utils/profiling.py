@@ -9,7 +9,7 @@ import tracemalloc
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -27,13 +27,13 @@ class ProfileEvent:
     category: str
     duration_ms: float
     peak_kb: float
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class _ThreadLocalEvents(threading.local):
     def __init__(self) -> None:
         super().__init__()
-        self.events: list[ProfileEvent] = []
+        self.events: List[ProfileEvent] = []
 
 
 class ProfilingRecorder:
@@ -57,7 +57,7 @@ class ProfilingRecorder:
     def reset(self) -> None:
         self._events.events = []
 
-    def list_events(self) -> list[ProfileEvent]:
+    def list_events(self) -> List[ProfileEvent]:
         return list(self._events.events)
 
 
@@ -82,15 +82,15 @@ class ProfileScope:
     __slots__ = ("_metadata",)
 
     def __init__(self) -> None:
-        self._metadata: dict[str, Any] = {}
+        self._metadata: Dict[str, Any] = {}
 
-    def add_metadata(self, extra: dict[str, Any] | None) -> None:
+    def add_metadata(self, extra: Optional[Dict[str, Any]]) -> None:
         if not extra:
             return
         self._metadata.update(extra)
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> Dict[str, Any]:
         return self._metadata
 
 
@@ -98,7 +98,7 @@ class _NoopScope(ProfileScope):
     def __init__(self) -> None:
         super().__init__()
 
-    def add_metadata(self, extra: dict[str, Any] | None) -> None:  # noqa: D401
+    def add_metadata(self, extra: Optional[Dict[str, Any]]) -> None:  # noqa: D401
         return
 
 
@@ -146,9 +146,9 @@ def profile_block(
 def profiled(
     name: str,
     category: str = "runtime",
-    extra_resolver: (
-        Callable[[tuple[Any, ...], dict[str, Any], Any], dict[str, Any] | None] | None
-    ) = None,
+    extra_resolver: Optional[
+        Callable[[Tuple[Any, ...], Dict[str, Any], Any], Optional[Dict[str, Any]]]
+    ] = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for profiling functions/methods."""
 
@@ -176,7 +176,7 @@ def profiled(
     return decorator
 
 
-def collect_events() -> list[ProfileEvent]:
+def collect_events() -> List[ProfileEvent]:
     """Return events recorded on this thread."""
 
     return _recorder.list_events()

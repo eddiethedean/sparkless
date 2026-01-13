@@ -25,7 +25,7 @@ Example:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -65,8 +65,8 @@ class DataFrameReader:
         """
         self.session = session
         self._format = "parquet"
-        self._options: dict[str, str] = {}
-        self._schema: StructType | None = None
+        self._options: Dict[str, str] = {}
+        self._schema: Union[StructType, None] = None
 
     def format(self, source: str) -> DataFrameReader:
         """Set input format.
@@ -114,7 +114,7 @@ class DataFrameReader:
         self._options.update(options)
         return self
 
-    def schema(self, schema: StructType | str) -> DataFrameReader:
+    def schema(self, schema: Union[StructType, str]) -> DataFrameReader:
         """Set schema.
 
         Args:
@@ -138,7 +138,10 @@ class DataFrameReader:
         return self
 
     def load(
-        self, path: str | None = None, format: str | None = None, **options: Any
+        self,
+        path: Union[str, None] = None,
+        format: Union[str, None] = None,
+        **options: Any,
     ) -> IDataFrame:
         """Load data.
 
@@ -155,7 +158,7 @@ class DataFrameReader:
             >>> spark.read.format("parquet").load("/path/to/file")
         """
         resolved_format = (format or self._format or "parquet").lower()
-        combined_options: dict[str, Any] = {**self._options, **options}
+        combined_options: Dict[str, Any] = {**self._options, **options}
 
         if resolved_format == "delta":
             # Delegate to table() for Delta path semantics
@@ -261,7 +264,7 @@ class DataFrameReader:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _gather_paths(self, root: Path, data_format: str) -> list[str]:
+    def _gather_paths(self, root: Path, data_format: str) -> List[str]:
         """Collect concrete file paths for the requested format."""
         if root.is_file():
             return [str(root)]
@@ -276,7 +279,7 @@ class DataFrameReader:
         # Fallback – include all files
         return [str(p) for p in sorted(root.rglob("*")) if p.is_file()]
 
-    def _extension_for_format(self, data_format: str) -> str | None:
+    def _extension_for_format(self, data_format: str) -> Union[str, None]:
         """Map format names to file extensions."""
         mapping = {
             "parquet": ".parquet",
@@ -288,7 +291,7 @@ class DataFrameReader:
         return mapping.get(data_format)
 
     def _read_with_polars(
-        self, paths: Iterable[str], data_format: str, options: dict[str, Any]
+        self, paths: Iterable[str], data_format: str, options: Dict[str, Any]
     ) -> pl.DataFrame:
         """Load data from disk using Polars."""
         paths_list = list(paths)
@@ -311,7 +314,7 @@ class DataFrameReader:
             f"Unsupported format '{data_format}' for DataFrameReader"
         )
 
-    def _read_json(self, paths: list[str], options: dict[str, Any]) -> pl.DataFrame:
+    def _read_json(self, paths: List[str], options: Dict[str, Any]) -> pl.DataFrame:
         """Read JSON or NDJSON files via Polars, falling back to Python json."""
         ndjson_opts = {}
         if "infer_schema_length" in options:
@@ -322,7 +325,7 @@ class DataFrameReader:
         except Exception:
             pass
 
-        frames: list[pl.DataFrame] = []
+        frames: List[pl.DataFrame] = []
         import json
 
         for file_path in paths:
@@ -350,24 +353,24 @@ class DataFrameReader:
 
         return pl.concat(frames, how="diagonal_relaxed")
 
-    def _read_text(self, paths: list[str]) -> pl.DataFrame:
+    def _read_text(self, paths: List[str]) -> pl.DataFrame:
         """Read plain text files into a single-column DataFrame."""
-        values: list[str] = []
+        values: List[str] = []
         for file_path in paths:
             with open(file_path, encoding="utf-8") as handle:
                 values.extend([line.rstrip("\n") for line in handle])
         return pl.DataFrame({"value": values})
 
-    def _extract_parquet_options(self, options: dict[str, Any]) -> dict[str, Any]:
+    def _extract_parquet_options(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """Filter parquet-specific options."""
-        parquet_opts: dict[str, Any] = {}
+        parquet_opts: Dict[str, Any] = {}
         if "hive_partitioning" in options:
             parquet_opts["hive_partitioning"] = options["hive_partitioning"]
         return parquet_opts
 
-    def _extract_csv_options(self, options: dict[str, Any]) -> dict[str, Any]:
+    def _extract_csv_options(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """Translate Spark CSV options to Polars equivalents."""
-        csv_opts: dict[str, Any] = {}
+        csv_opts: Dict[str, Any] = {}
 
         header = options.get("header", options.get("hasHeader", "true"))
         csv_opts["has_header"] = self._to_bool(header, default=True)
@@ -402,13 +405,13 @@ class DataFrameReader:
 
     def _build_schema_and_rows(
         self, frame: pl.DataFrame
-    ) -> tuple[StructType, list[dict[str, Any]]]:
+    ) -> Tuple[StructType, List[Dict[str, Any]]]:
         """Create StructType schema and dictionary rows from a Polars frame."""
         if self._schema is not None:
             aligned = align_frame_to_schema(frame, self._schema)
             return self._schema, aligned.to_dicts()
 
-        fields: list[StructField] = []
+        fields: List[StructField] = []
         for name, dtype in zip(frame.columns, frame.dtypes):
             mock_type = polars_dtype_to_mock_type(dtype)
             fields.append(StructField(name, mock_type))

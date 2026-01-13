@@ -5,7 +5,7 @@ This mixin provides aggregation operations that can be mixed into
 the DataFrame class to add aggregation capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast
+from typing import Any, Dict, Generic, List, TYPE_CHECKING, Tuple, TypeVar, Union, cast
 
 from ...core.exceptions.operation import SparkColumnNotFoundError
 from ...functions import Column, ColumnOperation, AggregateFunction
@@ -23,8 +23,8 @@ class AggregationOperations(Generic[SupportsDF]):
 
     if TYPE_CHECKING:
         schema: StructType
-        data: list[dict[str, Any]]
-        _operations_queue: list[tuple[str, Any]]
+        data: List[Dict[str, Any]]
+        _operations_queue: List[Tuple[str, Any]]
 
         def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
 
@@ -158,7 +158,7 @@ class AggregationOperations(Generic[SupportsDF]):
         return CubeGroupedData(self, col_names)
 
     def agg(
-        self: SupportsDF, *exprs: Union[str, Column, ColumnOperation, dict[str, str]]
+        self: SupportsDF, *exprs: Union[str, Column, ColumnOperation, Dict[str, str]]
     ) -> SupportsDF:
         """Aggregate DataFrame without grouping (global aggregation).
 
@@ -178,7 +178,7 @@ class AggregationOperations(Generic[SupportsDF]):
             from ...functions import F
 
             agg_dict = exprs[0]
-            converted_exprs: list[
+            converted_exprs: List[
                 Union[str, Column, ColumnOperation, AggregateFunction]
             ] = []
             for col_name, agg_func in agg_dict.items():

@@ -7,7 +7,7 @@ from either PySpark or mock-spark based on configuration.
 
 import os
 import pytest
-from typing import Optional, Any
+from typing import Any, Optional, Tuple
 from enum import Enum
 
 # Set JAVA_HOME at module level if not already set - PySpark needs this before import
@@ -602,7 +602,7 @@ class SparkBackend:
     @staticmethod
     def create_sessions_for_comparison(
         app_name: str = "test_app", **kwargs: Any
-    ) -> tuple[Any, Any]:
+    ) -> Tuple[Any, Any]:
         """Create both mock-spark and PySpark sessions for comparison.
 
         Args:

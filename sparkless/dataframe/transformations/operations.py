@@ -5,7 +5,19 @@ This mixin provides transformation operations that can be mixed into
 the DataFrame class to add transformation capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast, overload
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    TYPE_CHECKING,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField
@@ -19,11 +31,11 @@ class TransformationOperations(Generic[SupportsDF]):
     """Mixin providing transformation operations for DataFrame."""
 
     if TYPE_CHECKING:
-        columns: list[str]
-        data: list[dict[str, Any]]
+        columns: List[str]
+        data: List[Dict[str, Any]]
         schema: StructType
         storage: Any
-        _operations_queue: list[tuple[str, Any]]
+        _operations_queue: List[Tuple[str, Any]]
         _watermark_col: Optional[str]
         _watermark_delay: Optional[str]
 
@@ -182,7 +194,7 @@ class TransformationOperations(Generic[SupportsDF]):
             # Check for function calls (contains parentheses)
             return "(" not in text
 
-        columns: list[Union[str, Column, ColumnOperation]] = []
+        columns: List[Union[str, Column, ColumnOperation]] = []
         for expr in exprs:
             text = expr.strip()
             if text == "*":
@@ -307,7 +319,7 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def withColumns(
         self: SupportsDF,
-        colsMap: dict[str, Union[Column, ColumnOperation, Literal, Any]],
+        colsMap: Dict[str, Union[Column, ColumnOperation, Literal, Any]],
     ) -> SupportsDF:
         """Add or replace multiple columns at once (PySpark 3.3+).
 
@@ -346,7 +358,7 @@ class TransformationOperations(Generic[SupportsDF]):
 
         return cast("SupportsDF", DataFrame(new_data, new_schema, self.storage))
 
-    def withColumnsRenamed(self: SupportsDF, colsMap: dict[str, str]) -> SupportsDF:
+    def withColumnsRenamed(self: SupportsDF, colsMap: Dict[str, str]) -> SupportsDF:
         """Rename multiple columns (PySpark 3.4+).
 
         Args:
@@ -394,7 +406,7 @@ class TransformationOperations(Generic[SupportsDF]):
         return cast("SupportsDF", DataFrame(distinct_data, self.schema, self.storage))
 
     def dropDuplicates(
-        self: SupportsDF, subset: Optional[list[str]] = None
+        self: SupportsDF, subset: Optional[List[str]] = None
     ) -> SupportsDF:
         """Drop duplicate rows."""
         if subset is None:
@@ -413,7 +425,7 @@ class TransformationOperations(Generic[SupportsDF]):
         return cast("SupportsDF", DataFrame(distinct_data, self.schema, self.storage))
 
     def drop_duplicates(
-        self: SupportsDF, subset: Optional[list[str]] = None
+        self: SupportsDF, subset: Optional[List[str]] = None
     ) -> SupportsDF:
         """Alias for dropDuplicates() (all PySpark versions).
 
@@ -487,9 +499,9 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def replace(
         self: SupportsDF,
-        to_replace: Union[int, float, str, list[Any], dict[Any, Any]],
-        value: Optional[Union[int, float, str, list[Any]]] = None,
-        subset: Optional[list[str]] = None,
+        to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
+        value: Optional[Union[int, float, str, List[Any]]] = None,
+        subset: Optional[List[str]] = None,
     ) -> SupportsDF:
         """Replace values in DataFrame (all PySpark versions).
 
@@ -517,7 +529,7 @@ class TransformationOperations(Generic[SupportsDF]):
         target_columns = subset if subset else self.columns
 
         # Build replacement map
-        replace_map: dict[Any, Any] = {}
+        replace_map: Dict[Any, Any] = {}
         if isinstance(to_replace, dict):
             replace_map = to_replace
         elif isinstance(to_replace, list):

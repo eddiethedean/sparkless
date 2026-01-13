@@ -5,7 +5,7 @@ This mixin provides schema-related properties and operations that can be
         mixed into the DataFrame class to add schema capabilities.
 """
 
-from typing import Generic, TypeVar
+from typing import Generic, List, Tuple, TypeVar
 
 from ..protocols import SupportsDataFrameOps
 from ...spark_types import StructType
@@ -17,7 +17,7 @@ class SchemaOperations(Generic[DataFrameT]):
     """Mixin providing schema-related operations for DataFrame."""
 
     @property
-    def columns(self: DataFrameT) -> list[str]:
+    def columns(self: DataFrameT) -> List[str]:
         """Get column names."""
         # Get schema (handles lazy evaluation)
         current_schema = self.schema
@@ -46,6 +46,6 @@ class SchemaOperations(Generic[DataFrameT]):
         self._schema = value
 
     @property
-    def dtypes(self: DataFrameT) -> list[tuple[str, str]]:
+    def dtypes(self: DataFrameT) -> List[Tuple[str, str]]:
         """Get column names and their data types."""
         return [(field.name, field.dataType.typeName()) for field in self.schema.fields]

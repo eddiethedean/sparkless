@@ -10,10 +10,10 @@ sample covariance).
 from __future__ import annotations
 
 from math import fsum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from typing import Sequence
 
 
 def percentile(values: Sequence[float], percent: float) -> float:

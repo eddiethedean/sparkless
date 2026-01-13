@@ -1,3 +1,4 @@
+from typing import Dict, List
 import importlib
 import json
 
@@ -13,7 +14,7 @@ def test_discover_pyspark_api_smoke(tmp_path, monkeypatch):
     stub_versions = ["9.9.9-simulated"]
     monkeypatch.setattr(discover, "PYSPARK_VERSIONS", stub_versions)
 
-    def fake_discover(version: str) -> dict[str, list[str]]:
+    def fake_discover(version: str) -> Dict[str, List[str]]:
         return {
             "functions": ["fake_func", f"unique_{version.replace('-', '_')}"],
             "dataframe_methods": ["select", "fake_method"],

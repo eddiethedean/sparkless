@@ -4,7 +4,7 @@ Join service for DataFrame operations.
 This service provides join and set operations using composition instead of mixin inheritance.
 """
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import Any, Dict, List, Set, TYPE_CHECKING, Tuple, Union, cast
 
 from ...spark_types import DataType, StringType, StructField, StructType
 from ..protocols import SupportsDataFrameOps
@@ -24,7 +24,7 @@ class JoinService:
     def join(
         self,
         other: SupportsDataFrameOps,
-        on: Union[str, list[str], "ColumnOperation"],
+        on: Union[str, List[str], "ColumnOperation"],
         how: str = "inner",
     ) -> "SupportsDataFrameOps":
         """Join with another DataFrame."""
@@ -150,12 +150,12 @@ class JoinService:
         from ...dataframe.operations.set_operations import SetOperations
 
         # Get column names from both DataFrames
-        self_cols: set[str] = {field.name for field in self._df.schema.fields}
-        other_cols: set[str] = {field.name for field in other.schema.fields}
+        self_cols: Set[str] = {field.name for field in self._df.schema.fields}
+        other_cols: Set[str] = {field.name for field in other.schema.fields}
 
         # Check for missing columns
-        missing_in_other: set[str] = self_cols - other_cols
-        missing_in_self: set[str] = other_cols - self_cols
+        missing_in_other: Set[str] = self_cols - other_cols
+        missing_in_self: Set[str] = other_cols - self_cols
 
         if not allowMissingColumns and (missing_in_other or missing_in_self):
             raise AnalysisException(
@@ -164,7 +164,7 @@ class JoinService:
             )
 
         # Check type compatibility for columns that exist in both schemas
-        common_cols: set[str] = self_cols & other_cols
+        common_cols: Set[str] = self_cols & other_cols
         for col_name in common_cols:
             # Find the field in both schemas
             self_field: StructField = next(
@@ -185,14 +185,14 @@ class JoinService:
                 )
 
         # Get all unique column names in order
-        all_cols: list[str] = list(self_cols.union(other_cols))
+        all_cols: List[str] = list(self_cols.union(other_cols))
 
         # Create combined data with all columns
-        combined_data: list[dict[str, Any]] = []
+        combined_data: List[Dict[str, Any]] = []
 
         # Add rows from self DataFrame
         for row in self._df.data:
-            new_row: dict[str, Any] = {}
+            new_row: Dict[str, Any] = {}
             for col in all_cols:
                 if col in row:
                     new_row[col] = row[col]
@@ -202,7 +202,7 @@ class JoinService:
 
         # Add rows from other DataFrame
         for row in other.data:
-            other_new_row: dict[str, Any] = {}
+            other_new_row: Dict[str, Any] = {}
             for col in all_cols:
                 if col in row:
                     other_new_row[col] = row[col]
@@ -213,7 +213,7 @@ class JoinService:
         # Create new schema with all columns
         # For common columns, use the type from the first DataFrame
         # For nullable flags, result is nullable if either input is nullable
-        new_fields: list[StructField] = []
+        new_fields: List[StructField] = []
         for col in all_cols:
             # Try to get the data type from the original schema, default to StringType
             field_type: DataType = StringType()
@@ -321,7 +321,7 @@ class JoinService:
         """
         from collections import Counter
 
-        def row_to_tuple(row: dict[str, Any]) -> tuple[Any, ...]:
+        def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
             return tuple(row.get(field.name) for field in self._df.schema.fields)
 
         # Count occurrences in each DataFrame
@@ -367,17 +367,17 @@ class JoinService:
 
         # Count occurrences in other DataFrame
 
-        other_row_counts: dict[tuple[Any, ...], int] = {}
+        other_row_counts: Dict[Tuple[Any, ...], int] = {}
         for row_tuple in other_rows:
             other_row_counts[row_tuple] = other_row_counts.get(row_tuple, 0) + 1
 
         # Count occurrences in self DataFrame
-        self_row_counts: dict[tuple[Any, ...], int] = {}
+        self_row_counts: Dict[Tuple[Any, ...], int] = {}
         for row_tuple in self_rows:
             self_row_counts[row_tuple] = self_row_counts.get(row_tuple, 0) + 1
 
         # Calculate the difference preserving duplicates
-        result_rows: list[tuple[Any, ...]] = []
+        result_rows: List[Tuple[Any, ...]] = []
         for row_tuple in self_rows:
             # Count how many times this row appears in other
             other_count = other_row_counts.get(row_tuple, 0)
@@ -413,7 +413,7 @@ class JoinService:
         """
 
         # Convert rows to tuples for comparison
-        def row_to_tuple(row: dict[str, Any]) -> tuple[Any, ...]:
+        def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
             return tuple(row.get(field.name) for field in self._df.schema.fields)
 
         self_rows = {row_to_tuple(row) for row in self._df.data}

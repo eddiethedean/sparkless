@@ -4,7 +4,7 @@ Bitwise functions for Sparkless (PySpark 3.2+).
 This module provides bitwise operations on integer columns.
 """
 
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from sparkless.functions.base import AggregateFunction

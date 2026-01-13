@@ -5,7 +5,7 @@ This module provides the F namespace functions and expression utilities
 for creating column expressions and transformations.
 """
 
-from typing import Any, Union, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Union
 from .column import Column, ColumnOperation
 from .literals import Literal
 
@@ -105,7 +105,7 @@ class ExpressionFunctions:
         Returns:
             ColumnOperation for coalesce.
         """
-        col_refs: list[Union[Column, ColumnOperation]] = []
+        col_refs: List[Union[Column, ColumnOperation]] = []
         for col in columns:
             if isinstance(col, str):
                 col_refs.append(Column(col))

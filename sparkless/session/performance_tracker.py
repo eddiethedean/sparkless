@@ -6,7 +6,7 @@ Extracted from session.py to improve organization.
 """
 
 import time
-from typing import Any, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sparkless.dataframe import DataFrame
@@ -17,9 +17,9 @@ class SessionPerformanceTracker:
 
     def __init__(self) -> None:
         """Initialize performance tracker."""
-        self._tracked_dataframes: list[Any] = []
+        self._tracked_dataframes: List[Any] = []
         self._approx_memory_usage_bytes = 0
-        self._benchmark_results: dict[str, dict[str, Any]] = {}
+        self._benchmark_results: Dict[str, Dict[str, Any]] = {}
 
     # -------------------------------------------------------------------------
     # Memory Tracking
@@ -108,7 +108,7 @@ class SessionPerformanceTracker:
         }
         return result
 
-    def get_benchmark_results(self) -> dict[str, dict[str, Any]]:
+    def get_benchmark_results(self) -> Dict[str, Dict[str, Any]]:
         """Return a copy of the latest benchmark results.
 
         Returns:

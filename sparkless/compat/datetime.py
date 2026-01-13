@@ -1,14 +1,26 @@
 """Datetime compatibility helpers for Sparkless.
+from __future__ import annotations
 
 These helpers normalise date and timestamp outputs when running on the
 Polars-backed Sparkless engine, while acting as no-ops under real PySpark.
 """
 
-from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from datetime import date, datetime
 import importlib.util
 import os
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import (
+    Any,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    TYPE_CHECKING,
+    Type,
+    Union,
+    cast,
+)
 
 from sparkless.functions import Functions as F
 from sparkless.functions.base import Column, ColumnOperation
@@ -19,7 +31,7 @@ if TYPE_CHECKING:
 else:  # pragma: no cover - PySpark not available in Sparkless env
     PySparkColumnType = Any
 
-PySparkColumn: Optional[type[PySparkColumnType]]
+PySparkColumn: Optional[Type[PySparkColumnType]]
 
 _ALLOW_PYSPARK_IMPORT = os.environ.get("MOCK_SPARK_ENABLE_PYSPARK_SHIMS", "0") == "1"
 if _ALLOW_PYSPARK_IMPORT and importlib.util.find_spec("pyspark.sql.column") is not None:
@@ -29,7 +41,7 @@ if _ALLOW_PYSPARK_IMPORT and importlib.util.find_spec("pyspark.sql.column") is n
         PySparkColumn = None
     else:
         PySparkColumn = cast(
-            "Optional[type[PySparkColumnType]]",
+            "Optional[Type[PySparkColumnType]]",
             _RuntimePySparkColumn,
         )
 else:
@@ -138,7 +150,7 @@ def normalize_collected_datetimes(
     date_columns: Optional[Iterable[str]] = None,
     timestamp_columns: Optional[Iterable[str]] = None,
     timestamp_format: str = "%Y-%m-%d %H:%M:%S",
-) -> list[MutableMapping[str, object]]:
+) -> List[MutableMapping[str, object]]:
     """Normalise collected Row objects containing date/timestamp values.
 
     Returns a list of dictionaries to make downstream assertions (especially in
@@ -148,7 +160,7 @@ def normalize_collected_datetimes(
     date_cols = list(date_columns or [])
     ts_cols = list(timestamp_columns or [])
 
-    normalized: list[MutableMapping[str, object]] = []
+    normalized: List[MutableMapping[str, object]] = []
 
     for row in rows:
         if isinstance(row, Mapping):

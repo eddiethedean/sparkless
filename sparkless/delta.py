@@ -22,7 +22,7 @@ For real Delta operations (MERGE, time travel, etc.), use real PySpark + delta-s
 from __future__ import annotations
 import re
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 from collections import defaultdict
 
 if TYPE_CHECKING:
@@ -44,13 +44,13 @@ def _normalize_boolean_expression(expression: str) -> str:
 
 
 def _build_eval_context(
-    target_row: dict[str, Any],
-    target_aliases: set[str],
-    source_row: dict[str, Any] | None = None,
-    source_aliases: set[str] | None = None,
-) -> dict[str, Any]:
+    target_row: Dict[str, Any],
+    target_aliases: Set[str],
+    source_row: Optional[Dict[str, Any]] = None,
+    source_aliases: Optional[Set[str]] = None,
+) -> Dict[str, Any]:
     """Create evaluation context with target/source aliases for expression eval."""
-    context: dict[str, Any] = dict(target_row)
+    context: Dict[str, Any] = dict(target_row)
     target_ns = SimpleNamespace(**target_row)
     for alias in target_aliases:
         context[alias] = target_ns
@@ -124,14 +124,14 @@ class DeltaTable:
         return self
 
     # Mock operations - don't actually execute
-    def delete(self, condition: str | None = None) -> None:
+    def delete(self, condition: Union[str, None] = None) -> None:
         """Delete rows matching the given condition."""
         rows = self._load_table_rows()
         schema = self._current_schema()
         alias = getattr(self, "_alias", "target")
 
         if not condition:
-            remaining_rows: list[dict[str, Any]] = []
+            remaining_rows: List[Dict[str, Any]] = []
         else:
             normalized = _normalize_boolean_expression(condition)
             remaining_rows = [
@@ -143,7 +143,7 @@ class DeltaTable:
         new_df = self._spark.createDataFrame(remaining_rows, schema)
         self._overwrite_table(new_df)
 
-    def update(self, condition: str, set_values: dict[str, Any]) -> None:
+    def update(self, condition: str, set_values: Dict[str, Any]) -> None:
         """Update rows that satisfy condition with provided assignments."""
         if not set_values:
             return
@@ -155,7 +155,7 @@ class DeltaTable:
             _normalize_boolean_expression(condition) if condition else None
         )
 
-        updated_rows: list[dict[str, Any]] = []
+        updated_rows: List[Dict[str, Any]] = []
         for row in rows:
             should_update = (
                 True
@@ -185,7 +185,7 @@ class DeltaTable:
             getattr(self, "_alias", None),
         )
 
-    def vacuum(self, retention_hours: float | None = None) -> None:
+    def vacuum(self, retention_hours: Union[float, None] = None) -> None:
         """Mock vacuum (no-op)."""
         pass
 
@@ -221,7 +221,7 @@ class DeltaTable:
         from .dataframe import DataFrame
 
         # Create mock table details
-        details: list[dict[str, Any]] = [
+        details: List[Dict[str, Any]] = [
             {
                 "format": "delta",
                 "id": f"mock-table-{hash(self._table_name)}",
@@ -259,7 +259,7 @@ class DeltaTable:
 
         return DataFrame(details, schema, self._spark._storage)
 
-    def history(self, limit: int | None = None) -> DataFrame:
+    def history(self, limit: Union[int, None] = None) -> DataFrame:
         """
         Mock table history.
 
@@ -318,14 +318,14 @@ class DeltaTable:
         """Persist the provided DataFrame back into the Delta table."""
         df.write.format("delta").mode("overwrite").saveAsTable(self._table_name)
 
-    def _resolve_table_parts(self) -> tuple[str, str]:
+    def _resolve_table_parts(self) -> Tuple[str, str]:
         if "." in self._table_name:
             schema, table = self._table_name.split(".", 1)
         else:
             schema, table = "default", self._table_name
         return schema, table
 
-    def _load_table_rows(self) -> list[dict[str, Any]]:
+    def _load_table_rows(self) -> List[Dict[str, Any]]:
         schema_name, table_name = self._resolve_table_parts()
         data = self._spark._storage.get_data(schema_name, table_name)
         return [dict(row) for row in data]
@@ -342,7 +342,7 @@ class DeltaTable:
         return cast("StructType", schema)
 
     def _evaluate_row_condition(
-        self, normalized_expression: str, row: dict[str, Any], alias: str
+        self, normalized_expression: str, row: Dict[str, Any], alias: str
     ) -> bool:
         context = _build_eval_context(row, {alias, "target"})
         try:
@@ -353,7 +353,7 @@ class DeltaTable:
             return False
 
     def _evaluate_update_expression(
-        self, expression: Any, row: dict[str, Any], alias: str
+        self, expression: Any, row: Dict[str, Any], alias: str
     ) -> Any:
         if hasattr(expression, "operation") or isinstance(expression, Column):
             raise NotImplementedError(
@@ -385,28 +385,28 @@ class DeltaMergeBuilder:
         delta_table: DeltaTable,
         source: Any,
         condition: str,
-        target_alias: str | None,
+        target_alias: Union[str, None],
     ):
         self._table = delta_table
         self._source = source
         self._condition = condition
         self._target_alias = target_alias or "target"
         self._source_alias = getattr(source, "_alias", None) or "source"
-        self._matched_update_assignments: dict[str, Any] | None = None
+        self._matched_update_assignments: Optional[Dict[str, Any]] = None
         self._matched_update_all: bool = False
-        self._matched_delete_condition: str | None = None
-        self._not_matched_insert_assignments: dict[str, Any] | None = None
+        self._matched_delete_condition: Union[str, None] = None
+        self._not_matched_insert_assignments: Optional[Dict[str, Any]] = None
         self._not_matched_insert_all: bool = False
 
     @property
-    def _target_aliases(self) -> set[str]:
+    def _target_aliases(self) -> Set[str]:
         return {self._target_alias, "target", "t"}
 
     @property
-    def _source_aliases(self) -> set[str]:
+    def _source_aliases(self) -> Set[str]:
         return {self._source_alias, "source", "s"}
 
-    def whenMatchedUpdate(self, set_values: dict[str, Any]) -> DeltaMergeBuilder:
+    def whenMatchedUpdate(self, set_values: Dict[str, Any]) -> DeltaMergeBuilder:
         assignments = dict(set_values)
         if self._matched_update_assignments is None:
             self._matched_update_assignments = assignments
@@ -418,11 +418,13 @@ class DeltaMergeBuilder:
         self._matched_update_all = True
         return self
 
-    def whenMatchedDelete(self, condition: str | None = None) -> DeltaMergeBuilder:
+    def whenMatchedDelete(
+        self, condition: Union[str, None] = None
+    ) -> DeltaMergeBuilder:
         self._matched_delete_condition = condition
         return self
 
-    def whenNotMatchedInsert(self, values: dict[str, Any]) -> DeltaMergeBuilder:
+    def whenNotMatchedInsert(self, values: Dict[str, Any]) -> DeltaMergeBuilder:
         self._not_matched_insert_assignments = dict(values)
         self._not_matched_insert_all = False
         return self
@@ -444,8 +446,8 @@ class DeltaMergeBuilder:
         for row in source_rows:
             source_groups[row.get(source_key)].append(row)
 
-        matched_keys: set[Any] = set()
-        result_rows: list[dict[str, Any]] = []
+        matched_keys: Set[Any] = set()
+        result_rows: List[Dict[str, Any]] = []
 
         for target_row in target_rows:
             key = target_row.get(target_key)
@@ -489,7 +491,7 @@ class DeltaMergeBuilder:
             return cast("DataFrame", source.toDF())
         raise TypeError("Merge source must be a DataFrame or DeltaTable")
 
-    def _parse_join_keys(self, condition: str) -> tuple[str, str]:
+    def _parse_join_keys(self, condition: str) -> Tuple[str, str]:
         pattern = r"\s*(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)\s*"
         match = re.fullmatch(pattern, condition.strip())
         if not match:
@@ -509,7 +511,7 @@ class DeltaMergeBuilder:
         )
 
     def _should_delete(
-        self, target_row: dict[str, Any], source_row: dict[str, Any]
+        self, target_row: Dict[str, Any], source_row: Dict[str, Any]
     ) -> bool:
         if self._matched_delete_condition is None:
             return False
@@ -523,10 +525,10 @@ class DeltaMergeBuilder:
 
     def _apply_matched_updates(
         self,
-        target_row: dict[str, Any],
-        source_row: dict[str, Any],
+        target_row: Dict[str, Any],
+        source_row: Dict[str, Any],
         schema: StructType,
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         updated = dict(target_row)
 
         if self._matched_update_all:
@@ -543,16 +545,16 @@ class DeltaMergeBuilder:
         return updated
 
     def _project_source_row(
-        self, source_row: dict[str, Any], schema: StructType
-    ) -> dict[str, Any]:
+        self, source_row: Dict[str, Any], schema: StructType
+    ) -> Dict[str, Any]:
         projected = {}
         for field in schema.fields:
             projected[field.name] = source_row.get(field.name)
         return projected
 
     def _build_insert_from_assignments(
-        self, source_row: dict[str, Any], schema: StructType
-    ) -> dict[str, Any]:
+        self, source_row: Dict[str, Any], schema: StructType
+    ) -> Dict[str, Any]:
         row = {field.name: None for field in schema.fields}
         assert self._not_matched_insert_assignments is not None
         for column, expression in self._not_matched_insert_assignments.items():
@@ -562,8 +564,8 @@ class DeltaMergeBuilder:
     def _evaluate_assignment(
         self,
         expression: Any,
-        target_row: dict[str, Any],
-        source_row: dict[str, Any],
+        target_row: Dict[str, Any],
+        source_row: Dict[str, Any],
     ) -> Any:
         if hasattr(expression, "operation") or isinstance(expression, Column):
             raise NotImplementedError(
@@ -598,10 +600,10 @@ class DeltaMergeBuilder:
     def _evaluate_condition(
         self,
         expression: str,
-        target_row: dict[str, Any],
-        source_row: dict[str, Any],
+        target_row: Dict[str, Any],
+        source_row: Dict[str, Any],
     ) -> bool:
-        context: dict[str, Any] = {}
+        context: Dict[str, Any] = {}
 
         target_ns = SimpleNamespace(**target_row)
         source_ns = SimpleNamespace(**source_row)

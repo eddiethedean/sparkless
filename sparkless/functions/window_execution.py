@@ -4,7 +4,7 @@ Window functions for Sparkless.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
 import contextlib
 
 if TYPE_CHECKING:
@@ -93,7 +93,7 @@ class WindowFunction:
         self.name = name
         return self
 
-    def evaluate(self, data: list[dict[str, Any]]) -> list[Any]:
+    def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate the window function over the data.
 
         Args:
@@ -135,7 +135,7 @@ class WindowFunction:
         else:
             return [None] * len(data)
 
-    def _evaluate_row_number(self, data: list[dict[str, Any]]) -> list[int]:
+    def _evaluate_row_number(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate row_number() window function with proper partitioning and ordering."""
         if not data:
             return []
@@ -145,7 +145,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -179,11 +179,11 @@ class WindowFunction:
         return results
 
     def _sort_indices_by_columns(
-        self, data: list[dict[str, Any]], indices: list[int], order_by_cols: list[Any]
-    ) -> list[int]:
+        self, data: List[Dict[str, Any]], indices: List[int], order_by_cols: List[Any]
+    ) -> List[int]:
         """Sort indices by order_by columns."""
 
-        def sort_key(idx: int) -> tuple[Any, ...]:
+        def sort_key(idx: int) -> Tuple[Any, ...]:
             row = data[idx]
             key_values = []
             for col in order_by_cols:
@@ -220,7 +220,7 @@ class WindowFunction:
 
         return sorted(indices, key=sort_key, reverse=has_desc)
 
-    def _evaluate_rank(self, data: list[dict[str, Any]]) -> list[int]:
+    def _evaluate_rank(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate rank() window function with proper partitioning and ordering."""
         if not data:
             return []
@@ -230,7 +230,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -275,7 +275,7 @@ class WindowFunction:
         return results
 
     def _rows_differ_by_order_cols(
-        self, row1: dict[str, Any], row2: dict[str, Any], order_by_cols: list[Any]
+        self, row1: Dict[str, Any], row2: Dict[str, Any], order_by_cols: List[Any]
     ) -> bool:
         """Check if two rows differ by order_by columns."""
         if not order_by_cols:
@@ -296,7 +296,7 @@ class WindowFunction:
 
         return False
 
-    def _evaluate_dense_rank(self, data: list[dict[str, Any]]) -> list[int]:
+    def _evaluate_dense_rank(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate dense_rank() window function with proper partitioning and ordering."""
         if not data:
             return []
@@ -306,7 +306,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -361,7 +361,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_lag(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_lag(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate lag() window function with proper partitioning and ordering."""
         if not data or not self.column_name:
             return [None] * len(data) if data else []
@@ -371,7 +371,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -409,7 +409,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_lead(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_lead(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate lead() window function with proper partitioning and ordering."""
         if not data or not self.column_name:
             return [None] * len(data) if data else []
@@ -419,7 +419,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -457,7 +457,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_nth_value(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_nth_value(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate nth_value() window function with proper partitioning and ordering."""
         if not data or not self.column_name:
             return [None] * len(data) if data else []
@@ -472,7 +472,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -512,7 +512,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_ntile(self, data: list[dict[str, Any]]) -> list[int]:
+    def _evaluate_ntile(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate ntile() window function with proper partitioning and ordering."""
         if not data:
             return []
@@ -527,7 +527,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -583,7 +583,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_cume_dist(self, data: list[dict[str, Any]]) -> list[float]:
+    def _evaluate_cume_dist(self, data: List[Dict[str, Any]]) -> List[float]:
         """Evaluate cume_dist() window function with proper partitioning and ordering."""
         if not data:
             return []
@@ -593,7 +593,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -649,7 +649,7 @@ class WindowFunction:
         return results
 
     def _row_less_or_equal(
-        self, row1: dict[str, Any], row2: dict[str, Any], order_by_cols: list[Any]
+        self, row1: Dict[str, Any], row2: Dict[str, Any], order_by_cols: List[Any]
     ) -> bool:
         """Check if row1 <= row2 by order_by columns."""
         if not order_by_cols:
@@ -691,7 +691,7 @@ class WindowFunction:
 
         return True  # All values equal
 
-    def _evaluate_percent_rank(self, data: list[dict[str, Any]]) -> list[float]:
+    def _evaluate_percent_rank(self, data: List[Dict[str, Any]]) -> List[float]:
         """Evaluate percent_rank() window function with proper partitioning and ordering."""
         if not data:
             return []
@@ -701,7 +701,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -754,12 +754,12 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_first(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_first(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate first() window function with proper partitioning and ordering."""
         # first() behaves the same as first_value() for window functions
         return self._evaluate_first_value(data)
 
-    def _evaluate_last(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_last(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate last() window function with proper partitioning and ordering.
 
         Note: With orderBy, PySpark's default frame is UNBOUNDED PRECEDING AND CURRENT ROW,
@@ -777,7 +777,7 @@ class WindowFunction:
         # (because default frame is UNBOUNDED PRECEDING AND CURRENT ROW)
         if order_by_cols:
             # Create partition groups
-            partition_groups: dict[Any, list[int]] = {}
+            partition_groups: Dict[Any, List[int]] = {}
             for i, row in enumerate(data):
                 if partition_by_cols:
                     partition_key = tuple(
@@ -811,7 +811,7 @@ class WindowFunction:
             # Without orderBy, last() behaves like last_value() - returns last value in partition
             return self._evaluate_last_value(data)
 
-    def _evaluate_sum(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_sum(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate sum() window function with proper partitioning."""
         if not data:
             return []
@@ -826,7 +826,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -841,7 +841,7 @@ class WindowFunction:
             partition_groups[partition_key].append(i)
 
         # Initialize results
-        results: list[Any] = [None] * len(data)
+        results: List[Any] = [None] * len(data)
 
         # Process each partition
         for partition_indices in partition_groups.values():
@@ -867,7 +867,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_avg(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_avg(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate avg() window function."""
         if not data:
             return []
@@ -878,7 +878,7 @@ class WindowFunction:
             return [None] * len(data)
 
         # Calculate average for each position
-        result: list[Optional[float]] = []
+        result: List[Optional[float]] = []
         running_sum = 0.0
         count = 0
 
@@ -897,7 +897,7 @@ class WindowFunction:
 
         return result
 
-    def _evaluate_first_value(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_first_value(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate first_value() window function with proper partitioning and ordering."""
         if not data or not self.column_name:
             return [None] * len(data) if data else []
@@ -907,7 +907,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
@@ -945,7 +945,7 @@ class WindowFunction:
 
         return results
 
-    def _evaluate_last_value(self, data: list[dict[str, Any]]) -> list[Any]:
+    def _evaluate_last_value(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate last_value() window function with proper partitioning and ordering."""
         if not data or not self.column_name:
             return [None] * len(data) if data else []
@@ -955,7 +955,7 @@ class WindowFunction:
         order_by_cols = getattr(self.window_spec, "_order_by", [])
 
         # Create partition groups
-        partition_groups: dict[Any, list[int]] = {}
+        partition_groups: Dict[Any, List[int]] = {}
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(

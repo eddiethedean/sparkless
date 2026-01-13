@@ -24,7 +24,7 @@ Example:
     ['e', 'f', 'd']
 """
 
-from typing import Any, Union, Callable, Optional, TYPE_CHECKING
+from typing import Any, Callable, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from sparkless.functions.base import AggregateFunction

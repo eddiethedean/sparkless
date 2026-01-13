@@ -6,7 +6,7 @@ SparkSession instances using the builder pattern, maintaining compatibility
 with PySpark's SparkSession.builder interface.
 """
 
-from typing import Any, Union
+from typing import Any, Dict, Union
 
 from sparkless.config import resolve_backend_type
 
@@ -19,7 +19,7 @@ class SparkSessionBuilder:
     def __init__(self) -> None:
         """Initialize builder."""
         self._app_name = "SparklessApp"
-        self._config: dict[str, Any] = {}
+        self._config: Dict[str, Any] = {}
 
     def appName(self, name: str) -> "SparkSessionBuilder":
         """Set app name.
@@ -45,7 +45,7 @@ class SparkSessionBuilder:
         return self
 
     def config(
-        self, key_or_pairs: Union[str, dict[str, Any]], value: Any = None
+        self, key_or_pairs: Union[str, Dict[str, Any]], value: Any = None
     ) -> "SparkSessionBuilder":
         """Set configuration.
 

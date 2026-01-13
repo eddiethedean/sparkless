@@ -29,7 +29,7 @@ Example:
 """
 
 import sys
-from typing import Optional, Union, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING, Tuple, Union
 
 if TYPE_CHECKING:
     from .functions import Column
@@ -54,10 +54,10 @@ class WindowSpec:
     """
 
     def __init__(self) -> None:
-        self._partition_by: list[Union[str, Column]] = []
-        self._order_by: list[Union[str, Column]] = []
-        self._rows_between: Optional[tuple[int, int]] = None
-        self._range_between: Optional[tuple[int, int]] = None
+        self._partition_by: List[Union[str, Column]] = []
+        self._order_by: List[Union[str, Column]] = []
+        self._rows_between: Optional[Tuple[int, int]] = None
+        self._range_between: Optional[Tuple[int, int]] = None
 
     def partitionBy(self, *cols: Union[str, "Column"]) -> "WindowSpec":
         """Add partition by columns.

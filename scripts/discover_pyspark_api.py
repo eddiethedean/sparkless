@@ -11,17 +11,19 @@ Outputs:
 - PYSPARK_FUNCTION_MATRIX.md - Human-readable markdown table
 """
 
+from __future__ import annotations
+
 import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 # PySpark versions to test
 PYSPARK_VERSIONS = ["3.0.3", "3.1.3", "3.2.4", "3.3.4", "3.4.3", "3.5.2"]
 
 
-def discover_api(spark_version: str) -> dict[str, list[str]]:
+def discover_api(spark_version: str) -> Dict[str, List[str]]:
     """
     Install PySpark version and catalog functions and DataFrame methods.
 
@@ -76,8 +78,8 @@ def discover_api(spark_version: str) -> dict[str, list[str]]:
 
 
 def build_matrix(
-    versions_data: dict[str, dict[str, list[str]]],
-) -> dict[str, dict[str, dict[str, bool]]]:
+    versions_data: Dict[str, Dict[str, List[str]]],
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
     """
     Build a matrix showing which items exist in which versions.
 
@@ -139,7 +141,7 @@ def check_mock_spark_availability(item_name: str, item_type: str) -> bool:
     return False
 
 
-def save_json(matrix: dict[str, Any], output_path: Path) -> None:
+def save_json(matrix: Dict[str, Any], output_path: Path) -> None:
     """Save matrix as JSON."""
     print(f"\nSaving JSON to {output_path}...")
     with open(output_path, "w") as f:
@@ -148,7 +150,7 @@ def save_json(matrix: dict[str, Any], output_path: Path) -> None:
 
 
 def save_markdown(
-    matrix: dict[str, Any], output_path: Path, versions: list[str]
+    matrix: Dict[str, Any], output_path: Path, versions: List[str]
 ) -> None:
     """Save matrix as markdown table."""
     print(f"\nGenerating markdown table at {output_path}...")

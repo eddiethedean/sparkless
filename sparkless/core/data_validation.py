@@ -6,7 +6,7 @@ Supports different validation modes (strict, relaxed, minimal) and optional
 type coercion for better usability.
 """
 
-from typing import Any
+from typing import Any, Dict, List
 
 from ..spark_types import StructType
 from .exceptions.validation import IllegalArgumentException
@@ -43,7 +43,7 @@ class DataValidator:
             f.name: f.dataType.__class__.__name__ for f in schema.fields
         }
 
-    def validate(self, data: list[dict[str, Any]]) -> None:
+    def validate(self, data: List[Dict[str, Any]]) -> None:
         """
         Validate data against schema.
 
@@ -115,7 +115,7 @@ class DataValidator:
             f"expected {expected_type}, got {actual_type}"
         )
 
-    def coerce(self, data: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def coerce(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Coerce data types to match schema (best-effort).
 
@@ -128,7 +128,7 @@ class DataValidator:
         if not self.enable_coercion:
             return data
 
-        coerced: list[dict[str, Any]] = []
+        coerced: List[Dict[str, Any]] = []
 
         for row in data:
             if not isinstance(row, dict):
@@ -136,7 +136,7 @@ class DataValidator:
                 coerced.append(row)  # type: ignore[unreachable]
                 continue
 
-            new_row: dict[str, Any] = {}
+            new_row: Dict[str, Any] = {}
             for field_name in self._field_types:
                 value = row.get(field_name)
                 expected_type = self._field_types[field_name]
@@ -189,7 +189,7 @@ class DataValidator:
 
 # Convenience functions
 def validate_data(
-    data: list[dict[str, Any]], schema: StructType, mode: str = "strict"
+    data: List[Dict[str, Any]], schema: StructType, mode: str = "strict"
 ) -> None:
     """
     Validate data against schema (convenience function).
@@ -206,7 +206,7 @@ def validate_data(
     validator.validate(data)
 
 
-def coerce_data(data: list[dict[str, Any]], schema: StructType) -> list[dict[str, Any]]:
+def coerce_data(data: List[Dict[str, Any]], schema: StructType) -> List[Dict[str, Any]]:
     """
     Coerce data to match schema (convenience function).
 

@@ -8,7 +8,7 @@ test data based on schemas with support for various data types and patterns.
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Dict, List
 from ..spark_types import (
     StructType,
     StringType,
@@ -39,7 +39,7 @@ class MockDataGenerator:
     @staticmethod
     def create_test_data(
         schema: StructType, num_rows: int = 100, seed: int = 42
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Generate test data based on schema.
 
         Args:
@@ -69,7 +69,7 @@ class MockDataGenerator:
         corruption_rate: float = 0.1,
         num_rows: int = 100,
         seed: int = 42,
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Generate data with some corruption for error testing.
 
         Args:
@@ -104,7 +104,7 @@ class MockDataGenerator:
     @staticmethod
     def create_realistic_data(
         schema: StructType, num_rows: int = 100, seed: int = 42
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Generate realistic data with proper distributions and patterns.
 
         Args:
@@ -187,9 +187,9 @@ class MockDataGenerator:
     def _generate_realistic_field_value(
         data_type: DataType,
         index: int,
-        names: list[str],
-        emails: list[str],
-        dates: list[datetime],
+        names: List[str],
+        emails: List[str],
+        dates: List[datetime],
     ) -> Any:
         """Generate a realistic value for a specific data type."""
         if isinstance(data_type, StringType):
@@ -251,7 +251,7 @@ class MockDataGenerator:
         return start_date + timedelta(seconds=random_seconds)
 
     @staticmethod
-    def _generate_array(element_type: DataType) -> list[Any]:
+    def _generate_array(element_type: DataType) -> List[Any]:
         """Generate a random array."""
         length = random.randint(0, 5)
         return [
@@ -259,7 +259,7 @@ class MockDataGenerator:
         ]
 
     @staticmethod
-    def _generate_map(key_type: DataType, value_type: DataType) -> dict[str, Any]:
+    def _generate_map(key_type: DataType, value_type: DataType) -> Dict[str, Any]:
         """Generate a random map."""
         length = random.randint(0, 3)
         result = {}
@@ -270,7 +270,7 @@ class MockDataGenerator:
         return result
 
     @staticmethod
-    def _generate_names(num_rows: int) -> list[str]:
+    def _generate_names(num_rows: int) -> List[str]:
         """Generate realistic names."""
         first_names = [
             "Alice",
@@ -301,7 +301,7 @@ class MockDataGenerator:
         return names
 
     @staticmethod
-    def _generate_emails(num_rows: int) -> list[str]:
+    def _generate_emails(num_rows: int) -> List[str]:
         """Generate realistic email addresses."""
         domains = ["gmail.com", "yahoo.com", "hotmail.com", "example.com"]
         usernames = [
@@ -323,7 +323,7 @@ class MockDataGenerator:
         return emails
 
     @staticmethod
-    def _generate_dates(num_rows: int) -> list[datetime]:
+    def _generate_dates(num_rows: int) -> List[datetime]:
         """Generate realistic dates."""
         start_date = datetime(2020, 1, 1)
         end_date = datetime(2024, 12, 31)

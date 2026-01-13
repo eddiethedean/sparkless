@@ -6,7 +6,7 @@ SQL processing, and catalog operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from ..interfaces.dataframe import IDataFrame, IDataFrameReader
 
 
@@ -52,7 +52,7 @@ class ISession(ABC):
     @abstractmethod
     def createDataFrame(
         self,
-        data: Union[list[dict[str, Any]], list[Any]],
+        data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[str, Any]] = None,
     ) -> IDataFrame:
         """Create DataFrame from data."""
@@ -110,12 +110,12 @@ class ICatalog(ABC):
     """Abstract interface for catalog operations."""
 
     @abstractmethod
-    def listDatabases(self) -> list[Any]:
+    def listDatabases(self) -> List[Any]:
         """List all databases."""
         pass
 
     @abstractmethod
-    def listTables(self, dbName: Optional[str] = None) -> list[Any]:
+    def listTables(self, dbName: Optional[str] = None) -> List[Any]:
         """List tables in database."""
         pass
 
@@ -190,7 +190,7 @@ class IConfiguration(ABC):
         pass
 
     @abstractmethod
-    def getAll(self) -> dict[str, str]:
+    def getAll(self) -> Dict[str, str]:
         """Get all configuration values."""
         pass
 

@@ -4,8 +4,9 @@ Miscellaneous service for DataFrame operations.
 This service provides various miscellaneous operations using composition instead of mixin inheritance.
 """
 
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from __future__ import annotations
+from typing import Iterator
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast
 
 from ...spark_types import (
     ArrayType,
@@ -28,7 +29,7 @@ from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundExcepti
 class MiscService:
     """Service providing miscellaneous operations for DataFrame."""
 
-    def __init__(self, df: "DataFrame"):
+    def __init__(self, df: DataFrame):
         """Initialize misc service with DataFrame instance."""
         self._df = df
 
@@ -37,8 +38,8 @@ class MiscService:
         self,
         how: str = "any",
         thresh: Optional[int] = None,
-        subset: Optional[list[str]] = None,
-    ) -> "SupportsDataFrameOps":
+        subset: Optional[List[str]] = None,
+    ) -> SupportsDataFrameOps:
         """Drop rows with null values."""
         filtered_data = []
         for row in self._df.data:
@@ -66,7 +67,7 @@ class MiscService:
             DataFrame(filtered_data, self._df.schema, self._df.storage),
         )
 
-    def fillna(self, value: Union[Any, dict[str, Any]]) -> "SupportsDataFrameOps":
+    def fillna(self, value: Union[Any, Dict[str, Any]]) -> SupportsDataFrameOps:
         """Fill null values."""
         new_data = []
         for row in self._df.data:
@@ -94,7 +95,7 @@ class MiscService:
         fraction: float,
         seed: Optional[int] = None,
         withReplacement: bool = False,
-    ) -> "SupportsDataFrameOps":
+    ) -> SupportsDataFrameOps:
         """Sample rows from DataFrame.
 
         Args:
@@ -161,9 +162,9 @@ class MiscService:
     def sampleBy(
         self,
         col: str,
-        fractions: dict[Any, float],
+        fractions: Dict[Any, float],
         seed: Optional[int] = None,
-    ) -> "SupportsDataFrameOps":
+    ) -> SupportsDataFrameOps:
         """Stratified sampling (all PySpark versions).
 
         Args:
@@ -194,8 +195,8 @@ class MiscService:
         )
 
     def randomSplit(
-        self, weights: list[float], seed: Optional[int] = None
-    ) -> list["SupportsDataFrameOps"]:
+        self, weights: List[float], seed: Optional[int] = None
+    ) -> List[SupportsDataFrameOps]:
         """Randomly split DataFrame into multiple DataFrames.
 
         Args:
@@ -229,13 +230,13 @@ class MiscService:
 
         # Calculate split points
         cumulative_weight = 0.0
-        split_points: list[int] = []
+        split_points: List[int] = []
         for weight in weights:
             cumulative_weight += weight
             split_points.append(int(len(self._df.data) * cumulative_weight))
 
         # Create splits
-        splits: list[list[dict[str, Any]]] = []
+        splits: List[List[Dict[str, Any]]] = []
         start_idx = 0
 
         for end_idx in split_points:
@@ -255,7 +256,7 @@ class MiscService:
         ]
 
     # Statistics Operations
-    def describe(self, *cols: str) -> "SupportsDataFrameOps":
+    def describe(self, *cols: str) -> SupportsDataFrameOps:
         """Compute basic statistics for numeric columns.
 
         Args:
@@ -353,7 +354,7 @@ class MiscService:
             DataFrame(result_data, result_schema, self._df.storage),
         )
 
-    def summary(self, *stats: str) -> "SupportsDataFrameOps":
+    def summary(self, *stats: str) -> SupportsDataFrameOps:
         """Compute extended statistics for numeric columns.
 
         Args:
@@ -447,7 +448,7 @@ class MiscService:
             DataFrame(result_data, result_schema, self._df.storage),
         )
 
-    def crosstab(self, col1: str, col2: str) -> "SupportsDataFrameOps":
+    def crosstab(self, col1: str, col2: str) -> SupportsDataFrameOps:
         """Calculate cross-tabulation (all PySpark versions).
 
         Args:
@@ -460,7 +461,7 @@ class MiscService:
         from collections import defaultdict
 
         # Build cross-tab structure
-        crosstab_data: dict[Any, dict[Any, int]] = defaultdict(lambda: defaultdict(int))
+        crosstab_data: Dict[Any, Dict[Any, int]] = defaultdict(lambda: defaultdict(int))
         col2_values = set()
 
         for row in self._df.data:
@@ -494,8 +495,8 @@ class MiscService:
         )
 
     def freqItems(
-        self, cols: list[str], support: Optional[float] = None
-    ) -> "SupportsDataFrameOps":
+        self, cols: List[str], support: Optional[float] = None
+    ) -> SupportsDataFrameOps:
         """Find frequent items (all PySpark versions).
 
         Args:
@@ -535,10 +536,10 @@ class MiscService:
 
     def approxQuantile(
         self,
-        col: Union[str, list[str]],
-        probabilities: list[float],
+        col: Union[str, List[str]],
+        probabilities: List[float],
         relativeError: float,
-    ) -> Union[list[float], list[list[float]]]:
+    ) -> Union[List[float], List[List[float]]]:
         """Calculate approximate quantiles (all PySpark versions).
 
         Args:
@@ -550,8 +551,8 @@ class MiscService:
             List of quantile values, or list of lists if multiple columns
         """
 
-        def calc_quantiles(column_name: str) -> list[float]:
-            values_list: list[float] = []
+        def calc_quantiles(column_name: str) -> List[float]:
+            values_list: List[float] = []
             for row in self._df.data:
                 val = row.get(column_name)
                 if val is not None:
@@ -596,7 +597,7 @@ class MiscService:
         return float(covariance(values1, values2))
 
     # Transformation Operations
-    def transform(self, func: Any) -> "SupportsDataFrameOps":
+    def transform(self, func: Any) -> SupportsDataFrameOps:
         """Apply a function to transform a DataFrame.
 
         This enables functional programming style transformations on DataFrames.
@@ -623,7 +624,7 @@ class MiscService:
 
     def mapPartitions(
         self, func: Any, preservesPartitioning: bool = False
-    ) -> "SupportsDataFrameOps":
+    ) -> SupportsDataFrameOps:
         """Apply a function to each partition of the DataFrame.
 
         For sparkless, we treat the entire DataFrame as a single partition.
@@ -681,7 +682,7 @@ class MiscService:
             DataFrame(result_data, result_schema, self._df.storage),
         )
 
-    def mapInPandas(self, func: Any, schema: Any) -> "SupportsDataFrameOps":
+    def mapInPandas(self, func: Any, schema: Any) -> SupportsDataFrameOps:
         """Map an iterator of pandas DataFrames to another iterator of pandas DataFrames.
 
         For sparkless, we treat the entire DataFrame as a single partition.
@@ -734,7 +735,7 @@ class MiscService:
             result_pdfs.append(result_pdf)
 
         # Concatenate all results
-        result_data: list[dict[str, Any]] = []
+        result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
@@ -770,11 +771,11 @@ class MiscService:
 
     def unpivot(
         self,
-        ids: Union[str, list[str]],
-        values: Union[str, list[str]],
+        ids: Union[str, List[str]],
+        values: Union[str, List[str]],
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
-    ) -> "SupportsDataFrameOps":
+    ) -> SupportsDataFrameOps:
         """Unpivot columns into rows (opposite of pivot).
 
         Args:
@@ -861,11 +862,11 @@ class MiscService:
 
     def melt(
         self,
-        ids: Optional[list[str]] = None,
-        values: Optional[list[str]] = None,
+        ids: Optional[List[str]] = None,
+        values: Optional[List[str]] = None,
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
-    ) -> "SupportsDataFrameOps":
+    ) -> SupportsDataFrameOps:
         """Unpivot DataFrame from wide to long format (PySpark 3.4+).
 
         Args:
@@ -1070,7 +1071,7 @@ class MiscService:
         else:
             return str(args)[:50]  # Truncate long strings
 
-    def toDF(self, *cols: str) -> "SupportsDataFrameOps":
+    def toDF(self, *cols: str) -> SupportsDataFrameOps:
         """Rename columns of DataFrame (all PySpark versions).
 
         Args:
@@ -1114,7 +1115,7 @@ class MiscService:
             DataFrame(new_data, new_schema, self._df.storage),
         )
 
-    def alias(self, alias: str) -> "SupportsDataFrameOps":
+    def alias(self, alias: str) -> SupportsDataFrameOps:
         """Give DataFrame an alias for join operations (all PySpark versions).
 
         Args:
@@ -1134,7 +1135,7 @@ class MiscService:
             result,
         )
 
-    def hint(self, name: str, *parameters: Any) -> "SupportsDataFrameOps":
+    def hint(self, name: str, *parameters: Any) -> SupportsDataFrameOps:
         """Provide query optimization hints (all PySpark versions).
 
         This is a no-op in sparkless as there's no query optimizer.
@@ -1151,7 +1152,7 @@ class MiscService:
 
     def withWatermark(
         self, eventTime: str, delayThreshold: str
-    ) -> "SupportsDataFrameOps":
+    ) -> SupportsDataFrameOps:
         """Define watermark for streaming (all PySpark versions).
 
         Args:
@@ -1167,7 +1168,7 @@ class MiscService:
         setattr(self._df, "_watermark_delay", delayThreshold)
         return cast("SupportsDataFrameOps", self._df)
 
-    def sameSemantics(self, other: "DataFrame") -> bool:
+    def sameSemantics(self, other: DataFrame) -> bool:
         """Check if this DataFrame has the same semantics as another (PySpark 3.1+).
 
         Simplified implementation that checks schema and data equality.
@@ -1202,7 +1203,7 @@ class MiscService:
         )
         return hash(schema_str)
 
-    def inputFiles(self) -> list[str]:
+    def inputFiles(self) -> List[str]:
         """Return list of input files for this DataFrame (PySpark 3.1+).
 
         Returns:
@@ -1214,9 +1215,9 @@ class MiscService:
     # Partition/Streaming Operations
     def repartitionByRange(
         self,
-        numPartitions: Union[int, str, "Column"],
-        *cols: Union[str, "Column"],
-    ) -> "SupportsDataFrameOps":
+        numPartitions: Union[int, str, Column],
+        *cols: Union[str, Column],
+    ) -> SupportsDataFrameOps:
         """Repartition by range of column values (all PySpark versions).
 
         Args:
@@ -1234,8 +1235,8 @@ class MiscService:
             return self._df._transformations.orderBy(numPartitions, *cols)
 
     def sortWithinPartitions(
-        self, *cols: Union[str, "Column"], **kwargs: Any
-    ) -> "SupportsDataFrameOps":
+        self, *cols: Union[str, Column], **kwargs: Any
+    ) -> SupportsDataFrameOps:
         """Sort within partitions (all PySpark versions).
 
         Args:
@@ -1266,11 +1267,11 @@ class MiscService:
             self._df.data, self._df.schema, prefetchPartitions
         )
 
-    def checkpoint(self, eager: bool = False) -> "SupportsDataFrameOps":
+    def checkpoint(self, eager: bool = False) -> SupportsDataFrameOps:
         """Checkpoint the DataFrame (no-op in mock; returns self)."""
         return cast("SupportsDataFrameOps", self._df)
 
-    def localCheckpoint(self, eager: bool = True) -> "SupportsDataFrameOps":
+    def localCheckpoint(self, eager: bool = True) -> SupportsDataFrameOps:
         """Local checkpoint to truncate lineage (all PySpark versions).
 
         Args:

@@ -32,7 +32,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
 import polars as pl
 
@@ -76,8 +76,8 @@ class DataFrameWriter:
         self.storage = storage
         self.format_name = "parquet"
         self.save_mode = "append"
-        self._options: dict[str, Any] = {}
-        self._table_name: str | None = None
+        self._options: Dict[str, Any] = {}
+        self._table_name: Union[str, None] = None
 
     def format(self, source: str) -> DataFrameWriter:
         """Set the output format for the DataFrame writer.
@@ -455,7 +455,7 @@ class DataFrameWriter:
                 },
             )
 
-    def save(self, path: str | None = None) -> None:
+    def save(self, path: Union[str, None] = None) -> None:
         """Save DataFrame to a file path.
 
         Args:
@@ -612,7 +612,7 @@ class DataFrameWriter:
             path.unlink()
 
     def _to_polars_frame(
-        self, data: list[dict[str, Any]], schema: StructType
+        self, data: List[Dict[str, Any]], schema: StructType
     ) -> pl.DataFrame:
         """Convert row dictionaries and schema into a Polars DataFrame."""
         if not schema.fields:
@@ -660,7 +660,7 @@ class DataFrameWriter:
         null_value = self._options.get("nullValue")
         compression = self._options.get("compression")
 
-        kwargs: dict[str, Any] = {"include_header": include_header}
+        kwargs: Dict[str, Any] = {"include_header": include_header}
         if delimiter:
             kwargs["separator"] = delimiter
         if null_value is not None:
@@ -671,7 +671,7 @@ class DataFrameWriter:
         frame.write_csv(str(target), **kwargs)
 
     def _write_text(
-        self, data: list[dict[str, Any]], schema: StructType, path: Path
+        self, data: List[Dict[str, Any]], schema: StructType, path: Path
     ) -> None:
         column_name = "value"
         if schema.fields:
@@ -701,7 +701,7 @@ class DataFrameWriter:
 
     def _merge_schemas_for_overwrite(
         self, existing_schema: StructType, current_df: DataFrame
-    ) -> tuple[DataFrame, StructType]:
+    ) -> Tuple[DataFrame, StructType]:
         """
         Merge existing table schema with current DataFrame schema for overwrite mode.
 
@@ -874,8 +874,8 @@ class DataFrameWriter:
         self,
         schema: str,
         table: str,
-        fields: list[StructField],
-        data: list[dict[str, Any]],
+        fields: List[StructField],
+        data: List[Dict[str, Any]],
     ) -> None:
         """Replicate table creation/data into active SparkSessions when storage differs.
 

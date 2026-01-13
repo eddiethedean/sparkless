@@ -26,7 +26,7 @@ Example:
     ALICE        50
 """
 
-from typing import Any, Optional, Union, Callable, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Tuple, Union
 from .core.column import Column, ColumnOperation
 
 if TYPE_CHECKING:
@@ -372,7 +372,7 @@ class Functions:
         return StringFunctions.rlike(column, pattern)
 
     @staticmethod
-    def isin(column: Union[Column, str], values: list[Any]) -> ColumnOperation:
+    def isin(column: Union[Column, str], values: List[Any]) -> ColumnOperation:
         """Check if column value is in list of values.
 
         Args:
@@ -1270,7 +1270,7 @@ class Functions:
         return ConditionalFunctions.when(condition)
 
     @staticmethod
-    def case_when(*conditions: tuple[Any, Any], else_value: Any = None) -> CaseWhen:
+    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> CaseWhen:
         """Create CASE WHEN expression with multiple conditions."""
         return ConditionalFunctions.case_when(*conditions, else_value=else_value)
 
@@ -2432,7 +2432,7 @@ class Functions:
     def from_json(
         column: Union[Column, str],
         schema: Any,
-        options: Optional[dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
     ) -> ColumnOperation:
         """Parse JSON string into struct/array."""
         from sparkless.functions.json_csv import JSONCSVFunctions
@@ -2471,7 +2471,7 @@ class Functions:
     def from_csv(
         column: Union[Column, str],
         schema: Any,
-        options: Optional[dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
     ) -> ColumnOperation:
         """Parse CSV string into struct."""
         from sparkless.functions.json_csv import JSONCSVFunctions

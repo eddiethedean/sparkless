@@ -6,7 +6,7 @@ ensuring type safety for all database operations.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -26,7 +26,7 @@ class MockDeltaVersion:
     version: int
     timestamp: datetime
     operation: str  # "WRITE", "APPEND", "OVERWRITE", "MERGE", etc.
-    data_snapshot: list[dict[str, Any]]  # Snapshot of data at this version
+    data_snapshot: List[Dict[str, Any]]  # Snapshot of data at this version
 
 
 @dataclass
@@ -45,8 +45,8 @@ class MockTableMetadata:
     # Delta Lake specific fields
     format: Optional[str] = None  # "delta", "parquet", "json", etc.
     version: int = 0  # Current Delta table version
-    properties: dict[str, Any] = field(default_factory=dict)  # Delta properties
-    version_history: list["MockDeltaVersion"] = field(
+    properties: Dict[str, Any] = field(default_factory=dict)  # Delta properties
+    version_history: List["MockDeltaVersion"] = field(
         default_factory=list
     )  # Version history for time travel
 
@@ -108,7 +108,7 @@ class StorageOperationResult:
 class QueryResult:
     """Type-safe model for query results."""
 
-    data: list[dict[str, Any]]
+    data: List[Dict[str, Any]]
     row_count: int
     column_count: int
     query: str
