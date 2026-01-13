@@ -13,7 +13,10 @@ from sparkless.spark_types import (
     StructField,
     StringType,
     DataType,
+<<<<<<< Updated upstream
     Row,
+=======
+>>>>>>> Stashed changes
 )
 from sparkless.dataframe import DataFrame
 from sparkless.session.config import SparkConfig
@@ -65,31 +68,47 @@ class DataFrameFactory:
 
         # Handle single DataType schema (PySpark compatibility)
         # Example: createDataFrame([date1, date2], DateType()).toDF("dates")
+<<<<<<< Updated upstream
         # This must be checked BEFORE Row conversion because raw values are allowed here
         if (
             schema is not None
             and isinstance(schema, DataType)
             and not isinstance(schema, StructType)
         ):
+=======
+        if schema is not None and isinstance(schema, DataType) and not isinstance(schema, StructType):
+>>>>>>> Stashed changes
             # Convert single DataType to StructType with a single unnamed field
             # Use "_c0" as the default column name (PySpark convention)
             single_data_type = schema
             schema = StructType([StructField("_c0", single_data_type, nullable=True)])
+<<<<<<< Updated upstream
 
             # If data is positional (not dicts), convert to dicts with "_c0" key
             # This handles cases like createDataFrame([date1, date2], DateType())
             if data:
 
+=======
+            
+            # If data is positional (not dicts), convert to dicts with "_c0" key
+            # This handles cases like createDataFrame([date1, date2], DateType())
+            if data:
+>>>>>>> Stashed changes
                 def _is_positional_row(obj: Any) -> bool:
                     """Check if object is a positional row (sequence but not str/bytes/dict)."""
                     return isinstance(obj, Sequence) and not isinstance(
                         obj, (str, bytes, dict)
                     )
+<<<<<<< Updated upstream
 
+=======
+                
+>>>>>>> Stashed changes
                 # Check if first row is positional (primitive value or sequence)
                 first_row = data[0]
                 if not isinstance(first_row, dict):
                     # Convert positional data to dicts with "_c0" key
+<<<<<<< Updated upstream
                     converted_data: List[Dict[str, Any]] = []
                     for row in data:
                         if isinstance(row, Row):
@@ -109,11 +128,20 @@ class DataFrameFactory:
                             converted_data.append(
                                 {"_c0": row_seq[0] if len(row_seq) > 0 else None}
                             )
+=======
+                    converted_data: list[dict[str, Any]] = []
+                    for row in data:
+                        if _is_positional_row(row):
+                            # Multi-value positional row (tuple/list with multiple values)
+                            row_seq = cast("Sequence[Any]", row)
+                            converted_data.append({"_c0": row_seq[0] if len(row_seq) > 0 else None})
+>>>>>>> Stashed changes
                         else:
                             # Primitive value (single date, string, etc.)
                             converted_data.append({"_c0": row})
                     data = converted_data
 
+<<<<<<< Updated upstream
         # Convert Row objects to dictionaries for consistent handling
         # This allows createDataFrame to accept Row objects (PySpark compatibility)
         # Only do this if we haven't already converted the data above
@@ -137,6 +165,8 @@ class DataFrameFactory:
                     )
             data = converted_data_list
 
+=======
+>>>>>>> Stashed changes
         # Handle DDL schema strings
         if isinstance(schema, str):
             from sparkless.core.ddl_adapter import parse_ddl_schema

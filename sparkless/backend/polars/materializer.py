@@ -589,9 +589,13 @@ class PolarsMaterializer:
                         # Unpack the nested list/tuple
                         columns = tuple(payload[0])
                     elif isinstance(payload, (tuple, list)):
+<<<<<<< Updated upstream
                         columns = (
                             tuple(payload) if isinstance(payload, list) else payload
                         )
+=======
+                        columns = tuple(payload) if isinstance(payload, list) else payload
+>>>>>>> Stashed changes
                     else:
                         columns = (payload,)
                     ascending = True
