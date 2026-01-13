@@ -1,12 +1,12 @@
 import pytest
-from typing import cast
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
 
 def _is_pyspark_mode() -> bool:
     """Check if running in PySpark mode."""
     backend: BackendType = get_backend_type()
-    return cast("bool", backend == BackendType.PYSPARK)
+    result: bool = backend == BackendType.PYSPARK
+    return result
 
 
 @pytest.mark.skipif(  # type: ignore[untyped-decorator]

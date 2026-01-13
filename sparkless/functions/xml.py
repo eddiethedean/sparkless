@@ -53,13 +53,13 @@ class XMLFunctions:
             col_obj = col
         else:
             # For other types, convert to Column
-            col_obj = Column(str(col))
+            col_obj = Column(str(col))  # type: ignore[unreachable]
 
         if isinstance(col_obj, Column):
             base_col = col_obj
         else:
             # At this point, col_obj must be ColumnOperation
-            base_col = cast("ColumnOperation", col_obj).column
+            base_col = cast("ColumnOperation", col_obj).column  # type: ignore[unreachable]
 
         return ColumnOperation(
             base_col,

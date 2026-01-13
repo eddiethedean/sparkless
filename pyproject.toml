@@ -177,6 +177,7 @@ ignore_errors = true
 module = [
     "sparkless.functions.conditional",
     "sparkless.functions.datetime",
+    "sparkless.functions.xml",
     "sparkless.dataframe.grouped.base",
     "sparkless.backend.polars.export",
     "sparkless.functions.functions",
