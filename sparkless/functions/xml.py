@@ -59,7 +59,7 @@ class XMLFunctions:
             base_col = col_obj
         else:
             # At this point, col_obj must be ColumnOperation
-            base_col = cast(ColumnOperation, col_obj).column
+            base_col = cast("ColumnOperation", col_obj).column
 
         return ColumnOperation(
             base_col,
