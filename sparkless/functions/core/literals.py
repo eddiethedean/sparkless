@@ -5,7 +5,7 @@ This module provides Literal class for representing literal values
 in column expressions and transformations.
 """
 
-from typing import Any, Callable, List, Optional, TYPE_CHECKING, cast
+from typing import Any, Callable, Optional, TYPE_CHECKING, cast
 import math
 from ...spark_types import DataType
 from ...core.interfaces.functions import IColumn
@@ -216,11 +216,16 @@ class Literal(IColumn):
         """Check if literal value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: List[Any]) -> "ColumnOperation":
+    def isin(self, *values: Any) -> "ColumnOperation":
         """Check if literal value is in list of values."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "isin", values)
+        # Normalize: if single list argument provided, use it directly
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            normalized_values = list(values[0])
+        else:
+            normalized_values = list(values)
+        return ColumnOperation(self, "isin", normalized_values)
 
     def between(self, lower: Any, upper: Any) -> "ColumnOperation":
         """Check if literal value is between lower and upper bounds."""

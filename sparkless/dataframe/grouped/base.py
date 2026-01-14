@@ -664,29 +664,33 @@ class GroupedData:
                         pass
                 result_key = alias_name if alias_name else f"sum({col_name})"
                 return result_key, sum(values) if values else 0
-            # Simple column: validate and sum
-            if (
-                col_name
-                and not any(
-                    op in col_name
-                    for op in [
-                        "+",
-                        "-",
-                        "*",
-                        "/",
-                        "(",
-                        ")",
-                        "extract",
-                        "TRY_CAST",
-                        "AS",
-                    ]
-                )
-                and col_name not in [field.name for field in self.df.schema.fields]
+            # Simple column: validate and sum (case-insensitive)
+            if col_name and not any(
+                op in col_name
+                for op in [
+                    "+",
+                    "-",
+                    "*",
+                    "/",
+                    "(",
+                    ")",
+                    "extract",
+                    "TRY_CAST",
+                    "AS",
+                ]
             ):
-                available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import SparkColumnNotFoundError
+                from ..validation.column_validator import ColumnValidator
 
-                raise SparkColumnNotFoundError(col_name, available_columns)
+                # Resolve column name case-insensitively
+                actual_col_name = ColumnValidator._find_column_case_insensitive(
+                    self.df.schema, col_name
+                )
+                if actual_col_name is None:
+                    available_columns = [field.name for field in self.df.schema.fields]
+                    from ...core.exceptions.operation import SparkColumnNotFoundError
+
+                    raise SparkColumnNotFoundError(col_name, available_columns)
+                col_name = actual_col_name
             values = []
             for row in group_rows:
                 val = row.get(col_name)

@@ -5,7 +5,7 @@ This module provides arithmetic, comparison, and logical operations
 for Column and ColumnOperation classes.
 """
 
-from typing import Any, List, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from .column import Column, ColumnOperation
 
 __all__ = [
@@ -133,9 +133,14 @@ class ComparisonOperations:
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: List[Any]) -> ColumnOperation:
+    def isin(self, *values: Any) -> ColumnOperation:
         """Check if column value is in list of values."""
-        return ColumnOperation(self, "isin", values)
+        # Normalize: if single list argument provided, use it directly
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            normalized_values = list(values[0])
+        else:
+            normalized_values = list(values)
+        return ColumnOperation(self, "isin", normalized_values)
 
     def between(self, lower: Any, upper: Any) -> ColumnOperation:
         """Check if column value is between lower and upper bounds."""

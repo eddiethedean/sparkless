@@ -6,6 +6,11 @@ maintaining compatibility with PySpark's SparkSession interface.
 """
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None  # type: ignore[assignment, misc]
 from ...core.interfaces.dataframe import IDataFrame
 from ..context import SparkContext
 from ..catalog import Catalog
@@ -202,7 +207,7 @@ class SparkSession:
 
     def _real_createDataFrame(
         self,
-        data: Union[List[Dict[str, Any]], List[Any]],
+        data: Union[List[Dict[str, Any]], List[Any], Any],
         schema: Optional[Union[StructType, List[str], str]] = None,
     ) -> "DataFrame":
         """Create a DataFrame from data.

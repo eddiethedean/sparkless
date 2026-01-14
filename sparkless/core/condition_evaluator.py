@@ -1228,6 +1228,51 @@ class ConditionEvaluator:
             return column
 
     @staticmethod
+    def _coerce_for_comparison(left_val: Any, right_val: Any) -> Tuple[Any, Any]:
+        """Coerce string to numeric for comparison if one is numeric and other is string.
+
+        PySpark behavior: when comparing string with numeric, try to cast string to numeric.
+
+        Args:
+            left_val: Left value
+            right_val: Right value
+
+        Returns:
+            Tuple of (coerced_left, coerced_right)
+        """
+        # Left is string, right is numeric: convert left to numeric
+        if isinstance(left_val, str) and isinstance(right_val, (int, float)):
+            try:
+                if isinstance(right_val, int):
+                    # Try integer first, then float
+                    try:
+                        left_num: Union[int, float] = int(float(left_val))
+                    except (ValueError, TypeError):
+                        left_num = float(left_val)
+                else:
+                    left_num = float(left_val)
+                return left_num, right_val
+            except (ValueError, TypeError):
+                # Conversion failed, return original values
+                return left_val, right_val
+        # Right is string, left is numeric: convert right to numeric
+        elif isinstance(right_val, str) and isinstance(left_val, (int, float)):
+            try:
+                if isinstance(left_val, int):
+                    try:
+                        right_num: Union[int, float] = int(float(right_val))
+                    except (ValueError, TypeError):
+                        right_num = float(right_val)
+                else:
+                    right_num = float(right_val)
+                return left_val, right_num
+            except (ValueError, TypeError):
+                # Conversion failed, return original values
+                return left_val, right_val
+        # No coercion needed
+        return left_val, right_val
+
+    @staticmethod
     def _evaluate_comparison(
         col_value: Any, operation: str, condition_value: Any
     ) -> bool:
@@ -1241,21 +1286,26 @@ class ConditionEvaluator:
         Returns:
             True if comparison is true.
         """
-        if col_value is None:
+        if col_value is None or condition_value is None:
             return operation == "!="  # Only != returns True for null values
 
+        # Apply coercion if types are different
+        coerced_left, coerced_right = ConditionEvaluator._coerce_for_comparison(
+            col_value, condition_value
+        )
+
         if operation == "==":
-            return bool(col_value == condition_value)
+            return bool(coerced_left == coerced_right)
         elif operation == "!=":
-            return bool(col_value != condition_value)
+            return bool(coerced_left != coerced_right)
         elif operation == ">":
-            return bool(col_value > condition_value)
+            return bool(coerced_left > coerced_right)
         elif operation == ">=":
-            return bool(col_value >= condition_value)
+            return bool(coerced_left >= coerced_right)
         elif operation == "<":
-            return bool(col_value < condition_value)
+            return bool(coerced_left < coerced_right)
         elif operation == "<=":
-            return bool(col_value <= condition_value)
+            return bool(coerced_left <= coerced_right)
 
         return False
 

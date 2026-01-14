@@ -5,7 +5,7 @@ This module translates Sparkless column expressions (Column, ColumnOperation)
 to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
-from typing import Any, Optional, Tuple, cast
+from typing import Any, List, Optional, Tuple, Union, cast
 from datetime import datetime, date
 import logging
 import polars as pl
@@ -54,12 +54,18 @@ class PolarsExpressionTranslator:
         self._translation_cache: OrderedDict[Any, pl.Expr] = OrderedDict()
         self._cache_size = 512
 
-    def translate(self, expr: Any, input_col_dtype: Any = None) -> pl.Expr:
+    def translate(
+        self,
+        expr: Any,
+        input_col_dtype: Any = None,
+        available_columns: Optional[List[str]] = None,
+    ) -> pl.Expr:
         """Translate Column expression to Polars expression.
 
         Args:
             expr: Column, ColumnOperation, or other expression
             input_col_dtype: Optional Polars dtype of input column (for to_timestamp optimization)
+            available_columns: Optional list of available column names for case-insensitive matching
 
         Returns:
             Polars expression (pl.Expr)
@@ -71,9 +77,19 @@ class PolarsExpressionTranslator:
                 return cached
 
         if isinstance(expr, ColumnOperation):
-            result = self._translate_operation(expr, input_col_dtype=input_col_dtype)
+            # For nested operations (e.g., filter with isin), pass input_col_dtype down
+            # But if we're at the top level, try to infer dtype from the column if available
+            if input_col_dtype is None and isinstance(expr, ColumnOperation):
+                # Try to infer dtype from the column name if we have available_columns
+                # This is a best-effort attempt - the proper way is to pass dtype from callers
+                pass  # We'll rely on callers to pass dtype
+            result = self._translate_operation(
+                expr,
+                input_col_dtype=input_col_dtype,
+                available_columns=available_columns,
+            )
         elif isinstance(expr, Column):
-            result = self._translate_column(expr)
+            result = self._translate_column(expr, available_columns=available_columns)
         elif isinstance(expr, Literal):
             result = self._translate_literal(expr)
         elif isinstance(expr, AggregateFunction):
@@ -110,11 +126,14 @@ class PolarsExpressionTranslator:
 
         return result
 
-    def _translate_column(self, col: Column) -> pl.Expr:
+    def _translate_column(
+        self, col: Column, available_columns: Optional[List[str]] = None
+    ) -> pl.Expr:
         """Translate Column to Polars column expression.
 
         Args:
             col: Column instance
+            available_columns: Optional list of available column names for case-insensitive matching
 
         Returns:
             Polars column expression
@@ -123,9 +142,29 @@ class PolarsExpressionTranslator:
         # The alias will be applied when the expression is used in select
         if hasattr(col, "_original_column") and col._original_column is not None:
             # Use the original column's name for the actual column reference
-            return pl.col(col._original_column.name)
-        # Use the column's name directly
-        return pl.col(col.name)
+            col_name = col._original_column.name
+        else:
+            col_name = col.name
+
+        # Use case-insensitive matching if available columns are provided
+        if available_columns:
+            actual_col_name = self._find_column_case_insensitive(
+                available_columns, col_name
+            )
+            if actual_col_name:
+                col_name = actual_col_name
+
+        return pl.col(col_name)
+
+    @staticmethod
+    def _find_column_case_insensitive(
+        available_columns: List[str], column_name: str
+    ) -> Optional[str]:
+        """Find column name in available columns case-insensitively."""
+        for col in available_columns:
+            if col.lower() == column_name.lower():
+                return col
+        return None
 
     def _translate_literal(self, lit: Literal) -> pl.Expr:
         """Translate Literal to Polars literal expression.
@@ -144,7 +183,10 @@ class PolarsExpressionTranslator:
         return pl.lit(value)
 
     def _translate_operation(
-        self, op: ColumnOperation, input_col_dtype: Any = None
+        self,
+        op: ColumnOperation,
+        input_col_dtype: Any = None,
+        available_columns: Optional[List[str]] = None,
     ) -> pl.Expr:
         """Translate ColumnOperation to Polars expression.
 
@@ -161,9 +203,11 @@ class PolarsExpressionTranslator:
         # Translate left side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(column, ColumnOperation):
-            left = self._translate_operation(column, input_col_dtype=None)
+            left = self._translate_operation(
+                column, input_col_dtype=None, available_columns=available_columns
+            )
         elif isinstance(column, Column):
-            left = pl.col(column.name)
+            left = self._translate_column(column, available_columns=available_columns)
         elif isinstance(column, Literal):
             # Resolve lazy literals before translating
             if hasattr(column, "_is_lazy") and column._is_lazy:
@@ -175,11 +219,20 @@ class PolarsExpressionTranslator:
             # For now, create the literal - the cast will handle the dtype
             left = pl.lit(lit_value)
         elif isinstance(column, str):
-            left = pl.col(column)
+            # Use case-insensitive matching if available columns are provided
+            if available_columns:
+                actual_col_name = (
+                    PolarsExpressionTranslator._find_column_case_insensitive(
+                        available_columns, column
+                    )
+                )
+                left = pl.col(actual_col_name) if actual_col_name else pl.col(column)
+            else:
+                left = pl.col(column)
         elif isinstance(column, (int, float, bool)):
             left = pl.lit(column)
         else:
-            left = self.translate(column)
+            left = self.translate(column, available_columns=available_columns)
 
         # Special handling for cast operation - value should be a type name, not a column
         if operation == "cast":
@@ -193,11 +246,122 @@ class PolarsExpressionTranslator:
             return self._translate_cast(left, value)
 
         # Special handling for isin - value is a list, don't translate it
+        # Need to handle type coercion for mixed types (e.g., checking int values in string column)
         if operation == "isin":
+            # Get the column's dtype if available (from input_col_dtype or by checking the DataFrame)
+            # Coerce values to match the column type
             if isinstance(value, list):
-                return left.is_in(value)
+                # Try to infer the column type from input_col_dtype or default to original values
+                coerced_values = value
+                if input_col_dtype is not None:
+                    # Coerce values to match column type
+                    if input_col_dtype == pl.Utf8:
+                        # String column - convert all values to strings
+                        coerced_values = [str(v) for v in value]
+                    elif input_col_dtype in (pl.Int64, pl.Int32, pl.Int16, pl.Int8):
+                        # Integer column - try to convert string values to int
+                        coerced_values = []
+                        for v in value:
+                            if isinstance(v, str):
+                                try:
+                                    coerced_values.append(
+                                        int(float(v))
+                                    )  # Handle "10.5" -> 10
+                                except (ValueError, TypeError):
+                                    coerced_values.append(
+                                        v
+                                    )  # Keep original if conversion fails
+                            else:
+                                coerced_values.append(v)
+                    elif input_col_dtype in (pl.Float64, pl.Float32):
+                        # Float column - try to convert string values to float
+                        coerced_values = []
+                        for v in value:
+                            if isinstance(v, str):
+                                try:
+                                    coerced_values.append(float(v))
+                                except (ValueError, TypeError):
+                                    coerced_values.append(
+                                        v
+                                    )  # Keep original if conversion fails
+                            else:
+                                coerced_values.append(v)
+                return left.is_in(coerced_values)
             else:
-                return left.is_in([value])
+                coerced_value = value
+                if input_col_dtype is not None and input_col_dtype == pl.Utf8:
+                    # String column - convert value to string
+                    coerced_value = str(value)
+                return left.is_in([coerced_value])
+
+        # Special handling for getItem - extract element from array or character from string
+        if operation == "getItem":
+            index = value
+            try:
+                idx = int(index)
+                # For array/list columns, we need to handle out-of-bounds gracefully
+                # Polars list.get() raises an error for out-of-bounds, but PySpark returns None
+                # Use list.slice() to safely get the element, or return None if out of bounds
+                try:
+                    # Try using list.slice() which handles out-of-bounds by returning empty list
+                    # Then take the first element, or None if empty
+                    list_len = left.list.len()
+                    in_bounds = (pl.lit(idx) >= 0) & (pl.lit(idx) < list_len)
+                    # Use slice to get a single element safely
+                    sliced = left.list.slice(pl.lit(idx), 1)
+                    # Get first element from slice, or None if slice is empty
+                    result = sliced.list.first()
+                    # Return None if out of bounds
+                    result = pl.when(in_bounds).then(result).otherwise(None)
+
+                    # Try to get return type from input_col_dtype
+                    if input_col_dtype is not None and isinstance(
+                        input_col_dtype, pl.List
+                    ):
+                        return_dtype = input_col_dtype.inner
+                        if return_dtype is not None:
+                            result = result.cast(return_dtype, strict=False)
+
+                    return result
+                except (AttributeError, TypeError):
+                    # Fallback to map_elements if list operations don't work
+                    def get_item_handler(val: Any) -> Any:
+                        """Handle getItem for arrays with bounds checking."""
+                        if val is None:
+                            return None
+                        if isinstance(val, (list, tuple, str)):
+                            if 0 <= idx < len(val):
+                                return val[idx]
+                            return None
+                        elif isinstance(val, dict):
+                            return val.get(index)
+                        return None
+
+                    return_dtype = None
+                    if input_col_dtype is not None and isinstance(
+                        input_col_dtype, pl.List
+                    ):
+                        return_dtype = input_col_dtype.inner
+
+                    return left.map_elements(
+                        get_item_handler, return_dtype=return_dtype
+                    )
+            except (ValueError, TypeError):
+                # If index is not an integer (e.g., map key), handle differently
+                # For map keys, we can't use list.get(), must use map_elements
+                def get_item_handler_map(val: Any) -> Any:
+                    """Handle getItem for maps."""
+                    if val is None:
+                        return None
+                    if isinstance(val, dict):
+                        return val.get(index)
+                    elif isinstance(val, (list, tuple)):
+                        # If it's a list and index is a string, return None
+                        return None
+                    return None
+
+                # Use map_elements for map access
+                return left.map_elements(get_item_handler_map, return_dtype=None)
 
         # Check if this is a binary operator first (must be handled as binary operation, not function)
         binary_operators = [
@@ -352,9 +516,11 @@ class PolarsExpressionTranslator:
         # Translate right side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(value, ColumnOperation):
-            right = self._translate_operation(value, input_col_dtype=None)
+            right = self._translate_operation(
+                value, input_col_dtype=None, available_columns=available_columns
+            )
         elif isinstance(value, Column):
-            right = pl.col(value.name)
+            right = self._translate_column(value, available_columns=available_columns)
         elif isinstance(value, Literal):
             # Resolve lazy literals before translating
             if hasattr(value, "_is_lazy") and value._is_lazy:
@@ -369,21 +535,13 @@ class PolarsExpressionTranslator:
         elif value is None:
             right = pl.lit(None)
         else:
-            right = self.translate(value)
+            right = self.translate(value, available_columns=available_columns)
 
-        # Handle binary operations
-        if operation == "==":
-            return left == right
-        elif operation == "!=":
-            return left != right
-        elif operation == "<":
-            return left < right
-        elif operation == "<=":
-            return left <= right
-        elif operation == ">":
-            return left > right
-        elif operation == ">=":
-            return left >= right
+        # Handle binary operations with type coercion for string-to-numeric comparisons
+        if operation in ["==", "!=", "<", "<=", ">", ">="]:
+            # operation is guaranteed to be a string (from op.operation)
+            op_str: str = str(operation)
+            return self._coerce_for_comparison(left, right, op_str)
         elif operation == "+":
             return left + right
         elif operation == "-":
@@ -414,6 +572,88 @@ class PolarsExpressionTranslator:
             return self._translate_function_call(op, input_col_dtype=input_col_dtype)
         else:
             raise ValueError(f"Unsupported operation: {operation}")
+
+    def _coerce_for_comparison(
+        self, left_expr: pl.Expr, right_expr: pl.Expr, op: str
+    ) -> pl.Expr:
+        """Coerce types for comparison operations to handle string-to-numeric comparisons.
+
+        PySpark behavior: when comparing string with numeric, try to cast string to numeric.
+
+        Args:
+            left_expr: Left Polars expression
+            right_expr: Right Polars expression
+            op: Operation string (==, !=, <, <=, >, >=)
+
+        Returns:
+            Polars expression with appropriate comparison and type coercion
+        """
+        import operator
+
+        # Capture pl in local variable to avoid closure issues
+        polars_module = pl
+
+        # Map operation strings to operator functions
+        comparison_ops = {
+            "==": operator.eq,
+            "!=": operator.ne,
+            "<": operator.lt,
+            "<=": operator.le,
+            ">": operator.gt,
+            ">=": operator.ge,
+        }
+        compare_fn = comparison_ops[op]
+
+        # Use map_elements to handle type coercion at runtime
+        def _compare_with_coercion(left_val: Any, right_val: Any) -> Any:
+            """Compare values with automatic string-to-numeric coercion."""
+            if left_val is None or right_val is None:
+                return None
+
+            # Left is string, right is numeric: convert left to numeric
+            if isinstance(left_val, str) and isinstance(right_val, (int, float)):
+                try:
+                    # Determine target type based on right side
+                    if isinstance(right_val, int):
+                        # Try integer first, then float
+                        try:
+                            left_num: Union[int, float] = int(float(left_val))
+                        except (ValueError, TypeError):
+                            left_num = float(left_val)
+                    else:
+                        left_num = float(left_val)
+
+                    return compare_fn(left_num, right_val)
+                except (ValueError, TypeError):
+                    return None
+            # Right is string, left is numeric: convert right to numeric
+            elif isinstance(right_val, str) and isinstance(left_val, (int, float)):
+                try:
+                    if isinstance(left_val, int):
+                        try:
+                            right_num: Union[int, float] = int(float(right_val))
+                        except (ValueError, TypeError):
+                            right_num = float(right_val)
+                    else:
+                        right_num = float(right_val)
+
+                    return compare_fn(left_val, right_num)
+                except (ValueError, TypeError):
+                    return None
+
+            # Default comparison (same types or other combinations)
+            return compare_fn(left_val, right_val)
+
+        # Use map_elements for runtime type coercion
+        # Combine both expressions into a struct, then map
+        combined = polars_module.struct(
+            [left_expr.alias("left"), right_expr.alias("right")]
+        )
+        result = combined.map_elements(
+            lambda x: _compare_with_coercion(x["left"], x["right"]) if x else None,
+            return_dtype=polars_module.Boolean,
+        )
+        return result
 
     def _translate_cast(self, expr: pl.Expr, target_type: Any) -> pl.Expr:
         """Translate cast operation.
@@ -1173,8 +1413,107 @@ class PolarsExpressionTranslator:
                 if isinstance(op.value, tuple) and len(op.value) >= 2:
                     pattern = op.value[0]
                     idx = op.value[1] if len(op.value) > 1 else 0
-                    # Polars extract_all returns a list, we need to get the first match
-                    return col_expr.str.extract(pattern, idx)
+
+                    # Check if pattern contains lookahead/lookbehind assertions
+                    # Polars doesn't support these, so we need to use Python fallback
+                    import re as re_module
+
+                    has_lookaround = False
+                    try:
+                        # Check if pattern contains lookaround assertions
+                        if re_module.search(r"\(\?[<>=!]", pattern):
+                            has_lookaround = True
+                    except Exception:
+                        # If pattern check fails, try Polars anyway
+                        has_lookaround = False
+
+                    if has_lookaround:
+                        # Use Python re module fallback for lookahead/lookbehind patterns
+                        def regexp_extract_fallback(val: Any) -> Optional[str]:
+                            """Fallback for regexp_extract with lookahead/lookbehind."""
+                            if val is None or not isinstance(val, str):
+                                return None
+                            try:
+                                match = re_module.search(pattern, val)
+                                if match:
+                                    # Extract the group at idx (0 = full match, 1+ = groups)
+                                    if idx == 0:
+                                        return str(match.group(0))
+                                    elif idx <= len(match.groups()):
+                                        group_result = match.group(idx)
+                                        return str(group_result) if group_result is not None else None
+                                    else:
+                                        return None
+                                return None
+                            except Exception:
+                                return None
+
+                        # Use map_elements for Python fallback
+                        return col_expr.map_elements(
+                            regexp_extract_fallback, return_dtype=pl.Utf8
+                        )
+                    else:
+                        # Try Polars native extract first, fallback to Python if it fails
+                        try:
+                            # Polars extract returns a string, matching group at idx
+                            # Note: Polars str.extract uses group index 1-based, so idx=0 maps to full match
+                            # But PySpark regexp_extract idx=0 is full match, idx=1+ are capture groups
+                            # Polars doesn't support full match (idx=0) in extract, so we need special handling
+                            if idx == 0:
+                                # For idx=0 (full match), use extract_all and get first element
+                                extracted = col_expr.str.extract_all(pattern)
+
+                                # Get first match from list
+                                def get_first_match(matches: Any) -> Optional[str]:
+                                    if (
+                                        matches is None
+                                        or not isinstance(matches, list)
+                                        or len(matches) == 0
+                                    ):
+                                        return None
+                                    # Get the first match (which is the full match)
+                                    return matches[0] if matches else None
+
+                                return extracted.map_elements(
+                                    get_first_match, return_dtype=pl.Utf8
+                                )
+                            else:
+                                # For idx > 0, use Polars extract with group index
+                                # Polars uses 1-based indexing for groups
+                                return col_expr.str.extract(pattern, idx)
+                        except pl.exceptions.ComputeError as e:
+                            error_msg = str(e).lower()
+                            # Check if error is about look-around not being supported
+                            if (
+                                "look-around" in error_msg
+                                or "look-ahead" in error_msg
+                                or "look-behind" in error_msg
+                            ):
+                                # Fallback to Python re module
+                                def regexp_extract_fallback(val: Any) -> Optional[str]:
+                                    """Fallback for regexp_extract with lookahead/lookbehind."""
+                                    if val is None or not isinstance(val, str):
+                                        return None
+                                    try:
+                                        match = re_module.search(pattern, val)
+                                        if match:
+                                            if idx == 0:
+                                                return str(match.group(0))
+                                            elif idx <= len(match.groups()):
+                                                group_result = match.group(idx)
+                                                return str(group_result) if group_result is not None else None
+                                            else:
+                                                return None
+                                        return None
+                                    except Exception:
+                                        return None
+
+                                return col_expr.map_elements(
+                                    regexp_extract_fallback, return_dtype=pl.Utf8
+                                )
+                            else:
+                                # Re-raise other ComputeErrors
+                                raise
                 else:
                     raise ValueError("regexp_extract requires (pattern, idx) tuple")
             elif operation == "split":

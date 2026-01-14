@@ -8,6 +8,11 @@ following the Single Responsibility Principle.
 
 from typing import Sequence
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None  # type: ignore[assignment, misc]
 from sparkless.spark_types import (
     StructType,
     StructField,
@@ -25,7 +30,7 @@ class DataFrameFactory:
 
     def create_dataframe(
         self,
-        data: Union[List[Dict[str, Any]], List[Any]],
+        data: Union[List[Dict[str, Any]], List[Any], Any],
         schema: Optional[Union[StructType, List[str], str]],
         engine_config: SparkConfig,
         storage: Any,
@@ -33,7 +38,7 @@ class DataFrameFactory:
         """Create a DataFrame from data.
 
         Args:
-            data: List of dictionaries or tuples representing rows.
+            data: List of dictionaries or tuples representing rows, or a Pandas DataFrame.
             schema: Optional schema definition (StructType or list of column names).
             engine_config: Engine configuration for validation and coercion.
             storage: Storage manager for the DataFrame.
@@ -47,10 +52,30 @@ class DataFrameFactory:
         Example:
             >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
             >>> df = factory.create_dataframe(data, None, config, storage)
+            >>> import pandas as pd
+            >>> pdf = pd.DataFrame({"name": ["Alice"], "age": [25]})
+            >>> df = factory.create_dataframe(pdf, None, config, storage)
         """
+        # Handle Pandas DataFrame
+        # Use duck typing to detect pandas DataFrame (works for both mock and real pandas)
+        # Check for to_dict method with orient parameter, which is characteristic of pandas DataFrame
+        if hasattr(data, "to_dict") and callable(getattr(data, "to_dict", None)):
+            try:
+                # Try to call to_dict with orient="records" - this is the pandas DataFrame API
+                test_dict = data.to_dict(orient="records")
+                if isinstance(test_dict, list) and (not test_dict or isinstance(test_dict[0], dict)):
+                    # This looks like a pandas DataFrame - convert it
+                    data = test_dict
+            except (TypeError, ValueError, AttributeError):
+                # Not a pandas DataFrame or doesn't support orient="records"
+                pass
+        elif pd is not None and isinstance(data, pd.DataFrame):
+            # Fallback: check against imported pandas (might be mock)
+            data = data.to_dict(orient="records")
+
         if not isinstance(data, list):
             raise IllegalArgumentException(
-                "Data must be a list of dictionaries, tuples, lists, or Row objects"
+                "Data must be a list of dictionaries, tuples, lists, Row objects, or a Pandas DataFrame"
             )
 
         # Handle PySpark StructType - convert to StructType
@@ -79,13 +104,11 @@ class DataFrameFactory:
             # If data is positional (not dicts), convert to dicts with "_c0" key
             # This handles cases like createDataFrame([date1, date2], DateType())
             if data:
-
                 def _is_positional_row(obj: Any) -> bool:
                     """Check if object is a positional row (sequence but not str/bytes/dict)."""
                     return isinstance(obj, Sequence) and not isinstance(
                         obj, (str, bytes, dict)
                     )
-
                 # Check if first row is positional (primitive value or sequence)
                 first_row = data[0]
                 if not isinstance(first_row, dict):

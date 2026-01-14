@@ -21,6 +21,7 @@ from ..spark_types import (
     StructField,
     LongType,
     DoubleType,
+    FloatType,
     StringType,
     BooleanType,
     ArrayType,
@@ -97,7 +98,7 @@ class SchemaInferenceEngine:
             for value in values_for_key[1:]:
                 inferred_type = SchemaInferenceEngine._infer_type(value)
                 if type(field_type) is not type(inferred_type):
-                    # Type conflict - cannot merge (PySpark raises TypeError)
+                    # PySpark raises TypeError for all type conflicts
                     raise TypeError(
                         f"field {key}: Can not merge type {type(field_type).__name__} "
                         f"and {type(inferred_type).__name__}"
@@ -203,7 +204,7 @@ class SchemaInferenceEngine:
         Returns:
             Promoted type if promotion is possible, None otherwise
         """
-        from ..spark_types import LongType, DoubleType, FloatType
+        from ..spark_types import LongType, DoubleType
 
         # Check if both are numeric types that can be promoted
         numeric_types = {LongType, DoubleType, FloatType}
