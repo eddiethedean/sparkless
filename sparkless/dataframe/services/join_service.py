@@ -149,13 +149,26 @@ class JoinService:
         from ...core.exceptions.analysis import AnalysisException
         from ...dataframe.operations.set_operations import SetOperations
 
-        # Get column names from both DataFrames
+        # Get column names from both DataFrames (case-insensitive matching)
+        from ..validation.column_validator import ColumnValidator
+
         self_cols: Set[str] = {field.name for field in self._df.schema.fields}
         other_cols: Set[str] = {field.name for field in other.schema.fields}
 
-        # Check for missing columns
-        missing_in_other: Set[str] = self_cols - other_cols
-        missing_in_self: Set[str] = other_cols - self_cols
+        # Build case-insensitive mappings
+        self_cols_lower = {col.lower(): col for col in self_cols}
+        other_cols_lower = {col.lower(): col for col in other_cols}
+
+        # Check for missing columns (case-insensitive)
+        missing_in_other: Set[str] = set()
+        for self_col in self_cols:
+            if self_col.lower() not in other_cols_lower:
+                missing_in_other.add(self_col)
+
+        missing_in_self: Set[str] = set()
+        for other_col in other_cols:
+            if other_col.lower() not in self_cols_lower:
+                missing_in_self.add(other_col)
 
         if not allowMissingColumns and (missing_in_other or missing_in_self):
             raise AnalysisException(
@@ -163,16 +176,28 @@ class JoinService:
                 f"Missing in other: {missing_in_other}, Missing in self: {missing_in_self}"
             )
 
-        # Check type compatibility for columns that exist in both schemas
-        common_cols: Set[str] = self_cols & other_cols
+        # Check type compatibility for columns that exist in both schemas (case-insensitive)
+        common_cols: Set[str] = set()
+        for self_col in self_cols:
+            if self_col.lower() in other_cols_lower:
+                common_cols.add(self_col)
+
         for col_name in common_cols:
             # Find the field in both schemas
             self_field: StructField = next(
                 f for f in self._df.schema.fields if f.name == col_name
             )
+            # Find corresponding field in other schema (case-insensitive)
+            other_col_name = other_cols_lower.get(col_name.lower())
+            if other_col_name is None:
+                # Skip if no matching column found (shouldn't happen, but handle gracefully)
+                continue
             other_field: StructField = next(
-                f for f in other.schema.fields if f.name == col_name
+                (f for f in other.schema.fields if f.name == other_col_name), None
             )
+            if other_field is None:
+                # Skip if field not found (shouldn't happen, but handle gracefully)
+                continue
 
             # Check type compatibility
             if not SetOperations._are_types_compatible(
@@ -201,11 +226,15 @@ class JoinService:
             combined_data.append(new_row)
 
         # Add rows from other DataFrame
+        # Build a mapping from case-insensitive column names to actual column names in other DataFrame
+        other_row_keys_lower = {key.lower(): key for key in (other.data[0].keys() if other.data else [])}
         for row in other.data:
             other_new_row: Dict[str, Any] = {}
             for col in all_cols:
-                if col in row:
-                    other_new_row[col] = row[col]
+                # Find actual column name case-insensitively in row
+                actual_col_in_row = other_row_keys_lower.get(col.lower())
+                if actual_col_in_row and actual_col_in_row in row:
+                    other_new_row[col] = row[actual_col_in_row]
                 else:
                     other_new_row[col] = None  # Missing column filled with null
             combined_data.append(other_new_row)
@@ -235,9 +264,15 @@ class JoinService:
                 self_field_for_nullable: StructField = next(
                     f for f in self._df.schema.fields if f.name == col
                 )
-                other_field_for_nullable: StructField = next(
-                    f for f in other.schema.fields if f.name == col
-                )
+                # Find other field case-insensitively
+                other_field_for_nullable: Optional[StructField] = None
+                for field in other.schema.fields:
+                    if field.name.lower() == col.lower():
+                        other_field_for_nullable = field
+                        break
+                if other_field_for_nullable is None:
+                    # Skip nullable check if field not found
+                    continue
                 nullable = bool(
                     self_field_for_nullable.nullable
                     or other_field_for_nullable.nullable

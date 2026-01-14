@@ -139,19 +139,28 @@ def spark(request):
         test_name = f"test_{request.node.name[:50]}"  # Limit length
 
     try:
+        # Only pass enable_delta for PySpark sessions
+        kwargs = {}
+        if backend == BackendType.PYSPARK:
+            kwargs["enable_delta"] = False  # Disable Delta by default for tests
         session = SparkBackend.create_session(
             app_name=test_name,
             backend=backend,
             request=request if hasattr(request, "node") else None,
+            **kwargs,
         )
     except (ImportError, RuntimeError) as e:
-        # Skip test if PySpark session creation fails (e.g., pickling errors)
+        # Skip test if PySpark session creation fails
         # This handles known Python 3.11/PySpark 3.2.4 compatibility issues
+        # and Java gateway errors
         error_msg = str(e)
-        if "Could not serialize" in error_msg or "pickle" in error_msg.lower():
-            pytest.skip(
-                f"PySpark session creation failed due to serialization issue: {e}"
-            )
+        if (
+            "Could not serialize" in error_msg
+            or "pickle" in error_msg.lower()
+            or "Java gateway" in error_msg
+            or "Failed to create PySpark session" in error_msg
+        ):
+            pytest.skip(f"PySpark session creation failed: {e}")
         raise
 
     yield session
@@ -189,7 +198,7 @@ def pyspark_session(request):
     from tests.fixtures.spark_backend import SparkBackend
 
     try:
-        session = SparkBackend.create_pyspark_session("test_app")
+        session = SparkBackend.create_pyspark_session("test_app", enable_delta=False)
         yield session
         with contextlib.suppress(BaseException):
             session.stop()

@@ -111,9 +111,30 @@ class ColumnOperatorMixin:
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: List[Any]) -> "ColumnOperation":
-        """Check if column value is in list of values."""
-        return self._create_operation("isin", values)
+    def isin(self, *values: Any) -> "ColumnOperation":
+        """Check if column value is in list of values.
+
+        Args:
+            *values: Variable number of values to check against. Can be passed as
+                    individual arguments (e.g., col.isin(1, 2, 3)) or as a single
+                    list (e.g., col.isin([1, 2, 3])) for backward compatibility.
+
+        Returns:
+            ColumnOperation representing the isin check.
+
+        Example:
+            >>> df.filter(F.col("value").isin(1, 2, 3))
+            >>> df.filter(F.col("value").isin([1, 2, 3]))  # Also supported
+        """
+        # Normalize: if single list argument provided, use it directly
+        # Otherwise convert *args to list
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            # Backward compatibility: single list/tuple argument
+            normalized_values = list(values[0])
+        else:
+            # Convert *args to list
+            normalized_values = list(values)
+        return self._create_operation("isin", normalized_values)
 
     def between(self, lower: Any, upper: Any) -> "ColumnOperation":
         """Check if column value is between lower and upper bounds."""
@@ -155,6 +176,21 @@ class ColumnOperatorMixin:
     def cast(self, data_type: DataType) -> "ColumnOperation":
         """Cast column to different data type."""
         return self._create_operation("cast", data_type)
+
+    def getItem(self, key: Any) -> "ColumnOperation":
+        """Get item from array by index or map by key.
+
+        Args:
+            key: Index (int) for array access or key (any) for map access.
+
+        Returns:
+            ColumnOperation representing the getItem operation.
+
+        Example:
+            >>> df.select(F.col("array_col").getItem(0))
+            >>> df.select(F.col("map_col").getItem("key"))
+        """
+        return self._create_operation("getItem", key)
 
 
 class Column(ColumnOperatorMixin):

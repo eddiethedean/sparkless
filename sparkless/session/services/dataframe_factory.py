@@ -8,6 +8,11 @@ following the Single Responsibility Principle.
 
 from typing import Sequence
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None  # type: ignore[assignment, misc]
 from sparkless.spark_types import (
     StructType,
     StructField,
@@ -28,7 +33,7 @@ class DataFrameFactory:
 
     def create_dataframe(
         self,
-        data: Union[List[Dict[str, Any]], List[Any]],
+        data: Union[List[Dict[str, Any]], List[Any], Any],
         schema: Optional[Union[StructType, List[str], str]],
         engine_config: SparkConfig,
         storage: Any,
@@ -36,7 +41,7 @@ class DataFrameFactory:
         """Create a DataFrame from data.
 
         Args:
-            data: List of dictionaries or tuples representing rows.
+            data: List of dictionaries or tuples representing rows, or a Pandas DataFrame.
             schema: Optional schema definition (StructType or list of column names).
             engine_config: Engine configuration for validation and coercion.
             storage: Storage manager for the DataFrame.
@@ -50,10 +55,18 @@ class DataFrameFactory:
         Example:
             >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
             >>> df = factory.create_dataframe(data, None, config, storage)
+            >>> import pandas as pd
+            >>> pdf = pd.DataFrame({"name": ["Alice"], "age": [25]})
+            >>> df = factory.create_dataframe(pdf, None, config, storage)
         """
+        # Handle Pandas DataFrame
+        if pd is not None and isinstance(data, pd.DataFrame):
+            # Convert Pandas DataFrame to list of dictionaries
+            data = data.to_dict(orient="records")
+
         if not isinstance(data, list):
             raise IllegalArgumentException(
-                "Data must be a list of dictionaries, tuples, lists, or Row objects"
+                "Data must be a list of dictionaries, tuples, lists, Row objects, or a Pandas DataFrame"
             )
 
         # Handle PySpark StructType - convert to StructType

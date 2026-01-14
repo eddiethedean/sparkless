@@ -51,11 +51,15 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
+        # Validate that all columns exist (case-insensitive) and resolve to actual case-sensitive names
+        from ..validation.column_validator import ColumnValidator
+        resolved_col_names = []
         for col_name in col_names:
-            if col_name not in [field.name for field in self._df.schema.fields]:
-                available_columns = [field.name for field in self._df.schema.fields]
-                raise SparkColumnNotFoundError(col_name, available_columns)
+            ColumnValidator.validate_column_exists(self._df.schema, col_name, "groupBy")
+            # Resolve column name to actual case-sensitive name
+            actual_col_name = ColumnValidator._find_column_case_insensitive(self._df.schema, col_name)
+            resolved_col_names.append(actual_col_name if actual_col_name else col_name)
+        col_names = resolved_col_names
 
         # Cast to SupportsDataFrameOps to satisfy type checker
         # DataFrame implements the protocol at runtime, but mypy can't verify

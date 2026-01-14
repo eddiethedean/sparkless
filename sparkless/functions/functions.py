@@ -26,7 +26,7 @@ Example:
     ALICE        50
 """
 
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Tuple, Union
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, Tuple, Union
 from .core.column import Column, ColumnOperation
 
 if TYPE_CHECKING:
@@ -372,19 +372,19 @@ class Functions:
         return StringFunctions.rlike(column, pattern)
 
     @staticmethod
-    def isin(column: Union[Column, str], values: List[Any]) -> ColumnOperation:
+    def isin(column: Union[Column, str], *values: Any) -> ColumnOperation:
         """Check if column value is in list of values.
 
         Args:
             column: The column to check.
-            values: List of values to check against.
+            *values: Variable number of values to check against.
 
         Returns:
             ColumnOperation representing the isin function.
         """
         if isinstance(column, str):
             column = Column(column)
-        return column.isin(values)
+        return column.isin(*values)
 
     @staticmethod
     def replace(column: Union[Column, str], old: str, new: str) -> ColumnOperation:

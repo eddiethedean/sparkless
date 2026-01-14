@@ -22,6 +22,39 @@ class TransformationService:
         """Initialize transformation service with DataFrame instance."""
         self._df = df
 
+    def _find_column_case_insensitive(self, column_name: str) -> Optional[str]:
+        """Find column name in schema case-insensitively."""
+        for col in self._df.columns:
+            if col.lower() == column_name.lower():
+                return col
+        return None
+
+    def _validate_column_reference(self, col: Any) -> None:
+        """Recursively validate column references in Column or ColumnOperation.
+
+        Args:
+            col: Column, ColumnOperation, or other object to validate.
+
+        Raises:
+            SparkColumnNotFoundError: If a column reference doesn't exist.
+        """
+        from ...core.exceptions.operation import SparkColumnNotFoundError
+
+        if isinstance(col, ColumnOperation):
+            # For ColumnOperation, validate underlying column references
+            if hasattr(col, "column") and col.column:
+                self._validate_column_reference(col.column)
+            if hasattr(col, "value") and col.value:
+                if isinstance(col.value, Column):
+                    self._validate_column_reference(col.value)
+        elif isinstance(col, Column):
+            # For simple Column, validate the column name exists
+            col_name = col.name if hasattr(col, "name") else str(col)
+            if col_name and col_name != "*":
+                actual_col_name = self._find_column_case_insensitive(col_name)
+                if actual_col_name is None:
+                    raise SparkColumnNotFoundError(col_name, self._df.columns)
+
     @overload
     def select(self, *columns: str) -> "SupportsDataFrameOps":
         """Select columns by name."""
@@ -76,35 +109,73 @@ class TransformationService:
         has_pending_joins = any(op[0] == "join" for op in self._df._operations_queue)
 
         if not has_pending_joins:
+            # Resolve column names case-insensitively and replace with actual names
+            resolved_columns = []
             for col in columns:
                 if isinstance(col, str) and col != "*":
-                    # Check if column exists
-                    if col not in self._df.columns:
+                    # Use case-insensitive lookup and replace with actual column name
+                    actual_col_name = self._find_column_case_insensitive(col)
+                    if actual_col_name is None:
                         from ...core.exceptions.operation import (
                             SparkColumnNotFoundError,
                         )
 
                         raise SparkColumnNotFoundError(col, self._df.columns)
+                    # Use the actual case-sensitive column name
+                    resolved_columns.append(actual_col_name)
                 elif isinstance(col, Column):
-                    if hasattr(col, "operation"):
-                        # Complex expression - validate column references
-                        self._df._validate_expression_columns(col, "select")
+                    # ColumnOperation represents an expression (like F.size(col), col + 1, etc.)
+                    # It should not be validated as a column name - only the underlying column references should be validated
+                    if isinstance(col, ColumnOperation):
+                        # For ColumnOperation, validate underlying column references recursively
+                        # but don't validate the operation name itself
+                        if hasattr(col, "column") and col.column:
+                            # Recursively validate the underlying column reference
+                            self._validate_column_reference(col.column)
+                        if hasattr(col, "value") and col.value:
+                            # Also validate the value if it's a column reference
+                            if isinstance(col.value, Column) and not isinstance(col.value, ColumnOperation):
+                                # Value is a simple column reference - validate it
+                                self._validate_column_reference(col.value)
+                            elif isinstance(col.value, ColumnOperation):
+                                # Value is also a ColumnOperation - validate recursively
+                                self._validate_column_reference(col.value)
+                        # ColumnOperation expressions are valid - append as-is
+                        resolved_columns.append(col)
+                    elif hasattr(col, "_alias_name") and col._alias_name:
+                        # This is an aliased Column - validate the underlying column reference
+                        # Don't validate the alias name as it's an output column name
+                        if hasattr(col, "_original_column") and col._original_column:
+                            # Validate the underlying column reference
+                            self._validate_column_reference(col._original_column)
+                        # For aliased columns, just append them - they're output columns
+                        resolved_columns.append(col)
                     else:
-                        # Simple column reference - validate
-                        if col.name not in self._df.columns:
-                            from ...core.exceptions.operation import (
-                                SparkColumnNotFoundError,
-                            )
+                        # Regular Column - validate column name
+                        col_name = col.name if hasattr(col, "name") else str(col)
+                        if col_name and col_name != "*":
+                            # Use case-insensitive lookup to check if column exists
+                            actual_col_name = self._find_column_case_insensitive(col_name)
+                            if actual_col_name is None:
+                                from ...core.exceptions.operation import (
+                                    SparkColumnNotFoundError,
+                                )
 
-                            raise SparkColumnNotFoundError(col.name, self._df.columns)
-                elif isinstance(col, ColumnOperation) and not (
-                    hasattr(col, "operation")
-                    and col.operation in ["months_between", "datediff"]
-                ):
-                    # Complex expression - validate column references
-                    # Skip validation for function operations that will be evaluated later
-                    self._df._validate_expression_columns(col, "select")
-
+                                raise SparkColumnNotFoundError(col_name, self._df.columns)
+                            # For Column objects, we just validate that the column exists
+                            # The Column object itself can be used as-is (it references the correct column)
+                            # But if the name needs case correction, we need to create a new Column
+                            if actual_col_name != col_name:
+                                # Column name needs case correction - create new Column with correct name
+                                resolved_col = Column(actual_col_name, col.column_type if hasattr(col, "column_type") else None)
+                                resolved_columns.append(resolved_col)
+                            else:
+                                resolved_columns.append(col)
+                        else:
+                            resolved_columns.append(col)
+                else:
+                    resolved_columns.append(col)
+            columns = tuple(resolved_columns)
             # Always use lazy evaluation
             return self._df._queue_op("select", columns)
 
@@ -321,11 +392,18 @@ class TransformationService:
         # Materialize if lazy to ensure we work with actual data including all columns
         materialized = self._df._materialize_if_lazy()
 
+        # Resolve column name case-insensitively
+        actual_existing = self._find_column_case_insensitive(existing)
+        if actual_existing is None:
+            from ...core.exceptions.operation import SparkColumnNotFoundError
+
+            raise SparkColumnNotFoundError(existing, self._df.columns)
+
         new_data = []
         for row in materialized.data:
             new_row = {}
             for k, v in row.items():
-                if k == existing:
+                if k == actual_existing:
                     new_row[new] = v
                 else:
                     new_row[k] = v
@@ -334,7 +412,7 @@ class TransformationService:
         # Update schema
         new_fields = []
         for field in materialized.schema.fields:
-            if field.name == existing:
+            if field.name == actual_existing:
                 new_fields.append(StructField(new, field.dataType))
             else:
                 new_fields.append(field)
@@ -357,20 +435,30 @@ class TransformationService:
         # Materialize if lazy to ensure we work with actual data
         materialized = self._df._materialize_if_lazy()
 
+        # Build case-insensitive mapping from actual column names to new names
+        actual_to_new: Dict[str, str] = {}
+        for old_name, new_name in colsMap.items():
+            actual_old = self._find_column_case_insensitive(old_name)
+            if actual_old is None:
+                from ...core.exceptions.operation import SparkColumnNotFoundError
+
+                raise SparkColumnNotFoundError(old_name, self._df.columns)
+            actual_to_new[actual_old] = new_name
+
         # Apply all renames in a single pass
         new_data = []
         for row in materialized.data:
             new_row = {}
             for k, v in row.items():
-                # Check if this key should be renamed
-                new_key = colsMap.get(k, k)
+                # Check if this key should be renamed (case-insensitive)
+                new_key = actual_to_new.get(k, k)
                 new_row[new_key] = v
             new_data.append(new_row)
 
         # Update schema
         new_fields = []
         for field in materialized.schema.fields:
-            new_name = colsMap.get(field.name, field.name)
+            new_name = actual_to_new.get(field.name, field.name)
             new_fields.append(StructField(new_name, field.dataType, field.nullable))
         new_schema = StructType(new_fields)
 
@@ -417,10 +505,20 @@ class TransformationService:
         if subset is None:
             return self.distinct()
 
+        # Resolve column names case-insensitively
+        actual_subset = []
+        for col_name in subset:
+            actual_col = self._find_column_case_insensitive(col_name)
+            if actual_col is None:
+                from ...core.exceptions.operation import SparkColumnNotFoundError
+
+                raise SparkColumnNotFoundError(col_name, self._df.columns)
+            actual_subset.append(actual_col)
+
         seen = set()
         distinct_data = []
         for row in self._df.data:
-            row_tuple = tuple(sorted((k, v) for k, v in row.items() if k in subset))
+            row_tuple = tuple(sorted((k, v) for k, v in row.items() if k in actual_subset))
             if row_tuple not in seen:
                 seen.add(row_tuple)
                 distinct_data.append(row)

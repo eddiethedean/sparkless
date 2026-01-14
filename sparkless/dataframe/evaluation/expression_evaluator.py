@@ -1497,6 +1497,7 @@ class ExpressionEvaluator:
             "timestamp_micros": self._func_timestamp_micros,
             # New utility functions
             "get": self._func_get,
+            "getItem": self._func_getItem,
             "inline": self._func_inline,
             "inline_outer": self._func_inline_outer,
             "str_to_map": self._func_str_to_map,
@@ -3739,6 +3740,25 @@ class ExpressionEvaluator:
     # New utility function evaluations
     def _func_get(self, value: Any, operation: ColumnOperation) -> Any:
         """Get function - get element from array by index or map by key."""
+        if value is None:
+            return None
+        key = operation.value
+        if isinstance(value, (list, tuple)):
+            # Array access
+            try:
+                idx = int(key)
+                if 0 <= idx < len(value):
+                    return value[idx]
+                return None
+            except (ValueError, TypeError, IndexError):
+                return None
+        elif isinstance(value, dict):
+            # Map access
+            return value.get(key)
+        return None
+
+    def _func_getItem(self, value: Any, operation: ColumnOperation) -> Any:
+        """GetItem function - get element from array by index or map by key."""
         if value is None:
             return None
         key = operation.value

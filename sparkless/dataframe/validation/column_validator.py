@@ -6,7 +6,7 @@ scattered throughout DataFrame, ensuring consistent validation across
 all operations.
 """
 
-from typing import Any, List
+from typing import Any, List, Optional
 from ...spark_types import StructType
 from ...functions import Column, ColumnOperation
 from ...core.exceptions.operation import SparkColumnNotFoundError
@@ -50,10 +50,18 @@ class ColumnValidator:
     """
 
     @staticmethod
+    def _find_column_case_insensitive(schema: StructType, column_name: str) -> Optional[str]:
+        """Find column name in schema case-insensitively."""
+        for field in schema.fields:
+            if field.name.lower() == column_name.lower():
+                return field.name
+        return None
+
+    @staticmethod
     def validate_column_exists(
         schema: StructType, column_name: str, operation: str
     ) -> None:
-        """Validate that a single column exists in schema.
+        """Validate that a single column exists in schema (case-insensitive).
 
         Args:
             schema: The DataFrame schema to validate against.
@@ -67,15 +75,15 @@ class ColumnValidator:
         if column_name == "*":
             return
 
-        column_names = [field.name for field in schema.fields]
-        if column_name not in column_names:
+        if ColumnValidator._find_column_case_insensitive(schema, column_name) is None:
+            column_names = [field.name for field in schema.fields]
             raise SparkColumnNotFoundError(column_name, column_names)
 
     @staticmethod
     def validate_columns_exist(
         schema: StructType, column_names: List[str], operation: str
     ) -> None:
-        """Validate that multiple columns exist in schema.
+        """Validate that multiple columns exist in schema (case-insensitive).
 
         Args:
             schema: The DataFrame schema to validate against.
@@ -86,7 +94,10 @@ class ColumnValidator:
             SparkColumnNotFoundError: If any column doesn't exist in schema.
         """
         available_columns = [field.name for field in schema.fields]
-        missing_columns = [col for col in column_names if col not in available_columns]
+        missing_columns = []
+        for col in column_names:
+            if ColumnValidator._find_column_case_insensitive(schema, col) is None:
+                missing_columns.append(col)
         if missing_columns:
             raise SparkColumnNotFoundError(missing_columns[0], available_columns)
 
@@ -176,7 +187,7 @@ class ColumnValidator:
 
     @staticmethod
     def _column_exists_in_schema(schema: StructType, column_name: str) -> bool:
-        """Check if column exists in schema.
+        """Check if column exists in schema (case-insensitive).
 
         Args:
             schema: The DataFrame schema to check against.
@@ -185,7 +196,7 @@ class ColumnValidator:
         Returns:
             True if column exists in schema, False otherwise.
         """
-        return column_name in [field.name for field in schema.fields]
+        return ColumnValidator._find_column_case_insensitive(schema, column_name) is not None
 
     @staticmethod
     def validate_expression_columns(

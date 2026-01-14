@@ -94,9 +94,15 @@ class SchemaManager:
                     fields_list = None
                     using_list = False
                 old_name, new_name = op_val
-                if old_name in fields_map:
+                # Find actual column name case-insensitively
+                actual_old_name = None
+                for field_name in fields_map.keys():
+                    if field_name.lower() == old_name.lower():
+                        actual_old_name = field_name
+                        break
+                if actual_old_name:
                     # Rename the field
-                    field = fields_map.pop(old_name)
+                    field = fields_map.pop(actual_old_name)
                     # Create new field with new name but same type and nullable
                     fields_map[new_name] = StructField(
                         new_name, field.dataType, field.nullable
@@ -329,10 +335,16 @@ class SchemaManager:
             # Convert tuple to list
             columns_to_drop = list(columns_to_drop)
 
-        # Remove columns from fields_map
+        # Remove columns from fields_map (case-insensitive)
         for col_name in columns_to_drop:
-            if col_name in fields_map:
-                del fields_map[col_name]
+            # Find actual column name case-insensitively
+            actual_col_name = None
+            for field_name in fields_map.keys():
+                if field_name.lower() == col_name.lower():
+                    actual_col_name = field_name
+                    break
+            if actual_col_name:
+                del fields_map[actual_col_name]
 
         return fields_map
 

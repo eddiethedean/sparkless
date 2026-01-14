@@ -152,6 +152,14 @@ class DataType(_DataTypeBase):  # type: ignore[misc,valid-type]
             self.__class__.__name__, self.__class__.__name__.lower()
         )
 
+    def simpleString(self) -> str:
+        """Get PySpark-compatible simple string representation of the data type.
+
+        Returns:
+            Simple string representation (e.g., "string", "int", "array<string>").
+        """
+        return self.typeName()
+
 
 class StringType(DataType):
     """Mock StringType.
@@ -285,6 +293,10 @@ class ArrayType(DataType):
         """String representation."""
         return f"ArrayType({self.element_type})"
 
+    def simpleString(self) -> str:
+        """Get PySpark-compatible simple string representation."""
+        return f"array<{self.element_type.simpleString()}>"
+
 
 class MapType(DataType):
     """Mock map type."""
@@ -298,6 +310,10 @@ class MapType(DataType):
     def __repr__(self) -> str:
         """String representation."""
         return f"MapType({self.key_type}, {self.value_type})"
+
+    def simpleString(self) -> str:
+        """Get PySpark-compatible simple string representation."""
+        return f"map<{self.key_type.simpleString()},{self.value_type.simpleString()}>"
 
 
 class BinaryType(DataType):
@@ -532,6 +548,13 @@ class StructType(
     def __repr__(self) -> str:
         fields_str = ", ".join(repr(field) for field in self.fields)
         return f"StructType([{fields_str}])"
+
+    def simpleString(self) -> str:
+        """Get PySpark-compatible simple string representation."""
+        fields_str = ",".join(
+            f"{field.name}:{field.dataType.simpleString()}" for field in self.fields
+        )
+        return f"struct<{fields_str}>"
 
     def merge_with(self, other: StructType) -> StructType:
         """Merge this schema with another, adding new fields from other.

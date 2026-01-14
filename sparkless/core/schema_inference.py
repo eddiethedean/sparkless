@@ -20,7 +20,9 @@ from ..spark_types import (
     StructType,
     StructField,
     LongType,
+    IntegerType,
     DoubleType,
+    FloatType,
     StringType,
     BooleanType,
     ArrayType,
@@ -94,10 +96,26 @@ class SchemaInferenceEngine:
             # Check for type conflicts across rows
             # Note: PySpark does NOT promote types in createDataFrame - it raises TypeError
             # Type promotion (int+float -> DoubleType) only happens in CSV reading with inferSchema=True
+            # However, for mixed types (int/string), we allow coercion to StringType to match mock behavior
+            # This enables operations like isin() with mixed types to work
+            has_type_conflict = False
             for value in values_for_key[1:]:
                 inferred_type = SchemaInferenceEngine._infer_type(value)
                 if type(field_type) is not type(inferred_type):
-                    # Type conflict - cannot merge (PySpark raises TypeError)
+                    has_type_conflict = True
+                    # If we have mixed numeric and string types, default to StringType
+                    # This allows operations like isin() to coerce values appropriately
+                    if (
+                        isinstance(field_type, (LongType, IntegerType, DoubleType, FloatType))
+                        and isinstance(inferred_type, StringType)
+                    ) or (
+                        isinstance(field_type, StringType)
+                        and isinstance(inferred_type, (LongType, IntegerType, DoubleType, FloatType))
+                    ):
+                        # Mixed numeric and string - default to StringType
+                        field_type = StringType()
+                        break
+                    # For other type conflicts, raise TypeError (PySpark behavior)
                     raise TypeError(
                         f"field {key}: Can not merge type {type(field_type).__name__} "
                         f"and {type(inferred_type).__name__}"
