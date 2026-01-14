@@ -44,9 +44,12 @@ class TransformationService:
             # For ColumnOperation, validate underlying column references
             if hasattr(col, "column") and col.column:
                 self._validate_column_reference(col.column)
-            if hasattr(col, "value") and col.value:
-                if isinstance(col.value, Column):
-                    self._validate_column_reference(col.value)
+            if (
+                hasattr(col, "value")
+                and col.value
+                and isinstance(col.value, Column)
+            ):
+                self._validate_column_reference(col.value)
         elif isinstance(col, Column):
             # For simple Column, validate the column name exists
             col_name = col.name if hasattr(col, "name") else str(col)
@@ -110,7 +113,7 @@ class TransformationService:
 
         if not has_pending_joins:
             # Resolve column names case-insensitively and replace with actual names
-            resolved_columns = []
+            resolved_columns: List[Union[str, Column, ColumnOperation, Any]] = []
             for col in columns:
                 if isinstance(col, str) and col != "*":
                     # Use case-insensitive lookup and replace with actual column name
@@ -134,7 +137,9 @@ class TransformationService:
                             self._validate_column_reference(col.column)
                         if hasattr(col, "value") and col.value:
                             # Also validate the value if it's a column reference
-                            if isinstance(col.value, Column) and not isinstance(col.value, ColumnOperation):
+                            if isinstance(col.value, Column) and not isinstance(
+                                col.value, ColumnOperation
+                            ):
                                 # Value is a simple column reference - validate it
                                 self._validate_column_reference(col.value)
                             elif isinstance(col.value, ColumnOperation):
@@ -155,19 +160,28 @@ class TransformationService:
                         col_name = col.name if hasattr(col, "name") else str(col)
                         if col_name and col_name != "*":
                             # Use case-insensitive lookup to check if column exists
-                            actual_col_name = self._find_column_case_insensitive(col_name)
+                            actual_col_name = self._find_column_case_insensitive(
+                                col_name
+                            )
                             if actual_col_name is None:
                                 from ...core.exceptions.operation import (
                                     SparkColumnNotFoundError,
                                 )
 
-                                raise SparkColumnNotFoundError(col_name, self._df.columns)
+                                raise SparkColumnNotFoundError(
+                                    col_name, self._df.columns
+                                )
                             # For Column objects, we just validate that the column exists
                             # The Column object itself can be used as-is (it references the correct column)
                             # But if the name needs case correction, we need to create a new Column
                             if actual_col_name != col_name:
                                 # Column name needs case correction - create new Column with correct name
-                                resolved_col = Column(actual_col_name, col.column_type if hasattr(col, "column_type") else None)
+                                resolved_col = Column(
+                                    actual_col_name,
+                                    col.column_type
+                                    if hasattr(col, "column_type")
+                                    else None,
+                                )
                                 resolved_columns.append(resolved_col)
                             else:
                                 resolved_columns.append(col)
@@ -518,7 +532,9 @@ class TransformationService:
         seen = set()
         distinct_data = []
         for row in self._df.data:
-            row_tuple = tuple(sorted((k, v) for k, v in row.items() if k in actual_subset))
+            row_tuple = tuple(
+                sorted((k, v) for k, v in row.items() if k in actual_subset)
+            )
             if row_tuple not in seen:
                 seen.add(row_tuple)
                 distinct_data.append(row)

@@ -11,7 +11,6 @@ import logging
 import polars as pl
 import math
 import threading
-import re as re_module
 from collections import OrderedDict
 from sparkless import config
 from sparkless.functions import Column, ColumnOperation, Literal
@@ -55,7 +54,12 @@ class PolarsExpressionTranslator:
         self._translation_cache: OrderedDict[Any, pl.Expr] = OrderedDict()
         self._cache_size = 512
 
-    def translate(self, expr: Any, input_col_dtype: Any = None, available_columns: Optional[List[str]] = None) -> pl.Expr:
+    def translate(
+        self,
+        expr: Any,
+        input_col_dtype: Any = None,
+        available_columns: Optional[List[str]] = None,
+    ) -> pl.Expr:
         """Translate Column expression to Polars expression.
 
         Args:
@@ -79,7 +83,11 @@ class PolarsExpressionTranslator:
                 # Try to infer dtype from the column name if we have available_columns
                 # This is a best-effort attempt - the proper way is to pass dtype from callers
                 pass  # We'll rely on callers to pass dtype
-            result = self._translate_operation(expr, input_col_dtype=input_col_dtype, available_columns=available_columns)
+            result = self._translate_operation(
+                expr,
+                input_col_dtype=input_col_dtype,
+                available_columns=available_columns,
+            )
         elif isinstance(expr, Column):
             result = self._translate_column(expr, available_columns=available_columns)
         elif isinstance(expr, Literal):
@@ -118,7 +126,9 @@ class PolarsExpressionTranslator:
 
         return result
 
-    def _translate_column(self, col: Column, available_columns: Optional[List[str]] = None) -> pl.Expr:
+    def _translate_column(
+        self, col: Column, available_columns: Optional[List[str]] = None
+    ) -> pl.Expr:
         """Translate Column to Polars column expression.
 
         Args:
@@ -135,17 +145,21 @@ class PolarsExpressionTranslator:
             col_name = col._original_column.name
         else:
             col_name = col.name
-        
+
         # Use case-insensitive matching if available columns are provided
         if available_columns:
-            actual_col_name = self._find_column_case_insensitive(available_columns, col_name)
+            actual_col_name = self._find_column_case_insensitive(
+                available_columns, col_name
+            )
             if actual_col_name:
                 col_name = actual_col_name
-        
+
         return pl.col(col_name)
-    
+
     @staticmethod
-    def _find_column_case_insensitive(available_columns: List[str], column_name: str) -> Optional[str]:
+    def _find_column_case_insensitive(
+        available_columns: List[str], column_name: str
+    ) -> Optional[str]:
         """Find column name in available columns case-insensitively."""
         for col in available_columns:
             if col.lower() == column_name.lower():
@@ -169,7 +183,10 @@ class PolarsExpressionTranslator:
         return pl.lit(value)
 
     def _translate_operation(
-        self, op: ColumnOperation, input_col_dtype: Any = None, available_columns: Optional[List[str]] = None
+        self,
+        op: ColumnOperation,
+        input_col_dtype: Any = None,
+        available_columns: Optional[List[str]] = None,
     ) -> pl.Expr:
         """Translate ColumnOperation to Polars expression.
 
@@ -186,7 +203,9 @@ class PolarsExpressionTranslator:
         # Translate left side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(column, ColumnOperation):
-            left = self._translate_operation(column, input_col_dtype=None, available_columns=available_columns)
+            left = self._translate_operation(
+                column, input_col_dtype=None, available_columns=available_columns
+            )
         elif isinstance(column, Column):
             left = self._translate_column(column, available_columns=available_columns)
         elif isinstance(column, Literal):
@@ -202,11 +221,12 @@ class PolarsExpressionTranslator:
         elif isinstance(column, str):
             # Use case-insensitive matching if available columns are provided
             if available_columns:
-                actual_col_name = PolarsExpressionTranslator._find_column_case_insensitive(available_columns, column)
-                if actual_col_name:
-                    left = pl.col(actual_col_name)
-                else:
-                    left = pl.col(column)
+                actual_col_name = (
+                    PolarsExpressionTranslator._find_column_case_insensitive(
+                        available_columns, column
+                    )
+                )
+                left = pl.col(actual_col_name) if actual_col_name else pl.col(column)
             else:
                 left = pl.col(column)
         elif isinstance(column, (int, float, bool)):
@@ -244,9 +264,13 @@ class PolarsExpressionTranslator:
                         for v in value:
                             if isinstance(v, str):
                                 try:
-                                    coerced_values.append(int(float(v)))  # Handle "10.5" -> 10
+                                    coerced_values.append(
+                                        int(float(v))
+                                    )  # Handle "10.5" -> 10
                                 except (ValueError, TypeError):
-                                    coerced_values.append(v)  # Keep original if conversion fails
+                                    coerced_values.append(
+                                        v
+                                    )  # Keep original if conversion fails
                             else:
                                 coerced_values.append(v)
                     elif input_col_dtype in (pl.Float64, pl.Float32):
@@ -257,7 +281,9 @@ class PolarsExpressionTranslator:
                                 try:
                                     coerced_values.append(float(v))
                                 except (ValueError, TypeError):
-                                    coerced_values.append(v)  # Keep original if conversion fails
+                                    coerced_values.append(
+                                        v
+                                    )  # Keep original if conversion fails
                             else:
                                 coerced_values.append(v)
                 return left.is_in(coerced_values)
@@ -287,13 +313,15 @@ class PolarsExpressionTranslator:
                     result = sliced.list.first()
                     # Return None if out of bounds
                     result = pl.when(in_bounds).then(result).otherwise(None)
-                    
+
                     # Try to get return type from input_col_dtype
-                    if input_col_dtype is not None and isinstance(input_col_dtype, pl.List):
+                    if input_col_dtype is not None and isinstance(
+                        input_col_dtype, pl.List
+                    ):
                         return_dtype = input_col_dtype.inner
                         if return_dtype is not None:
                             result = result.cast(return_dtype, strict=False)
-                    
+
                     return result
                 except (AttributeError, TypeError):
                     # Fallback to map_elements if list operations don't work
@@ -301,11 +329,7 @@ class PolarsExpressionTranslator:
                         """Handle getItem for arrays with bounds checking."""
                         if val is None:
                             return None
-                        if isinstance(val, (list, tuple)):
-                            if 0 <= idx < len(val):
-                                return val[idx]
-                            return None
-                        elif isinstance(val, str):
+                        if isinstance(val, (list, tuple, str)):
                             if 0 <= idx < len(val):
                                 return val[idx]
                             return None
@@ -314,10 +338,14 @@ class PolarsExpressionTranslator:
                         return None
 
                     return_dtype = None
-                    if input_col_dtype is not None and isinstance(input_col_dtype, pl.List):
+                    if input_col_dtype is not None and isinstance(
+                        input_col_dtype, pl.List
+                    ):
                         return_dtype = input_col_dtype.inner
-                    
-                    return left.map_elements(get_item_handler, return_dtype=return_dtype)
+
+                    return left.map_elements(
+                        get_item_handler, return_dtype=return_dtype
+                    )
             except (ValueError, TypeError):
                 # If index is not an integer (e.g., map key), handle differently
                 # For map keys, we can't use list.get(), must use map_elements
@@ -331,7 +359,7 @@ class PolarsExpressionTranslator:
                         # If it's a list and index is a string, return None
                         return None
                     return None
-                
+
                 # Use map_elements for map access
                 return left.map_elements(get_item_handler_map, return_dtype=None)
 
@@ -488,7 +516,9 @@ class PolarsExpressionTranslator:
         # Translate right side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(value, ColumnOperation):
-            right = self._translate_operation(value, input_col_dtype=None, available_columns=available_columns)
+            right = self._translate_operation(
+                value, input_col_dtype=None, available_columns=available_columns
+            )
         elif isinstance(value, Column):
             right = self._translate_column(value, available_columns=available_columns)
         elif isinstance(value, Literal):
@@ -509,7 +539,9 @@ class PolarsExpressionTranslator:
 
         # Handle binary operations with type coercion for string-to-numeric comparisons
         if operation in ["==", "!=", "<", "<=", ">", ">="]:
-            return self._coerce_for_comparison(left, right, operation)
+            # operation is guaranteed to be a string (from op.operation)
+            op_str: str = str(operation)
+            return self._coerce_for_comparison(left, right, op_str)
         elif operation == "+":
             return left + right
         elif operation == "-":
@@ -1381,19 +1413,20 @@ class PolarsExpressionTranslator:
                 if isinstance(op.value, tuple) and len(op.value) >= 2:
                     pattern = op.value[0]
                     idx = op.value[1] if len(op.value) > 1 else 0
-                    
+
                     # Check if pattern contains lookahead/lookbehind assertions
                     # Polars doesn't support these, so we need to use Python fallback
                     import re as re_module
+
                     has_lookaround = False
                     try:
                         # Check if pattern contains lookaround assertions
-                        if re_module.search(r'\(\?[<>=!]', pattern):
+                        if re_module.search(r"\(\?[<>=!]", pattern):
                             has_lookaround = True
                     except Exception:
                         # If pattern check fails, try Polars anyway
                         has_lookaround = False
-                    
+
                     if has_lookaround:
                         # Use Python re module fallback for lookahead/lookbehind patterns
                         def regexp_extract_fallback(val: Any) -> Optional[str]:
@@ -1405,17 +1438,20 @@ class PolarsExpressionTranslator:
                                 if match:
                                     # Extract the group at idx (0 = full match, 1+ = groups)
                                     if idx == 0:
-                                        return match.group(0)
+                                        return str(match.group(0))
                                     elif idx <= len(match.groups()):
-                                        return match.group(idx)
+                                        group_result = match.group(idx)
+                                        return str(group_result) if group_result is not None else None
                                     else:
                                         return None
                                 return None
                             except Exception:
                                 return None
-                        
+
                         # Use map_elements for Python fallback
-                        return col_expr.map_elements(regexp_extract_fallback, return_dtype=pl.Utf8)
+                        return col_expr.map_elements(
+                            regexp_extract_fallback, return_dtype=pl.Utf8
+                        )
                     else:
                         # Try Polars native extract first, fallback to Python if it fails
                         try:
@@ -1426,13 +1462,21 @@ class PolarsExpressionTranslator:
                             if idx == 0:
                                 # For idx=0 (full match), use extract_all and get first element
                                 extracted = col_expr.str.extract_all(pattern)
+
                                 # Get first match from list
                                 def get_first_match(matches: Any) -> Optional[str]:
-                                    if matches is None or not isinstance(matches, list) or len(matches) == 0:
+                                    if (
+                                        matches is None
+                                        or not isinstance(matches, list)
+                                        or len(matches) == 0
+                                    ):
                                         return None
                                     # Get the first match (which is the full match)
                                     return matches[0] if matches else None
-                                return extracted.map_elements(get_first_match, return_dtype=pl.Utf8)
+
+                                return extracted.map_elements(
+                                    get_first_match, return_dtype=pl.Utf8
+                                )
                             else:
                                 # For idx > 0, use Polars extract with group index
                                 # Polars uses 1-based indexing for groups
@@ -1440,7 +1484,11 @@ class PolarsExpressionTranslator:
                         except pl.exceptions.ComputeError as e:
                             error_msg = str(e).lower()
                             # Check if error is about look-around not being supported
-                            if "look-around" in error_msg or "look-ahead" in error_msg or "look-behind" in error_msg:
+                            if (
+                                "look-around" in error_msg
+                                or "look-ahead" in error_msg
+                                or "look-behind" in error_msg
+                            ):
                                 # Fallback to Python re module
                                 def regexp_extract_fallback(val: Any) -> Optional[str]:
                                     """Fallback for regexp_extract with lookahead/lookbehind."""
@@ -1450,16 +1498,19 @@ class PolarsExpressionTranslator:
                                         match = re_module.search(pattern, val)
                                         if match:
                                             if idx == 0:
-                                                return match.group(0)
+                                                return str(match.group(0))
                                             elif idx <= len(match.groups()):
-                                                return match.group(idx)
+                                                group_result = match.group(idx)
+                                                return str(group_result) if group_result is not None else None
                                             else:
                                                 return None
                                         return None
                                     except Exception:
                                         return None
-                                
-                                return col_expr.map_elements(regexp_extract_fallback, return_dtype=pl.Utf8)
+
+                                return col_expr.map_elements(
+                                    regexp_extract_fallback, return_dtype=pl.Utf8
+                                )
                             else:
                                 # Re-raise other ComputeErrors
                                 raise

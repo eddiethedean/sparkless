@@ -258,12 +258,12 @@ class SQLExecutor:
                                 # Perform join with renamed columns
                                 # Get join type from join_info (default to "inner" if not specified)
                                 join_type = join_info.get("type", "inner")
-                                
+
                                 # Materialize the renamed DataFrames to ensure columns exist
                                 # before joining (renames are lazy operations)
-                                df1_renamed = df1_renamed._materialize_if_lazy()
-                                df2_renamed = df2_renamed._materialize_if_lazy()
-                                
+                                df1_renamed = cast("DataFrame", df1_renamed._materialize_if_lazy())
+                                df2_renamed = cast("DataFrame", df2_renamed._materialize_if_lazy())
+
                                 # Verify the join columns exist in the renamed DataFrames
                                 if df1_join_col not in df1_renamed.columns:
                                     raise ValueError(
@@ -275,7 +275,7 @@ class SQLExecutor:
                                         f"Join column '{df2_join_col}' not found in right DataFrame. "
                                         f"Available columns: {df2_renamed.columns}"
                                     )
-                                
+
                                 # Create join condition using ColumnOperation
                                 # We must use ColumnOperation for different column names on left/right
                                 join_col = (
@@ -283,8 +283,8 @@ class SQLExecutor:
                                     == df2_renamed[df2_join_col]
                                 )
                                 # join_col is a ColumnOperation (boolean expression)
-                                
-                                # The column names in the ColumnOperation should match the 
+
+                                # The column names in the ColumnOperation should match the
                                 # renamed columns in the materialized DataFrames
                                 df = cast(
                                     "DataFrame",

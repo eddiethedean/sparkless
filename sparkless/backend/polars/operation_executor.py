@@ -38,11 +38,13 @@ class PolarsOperationExecutor:
         )
         self._struct_field_cache: Dict[Tuple[str, str], List[str]] = {}
 
-    def _find_column_case_insensitive(self, df: pl.DataFrame, column_name: str) -> Optional[str]:
+    def _find_column_case_insensitive(
+        self, df: pl.DataFrame, column_name: str
+    ) -> Optional[str]:
         """Find column name in Polars DataFrame case-insensitively."""
         for col in df.columns:
             if col.lower() == column_name.lower():
-                return col
+                return str(col)  # Ensure we return str, not Any
         return None
 
     @profiled("polars.apply_filter", category="polars")
@@ -59,20 +61,24 @@ class PolarsOperationExecutor:
         # Extract column dtype if condition is a ColumnOperation with isin
         # This enables type coercion for mixed types
         input_col_dtype = None
-        if isinstance(condition, ColumnOperation) and condition.operation == "isin":
+        if (
+            isinstance(condition, ColumnOperation)
+            and condition.operation == "isin"
+            and hasattr(condition, "column")
+            and hasattr(condition.column, "name")
+        ):
             # Get the column name from the condition
-            if hasattr(condition, "column") and hasattr(condition.column, "name"):
                 col_name = condition.column.name
                 # Find column case-insensitively
                 actual_col_name = self._find_column_case_insensitive(df, col_name)
                 if actual_col_name and actual_col_name in df.columns:
                     # Get the column's dtype
                     input_col_dtype = df[actual_col_name].dtype
-        
+
         filter_expr = self.translator.translate(
-            condition, 
+            condition,
             input_col_dtype=input_col_dtype,
-            available_columns=list(df.columns)
+            available_columns=list(df.columns),
         )
         return df.filter(filter_expr)
 
@@ -842,7 +848,9 @@ class PolarsOperationExecutor:
                             input_col_dtype = pl.Utf8
 
             expr = self.translator.translate(
-                expression, input_col_dtype=input_col_dtype, available_columns=list(df.columns)
+                expression,
+                input_col_dtype=input_col_dtype,
+                available_columns=list(df.columns),
             )
 
             # If expected_field is provided, use it to explicitly cast the result
@@ -1053,7 +1061,9 @@ class PolarsOperationExecutor:
             # Semi join: return rows from left where match exists in right
             # Do inner join, then select only left columns and distinct
             if use_left_right_on and left_on_keys and right_on_keys:
-                joined = df1.join(df2, left_on=left_on_keys, right_on=right_on_keys, how="inner")
+                joined = df1.join(
+                    df2, left_on=left_on_keys, right_on=right_on_keys, how="inner"
+                )
             elif resolved_join_keys:
                 joined = df1.join(df2, on=resolved_join_keys, how="inner")
             else:
@@ -1065,7 +1075,9 @@ class PolarsOperationExecutor:
             # Anti join: return rows from left where no match exists in right
             # Do left join, then filter where right columns are null
             if use_left_right_on and left_on_keys and right_on_keys:
-                joined = df1.join(df2, left_on=left_on_keys, right_on=right_on_keys, how="left")
+                joined = df1.join(
+                    df2, left_on=left_on_keys, right_on=right_on_keys, how="left"
+                )
             elif resolved_join_keys:
                 joined = df1.join(df2, on=resolved_join_keys, how="left")
             else:
@@ -1098,7 +1110,7 @@ class PolarsOperationExecutor:
                         f"Join right_on is empty. left_on={left_on}, right_on={right_on}, "
                         f"df1.columns={df1.columns}, df2.columns={df2.columns}"
                     )
-                
+
                 # Verify columns exist (case-insensitive)
                 resolved_left_on = []
                 for col in left_on:
@@ -1116,11 +1128,14 @@ class PolarsOperationExecutor:
                             f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
                         )
                     resolved_right_on.append(actual_col)
-                
+
                 # Polars join with left_on/right_on doesn't include right_on column
                 # But PySpark includes both columns, so we need to add it back
                 joined = df1.join(
-                    df2, left_on=resolved_left_on, right_on=resolved_right_on, how=polars_how
+                    df2,
+                    left_on=resolved_left_on,
+                    right_on=resolved_right_on,
+                    how=polars_how,
                 )
                 # Add the right_on column back if it's not already present (PySpark includes both)
                 for right_col in resolved_right_on:
@@ -1134,12 +1149,19 @@ class PolarsOperationExecutor:
                 # Check if we already resolved with left_on/right_on in the earlier block
                 if use_left_right_on and left_on_keys and right_on_keys:
                     # Use left_on/right_on when column names differ (from earlier resolution)
-                    joined = df1.join(df2, left_on=left_on_keys, right_on=right_on_keys, how=polars_how)
+                    joined = df1.join(
+                        df2,
+                        left_on=left_on_keys,
+                        right_on=right_on_keys,
+                        how=polars_how,
+                    )
                     # Add the right_on columns back if needed (PySpark includes both)
                     for right_col in right_on_keys:
                         if right_col not in joined.columns:
                             left_col = left_on_keys[right_on_keys.index(right_col)]
-                            joined = joined.with_columns(pl.col(left_col).alias(right_col))
+                            joined = joined.with_columns(
+                                pl.col(left_col).alias(right_col)
+                            )
                     return joined
                 elif resolved_join_keys and len(resolved_join_keys) > 0:
                     # Use resolved_join_keys from earlier resolution
@@ -1156,8 +1178,12 @@ class PolarsOperationExecutor:
                     for col in join_keys:
                         if isinstance(col, str):
                             # Resolve column name case-insensitively in both DataFrames
-                            actual_col_df1 = self._find_column_case_insensitive(df1, col)
-                            actual_col_df2 = self._find_column_case_insensitive(df2, col)
+                            actual_col_df1 = self._find_column_case_insensitive(
+                                df1, col
+                            )
+                            actual_col_df2 = self._find_column_case_insensitive(
+                                df2, col
+                            )
                             if actual_col_df1 is None:
                                 raise ValueError(
                                     f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
@@ -1177,15 +1203,28 @@ class PolarsOperationExecutor:
                                 resolved_join_keys.append(actual_col_df1)
                         else:
                             resolved_join_keys.append(col)
-                    
-                    if fallback_use_left_right_on and fallback_left_on_keys and fallback_right_on_keys:
+
+                    if (
+                        fallback_use_left_right_on
+                        and fallback_left_on_keys
+                        and fallback_right_on_keys
+                    ):
                         # Use left_on/right_on when column names differ
-                        joined = df1.join(df2, left_on=fallback_left_on_keys, right_on=fallback_right_on_keys, how=polars_how)
+                        joined = df1.join(
+                            df2,
+                            left_on=fallback_left_on_keys,
+                            right_on=fallback_right_on_keys,
+                            how=polars_how,
+                        )
                         # Add the right_on columns back if needed (PySpark includes both)
                         for right_col in fallback_right_on_keys:
                             if right_col not in joined.columns:
-                                left_col = fallback_left_on_keys[fallback_right_on_keys.index(right_col)]
-                                joined = joined.with_columns(pl.col(left_col).alias(right_col))
+                                left_col = fallback_left_on_keys[
+                                    fallback_right_on_keys.index(right_col)
+                                ]
+                                joined = joined.with_columns(
+                                    pl.col(left_col).alias(right_col)
+                                )
                         return joined
                     elif resolved_join_keys and len(resolved_join_keys) > 0:
                         return df1.join(df2, on=resolved_join_keys, how=polars_how)

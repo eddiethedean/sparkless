@@ -4,7 +4,7 @@ Join service for DataFrame operations.
 This service provides join and set operations using composition instead of mixin inheritance.
 """
 
-from typing import Any, Dict, List, Set, TYPE_CHECKING, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 
 from ...spark_types import DataType, StringType, StructField, StructType
 from ..protocols import SupportsDataFrameOps
@@ -150,7 +150,6 @@ class JoinService:
         from ...dataframe.operations.set_operations import SetOperations
 
         # Get column names from both DataFrames (case-insensitive matching)
-        from ..validation.column_validator import ColumnValidator
 
         self_cols: Set[str] = {field.name for field in self._df.schema.fields}
         other_cols: Set[str] = {field.name for field in other.schema.fields}
@@ -192,7 +191,7 @@ class JoinService:
             if other_col_name is None:
                 # Skip if no matching column found (shouldn't happen, but handle gracefully)
                 continue
-            other_field: StructField = next(
+            other_field: Optional[StructField] = next(
                 (f for f in other.schema.fields if f.name == other_col_name), None
             )
             if other_field is None:
@@ -227,7 +226,9 @@ class JoinService:
 
         # Add rows from other DataFrame
         # Build a mapping from case-insensitive column names to actual column names in other DataFrame
-        other_row_keys_lower = {key.lower(): key for key in (other.data[0].keys() if other.data else [])}
+        other_row_keys_lower = {
+            key.lower(): key for key in (other.data[0].keys() if other.data else [])
+        }
         for row in other.data:
             other_new_row: Dict[str, Any] = {}
             for col in all_cols:

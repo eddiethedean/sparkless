@@ -50,7 +50,9 @@ class ColumnValidator:
     """
 
     @staticmethod
-    def _find_column_case_insensitive(schema: StructType, column_name: str) -> Optional[str]:
+    def _find_column_case_insensitive(
+        schema: StructType, column_name: str
+    ) -> Optional[str]:
         """Find column name in schema case-insensitively."""
         for field in schema.fields:
             if field.name.lower() == column_name.lower():
@@ -196,7 +198,10 @@ class ColumnValidator:
         Returns:
             True if column exists in schema, False otherwise.
         """
-        return ColumnValidator._find_column_case_insensitive(schema, column_name) is not None
+        return (
+            ColumnValidator._find_column_case_insensitive(schema, column_name)
+            is not None
+        )
 
     @staticmethod
     def validate_expression_columns(

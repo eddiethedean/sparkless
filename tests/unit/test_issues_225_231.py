@@ -39,6 +39,7 @@ def _is_pyspark_mode() -> bool:
 # For PySpark mode, need to check for real pandas (not mock)
 try:
     import pandas as pd
+
     # Check if it's the real pandas (not the mock from sparkless/pandas/)
     if hasattr(pd, "__version__") and pd.__version__ != "0.0.0-mock":
         PANDAS_AVAILABLE = True
@@ -175,11 +176,11 @@ class TestIssue226IsinWithValues:
 
     def test_isin_with_mixed_types(self, spark):
         """Test isin with mixed type values."""
-        # PySpark can't infer schema from mixed types, so skip in PySpark mode
-        if _is_pyspark_mode():
-            pytest.skip("PySpark can't infer schema from mixed types without explicit schema")
+        # Provide explicit schema since PySpark can't infer schema from mixed types
+        # This allows the test to work in both Sparkless and PySpark modes
         data = [{"value": 1}, {"value": 2}, {"value": "test"}]
-        df = spark.createDataFrame(data)
+        schema = StructType([StructField("value", StringType(), True)])
+        df = spark.createDataFrame(data, schema=schema)
 
         result = df.filter(F.col("value").isin(1, 2)).collect()
         assert len(result) == 2
@@ -218,7 +219,10 @@ class TestIssue227GetItem:
     def test_getItem_with_array_index(self, spark):
         """Test getItem with array column and index."""
         data = [{"arr": [1, 2, 3]}, {"arr": [4, 5, 6]}]
-        df = spark.createDataFrame(data, schema=StructType([StructField("arr", ArrayType(IntegerType()), True)]))
+        df = spark.createDataFrame(
+            data,
+            schema=StructType([StructField("arr", ArrayType(IntegerType()), True)]),
+        )
 
         result = df.select(F.col("arr").getItem(0).alias("first")).collect()
         assert len(result) == 2
@@ -230,7 +234,9 @@ class TestIssue227GetItem:
         data = [{"text": "a,b,c"}, {"text": "x,y,z"}]
         df = spark.createDataFrame(data)
 
-        result = df.select(F.split(F.col("text"), ",").getItem(0).alias("first")).collect()
+        result = df.select(
+            F.split(F.col("text"), ",").getItem(0).alias("first")
+        ).collect()
         assert len(result) == 2
         assert result[0].first == "a"
         assert result[1].first == "x"
@@ -238,7 +244,12 @@ class TestIssue227GetItem:
     def test_getItem_with_map_key(self, spark):
         """Test getItem with map column and key."""
         data = [{"map": {"key1": "value1", "key2": "value2"}}]
-        df = spark.createDataFrame(data, schema=StructType([StructField("map", MapType(StringType(), StringType()), True)]))
+        df = spark.createDataFrame(
+            data,
+            schema=StructType(
+                [StructField("map", MapType(StringType(), StringType()), True)]
+            ),
+        )
 
         result = df.select(F.col("map").getItem("key1").alias("val")).collect()
         assert len(result) == 1
@@ -247,7 +258,10 @@ class TestIssue227GetItem:
     def test_getItem_out_of_bounds(self, spark):
         """Test getItem with out-of-bounds index."""
         data = [{"arr": [1, 2, 3]}]
-        df = spark.createDataFrame(data, schema=StructType([StructField("arr", ArrayType(IntegerType()), True)]))
+        df = spark.createDataFrame(
+            data,
+            schema=StructType([StructField("arr", ArrayType(IntegerType()), True)]),
+        )
 
         result = df.select(F.col("arr").getItem(10).alias("val")).collect()
         assert len(result) == 1
@@ -256,7 +270,10 @@ class TestIssue227GetItem:
     def test_getItem_negative_index(self, spark):
         """Test getItem with negative index."""
         data = [{"arr": [1, 2, 3]}]
-        df = spark.createDataFrame(data, schema=StructType([StructField("arr", ArrayType(IntegerType()), True)]))
+        df = spark.createDataFrame(
+            data,
+            schema=StructType([StructField("arr", ArrayType(IntegerType()), True)]),
+        )
 
         # Negative indices may not be supported, test behavior
         result = df.select(F.col("arr").getItem(-1).alias("val")).collect()
@@ -272,7 +289,9 @@ class TestIssue228RegexLookAheadLookBehind:
         df = spark.createDataFrame(data)
 
         # Look-behind pattern: (?<=hello )\w+
-        result = df.select(F.regexp_extract(F.col("text"), r"(?<=hello )\w+", 0).alias("extracted")).collect()
+        result = df.select(
+            F.regexp_extract(F.col("text"), r"(?<=hello )\w+", 0).alias("extracted")
+        ).collect()
         assert len(result) == 1
         # Should extract "world" (everything after "hello ")
         assert result[0].extracted == "world"
@@ -283,7 +302,9 @@ class TestIssue228RegexLookAheadLookBehind:
         df = spark.createDataFrame(data)
 
         # Look-ahead pattern: \w+(?= hello)
-        result = df.select(F.regexp_extract(F.col("text"), r"\w+(?= hello)", 0).alias("extracted")).collect()
+        result = df.select(
+            F.regexp_extract(F.col("text"), r"\w+(?= hello)", 0).alias("extracted")
+        ).collect()
         assert len(result) == 1
         # Should extract "world" (everything before " hello")
         assert result[0].extracted == "world"
@@ -294,7 +315,9 @@ class TestIssue228RegexLookAheadLookBehind:
         df = spark.createDataFrame(data)
 
         # Regular pattern without look-around
-        result = df.select(F.regexp_extract(F.col("email"), r"@(.+)", 1).alias("domain")).collect()
+        result = df.select(
+            F.regexp_extract(F.col("email"), r"@(.+)", 1).alias("domain")
+        ).collect()
         assert len(result) == 1
         assert result[0].domain == "example.com"
 
@@ -304,7 +327,11 @@ class TestIssue228RegexLookAheadLookBehind:
         df = spark.createDataFrame(data)
 
         # Complex pattern with look-behind and look-ahead
-        result = df.select(F.regexp_extract(F.col("text"), r"(?<=prefix)\d+(?=suffix)", 0).alias("extracted")).collect()
+        result = df.select(
+            F.regexp_extract(F.col("text"), r"(?<=prefix)\d+(?=suffix)", 0).alias(
+                "extracted"
+            )
+        ).collect()
         assert len(result) == 1
         assert result[0].extracted == "123"
 
@@ -328,7 +355,12 @@ class TestIssue229PandasDataFrameSupport:
     def test_createDataFrame_from_pandas_with_schema(self, spark):
         """Test createDataFrame with pandas DataFrame and explicit schema."""
         pd_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]})
-        schema = StructType([StructField("id", IntegerType(), True), StructField("name", StringType(), True)])
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("name", StringType(), True),
+            ]
+        )
         df = spark.createDataFrame(pd_df, schema)
 
         assert df.count() == 3
@@ -409,7 +441,11 @@ class TestIssue230CaseInsensitiveColumnMatching:
 
     def test_groupBy_case_insensitive(self, spark):
         """Test groupBy with case-insensitive column names."""
-        data = [{"Dept": "IT", "Salary": 100}, {"Dept": "IT", "Salary": 200}, {"Dept": "HR", "Salary": 150}]
+        data = [
+            {"Dept": "IT", "Salary": 100},
+            {"Dept": "IT", "Salary": 200},
+            {"Dept": "HR", "Salary": 150},
+        ]
         df = spark.createDataFrame(data)
 
         result = df.groupBy("dept").agg(F.sum("salary").alias("total")).collect()
@@ -583,13 +619,20 @@ class TestIssue231DataTypeSimpleString:
             ]
         )
         result = st.simpleString()
-        assert result == "struct<name:string,age:int>" or result == "struct<age:int,name:string>"
+        assert (
+            result == "struct<name:string,age:int>"
+            or result == "struct<age:int,name:string>"
+        )
 
     def test_struct_type_nested_simpleString(self):
         """Test nested StructType.simpleString()."""
         nested = StructType(
             [
-                StructField("address", StructType([StructField("city", StringType(), True)]), True),
+                StructField(
+                    "address",
+                    StructType([StructField("city", StringType(), True)]),
+                    True,
+                ),
                 StructField("age", IntegerType(), True),
             ]
         )

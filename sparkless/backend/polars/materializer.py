@@ -254,22 +254,28 @@ class PolarsMaterializer:
                     )
                 )
                 # Get available columns from lazy DataFrame schema for case-insensitive matching
-                available_columns = list(lazy_df.schema.keys()) if hasattr(lazy_df, 'schema') else []
-                
+                available_columns = (
+                    list(lazy_df.schema.keys()) if hasattr(lazy_df, "schema") else []
+                )
+
                 # Extract column dtype for isin operations to enable type coercion
                 input_col_dtype = None
-                if isinstance(optimized_condition, ColumnOperation) and optimized_condition.operation == "isin":
+                if (
+                    isinstance(optimized_condition, ColumnOperation)
+                    and optimized_condition.operation == "isin"
+                    and hasattr(optimized_condition, "column")
+                    and hasattr(optimized_condition.column, "name")
+                ):
                     # Get the column name from the condition
-                    if hasattr(optimized_condition, "column") and hasattr(optimized_condition.column, "name"):
                         col_name = optimized_condition.column.name
                         # Get column dtype from schema if available
-                        if hasattr(lazy_df, 'schema') and col_name in lazy_df.schema:
+                        if hasattr(lazy_df, "schema") and col_name in lazy_df.schema:
                             input_col_dtype = lazy_df.schema[col_name]
-                
+
                 filter_expr = self.translator.translate(
-                    optimized_condition, 
+                    optimized_condition,
                     input_col_dtype=input_col_dtype,
-                    available_columns=available_columns
+                    available_columns=available_columns,
                 )
 
                 # Apply filter to lazy DataFrame
@@ -466,15 +472,20 @@ class PolarsMaterializer:
                 # This ensures renamed columns and other operations are applied
                 if not isinstance(other_df, pl.DataFrame):
                     # Materialize if it has lazy operations
-                    if hasattr(other_df, "_operations_queue") and other_df._operations_queue:
+                    if (
+                        hasattr(other_df, "_operations_queue")
+                        and other_df._operations_queue
+                    ):
                         # Materialize the other DataFrame first
                         materialized_other = other_df._materialize_if_lazy()
                         # Convert materialized DataFrame to Polars
                         if hasattr(materialized_other, "collect"):
                             # It's still a Sparkless DataFrame, get the data
                             other_rows = materialized_other.collect()
-                            other_data = [dict(row) for row in other_rows] if other_rows else []
-                            
+                            other_data = (
+                                [dict(row) for row in other_rows] if other_rows else []
+                            )
+
                             if not other_data:
                                 # Empty DataFrame - create from schema if available
                                 if hasattr(materialized_other, "schema"):
@@ -482,7 +493,9 @@ class PolarsMaterializer:
 
                                     schema_dict = {}
                                     for field in materialized_other.schema.fields:
-                                        polars_dtype = mock_type_to_polars_dtype(field.dataType)
+                                        polars_dtype = mock_type_to_polars_dtype(
+                                            field.dataType
+                                        )
                                         schema_dict[field.name] = pl.Series(
                                             field.name, [], dtype=polars_dtype
                                         )
@@ -493,8 +506,14 @@ class PolarsMaterializer:
                                 # Use schema to ensure column names are preserved correctly
                                 if hasattr(materialized_other, "schema"):
                                     # Verify column names match schema (safety check)
-                                    schema_cols = set(materialized_other.schema.fieldNames())
-                                    data_cols = set(other_data[0].keys()) if other_data else set()
+                                    schema_cols = set(
+                                        materialized_other.schema.fieldNames()
+                                    )
+                                    data_cols = (
+                                        set(other_data[0].keys())
+                                        if other_data
+                                        else set()
+                                    )
                                     if schema_cols != data_cols:
                                         # Column mismatch - use schema to create DataFrame with correct column order
                                         # Create DataFrame ensuring column order matches schema
@@ -519,7 +538,9 @@ class PolarsMaterializer:
 
                                     schema_dict = {}
                                     for field in materialized_other.schema.fields:
-                                        polars_dtype = mock_type_to_polars_dtype(field.dataType)
+                                        polars_dtype = mock_type_to_polars_dtype(
+                                            field.dataType
+                                        )
                                         schema_dict[field.name] = pl.Series(
                                             field.name, [], dtype=polars_dtype
                                         )
@@ -537,7 +558,9 @@ class PolarsMaterializer:
 
                                 schema_dict = {}
                                 for field in other_df.schema.fields:
-                                    polars_dtype = mock_type_to_polars_dtype(field.dataType)
+                                    polars_dtype = mock_type_to_polars_dtype(
+                                        field.dataType
+                                    )
                                     schema_dict[field.name] = pl.Series(
                                         field.name, [], dtype=polars_dtype
                                     )
@@ -694,7 +717,9 @@ class PolarsMaterializer:
                 # Build sort expressions with descending flags
                 # Polars doesn't have .desc() on Expr, use sort() with descending parameter
                 # Get available columns from lazy DataFrame schema for case-insensitive matching
-                available_columns = list(lazy_df.schema.keys()) if hasattr(lazy_df, 'schema') else []
+                available_columns = (
+                    list(lazy_df.schema.keys()) if hasattr(lazy_df, "schema") else []
+                )
                 sort_by = []
                 descending_flags = []
                 for col in optimized_columns:
@@ -965,9 +990,10 @@ class PolarsMaterializer:
                 # Update available columns after drop
                 for col in columns_to_drop:
                     current_available_columns.discard(col)
-                
+
                 # Update schema after drop
                 from ...dataframe.schema.schema_manager import SchemaManager
+
                 current_schema = SchemaManager.project_schema_with_operations(
                     current_schema, [(op_name, payload)]
                 )

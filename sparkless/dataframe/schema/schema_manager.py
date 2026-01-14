@@ -96,7 +96,7 @@ class SchemaManager:
                 old_name, new_name = op_val
                 # Find actual column name case-insensitively
                 actual_old_name = None
-                for field_name in fields_map.keys():
+                for field_name in fields_map:
                     if field_name.lower() == old_name.lower():
                         actual_old_name = field_name
                         break
@@ -339,7 +339,7 @@ class SchemaManager:
         for col_name in columns_to_drop:
             # Find actual column name case-insensitively
             actual_col_name = None
-            for field_name in fields_map.keys():
+            for field_name in fields_map:
                 if field_name.lower() == col_name.lower():
                     actual_col_name = field_name
                     break
