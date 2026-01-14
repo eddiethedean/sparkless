@@ -76,9 +76,13 @@ def _get_real_pandas():
         # Now import - should get real pandas from site-packages
         real_pd = importlib.import_module("pandas")
         pandas_file = getattr(real_pd, "__file__", "")
-        if pandas_file and "site-packages" in pandas_file:
-            if hasattr(real_pd, "__version__") and real_pd.__version__ != "0.0.0-mock":
-                return real_pd
+        if (
+            pandas_file
+            and "site-packages" in pandas_file
+            and hasattr(real_pd, "__version__")
+            and real_pd.__version__ != "0.0.0-mock"
+        ):
+            return real_pd
         return None
     except ImportError:
         return None
@@ -104,7 +108,7 @@ try:
             # Remove mock pandas from cache
             del sys.modules["pandas"]
             # Also remove any submodules
-            modules_to_remove = [k for k in sys.modules.keys() if k.startswith("pandas.")]
+            modules_to_remove = [k for k in sys.modules if k.startswith("pandas.")]
             for mod in modules_to_remove:
                 del sys.modules[mod]
     
@@ -117,10 +121,13 @@ try:
         pd = importlib.import_module("pandas")
         # Check if it's the real pandas (not the mock)
         pandas_file = getattr(pd, "__file__", "")
-        if pandas_file and "site-packages" in pandas_file:
-            # Verify version is not the mock version
-            if hasattr(pd, "__version__") and pd.__version__ != "0.0.0-mock":
-                PANDAS_AVAILABLE = True
+        if (
+            pandas_file
+            and "site-packages" in pandas_file
+            and hasattr(pd, "__version__")
+            and pd.__version__ != "0.0.0-mock"
+        ):
+            PANDAS_AVAILABLE = True
     finally:
         # Restore original path
         sys.path = original_path
