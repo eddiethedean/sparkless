@@ -45,9 +45,13 @@ def _get_real_pandas():
     if "pandas" in sys.modules:
         cached_pandas = sys.modules["pandas"]
         cached_file = getattr(cached_pandas, "__file__", "")
-        if cached_file and "site-packages" in cached_file:
-            if hasattr(cached_pandas, "__version__") and cached_pandas.__version__ != "0.0.0-mock":
-                return cached_pandas
+        if (
+            cached_file
+            and "site-packages" in cached_file
+            and hasattr(cached_pandas, "__version__")
+            and cached_pandas.__version__ != "0.0.0-mock"
+        ):
+            return cached_pandas
     
     # Need to import real pandas - temporarily remove current directory
     original_path = sys.path[:]

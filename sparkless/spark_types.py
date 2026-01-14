@@ -703,7 +703,7 @@ class Row:
     """
 
     def __init__(
-        self, data: Any = None, schema: Optional["StructType"] = None, **kwargs: Any
+        self, data: Any = None, schema: Optional[StructType] = None, **kwargs: Any
     ):
         """Initialize Row.
 
