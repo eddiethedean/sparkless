@@ -702,13 +702,9 @@ class Row:
         {'name': 'Alice', 'age': 25}
     """
 
-<<<<<<< Updated upstream
     def __init__(
-        self, data: Any = None, schema: Optional[StructType] = None, **kwargs: Any
+        self, data: Any = None, schema: Optional["StructType"] = None, **kwargs: Any
     ):
-=======
-    def __init__(self, data: Any = None, schema: Optional["StructType"] = None, **kwargs):
->>>>>>> Stashed changes
         """Initialize Row.
 
         Args:
@@ -727,11 +723,7 @@ class Row:
         # PySpark compatibility: if data is None and kwargs are provided, use kwargs as data
         if data is None and kwargs:
             data = kwargs
-<<<<<<< Updated upstream
 
-=======
-        
->>>>>>> Stashed changes
         self._schema = schema
 
         # Handle list of tuples - preserves duplicate column names
