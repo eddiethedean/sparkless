@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 try:
     import pandas as pd
 except ImportError:
-    pd = None  # type: ignore[assignment, misc]
+    pd = None
 from ...core.interfaces.dataframe import IDataFrame
 from ..context import SparkContext
 from ..catalog import Catalog

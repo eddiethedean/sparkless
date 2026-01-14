@@ -972,7 +972,9 @@ class StringFunctions:
 
         Args:
             column: Input column
-            pattern: Regular expression pattern
+            pattern: Regular expression pattern. Supports lookahead (?=...) and
+                    lookbehind (?<=...) assertions via Python fallback when Polars
+                    native support is unavailable.
             idx: Group index to extract (default 0)
 
         Returns:
@@ -980,6 +982,12 @@ class StringFunctions:
 
         Example:
             >>> df.select(F.regexp_extract(F.col("email"), r"(.+)@(.+)", 1))
+            >>> df.select(F.regexp_extract(F.col("text"), r"(?<=prefix_)\\w+", 0))
+
+        Note:
+            Fixed in version 3.23.0 (Issue #228): Added fallback support for regex
+            patterns with lookahead and lookbehind assertions using Python's re module
+            when Polars native support is unavailable.
         """
         if isinstance(column, str):
             column = Column(column)

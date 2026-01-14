@@ -2,13 +2,13 @@
 Comprehensive tests for issues 225-231.
 
 This module contains robust tests for:
-- Issue 225: String-to-Numeric Type Coercion
-- Issue 226: isin method with *values (backward compatibility)
-- Issue 227: getItem method
-- Issue 228: Regex Look-Ahead/Look-Behind Fallback
-- Issue 229: Pandas DataFrame Support
-- Issue 230: Case-Insensitive Column Name Matching
-- Issue 231: DataType simpleString() Method
+- Issue 225: String-to-Numeric Type Coercion (Fixed in version 3.23.0)
+- Issue 226: isin method with *values (backward compatibility) (Fixed in version 3.23.0)
+- Issue 227: getItem method (Fixed in version 3.23.0)
+- Issue 228: Regex Look-Ahead/Look-Behind Fallback (Fixed in version 3.23.0)
+- Issue 229: Pandas DataFrame Support (Fixed in version 3.23.0)
+- Issue 230: Case-Insensitive Column Name Matching (Fixed in version 3.23.0)
+- Issue 231: DataType simpleString() Method (Fixed in version 3.23.0)
 """
 
 import pytest
@@ -40,7 +40,7 @@ def _get_real_pandas():
     """Get real pandas module, bypassing the mock."""
     import sys
     import importlib
-    
+
     # Check if we already have real pandas cached
     if "pandas" in sys.modules:
         cached_pandas = sys.modules["pandas"]
@@ -52,18 +52,18 @@ def _get_real_pandas():
             and cached_pandas.__version__ != "0.0.0-mock"
         ):
             return cached_pandas
-    
+
     # Need to import real pandas - temporarily remove current directory
     original_path = sys.path[:]
     # Remove empty string (current directory) to avoid mock
     filtered_path = [p for p in sys.path if p != ""]
-    
+
     # Also remove project root if it's in the path
     project_root = str(Path(__file__).parent.parent.parent.absolute())
     filtered_path = [p for p in filtered_path if p != project_root]
-    
+
     sys.path = filtered_path
-    
+
     try:
         # Clear any cached mock pandas
         if "pandas" in sys.modules:
@@ -72,7 +72,7 @@ def _get_real_pandas():
             for key in list(sys.modules.keys()):
                 if key.startswith("pandas."):
                     del sys.modules[key]
-        
+
         # Now import - should get real pandas from site-packages
         real_pd = importlib.import_module("pandas")
         pandas_file = getattr(real_pd, "__file__", "")
@@ -98,7 +98,7 @@ pd = None
 try:
     import sys
     import importlib
-    
+
     # If pandas is already imported and it's the mock, remove it from cache
     if "pandas" in sys.modules:
         cached_pandas = sys.modules["pandas"]
@@ -111,11 +111,11 @@ try:
             modules_to_remove = [k for k in sys.modules if k.startswith("pandas.")]
             for mod in modules_to_remove:
                 del sys.modules[mod]
-    
+
     # Temporarily remove current directory from path to avoid mock
     original_path = sys.path[:]
     sys.path = [p for p in sys.path if p != ""]
-    
+
     try:
         # Now import pandas - should get the real one from site-packages
         pd = importlib.import_module("pandas")
@@ -137,7 +137,10 @@ except (ImportError, Exception):
 
 
 class TestIssue225StringToNumericCoercion:
-    """Comprehensive tests for Issue 225: String-to-Numeric Type Coercion."""
+    """Comprehensive tests for Issue 225: String-to-Numeric Type Coercion.
+
+    Fixed in version 3.23.0
+    """
 
     def test_string_eq_numeric_int(self, spark):
         """Test string == numeric (int) comparison with coercion."""
@@ -230,7 +233,10 @@ class TestIssue225StringToNumericCoercion:
 
 
 class TestIssue226IsinWithValues:
-    """Comprehensive tests for Issue 226: isin method with *values."""
+    """Comprehensive tests for Issue 226: isin method with *values.
+
+    Fixed in version 3.23.0
+    """
 
     def test_isin_with_list(self, spark):
         """Test isin with list argument (backward compatibility)."""
@@ -301,7 +307,10 @@ class TestIssue226IsinWithValues:
 
 
 class TestIssue227GetItem:
-    """Comprehensive tests for Issue 227: getItem method."""
+    """Comprehensive tests for Issue 227: getItem method.
+
+    Fixed in version 3.23.0
+    """
 
     def test_getItem_with_array_index(self, spark):
         """Test getItem with array column and index."""
@@ -368,7 +377,10 @@ class TestIssue227GetItem:
 
 
 class TestIssue228RegexLookAheadLookBehind:
-    """Comprehensive tests for Issue 228: Regex Look-Ahead/Look-Behind Fallback."""
+    """Comprehensive tests for Issue 228: Regex Look-Ahead/Look-Behind Fallback.
+
+    Fixed in version 3.23.0
+    """
 
     def test_regexp_extract_with_lookbehind(self, spark):
         """Test regexp_extract with look-behind pattern (should use Python fallback)."""
@@ -424,7 +436,10 @@ class TestIssue228RegexLookAheadLookBehind:
 
 
 class TestIssue229PandasDataFrameSupport:
-    """Comprehensive tests for Issue 229: Pandas DataFrame Support."""
+    """Comprehensive tests for Issue 229: Pandas DataFrame Support.
+
+    Fixed in version 3.23.0
+    """
 
     @pytest.fixture(scope="function")
     def real_pandas(self):
@@ -436,7 +451,9 @@ class TestIssue229PandasDataFrameSupport:
 
     def test_createDataFrame_from_pandas(self, spark, real_pandas):
         """Test createDataFrame with pandas DataFrame."""
-        pd_df = real_pandas.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]})
+        pd_df = real_pandas.DataFrame(
+            {"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]}
+        )
         df = spark.createDataFrame(pd_df)
 
         assert df.count() == 3
@@ -448,7 +465,9 @@ class TestIssue229PandasDataFrameSupport:
 
     def test_createDataFrame_from_pandas_with_schema(self, spark, real_pandas):
         """Test createDataFrame with pandas DataFrame and explicit schema."""
-        pd_df = real_pandas.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]})
+        pd_df = real_pandas.DataFrame(
+            {"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]}
+        )
         schema = StructType(
             [
                 StructField("id", IntegerType(), True),
@@ -480,19 +499,27 @@ class TestIssue229PandasDataFrameSupport:
     def test_createDataFrame_from_pandas_with_nulls(self, spark, real_pandas):
         """Test createDataFrame with pandas DataFrame containing nulls."""
         import math
-        pd_df = real_pandas.DataFrame({"id": [1, None, 3], "name": ["Alice", None, "Charlie"]})
+
+        pd_df = real_pandas.DataFrame(
+            {"id": [1, None, 3], "name": ["Alice", None, "Charlie"]}
+        )
         df = spark.createDataFrame(pd_df)
 
         assert df.count() == 3
         rows = df.collect()
         # pandas uses NaN for numeric nulls, which becomes None in Sparkless
         # Check that the null value is None or NaN (both are valid)
-        assert rows[1].id is None or (isinstance(rows[1].id, float) and math.isnan(rows[1].id))
+        assert rows[1].id is None or (
+            isinstance(rows[1].id, float) and math.isnan(rows[1].id)
+        )
         assert rows[1].name is None
 
 
 class TestIssue230CaseInsensitiveColumnMatching:
-    """Comprehensive tests for Issue 230: Case-Insensitive Column Name Matching."""
+    """Comprehensive tests for Issue 230: Case-Insensitive Column Name Matching.
+
+    Fixed in version 3.23.0
+    """
 
     def test_select_case_insensitive(self, spark):
         """Test select with case-insensitive column names."""
@@ -679,7 +706,10 @@ class TestIssue230CaseInsensitiveColumnMatching:
 
 
 class TestIssue231DataTypeSimpleString:
-    """Comprehensive tests for Issue 231: DataType simpleString() Method."""
+    """Comprehensive tests for Issue 231: DataType simpleString() Method.
+
+    Fixed in version 3.23.0
+    """
 
     def test_string_type_simpleString(self):
         """Test StringType.simpleString()."""

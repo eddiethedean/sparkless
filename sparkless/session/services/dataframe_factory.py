@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 try:
     import pandas as pd
 except ImportError:
-    pd = None  # type: ignore[assignment, misc]
+    pd = None
 from sparkless.spark_types import (
     StructType,
     StructField,
@@ -39,7 +39,11 @@ class DataFrameFactory:
 
         Args:
             data: List of dictionaries or tuples representing rows, or a Pandas DataFrame.
+                  Pandas DataFrames are detected using duck typing (checks for to_dict
+                  method with orient="records" parameter) to work with both real and
+                  mock pandas modules.
             schema: Optional schema definition (StructType or list of column names).
+                    Required for empty DataFrames (matching PySpark behavior).
             engine_config: Engine configuration for validation and coercion.
             storage: Storage manager for the DataFrame.
 
@@ -55,6 +59,11 @@ class DataFrameFactory:
             >>> import pandas as pd
             >>> pdf = pd.DataFrame({"name": ["Alice"], "age": [25]})
             >>> df = factory.create_dataframe(pdf, None, config, storage)
+
+        Note:
+            Fixed in version 3.23.0 (Issue #229): Pandas DataFrame recognition now uses
+            duck typing to properly detect real pandas DataFrames even when mock pandas
+            modules are present in the environment.
         """
         # Handle Pandas DataFrame
         # Use duck typing to detect pandas DataFrame (works for both mock and real pandas)
@@ -63,7 +72,9 @@ class DataFrameFactory:
             try:
                 # Try to call to_dict with orient="records" - this is the pandas DataFrame API
                 test_dict = data.to_dict(orient="records")
-                if isinstance(test_dict, list) and (not test_dict or isinstance(test_dict[0], dict)):
+                if isinstance(test_dict, list) and (
+                    not test_dict or isinstance(test_dict[0], dict)
+                ):
                     # This looks like a pandas DataFrame - convert it
                     data = test_dict
             except (TypeError, ValueError, AttributeError):
@@ -104,11 +115,13 @@ class DataFrameFactory:
             # If data is positional (not dicts), convert to dicts with "_c0" key
             # This handles cases like createDataFrame([date1, date2], DateType())
             if data:
+
                 def _is_positional_row(obj: Any) -> bool:
                     """Check if object is a positional row (sequence but not str/bytes/dict)."""
                     return isinstance(obj, Sequence) and not isinstance(
                         obj, (str, bytes, dict)
                     )
+
                 # Check if first row is positional (primitive value or sequence)
                 first_row = data[0]
                 if not isinstance(first_row, dict):

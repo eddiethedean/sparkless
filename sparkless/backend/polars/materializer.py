@@ -267,10 +267,10 @@ class PolarsMaterializer:
                     and hasattr(optimized_condition.column, "name")
                 ):
                     # Get the column name from the condition
-                        col_name = optimized_condition.column.name
-                        # Get column dtype from schema if available
-                        if hasattr(lazy_df, "schema") and col_name in lazy_df.schema:
-                            input_col_dtype = lazy_df.schema[col_name]
+                    col_name = optimized_condition.column.name
+                    # Get column dtype from schema if available
+                    if hasattr(lazy_df, "schema") and col_name in lazy_df.schema:
+                        input_col_dtype = lazy_df.schema[col_name]
 
                 filter_expr = self.translator.translate(
                     optimized_condition,
@@ -695,7 +695,9 @@ class PolarsMaterializer:
                         # Unpack the nested list/tuple
                         columns = tuple(payload[0])
                     elif isinstance(payload, (tuple, list)):
-                        columns = tuple(payload) if isinstance(payload, list) else payload
+                        columns = (
+                            tuple(payload) if isinstance(payload, list) else payload
+                        )
                     else:
                         columns = (payload,)
                     ascending = True

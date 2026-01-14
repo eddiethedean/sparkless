@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.23.0 — 2025-01-14
+
+### Fixed
+- **Issue #225** - Fixed string-to-numeric type coercion for comparison operations (==, !=, <, <=, >, >=), matching PySpark behavior
+- **Issue #226** - Fixed `isin()` method to support `*values` arguments for backward compatibility, with improved type coercion for mixed types
+- **Issue #227** - Fixed `getItem()` method to properly handle out-of-bounds array and map access, returning `None` instead of raising errors (PySpark compatibility)
+- **Issue #228** - Fixed `regexp_extract()` to include fallback support for regex patterns with look-ahead and look-behind assertions using Python's `re` module when Polars native support is unavailable
+- **Issue #229** - Fixed Pandas DataFrame support: `createDataFrame()` now properly recognizes real pandas DataFrames using duck typing, bypassing the mock pandas module when needed
+- **Issue #230** - Fixed case-insensitive column name matching across all DataFrame operations (select, filter, withColumn, groupBy, orderBy, etc.), matching PySpark behavior
+- **Issue #231** - Fixed `simpleString()` method implementation for all DataType classes (StringType, IntegerType, ArrayType, MapType, StructType, etc.), returning PySpark-compatible string representations
+- **SQL JOIN Parsing** - Fixed SQL JOIN condition parsing to correctly extract and validate join column names
+- **select() Validation** - Fixed `select()` validation to skip ColumnOperation expressions (like `F.size(col)`, `F.abs(col)`), preventing false column not found errors
+
+### Changed
+- **Code Quality** - Applied ruff formatting and fixed all linting issues
+- **Type Safety** - Fixed mypy type errors in transformation_service, join_service, and executor
+- **Test Coverage** - All 50 tests in `test_issues_225_231.py` now passing, including 4 pandas DataFrame support tests
+
+### Testing
+- All 572 tests passing, 4 skipped
+- Comprehensive test coverage for all fixed issues
+- All CI checks passing (ruff format, ruff lint, mypy type checking)
+
+### Technical Details
+- Updated `PolarsExpressionTranslator` to handle `isin` type coercion and `getItem` out-of-bounds access
+- Enhanced `dataframe_factory.py` to recognize real pandas DataFrames using duck typing
+- Improved `TransformationService.select()` to validate ColumnOperation expressions correctly
+- Fixed SQL JOIN parsing in `SQLExecutor` to properly extract join column names
+- Updated `ColumnValidator` to support case-insensitive column matching across all operations
+
 ## 3.21.0 — 2025-01-10
 
 ### Fixed

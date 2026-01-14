@@ -261,8 +261,12 @@ class SQLExecutor:
 
                                 # Materialize the renamed DataFrames to ensure columns exist
                                 # before joining (renames are lazy operations)
-                                df1_renamed = cast("DataFrame", df1_renamed._materialize_if_lazy())
-                                df2_renamed = cast("DataFrame", df2_renamed._materialize_if_lazy())
+                                df1_renamed = cast(
+                                    "DataFrame", df1_renamed._materialize_if_lazy()
+                                )
+                                df2_renamed = cast(
+                                    "DataFrame", df2_renamed._materialize_if_lazy()
+                                )
 
                                 # Verify the join columns exist in the renamed DataFrames
                                 if df1_join_col not in df1_renamed.columns:

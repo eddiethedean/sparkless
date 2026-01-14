@@ -53,7 +53,19 @@ class ColumnValidator:
     def _find_column_case_insensitive(
         schema: StructType, column_name: str
     ) -> Optional[str]:
-        """Find column name in schema case-insensitively."""
+        """Find column name in schema case-insensitively.
+
+        Args:
+            schema: Schema to search in.
+            column_name: Column name to find (case-insensitive).
+
+        Returns:
+            Actual column name from schema if found, None otherwise.
+
+        Note:
+            Fixed in version 3.23.0 (Issue #230): Case-insensitive column matching
+            is now supported across all DataFrame operations, matching PySpark behavior.
+        """
         for field in schema.fields:
             if field.name.lower() == column_name.lower():
                 return field.name

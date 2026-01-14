@@ -23,7 +23,19 @@ class TransformationService:
         self._df = df
 
     def _find_column_case_insensitive(self, column_name: str) -> Optional[str]:
-        """Find column name in schema case-insensitively."""
+        """Find column name in schema case-insensitively.
+
+        Args:
+            column_name: Column name to find (case-insensitive).
+
+        Returns:
+            Actual column name from schema if found, None otherwise.
+
+        Note:
+            Fixed in version 3.23.0 (Issue #230): Case-insensitive column matching
+            is now supported across all DataFrame operations (select, filter,
+            withColumn, groupBy, orderBy, etc.), matching PySpark behavior.
+        """
         for col in self._df.columns:
             if col.lower() == column_name.lower():
                 return col
@@ -44,11 +56,7 @@ class TransformationService:
             # For ColumnOperation, validate underlying column references
             if hasattr(col, "column") and col.column:
                 self._validate_column_reference(col.column)
-            if (
-                hasattr(col, "value")
-                and col.value
-                and isinstance(col.value, Column)
-            ):
+            if hasattr(col, "value") and col.value and isinstance(col.value, Column):
                 self._validate_column_reference(col.value)
         elif isinstance(col, Column):
             # For simple Column, validate the column name exists
@@ -84,6 +92,8 @@ class TransformationService:
             *columns: Column names, Column objects, or expressions to select.
                      Use "*" to select all columns.
                      Can also accept a list/tuple of column names: df.select(["col1", "col2"])
+                     ColumnOperation expressions (like F.size(col), F.abs(col)) are validated
+                     by checking underlying column references, not the expression name itself.
 
         Returns:
             New DataFrame with selected columns.
@@ -96,6 +106,12 @@ class TransformationService:
             >>> df.select(["name", "age"])  # PySpark-compatible: list of column names
             >>> df.select("*")
             >>> df.select(F.col("name"), F.col("age") * 2)
+            >>> df.select(F.size(F.col("scores")))  # ColumnOperation expressions work
+
+        Note:
+            Fixed in version 3.23.0: Validation now correctly handles ColumnOperation
+            expressions by validating underlying column references rather than treating
+            the expression name as a column name.
         """
         if not columns:
             return cast("SupportsDataFrameOps", self._df)

@@ -118,6 +118,8 @@ class ColumnOperatorMixin:
             *values: Variable number of values to check against. Can be passed as
                     individual arguments (e.g., col.isin(1, 2, 3)) or as a single
                     list (e.g., col.isin([1, 2, 3])) for backward compatibility.
+                    Supports automatic type coercion for mixed types (e.g., checking
+                    integers in a string column will convert values to strings).
 
         Returns:
             ColumnOperation representing the isin check.
@@ -125,6 +127,11 @@ class ColumnOperatorMixin:
         Example:
             >>> df.filter(F.col("value").isin(1, 2, 3))
             >>> df.filter(F.col("value").isin([1, 2, 3]))  # Also supported
+            >>> df.filter(F.col("str_col").isin(1, 2, 3))  # Auto-converts to strings
+
+        Note:
+            Fixed in version 3.23.0 (Issue #226): Added support for *values arguments
+            and automatic type coercion for mixed types to match PySpark behavior.
         """
         # Normalize: if single list argument provided, use it directly
         # Otherwise convert *args to list
@@ -184,11 +191,17 @@ class ColumnOperatorMixin:
             key: Index (int) for array access or key (any) for map access.
 
         Returns:
-            ColumnOperation representing the getItem operation.
+            ColumnOperation representing the getItem operation. Returns None for
+            out-of-bounds array access (matching PySpark behavior).
 
         Example:
             >>> df.select(F.col("array_col").getItem(0))
             >>> df.select(F.col("map_col").getItem("key"))
+            >>> df.select(F.col("array_col").getItem(999))  # Returns None if out of bounds
+
+        Note:
+            Fixed in version 3.23.0 (Issue #227): Out-of-bounds array access now
+            returns None instead of raising errors, matching PySpark behavior.
         """
         return self._create_operation("getItem", key)
 

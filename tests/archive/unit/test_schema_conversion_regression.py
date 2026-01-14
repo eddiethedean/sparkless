@@ -24,7 +24,7 @@ from sparkless.spark_types import (
 try:
     from sparkless.storage.sqlalchemy_helpers import create_table_from_mock_schema
 except ImportError:
-    create_table_from_mock_schema = None  # type: ignore[assignment]
+    create_table_from_mock_schema = None
 
 
 @pytest.mark.skipif(

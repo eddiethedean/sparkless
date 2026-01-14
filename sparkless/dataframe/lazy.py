@@ -893,7 +893,7 @@ class LazyEvaluationEngine:
         """Convert materialized rows to proper data format with type conversion.
 
         Args:
-            rows: Rows from SQLAlchemy materializer
+            rows: Materialized rows from backend
             schema: Expected schema
 
         Returns:

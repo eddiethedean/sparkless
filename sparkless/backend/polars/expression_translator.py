@@ -579,11 +579,16 @@ class PolarsExpressionTranslator:
         """Coerce types for comparison operations to handle string-to-numeric comparisons.
 
         PySpark behavior: when comparing string with numeric, try to cast string to numeric.
+        This enables comparisons like "10" == 10 or "5.5" > 3 to work correctly.
 
         Args:
             left_expr: Left Polars expression
             right_expr: Right Polars expression
             op: Operation string (==, !=, <, <=, >, >=)
+
+        Note:
+            Fixed in version 3.23.0 (Issue #225): String-to-numeric type coercion for
+            comparison operations now matches PySpark behavior.
 
         Returns:
             Polars expression with appropriate comparison and type coercion
@@ -1441,7 +1446,11 @@ class PolarsExpressionTranslator:
                                         return str(match.group(0))
                                     elif idx <= len(match.groups()):
                                         group_result = match.group(idx)
-                                        return str(group_result) if group_result is not None else None
+                                        return (
+                                            str(group_result)
+                                            if group_result is not None
+                                            else None
+                                        )
                                     else:
                                         return None
                                 return None
@@ -1501,7 +1510,11 @@ class PolarsExpressionTranslator:
                                                 return str(match.group(0))
                                             elif idx <= len(match.groups()):
                                                 group_result = match.group(idx)
-                                                return str(group_result) if group_result is not None else None
+                                                return (
+                                                    str(group_result)
+                                                    if group_result is not None
+                                                    else None
+                                                )
                                             else:
                                                 return None
                                         return None

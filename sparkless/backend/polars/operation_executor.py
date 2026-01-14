@@ -68,12 +68,12 @@ class PolarsOperationExecutor:
             and hasattr(condition.column, "name")
         ):
             # Get the column name from the condition
-                col_name = condition.column.name
-                # Find column case-insensitively
-                actual_col_name = self._find_column_case_insensitive(df, col_name)
-                if actual_col_name and actual_col_name in df.columns:
-                    # Get the column's dtype
-                    input_col_dtype = df[actual_col_name].dtype
+            col_name = condition.column.name
+            # Find column case-insensitively
+            actual_col_name = self._find_column_case_insensitive(df, col_name)
+            if actual_col_name and actual_col_name in df.columns:
+                # Get the column's dtype
+                input_col_dtype = df[actual_col_name].dtype
 
         filter_expr = self.translator.translate(
             condition,
@@ -1053,8 +1053,8 @@ class PolarsOperationExecutor:
                     else:
                         # Same column name, can use on=
                         resolved_join_keys.append(actual_col_df1)
-                else:
-                    resolved_join_keys.append(col)
+                # Note: join_keys is List[str], so all items are strings
+                # Non-string items would be handled above
 
         # Handle semi and anti joins (Polars doesn't support natively)
         if how.lower() in ("semi", "left_semi"):
@@ -1168,69 +1168,9 @@ class PolarsOperationExecutor:
                     return df1.join(df2, on=resolved_join_keys, how=polars_how)
                 elif resolved_join_keys is None:
                     # Need to resolve join_keys
-                    if join_keys is None:
-                        raise ValueError("Join keys must be specified")
-                    # Fallback: resolve join_keys if not already resolved
-                    resolved_join_keys = []
-                    fallback_left_on_keys = []
-                    fallback_right_on_keys = []
-                    fallback_use_left_right_on = False
-                    for col in join_keys:
-                        if isinstance(col, str):
-                            # Resolve column name case-insensitively in both DataFrames
-                            actual_col_df1 = self._find_column_case_insensitive(
-                                df1, col
-                            )
-                            actual_col_df2 = self._find_column_case_insensitive(
-                                df2, col
-                            )
-                            if actual_col_df1 is None:
-                                raise ValueError(
-                                    f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
-                                )
-                            if actual_col_df2 is None:
-                                raise ValueError(
-                                    f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
-                                )
-                            # If column names differ, use left_on/right_on
-                            if actual_col_df1 != actual_col_df2:
-                                fallback_use_left_right_on = True
-                                fallback_left_on_keys.append(actual_col_df1)
-                                fallback_right_on_keys.append(actual_col_df2)
-                                # Don't add to resolved_join_keys when using left_on/right_on
-                            else:
-                                # Same column name, can use on=
-                                resolved_join_keys.append(actual_col_df1)
-                        else:
-                            resolved_join_keys.append(col)
-
-                    if (
-                        fallback_use_left_right_on
-                        and fallback_left_on_keys
-                        and fallback_right_on_keys
-                    ):
-                        # Use left_on/right_on when column names differ
-                        joined = df1.join(
-                            df2,
-                            left_on=fallback_left_on_keys,
-                            right_on=fallback_right_on_keys,
-                            how=polars_how,
-                        )
-                        # Add the right_on columns back if needed (PySpark includes both)
-                        for right_col in fallback_right_on_keys:
-                            if right_col not in joined.columns:
-                                left_col = fallback_left_on_keys[
-                                    fallback_right_on_keys.index(right_col)
-                                ]
-                                joined = joined.with_columns(
-                                    pl.col(left_col).alias(right_col)
-                                )
-                        return joined
-                    elif resolved_join_keys and len(resolved_join_keys) > 0:
-                        return df1.join(df2, on=resolved_join_keys, how=polars_how)
-                    else:
-                        # Fallback to original join_keys if resolution failed
-                        return df1.join(df2, on=join_keys, how=polars_how)
+                    # If resolved_join_keys is None, join_keys must have been None
+                    # (since we set resolved_join_keys = [] when join_keys is not None)
+                    raise ValueError("Join keys must be specified")
                 else:
                     # resolved_join_keys is empty list, fallback to original join_keys
                     return df1.join(df2, on=join_keys, how=polars_how)

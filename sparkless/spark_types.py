@@ -157,6 +157,10 @@ class DataType(_DataTypeBase):  # type: ignore[misc,valid-type]
 
         Returns:
             Simple string representation (e.g., "string", "int", "array<string>").
+
+        Note:
+            Fixed in version 3.23.0 (Issue #231): All DataType classes now implement
+            simpleString() with PySpark-compatible string representations.
         """
         return self.typeName()
 

@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
-[![Tests](https://img.shields.io/badge/tests-650+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
+[![Tests](https://img.shields.io/badge/tests-572+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
 [![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from sparkless.sql import SparkSession
 | 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 650+ passing tests, 100% mypy typed |
+| 🏭 **Production Ready** | 572+ passing tests, 100% mypy typed |
 | 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
@@ -90,36 +90,6 @@ df.show()
 # 25    Alice  
 # 30    Bob
 ```
-
-### Storage API (Sparkless-Specific)
-
-Sparkless provides a convenient `.storage` API for managing databases and tables. **Note:** This is a **sparkless-specific convenience API** that does not exist in PySpark. For PySpark compatibility, use SQL commands or DataFrame operations instead:
-
-```python
-# Sparkless: Using .storage API (convenient but NOT PySpark-compatible)
-spark._storage.create_schema("test_db")
-spark._storage.create_table("test_db", "users", schema)
-spark._storage.insert_data("test_db", "users", data)
-df = spark._storage.query_table("test_db", "users")
-
-# Both Sparkless and PySpark: Using SQL commands (recommended for compatibility)
-spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
-spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
-df.write.saveAsTable("test_db.users")  # Write DataFrame to table
-df = spark.table("test_db.users")  # Read table as DataFrame
-
-# PySpark equivalent for insert_data:
-# df = spark.createDataFrame(data, schema)
-# df.write.mode("append").saveAsTable("test_db.users")
-```
-
-**Migration Guide:**
-- `spark._storage.create_schema()` → `spark.sql("CREATE DATABASE IF NOT EXISTS ...")`
-- `spark._storage.create_table()` → `spark.sql("CREATE TABLE ...")` or `df.write.saveAsTable()`
-- `spark._storage.insert_data()` → `df.write.mode("append").saveAsTable()`
-- `spark._storage.query_table()` → `spark.table()` or `spark.sql("SELECT * FROM ...")`
-
-See the [Storage API Guide](docs/storage_api_guide.md) and [Migration Guide](docs/migration_from_pyspark.md) for more details.
 
 ### Testing Example
 
@@ -398,6 +368,21 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
+### Version 3.23.0 - Issues 225-231 Fixes & PySpark Compatibility Improvements
+
+- 🐛 **Issue Fixes** – Fixed 7 critical issues (225-231) improving PySpark compatibility:
+  - **Issue #225**: String-to-numeric type coercion for comparison operations
+  - **Issue #226**: `isin()` method with `*values` arguments and type coercion
+  - **Issue #227**: `getItem()` out-of-bounds handling (returns `None` instead of errors)
+  - **Issue #228**: Regex look-ahead/look-behind fallback support
+  - **Issue #229**: Pandas DataFrame support with proper recognition
+  - **Issue #230**: Case-insensitive column name matching across all operations
+  - **Issue #231**: `simpleString()` method for all DataType classes
+- 🔧 **SQL JOIN Parsing** – Fixed SQL JOIN condition parsing and validation
+- ✅ **select() Validation** – Fixed validation to properly handle ColumnOperation expressions
+- 🧪 **Test Coverage** – All 50 tests passing for issues 225-231, including pandas DataFrame support
+- 📦 **Code Quality** – Applied ruff formatting, fixed linting issues, and resolved mypy type errors
+
 ### Version 3.20.0 - Logic Bug Fixes & Code Quality Improvements
 
 - 🐛 **Exception Handling Fixes** – Fixed critical exception handling issues (issue #183): replaced bare `except:` clause with `except Exception:` and added comprehensive logging to exception handlers for better debuggability.
@@ -469,7 +454,7 @@ Real-world test suite improvements:
 - 🗑️ **Code Cleanup** - Removed unused legacy SQL translation modules (`sql_translator.py`, `spark_function_mapper.py`)
 - ✅ **Type Safety** - Fixed 177 type errors using `ty` type checker, improved return type annotations
 - 🔍 **Linting** - Fixed all 63 ruff linting errors, codebase fully formatted
-- ✅ **All Tests Passing** - Full test suite validated (641+ tests, all passing)
+- ✅ **All Tests Passing** - Full test suite validated (572+ tests, all passing)
 - 📦 **Cleaner Dependencies** - Reduced dependency footprint, faster installation
 
 ### Version 3.0.0 - MAJOR UPDATE
