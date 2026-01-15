@@ -79,20 +79,64 @@ class MiscellaneousOperations:
         )
 
     def fillna(
-        self: SupportsDataFrameOps, value: Union[Any, Dict[str, Any]]
+        self: SupportsDataFrameOps,
+        value: Union[Any, Dict[str, Any]],
+        subset: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
     ) -> SupportsDataFrameOps:
-        """Fill null values."""
+        """Fill null values.
+
+        Args:
+            value: Value to fill nulls with. Can be a single value or a dict mapping
+                   column names to fill values.
+            subset: Optional column name(s) to limit fillna operation to. Can be a
+                    string (single column), list, or tuple of column names. If value
+                    is a dict, subset is ignored.
+
+        Returns:
+            DataFrame with null values filled.
+
+        Raises:
+            ColumnNotFoundException: If any column in subset doesn't exist.
+        """
+        # Normalize subset to a list
+        subset_cols: Optional[List[str]] = None
+        if subset is not None:
+            if isinstance(subset, str):
+                subset_cols = [subset]
+            elif isinstance(subset, (list, tuple)):
+                subset_cols = list(subset)
+            else:
+                raise IllegalArgumentException(
+                    f"subset must be a string, list, or tuple, got {type(subset).__name__}"
+                )
+
+        # Validate columns exist if subset is provided
+        if subset_cols is not None:
+            available_cols = [field.name for field in self.schema.fields]
+            for col in subset_cols:
+                if col not in available_cols:
+                    raise ColumnNotFoundException(col)
+
         new_data = []
         for row in self.data:
             new_row = row.copy()
             if isinstance(value, dict):
+                # When value is a dict, subset is ignored (PySpark behavior)
                 for col, fill_value in value.items():
                     if new_row.get(col) is None:
                         new_row[col] = fill_value
             else:
-                for col in new_row:
-                    if new_row[col] is None:
-                        new_row[col] = value
+                # When value is not a dict, use subset if provided
+                if subset_cols is not None:
+                    # Only fill nulls in specified columns
+                    for col in subset_cols:
+                        if new_row.get(col) is None:
+                            new_row[col] = value
+                else:
+                    # Fill nulls in all columns
+                    for col in new_row:
+                        if new_row[col] is None:
+                            new_row[col] = value
             new_data.append(new_row)
 
         from ..dataframe import DataFrame

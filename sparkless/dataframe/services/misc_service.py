@@ -6,11 +6,15 @@ This service provides various miscellaneous operations using composition instead
 
 from __future__ import annotations
 from typing import Iterator
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 
 from ...spark_types import (
     ArrayType,
+    BooleanType,
     DataType,
+    DoubleType,
+    FloatType,
+    IntegerType,
     LongType,
     StringType,
     StructField,
@@ -32,6 +36,41 @@ class MiscService:
     def __init__(self, df: DataFrame):
         """Initialize misc service with DataFrame instance."""
         self._df = df
+
+    @staticmethod
+    def _is_value_compatible_with_type(value: Any, column_type: DataType) -> bool:
+        """Check if a value is compatible with a column's data type.
+
+        PySpark silently ignores type mismatches when filling nulls.
+        This method checks if the fill value type matches the column type.
+
+        Args:
+            value: The value to check
+            column_type: The column's data type
+
+        Returns:
+            True if value is compatible with column type, False otherwise
+        """
+        # None/null values are always compatible (they're what we're filling)
+        if value is None:
+            return True
+
+        # Check type compatibility based on column type
+        if isinstance(column_type, StringType):
+            return isinstance(value, str)
+        elif isinstance(column_type, (IntegerType, LongType)):
+            return isinstance(value, int)
+        elif isinstance(column_type, (FloatType, DoubleType)):
+            return isinstance(value, (int, float))
+        elif isinstance(column_type, BooleanType):
+            return isinstance(value, bool)
+        elif isinstance(column_type, ArrayType):
+            # For arrays, check if value is a list
+            return isinstance(value, list)
+        else:
+            # For other types (MapType, StructType, etc.), be permissive
+            # PySpark is generally permissive with complex types
+            return True
 
     # Data Cleaning Operations
     def dropna(
@@ -67,19 +106,86 @@ class MiscService:
             DataFrame(filtered_data, self._df.schema, self._df.storage),
         )
 
-    def fillna(self, value: Union[Any, Dict[str, Any]]) -> SupportsDataFrameOps:
-        """Fill null values."""
+    def fillna(
+        self,
+        value: Union[Any, Dict[str, Any]],
+        subset: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
+    ) -> SupportsDataFrameOps:
+        """Fill null values.
+
+        Args:
+            value: Value to fill nulls with. Can be a single value or a dict mapping
+                   column names to fill values.
+            subset: Optional column name(s) to limit fillna operation to. Can be a
+                    string (single column), list, or tuple of column names. If value
+                    is a dict, subset is ignored.
+
+        Returns:
+            DataFrame with null values filled.
+
+        Raises:
+            ColumnNotFoundException: If any column in subset doesn't exist.
+        """
+        # Normalize subset to a list
+        subset_cols: Optional[List[str]] = None
+        if subset is not None:
+            if isinstance(subset, str):
+                subset_cols = [subset]
+            elif isinstance(subset, (list, tuple)):
+                subset_cols = list(subset)
+            else:
+                raise IllegalArgumentException(
+                    f"subset must be a string, list, or tuple, got {type(subset).__name__}"
+                )
+
+        # Validate columns exist if subset is provided
+        if subset_cols is not None:
+            available_cols = [field.name for field in self._df.schema.fields]
+            for col in subset_cols:
+                if col not in available_cols:
+                    raise ColumnNotFoundException(col)
+
+        # Get column types for type checking
+        column_types = {field.name: field.dataType for field in self._df.schema.fields}
+
         new_data = []
         for row in self._df.data:
             new_row = row.copy()
             if isinstance(value, dict):
+                # When value is a dict, subset is ignored (PySpark behavior)
                 for col, fill_value in value.items():
                     if new_row.get(col) is None:
-                        new_row[col] = fill_value
+                        # Check type compatibility (PySpark silently ignores mismatches)
+                        col_type = column_types.get(col)
+                        if col_type and self._is_value_compatible_with_type(
+                            fill_value, col_type
+                        ):
+                            new_row[col] = fill_value
+                        # If not compatible, leave as None (PySpark behavior)
             else:
-                for col in new_row:
-                    if new_row[col] is None:
-                        new_row[col] = value
+                # When value is not a dict, use subset if provided
+                if subset_cols is not None:
+                    # Only fill nulls in specified columns
+                    for col in subset_cols:
+                        if new_row.get(col) is None:
+                            # Check type compatibility (PySpark silently ignores mismatches)
+                            col_type = column_types.get(col)
+                            if col_type and self._is_value_compatible_with_type(
+                                value, col_type
+                            ):
+                                new_row[col] = value
+                            # If not compatible, leave as None (PySpark behavior)
+                else:
+                    # Fill nulls in all columns
+                    for col in new_row:
+                        if new_row[col] is None:
+                            # Check type compatibility (PySpark silently ignores mismatches)
+                            col_type = column_types.get(col)
+                            if col_type and self._is_value_compatible_with_type(
+                                value, col_type
+                            ):
+                                new_row[col] = value
+                            # If not compatible, leave as None (PySpark behavior)
             new_data.append(new_row)
 
         from ..dataframe import DataFrame
