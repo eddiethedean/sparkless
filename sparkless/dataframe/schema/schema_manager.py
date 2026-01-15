@@ -286,6 +286,99 @@ class SchemaManager:
             elif operation == "to_timestamp":
                 # to_timestamp returns TimestampType
                 fields_map[col_name] = StructField(col_name, TimestampType())
+            elif operation == "withField":
+                # withField operation - add or replace field in struct
+                # Get the base struct column's schema
+                base_col = getattr(col_any, "column", None)
+                if base_col is None:
+                    # Can't determine base column - default to StringType
+                    fields_map[col_name] = StructField(col_name, StringType())
+                else:
+                    # Get base column name
+                    base_col_name = (
+                        base_col.name if hasattr(base_col, "name") else str(base_col)
+                    )
+
+                    # Find the base struct column in fields_map
+                    base_struct_field = None
+                    for field_name, field in fields_map.items():
+                        if field_name.lower() == base_col_name.lower():
+                            base_struct_field = field
+                            break
+
+                    if base_struct_field is None:
+                        # Base column not found - default to StringType
+                        fields_map[col_name] = StructField(col_name, StringType())
+                    else:
+                        # Get the struct type
+                        if not isinstance(base_struct_field.dataType, StructType):
+                            # Base column is not a struct - default to StringType
+                            fields_map[col_name] = StructField(col_name, StringType())
+                        else:
+                            # Extract field name and column from operation value
+                            if (
+                                not isinstance(col_any.value, dict)
+                                or "fieldName" not in col_any.value
+                            ):
+                                # Invalid withField operation - use base struct type
+                                fields_map[col_name] = StructField(
+                                    col_name, base_struct_field.dataType
+                                )
+                            else:
+                                field_name = col_any.value["fieldName"]
+                                field_column = col_any.value.get("column")
+
+                                # Infer the new field's data type
+                                if field_column is None:
+                                    # No field column - default to StringType
+                                    field_data_type = StringType()
+                                elif isinstance(field_column, Literal):
+                                    # Literal - infer type from literal
+                                    field_data_type = (
+                                        SchemaManager._create_literal_field(
+                                            field_column
+                                        ).dataType
+                                    )
+                                elif hasattr(field_column, "operation"):
+                                    # ColumnOperation - infer type from operation
+                                    field_data_type = (
+                                        SchemaManager._infer_expression_type(
+                                            field_column
+                                        )
+                                    )
+                                else:
+                                    # Simple column reference - get type from schema
+                                    field_data_type = StringType()  # Default
+
+                                # Create new struct type with updated/added field
+                                new_fields = list(base_struct_field.dataType.fields)
+
+                                # Check if field already exists
+                                field_exists = False
+                                for i, existing_field in enumerate(new_fields):
+                                    if existing_field.name == field_name:
+                                        # Replace existing field
+                                        new_fields[i] = StructField(
+                                            field_name, field_data_type, nullable=True
+                                        )
+                                        field_exists = True
+                                        break
+
+                                if not field_exists:
+                                    # Add new field
+                                    new_fields.append(
+                                        StructField(
+                                            field_name, field_data_type, nullable=True
+                                        )
+                                    )
+
+                                # Create new struct type
+                                new_struct_type = StructType(new_fields)
+                                fields_map[col_name] = StructField(
+                                    col_name,
+                                    new_struct_type,
+                                    base_struct_field.nullable,
+                                )
             else:
                 fields_map[col_name] = StructField(col_name, StringType())
         elif isinstance(col, Literal):

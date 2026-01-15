@@ -294,6 +294,31 @@ class PolarsExpressionTranslator:
                     coerced_value = str(value)
                 return left.is_in([coerced_value])
 
+        # Special handling for withField - add or replace field in struct
+        if operation == "withField":
+            # Extract field name and column from operation value
+            if not isinstance(value, dict) or "fieldName" not in value:
+                # Invalid withField operation - return original column
+                return left
+
+            field_column = value.get("column")
+
+            if field_column is None:
+                return left
+
+            # For Polars, withField is complex because we need to:
+            # 1. Access all existing struct fields
+            # 2. Evaluate the new field's column expression (needs row context)
+            # 3. Reconstruct the struct with all fields
+
+            # Since we need row context to evaluate the field column expression,
+            # we'll raise ValueError to trigger fallback to Python evaluation.
+            # This is similar to how unsupported window functions are handled.
+            # The actual evaluation will be handled by ExpressionEvaluator.
+            raise ValueError(
+                "withField operation requires Python evaluation - will be handled by ExpressionEvaluator"
+            )
+
         # Special handling for getItem - extract element from array or character from string
         if operation == "getItem":
             index = value

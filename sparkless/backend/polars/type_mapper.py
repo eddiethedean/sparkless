@@ -136,6 +136,12 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
             field_type = polars_dtype_to_mock_type(field.dtype)
             fields.append(StructField(field.name, field_type))
         return StructType(fields)
+    elif polars_dtype == pl.Object:
+        # Object dtype is used for Python objects (dicts, etc.)
+        # For withField results, these are structs, so return StructType
+        # We can't infer the exact structure, so return an empty StructType
+        # The actual data will be preserved as Python dicts
+        return StructType([])
     elif polars_dtype == pl.Int16:
         return ShortType()
     elif polars_dtype == pl.Int8:
