@@ -646,7 +646,14 @@ class SchemaManager:
         right_type = None
 
         # Get left operand type (the column itself)
-        if hasattr(col, "name"):
+        if hasattr(col, "column"):
+            left_operand = getattr(col, "column", None)
+            if left_operand is not None and hasattr(left_operand, "name"):
+                for field in base_schema.fields:
+                    if field.name == left_operand.name:
+                        left_type = field.dataType
+                        break
+        elif hasattr(col, "name"):
             for field in base_schema.fields:
                 if field.name == col.name:
                     left_type = field.dataType
@@ -654,15 +661,34 @@ class SchemaManager:
 
         # Get right operand type
         right_operand = getattr(col, "value", None)
-        if right_operand is not None and hasattr(right_operand, "name"):
-            for field in base_schema.fields:
-                if field.name == right_operand.name:
-                    right_type = field.dataType
-                    break
+        if right_operand is not None:
+            if hasattr(right_operand, "name"):
+                # It's a column reference
+                for field in base_schema.fields:
+                    if field.name == right_operand.name:
+                        right_type = field.dataType
+                        break
+            elif hasattr(right_operand, "value") and hasattr(right_operand, "name"):
+                # It's a Literal - infer type from value
+                from ...functions.core.literals import Literal
 
-        # If either operand is DoubleType, result is DoubleType
-        if (left_type and isinstance(left_type, DoubleType)) or (
-            right_type and isinstance(right_type, DoubleType)
+                if isinstance(right_operand, Literal):
+                    if isinstance(right_operand.value, float):
+                        right_type = DoubleType()
+                    elif isinstance(right_operand.value, int):
+                        right_type = LongType()
+                    else:
+                        right_type = StringType()
+            elif isinstance(right_operand, (int, float)):
+                # It's a numeric literal
+                right_type = (
+                    DoubleType() if isinstance(right_operand, float) else LongType()
+                )
+
+        # PySpark behavior: String columns are automatically cast to Double for arithmetic
+        # If either operand is StringType or DoubleType, result is DoubleType
+        if (left_type and isinstance(left_type, (StringType, DoubleType))) or (
+            right_type and isinstance(right_type, (StringType, DoubleType))
         ):
             return DoubleType()
         else:

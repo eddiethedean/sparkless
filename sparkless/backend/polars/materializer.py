@@ -274,11 +274,46 @@ class PolarsMaterializer:
                     if hasattr(lazy_df, "schema") and col_name in lazy_df.schema:
                         input_col_dtype = lazy_df.schema[col_name]
 
-                filter_expr = self.translator.translate(
-                    optimized_condition,
-                    input_col_dtype=input_col_dtype,
-                    available_columns=available_columns,
-                )
+                try:
+                    filter_expr = self.translator.translate(
+                        optimized_condition,
+                        input_col_dtype=input_col_dtype,
+                        available_columns=available_columns,
+                    )
+                except ValueError as e:
+                    # Fallback to Python evaluation for unsupported operations (e.g., + with strings)
+                    error_msg = str(e)
+                    if "+ operation requires Python evaluation" in error_msg:
+                        # Convert to eager DataFrame for Python evaluation
+                        df_collected = lazy_df.collect()
+                        data = df_collected.to_dicts()
+                        from sparkless.dataframe.evaluation.expression_evaluator import (
+                            ExpressionEvaluator,
+                        )
+
+                        evaluator = ExpressionEvaluator()
+                        # Evaluate filter condition for each row
+                        filtered_data = [
+                            row
+                            for row in data
+                            if evaluator.evaluate_expression(row, optimized_condition)
+                        ]
+                        # Recreate DataFrame from filtered data
+                        if filtered_data:
+                            lazy_df = pl.DataFrame(filtered_data).lazy()
+                        else:
+                            # Empty result - create empty DataFrame with same schema
+                            if hasattr(lazy_df, "schema"):
+                                schema_dict = {
+                                    col: pl.Series(col, [], dtype=lazy_df.schema[col])
+                                    for col in lazy_df.schema
+                                }
+                                lazy_df = pl.DataFrame(schema_dict).lazy()
+                            else:
+                                lazy_df = pl.DataFrame().lazy()
+                        continue
+                    else:
+                        raise
 
                 # Apply filter to lazy DataFrame
                 # Catch Polars ColumnNotFoundError and convert to SparkColumnNotFoundError

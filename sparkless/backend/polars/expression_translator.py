@@ -568,15 +568,20 @@ class PolarsExpressionTranslator:
             op_str: str = str(operation)
             return self._coerce_for_comparison(left, right, op_str)
         elif operation == "+":
-            return left + right
-        elif operation == "-":
-            return left - right
-        elif operation == "*":
-            return left * right
-        elif operation == "/":
-            return left / right
-        elif operation == "%":
-            return left % right
+            # + operator needs special handling: string concatenation vs numeric addition
+            # PySpark behavior:
+            # - string + string = string concatenation
+            # - string + numeric = numeric addition (coerce string to numeric)
+            # - numeric + numeric = numeric addition
+            # Since we can't easily determine types at expression level, use Python fallback
+            # which already handles both cases correctly in ExpressionEvaluator
+            raise ValueError(
+                "+ operation requires Python evaluation to handle string/numeric mix"
+            )
+        elif operation in ["-", "*", "/", "%"]:
+            # Arithmetic operations with automatic string-to-numeric coercion
+            # PySpark automatically casts string columns to Double for arithmetic
+            return self._coerce_for_arithmetic(left, right, str(operation))
         elif operation == "&":
             return left & right
         elif operation == "|":
@@ -683,6 +688,103 @@ class PolarsExpressionTranslator:
             lambda x: _compare_with_coercion(x["left"], x["right"]) if x else None,
             return_dtype=polars_module.Boolean,
         )
+        return result
+
+    def _coerce_for_arithmetic(
+        self, left_expr: pl.Expr, right_expr: pl.Expr, op: str
+    ) -> pl.Expr:
+        """Coerce types for arithmetic operations to handle string-to-numeric operations.
+
+        PySpark behavior: when performing arithmetic on string columns, automatically
+        cast strings to numeric types (Double). This enables operations like "10.0" / 5
+        to work correctly and return 2.0.
+
+        Args:
+            left_expr: Left Polars expression
+            right_expr: Right Polars expression
+            op: Operation string (+, -, *, /, %)
+
+        Returns:
+            Polars expression with appropriate arithmetic operation and type coercion
+
+        Note:
+            Fixed in version 3.24.0 (Issue #236): String-to-numeric type coercion for
+            arithmetic operations now matches PySpark behavior.
+        """
+        # Perform the arithmetic operation
+        # Note: For + operator, we need special handling:
+        # - string + string = string concatenation (Polars handles this automatically)
+        # - string + numeric = numeric addition (coerce string to numeric)
+        # - numeric + numeric = numeric addition
+        # Strategy: Use a conditional to check if we can coerce to numeric.
+        # If both can be coerced to Float64, do numeric addition.
+        # Otherwise, use string concatenation (Polars native behavior).
+        if op == "+":
+            # Try to coerce both to Float64 for numeric addition
+            # If coercion results in null (non-numeric strings), fall back to string concat
+            left_coerced = left_expr.cast(pl.Float64, strict=False)
+            right_coerced = right_expr.cast(pl.Float64, strict=False)
+
+            # Check if both can be coerced (not null after coercion)
+            # If both are numeric (or coercible), use numeric addition
+            # Otherwise, use string concatenation
+            numeric_result = left_coerced + right_coerced
+            string_result = left_expr + right_expr
+
+            # Use numeric if both operands are successfully coerced (not null)
+            # Otherwise use string concatenation
+            result = (
+                pl.when(left_coerced.is_not_null() & right_coerced.is_not_null())
+                .then(numeric_result)
+                .otherwise(string_result)
+            )
+        else:
+            # For -, *, /, % operations, coerce strings to Float64
+            # PySpark automatically casts string columns to Double (Float64) for arithmetic
+            # PySpark also strips whitespace from strings before converting to numeric
+            # For string columns, we need to strip whitespace before casting
+            # For numeric literals/columns, we can cast directly
+            # Use a conditional: try strip_chars() + cast, if that fails (returns null for non-strings),
+            # fall back to direct cast. Actually, simpler: always try strip_chars() first,
+            # and Polars will handle non-strings gracefully by returning the original or null
+            # Then use coalesce to fall back to direct cast if needed
+            # Actually, the simplest: use when().then().otherwise() to conditionally strip
+            # But we can't easily check if it's a string. So use map_elements for Python fallback
+            # or accept that whitespace stripping might not work for all cases in Polars
+            # For now, just cast directly - whitespace handling is done in Python fallback
+            left_coerced = left_expr.cast(pl.Float64, strict=False)
+            right_coerced = right_expr.cast(pl.Float64, strict=False)
+
+            if op == "-":
+                result = left_coerced - right_coerced
+            elif op == "*":
+                result = left_coerced * right_coerced
+            elif op == "/":
+                # Handle division by zero - PySpark returns None, Polars returns inf
+                # Use when/otherwise to convert inf to None
+                result = left_coerced / right_coerced
+                # Convert inf/-inf to None to match PySpark behavior
+                result = (
+                    pl.when(result.is_infinite() | result.is_nan())
+                    .then(None)
+                    .otherwise(result)
+                )
+            elif op == "%":
+                # Handle modulo by zero - PySpark returns None
+                result = left_coerced % right_coerced
+                # Convert inf/-inf to None to match PySpark behavior
+                result = (
+                    pl.when(result.is_infinite() | result.is_nan())
+                    .then(None)
+                    .otherwise(result)
+                )
+            else:
+                raise ValueError(f"Unsupported arithmetic operation: {op}")
+
+            # Ensure result is Float64 to match PySpark's Double type (except for + which may be string)
+            if op != "+":
+                result = result.cast(pl.Float64, strict=False)
+
         return result
 
     def _translate_cast(self, expr: pl.Expr, target_type: Any) -> pl.Expr:

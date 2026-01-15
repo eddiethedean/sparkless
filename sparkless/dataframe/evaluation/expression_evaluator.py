@@ -236,6 +236,29 @@ class ExpressionEvaluator:
         if left_value is None or right_value is None:
             return None
 
+        # PySpark automatically casts string columns to numeric for arithmetic operations
+        # Coerce string values to float (Double) to match PySpark behavior
+        def _coerce_to_numeric(value: Any) -> Optional[float]:
+            """Coerce value to numeric, handling string-to-numeric conversion."""
+            if isinstance(value, (int, float)):
+                return float(value)
+            elif isinstance(value, str):
+                try:
+                    # PySpark strips whitespace from strings before converting to numeric
+                    stripped = value.strip()
+                    return float(stripped)
+                except (ValueError, TypeError):
+                    # Invalid numeric string - return None (PySpark behavior)
+                    return None
+            else:
+                # For other types, try to convert to float
+                try:
+                    return float(value)
+                except (ValueError, TypeError):
+                    return None
+
+        # Coerce both values to numeric for arithmetic operations
+        # Exception: + operator can be string concatenation, so handle it separately
         if operation.operation == "+":
             # PySpark compatibility: String concatenation with + operator returns None
             # when DataFrame is cached. Check if both operands are strings and DataFrame is cached.
@@ -250,17 +273,57 @@ class ExpressionEvaluator:
             ):
                 # Return None to match PySpark behavior
                 return None
-            return left_value + right_value
-        elif operation.operation == "-":
-            return left_value - right_value
-        elif operation.operation == "*":
-            return left_value * right_value
-        elif operation.operation == "/":
-            return left_value / right_value if right_value != 0 else None
-        elif operation.operation == "%":
-            return left_value % right_value if right_value != 0 else None
+            # For + operator, PySpark behavior:
+            # - If both are strings that can be parsed as numbers: coerce both to numeric and add
+            # - If both are strings (non-numeric): string concatenation
+            # - If one is string and one is numeric: coerce string to numeric and add
+            # - If both are numeric: numeric addition
+            if isinstance(left_value, str) and isinstance(right_value, str):
+                # Both strings: try to coerce both to numeric first (PySpark behavior)
+                # If both can be coerced, do numeric addition
+                # Otherwise, do string concatenation
+                left_coerced = _coerce_to_numeric(left_value)
+                right_coerced = _coerce_to_numeric(right_value)
+                if left_coerced is not None and right_coerced is not None:
+                    # Both can be coerced to numeric - do numeric addition
+                    return left_coerced + right_coerced
+                else:
+                    # At least one can't be coerced - do string concatenation
+                    # (unless cached, which is handled above)
+                    return left_value + right_value
+            elif isinstance(left_value, str) and isinstance(right_value, (int, float)):
+                # String + numeric: coerce string to numeric
+                left_coerced = _coerce_to_numeric(left_value)
+                if left_coerced is None:
+                    return None
+                return left_coerced + right_value
+            elif isinstance(right_value, str) and isinstance(left_value, (int, float)):
+                # Numeric + string: coerce string to numeric
+                right_coerced = _coerce_to_numeric(right_value)
+                if right_coerced is None:
+                    return None
+                return left_value + right_coerced
+            else:
+                # Both numeric or other types
+                return left_value + right_value
         else:
-            return None
+            # For -, *, /, % operations, coerce strings to numeric
+            left_coerced = _coerce_to_numeric(left_value)
+            right_coerced = _coerce_to_numeric(right_value)
+
+            if left_coerced is None or right_coerced is None:
+                return None
+
+            if operation.operation == "-":
+                return left_coerced - right_coerced
+            elif operation.operation == "*":
+                return left_coerced * right_coerced
+            elif operation.operation == "/":
+                return left_coerced / right_coerced if right_coerced != 0 else None
+            elif operation.operation == "%":
+                return left_coerced % right_coerced if right_coerced != 0 else None
+            else:
+                return None
 
     def _evaluate_comparison_operation(
         self, row: Dict[str, Any], operation: Any

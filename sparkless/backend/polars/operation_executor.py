@@ -854,10 +854,15 @@ class PolarsOperationExecutor:
                     available_columns=list(df.columns),
                 )
             except ValueError as e:
-                # Fallback to Python evaluation for unsupported operations (e.g., withField)
-                if "withField" in str(e) or (
-                    isinstance(expression, ColumnOperation)
-                    and expression.operation == "withField"
+                # Fallback to Python evaluation for unsupported operations (e.g., withField, + with strings)
+                error_msg = str(e)
+                if (
+                    "withField" in error_msg
+                    or (
+                        isinstance(expression, ColumnOperation)
+                        and expression.operation == "withField"
+                    )
+                    or "+ operation requires Python evaluation" in error_msg
                 ):
                     # Convert Polars DataFrame to list of dicts for Python evaluation
                     data = df.to_dicts()
