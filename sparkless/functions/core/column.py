@@ -80,6 +80,34 @@ class ColumnOperatorMixin:
         """Modulo operation."""
         return self._create_operation("%", other)
 
+    def __radd__(self, other: Any) -> "ColumnOperation":
+        """Reverse addition operation (for `2 + col`)."""
+        # For commutative operations, we can just swap operands
+        return self._create_operation("+", other)
+
+    def __rsub__(self, other: Any) -> "ColumnOperation":
+        """Reverse subtraction operation (for `2 - col`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        # This will evaluate as `other - self` which is correct for `2 - col`
+        return ColumnOperation(other, "-", self)
+
+    def __rmul__(self, other: Any) -> "ColumnOperation":
+        """Reverse multiplication operation (for `2 * col`)."""
+        # For commutative operations, we can just swap operands
+        return self._create_operation("*", other)
+
+    def __rtruediv__(self, other: Any) -> "ColumnOperation":
+        """Reverse division operation (for `2 / col`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        # This will evaluate as `other / self` which is correct for `2 / col`
+        return ColumnOperation(other, "/", self)
+
+    def __rmod__(self, other: Any) -> "ColumnOperation":
+        """Reverse modulo operation (for `2 % col`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        # This will evaluate as `other % self` which is correct for `2 % col`
+        return ColumnOperation(other, "%", self)
+
     def __and__(self, other: Any) -> "ColumnOperation":
         """Logical AND operation."""
         return self._create_operation("&", other)
