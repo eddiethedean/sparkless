@@ -70,10 +70,12 @@ class ExpressionEvaluator:
         # Handle CaseWhen (when/otherwise expressions)
         if isinstance(expression, CaseWhen):
             return self._evaluate_case_when(row, expression)
-        elif isinstance(expression, Column):
-            return self._evaluate_mock_column(row, expression)
+        # Check for ColumnOperation BEFORE Column, since ColumnOperation is a subclass of Column
+        # ColumnOperation has both "operation" and "column" attributes
         elif hasattr(expression, "operation") and hasattr(expression, "column"):
             return self._evaluate_column_operation(row, expression)
+        elif isinstance(expression, Column):
+            return self._evaluate_mock_column(row, expression)
         elif hasattr(expression, "value") and hasattr(expression, "name"):
             # It's a Literal - evaluate it
             return self._evaluate_value(row, expression)
@@ -98,13 +100,23 @@ class ExpressionEvaluator:
             condition_result = self.evaluate_expression(row, condition)
             if condition_result:
                 # Return the value (evaluate if it's an expression)
-                if isinstance(value, (Column, ColumnOperation)):
+                # Check for Literal, Column, or ColumnOperation
+                if hasattr(value, "value") and hasattr(value, "name"):
+                    # It's a Literal - evaluate it
+                    return self._evaluate_value(row, value)
+                elif isinstance(value, (Column, ColumnOperation)):
                     return self.evaluate_expression(row, value)
                 return value
 
         # No condition matched, return default value
         if case_when.default_value is not None:
-            if isinstance(case_when.default_value, (Column, ColumnOperation)):
+            # Check for Literal, Column, or ColumnOperation
+            if hasattr(case_when.default_value, "value") and hasattr(
+                case_when.default_value, "name"
+            ):
+                # It's a Literal - evaluate it
+                return self._evaluate_value(row, case_when.default_value)
+            elif isinstance(case_when.default_value, (Column, ColumnOperation)):
                 return self.evaluate_expression(row, case_when.default_value)
             return case_when.default_value
 
@@ -126,8 +138,45 @@ class ExpressionEvaluator:
         if self._is_function_call_name(col_name):
             return self._evaluate_function_call_by_name(row, col_name)
         else:
+            # Check for nested struct field access (e.g., "my_struct.value_1")
+            if "." in col_name:
+                return self._evaluate_nested_field_access(row, col_name)
             # Simple column reference
             return row.get(column.name)
+
+    def _evaluate_nested_field_access(self, row: Dict[str, Any], col_path: str) -> Any:
+        """Evaluate nested struct field access like 'my_struct.value_1'.
+
+        Args:
+            row: Row data as dictionary
+            col_path: Column path with dots (e.g., "my_struct.value_1")
+
+        Returns:
+            Value at the nested path, or None if path doesn't exist
+        """
+        parts = col_path.split(".")
+        if not parts:
+            return None
+
+        # Start with the row
+        current: Any = row
+
+        # Navigate through each part of the path
+        for part in parts:
+            if current is None:
+                return None
+
+            if isinstance(current, dict):
+                current = current.get(part)
+            elif hasattr(current, "__getitem__"):
+                try:
+                    current = current[part]
+                except (KeyError, TypeError, IndexError):
+                    return None
+            else:
+                return None
+
+        return current
 
     @profiled("expression.evaluate_column_operation", category="expression")
     def _evaluate_column_operation(self, row: Dict[str, Any], operation: Any) -> Any:
@@ -286,9 +335,48 @@ class ExpressionEvaluator:
                         # Can't extract the value - return None
                         value = None
                 else:
-                    value = row.get(col_name)
+                    # Check for nested struct field access
+                    if "." in col_name:
+                        value = self._evaluate_nested_field_access(row, col_name)
+                    else:
+                        value = row.get(col_name)
 
         func_name = operation.operation
+
+        # Handle withField function - add or replace field in struct
+        if func_name == "withField":
+            # value is the struct (dict) from the base column
+            if value is None:
+                # PySpark returns None if struct is null
+                return None
+
+            # Validate that value is a struct (dict)
+            if not isinstance(value, dict):
+                # Not a struct - return None (PySpark would raise AnalysisException)
+                return None
+
+            # Extract field name and column from operation value
+            if (
+                not isinstance(operation.value, dict)
+                or "fieldName" not in operation.value
+            ):
+                return None
+
+            field_name = operation.value["fieldName"]
+            field_column = operation.value.get("column")
+
+            if field_column is None:
+                return None
+
+            # Evaluate the new field's column expression
+            # This may reference nested fields, so use evaluate_expression
+            field_value = self.evaluate_expression(row, field_column)
+
+            # Create a copy of the struct and add/replace the field
+            result = value.copy()
+            result[field_name] = field_value
+
+            return result
 
         # Handle struct function - collects multiple values into a struct/dict
         if func_name == "struct":
@@ -1370,8 +1458,20 @@ class ExpressionEvaluator:
             # It's a ColumnOperation
             return self.evaluate_expression(row, value)
         elif hasattr(value, "value") and hasattr(value, "name"):
-            # It's a Literal
-            return self._get_literal_value(value)
+            # It's a Literal - get the value, but if it's an expression, evaluate it
+            literal_value = self._get_literal_value(value)
+            # If the literal's value is itself an expression (CaseWhen, ColumnOperation, etc.),
+            # evaluate it recursively
+            if isinstance(literal_value, CaseWhen):
+                return self._evaluate_case_when(row, literal_value)
+            elif hasattr(literal_value, "operation") and hasattr(
+                literal_value, "column"
+            ):
+                # It's a ColumnOperation stored in a Literal
+                return self.evaluate_expression(row, literal_value)
+            elif isinstance(literal_value, Column):
+                return self._evaluate_mock_column(row, literal_value)
+            return literal_value
         elif hasattr(value, "name"):
             # It's a Column
             return row.get(value.name)
@@ -1498,6 +1598,7 @@ class ExpressionEvaluator:
             # New utility functions
             "get": self._func_get,
             "getItem": self._func_getItem,
+            "withField": self._func_withField,
             "inline": self._func_inline,
             "inline_outer": self._func_inline_outer,
             "str_to_map": self._func_str_to_map,
@@ -3774,6 +3875,26 @@ class ExpressionEvaluator:
         elif isinstance(value, dict):
             # Map access
             return value.get(key)
+        return None
+
+    def _func_withField(self, value: Any, operation: ColumnOperation) -> Any:
+        """WithField function - add or replace a field in a struct column.
+
+        Note: This method is registered but withField is handled directly in
+        _evaluate_function_call because it needs access to the row to evaluate
+        the field column expression. This method exists for completeness but
+        should not be called directly.
+
+        Args:
+            value: The struct value (dict) from the base column
+            operation: ColumnOperation with operation="withField" and value containing
+                      {"fieldName": str, "column": Column/ColumnOperation/Literal}
+
+        Returns:
+            Modified struct dict with the new/updated field, or None if base value is None
+        """
+        # This method should not be called - withField is handled in _evaluate_function_call
+        # But we keep it for the function registry
         return None
 
     def _func_inline(self, value: Any, operation: ColumnOperation) -> Any:

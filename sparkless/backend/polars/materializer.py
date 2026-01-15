@@ -97,10 +97,12 @@ class PolarsMaterializer:
                     for row in data:
                         row_any: Any = row  # Allow runtime check for tuples/lists
                         if isinstance(row_any, (list, tuple)):
+                            # Only iterate up to the minimum of row length and field_names length
+                            # This handles cases where select operations reduce the number of columns
                             converted_data.append(
                                 {
                                     field_names[i]: row_any[i]
-                                    for i in range(len(row_any))
+                                    for i in range(min(len(row_any), len(field_names)))
                                 }
                             )
                         else:
@@ -1082,8 +1084,35 @@ class PolarsMaterializer:
             # Polars to_dicts() converts dates to ISO format strings
             converted_row_dict: Dict[str, Any] = {}
             for col, value in row_dict.items():
+                # Always preserve dict values - they represent structs (from Object dtype or StructType)
+                if isinstance(value, dict):
+                    converted_row_dict[col] = value
+                    continue
+
                 col_type = column_types.get(col)
-                if isinstance(col_type, DateType) and isinstance(value, str):
+                # Handle Object dtype - preserve Python dicts/objects as-is
+                # Check if this column has Object dtype in the Polars DataFrame
+                try:
+                    if col in result_df.columns:
+                        polars_dtype = result_df[col].dtype
+                        if polars_dtype == pl.Object:
+                            # This is an Object dtype column - preserve the value as-is
+                            converted_row_dict[col] = value
+                            continue
+                except (KeyError, AttributeError, IndexError):
+                    # Column might not exist or dtype check failed - continue with normal processing
+                    pass
+                # Also check for empty StructType (fallback for Object dtype mapping)
+                if (
+                    col_type is not None
+                    and isinstance(col_type, StructType)
+                    and len(col_type.fields) == 0
+                ):
+                    # This is an Object dtype that was converted to empty StructType
+                    # Preserve the value as-is (should be a dict)
+                    converted_row_dict[col] = value
+                    continue
+                elif isinstance(col_type, DateType) and isinstance(value, str):
                     # Convert ISO date string back to date object
                     try:
                         converted_row_dict[col] = dt_module.date.fromisoformat(value)

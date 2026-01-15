@@ -847,11 +847,51 @@ class PolarsOperationExecutor:
                         ]:
                             input_col_dtype = pl.Utf8
 
-            expr = self.translator.translate(
-                expression,
-                input_col_dtype=input_col_dtype,
-                available_columns=list(df.columns),
-            )
+            try:
+                expr = self.translator.translate(
+                    expression,
+                    input_col_dtype=input_col_dtype,
+                    available_columns=list(df.columns),
+                )
+            except ValueError as e:
+                # Fallback to Python evaluation for unsupported operations (e.g., withField)
+                if "withField" in str(e) or (
+                    isinstance(expression, ColumnOperation)
+                    and expression.operation == "withField"
+                ):
+                    # Convert Polars DataFrame to list of dicts for Python evaluation
+                    data = df.to_dicts()
+                    # Evaluate using ExpressionEvaluator
+                    from sparkless.dataframe.evaluation.expression_evaluator import (
+                        ExpressionEvaluator,
+                    )
+
+                    evaluator = ExpressionEvaluator()
+                    results = [
+                        evaluator.evaluate_expression(row, expression) for row in data
+                    ]
+                    # Add results as new column
+                    # Polars will automatically infer struct type from dict values
+                    # Create Series - use strict=False if available to handle mixed types
+                    # This is needed for conditional expressions and other complex cases
+                    try:
+                        # Try with strict=False first (Polars 0.19+)
+                        result_series = pl.Series(column_name, results, strict=False)
+                    except TypeError:
+                        # Fallback: try without strict parameter or use Object dtype
+                        try:
+                            result_series = pl.Series(column_name, results)
+                        except TypeError:
+                            # Last resort: use Object dtype explicitly
+                            result_series = pl.Series(
+                                column_name, results, dtype=pl.Object
+                            )
+                    # Replace the column (if it exists) or add new column
+                    result = df.with_columns(result_series)
+                    return result
+                else:
+                    # Re-raise if it's not a withField error
+                    raise
 
             # If expected_field is provided, use it to explicitly cast the result
             # This fixes issue #151 where Polars was expecting String but got datetime

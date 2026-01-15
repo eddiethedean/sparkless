@@ -5,7 +5,7 @@ This module provides the Column class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 from ...spark_types import DataType, StringType
 
 if TYPE_CHECKING:
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from ..conditional import CaseWhen
     from ..window_execution import WindowFunction
     from ..base import AggregateFunction
+    from .literals import Literal
 
 
 class ColumnOperatorMixin:
@@ -204,6 +205,46 @@ class ColumnOperatorMixin:
             returns None instead of raising errors, matching PySpark behavior.
         """
         return self._create_operation("getItem", key)
+
+    def withField(
+        self,
+        fieldName: str,
+        col: Union["Column", "ColumnOperation", "Literal", Any],  # type: ignore[name-defined,unused-ignore]
+    ) -> "ColumnOperation":
+        """Add or replace a field in a struct column.
+
+        Args:
+            fieldName: Name of the field to add or replace
+            col: Column expression for the new field value. Can be a Column,
+                 ColumnOperation, Literal, or any value that will be converted to a Literal.
+
+        Returns:
+            ColumnOperation representing the withField operation.
+
+        Example:
+            >>> df.withColumn("my_struct", F.col("my_struct").withField("new_field", F.lit("value")))
+            >>> df.withColumn("my_struct", F.col("my_struct").withField("existing_field", F.col("other_col")))
+
+        Note:
+            PySpark 3.1.0+ feature. Works only on struct columns.
+            If field exists, it will be replaced. If it doesn't exist, it will be added.
+        """
+        from .literals import Literal
+
+        # Convert col to appropriate type
+        if isinstance(col, str):
+            col = Column(col)
+        elif not isinstance(col, (Column, ColumnOperation, Literal)):
+            # Wrap literals in Literal
+            col = Literal(col)
+
+        # Store field name and column in a dict for the operation value
+        return ColumnOperation(
+            self,
+            "withField",
+            value={"fieldName": fieldName, "column": col},
+            name=f"{self.name}.withField({fieldName}, ...)",
+        )
 
 
 class Column(ColumnOperatorMixin):
