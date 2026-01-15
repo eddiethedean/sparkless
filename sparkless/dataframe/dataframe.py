@@ -602,9 +602,27 @@ class DataFrame:
         """Drop rows with null values."""
         return self._misc.dropna(how, thresh, subset)
 
-    def fillna(self, value: Union[Any, Dict[str, Any]]) -> "SupportsDataFrameOps":
-        """Fill null values."""
-        return self._misc.fillna(value)
+    def fillna(
+        self,
+        value: Union[Any, Dict[str, Any]],
+        subset: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
+    ) -> "SupportsDataFrameOps":
+        """Fill null values.
+
+        Args:
+            value: Value to fill nulls with. Can be a single value or a dict mapping
+                   column names to fill values.
+            subset: Optional column name(s) to limit fillna operation to. Can be a
+                    string (single column), list, or tuple of column names. If value
+                    is a dict, subset is ignored.
+
+        Returns:
+            DataFrame with null values filled.
+
+        Raises:
+            ColumnNotFoundException: If any column in subset doesn't exist.
+        """
+        return self._misc.fillna(value, subset)
 
     def sample(
         self,
