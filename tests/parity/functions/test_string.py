@@ -47,6 +47,25 @@ class TestStringFunctionsParity(ParityTestBase):
         result = df.select(F.substring(df.name, 1, 3))
         self.assert_parity(result, expected)
 
+    def test_string_substr_method(self, spark):
+        """Test substr method matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        # Test the exact example from issue #238
+        df = spark.createDataFrame(
+            [
+                {"name": "Alice"},
+                {"name": "Bob"},
+            ]
+        )
+        result = df.select(F.col("name").substr(1, 2).alias("partial_name"))
+        rows = result.collect()
+
+        # Verify results match PySpark behavior
+        assert len(rows) == 2
+        assert rows[0]["partial_name"] == "Al"
+        assert rows[1]["partial_name"] == "Bo"
+
     def test_string_concat(self, spark):
         """Test concat function matches PySpark behavior."""
         imports = get_spark_imports()

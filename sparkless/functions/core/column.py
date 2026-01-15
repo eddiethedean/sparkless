@@ -201,6 +201,21 @@ class ColumnOperatorMixin:
         """Check if column ends with the literal string."""
         return self._create_operation("endswith", literal)
 
+    def substr(self, start: int, length: int) -> "ColumnOperation":
+        """Extract substring from string column.
+
+        Args:
+            start: Starting position (1-indexed, can be negative for reverse indexing).
+            length: Length of substring (required).
+
+        Returns:
+            ColumnOperation representing the substr operation.
+
+        Example:
+            >>> df.select(F.col("name").substr(1, 2))
+        """
+        return self._create_operation("substr", (start, length))
+
     def asc(self) -> "ColumnOperation":
         """Ascending sort order."""
         return self._create_operation("asc", None)
