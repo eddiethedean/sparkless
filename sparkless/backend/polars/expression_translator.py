@@ -1801,20 +1801,37 @@ class PolarsExpressionTranslator:
                 # Polars find returns 0-based index, add 1 for 1-based
                 return col_expr.str.find(substring) + 1
             elif operation == "substr":
-                # substr(col, start, length) - Alias for substring
+                # substr(col, start, length) - Requires length parameter (unlike substring)
+                # PySpark behavior: start can be negative (counts from end), 0 is treated as 1
                 if isinstance(op.value, tuple):
-                    start, length = (
-                        op.value[0],
-                        op.value[1] if len(op.value) > 1 else None,
-                    )
+                    start, length = op.value[0], op.value[1]
                 else:
+                    # Should not happen for substr (requires length), but handle gracefully
                     start, length = op.value, None
-                # Convert to 0-based index for Polars
-                start_idx = start - 1 if start > 0 else 0
-                if length is not None:
-                    return col_expr.str.slice(start_idx, length)
+
+                if length is None:
+                    # Fallback to Python evaluation if length is missing
+                    raise ValueError("substr requires length parameter")
+
+                # Handle negative start positions and start=0
+                # For Polars, we need to compute the actual start index
+                # Negative start: use col_expr.str.len_chars() to get string length
+                if start < 0:
+                    # Negative start counts from end: start_idx = len + start
+                    # Polars: str.slice() with negative start is not directly supported
+                    # We'll use a conditional expression
+                    start_idx_expr = col_expr.str.len_chars() + start
+                    start_idx_expr = (
+                        pl.when(start_idx_expr < 0).then(0).otherwise(start_idx_expr)
+                    )
+                elif start == 0:
+                    # start=0 is treated as start=1 (0-indexed)
+                    start_idx_expr = pl.lit(0)
                 else:
-                    return col_expr.str.slice(start_idx)
+                    # Positive start: convert 1-indexed to 0-indexed
+                    start_idx_expr = pl.lit(start - 1)
+
+                return col_expr.str.slice(start_idx_expr, length)
             elif operation == "elt":
                 # elt(n, *columns) - Return element at index from list of columns
                 if isinstance(op.value, tuple) and len(op.value) >= 2:

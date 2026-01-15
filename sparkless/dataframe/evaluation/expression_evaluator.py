@@ -1927,24 +1927,59 @@ class ExpressionEvaluator:
         return str(value)
 
     def _func_substr(self, value: Any, operation: ColumnOperation) -> Optional[str]:
-        """Substr function - alias for substring."""
+        """Substr function - alias for substring, but requires length parameter.
+
+        PySpark behavior:
+        - start is 1-indexed (or negative for reverse indexing)
+        - start=0 is treated as start=1
+        - Negative start counts from the end: -1 is last char, -2 is second-to-last, etc.
+        - length is required (unlike substring which has optional length)
+        """
         if value is None:
             return None
-        # Use substring logic
         if isinstance(operation.value, tuple):
-            start, length = (
-                operation.value[0],
-                operation.value[1] if len(operation.value) > 1 else None,
-            )
+            start, length = operation.value[0], operation.value[1]
         else:
-            start, length = operation.value, None
+            # Should not happen for substr (requires length), but handle gracefully
+            start, length = operation.value, len(str(value))
+
         s = str(value)
-        # Convert to 0-based index
-        start_idx = start - 1 if start > 0 else 0
-        if length is not None:
-            return s[start_idx : start_idx + length]
+        s_len = len(s)
+
+        # Handle negative start positions (count from end)
+        # PySpark behavior for negative start:
+        # - Computes position as len + start (1-indexed)
+        # - If result < 1, treats as position 1 but limits length
+        # - Length is limited based on how "negative" the original start was
+        if start < 0:
+            # Compute 1-indexed position from end
+            pos_1_indexed = s_len + start + 1  # +1 because we're working in 1-indexed
+            if pos_1_indexed < 1:
+                # Start is too negative, clamp to position 1
+                start_idx = 0
+                # Limit length: when start is very negative, PySpark limits result
+                # Formula: available = s_len - (1 - pos_1_indexed) but clamped
+                # Actually, simpler: limit to what's available from start
+                # But PySpark seems to use: max(0, s_len + start) as available
+                available = max(0, s_len + start)
+                length = min(length, available) if available > 0 else 0
+            else:
+                # Convert 1-indexed to 0-indexed
+                start_idx = pos_1_indexed - 1
+        elif start == 0:
+            # PySpark treats start=0 as start=1
+            start_idx = 0
         else:
-            return s[start_idx:]
+            # Positive start: convert 1-indexed to 0-indexed
+            start_idx = start - 1
+            if start_idx < 0:
+                start_idx = 0
+
+        # Extract substring
+        if length <= 0:
+            return ""
+        end_idx = start_idx + length
+        return s[start_idx:end_idx]
 
     def _func_split_part(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Split_part function - extract part of string split by delimiter."""
