@@ -13,6 +13,19 @@
   - Ensures all columns are present after joins before filling null values
   - Prevents missing columns from being incorrectly filled as None
   - Removed xfail marker from `test_na_fill_after_join` (now passing)
+- **CI Linting and Type Checking** - Fixed all CI failures related to code quality checks
+  - Fixed redundant casts in `misc_service.py` fillna method
+  - Fixed return type annotation in `attribute_handler.py` to allow `NAHandler` return type
+  - Fixed Row to dict conversion in `set_operations.py` using `Row.asDict()` method
+  - Fixed dynamic attribute access in `lazy.py` for window functions using `setattr`/`getattr`
+  - Removed unused `type: ignore` comments in `operation_executor.py` decorators
+  - Added appropriate `type: ignore` comments where needed for mypy full codebase checks
+
+### Changed
+- **Code Quality** - All CI checks now passing (ruff format, ruff check, mypy)
+  - Improved type annotations for better mypy compliance
+  - Cleaned up unused imports and type ignore comments
+  - Enhanced type safety in DataFrame operations
 
 ### Testing
 - Added 32 new tests for ArrayType elementType support
@@ -23,7 +36,8 @@
 ### Technical Details
 - Updated `ArrayType.__init__()` to accept both `elementType` (camelCase, PySpark) and `element_type` (snake_case, backward compat) keyword arguments
 - Enhanced `fillna()` in `MiscService` to materialize lazy DataFrames before processing rows
-- All code quality checks passing (ruff format, ruff check, mypy)
+- Fixed type annotations across multiple modules for improved type safety
+- All code quality checks passing (ruff format, ruff check, mypy type checking)
 
 ## 3.23.0 — 2025-01-14
 
