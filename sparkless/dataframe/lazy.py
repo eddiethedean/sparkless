@@ -1391,9 +1391,15 @@ class LazyEvaluationEngine:
                                     # Store results for later use in data evaluation
                                     # We'll add these to new_data when evaluating rows
                                     if not hasattr(current, "_window_function_results"):
-                                        current._window_function_results = {}
-                                    current._window_function_results[col_name] = (
-                                        result_seq_select
+                                        setattr(current, "_window_function_results", {})
+                                    window_results = getattr(
+                                        current, "_window_function_results", {}
+                                    )
+                                    window_results[col_name] = result_seq_select
+                                    setattr(
+                                        current,
+                                        "_window_function_results",
+                                        window_results,
                                     )
 
                                     # Infer type from cast type or window function result

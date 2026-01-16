@@ -151,8 +151,10 @@ class MiscService:
         if self._df._operations_queue:
             materialized_df = self._df._materialize_if_lazy()
             # Use materialized DataFrame for processing
-            df_to_process = cast("SupportsDataFrameOps", materialized_df)
+            df_to_process = materialized_df
         else:
+            # Cast to SupportsDataFrameOps for type compatibility
+            # (DataFrame implements SupportsDataFrameOps, but mypy needs explicit cast)
             df_to_process = cast("SupportsDataFrameOps", self._df)
 
         # Get column types for type checking

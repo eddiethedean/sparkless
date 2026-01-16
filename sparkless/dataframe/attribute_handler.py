@@ -83,7 +83,7 @@ class DataFrameAttributeHandler:
         return super_getattribute(name)
 
     @staticmethod
-    def handle_getattr(obj: Any, name: str) -> Column:
+    def handle_getattr(obj: Any, name: str) -> Union[Column, Any]:
         """
         Handle __getattr__ for column access via dot notation.
 

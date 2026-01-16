@@ -1,6 +1,6 @@
 """Set operations for DataFrame."""
 
-from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Type
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Type, cast
 
 from ...spark_types import (
     Row,
@@ -40,7 +40,7 @@ class SetOperations:
                     row_dict = dict(row.data)
                 else:
                     # Check for _data_dict attribute for other row-like objects
-                    if hasattr(row.data, "_data_dict"):  # type: ignore[unreachable]
+                    if hasattr(row.data, "_data_dict"):
                         row_dict = row.data._data_dict
                     else:
                         row_dict = {}
@@ -252,20 +252,24 @@ class SetOperations:
         unioned_rows = SetOperations.union_rows(rows1, rows2)
 
         # Convert back to dict format
-        result_data = []
+        result_data: List[Dict[str, Any]] = []
         for row in unioned_rows:
-            if hasattr(row, "data"):
+            if isinstance(row, Row):
+                # Use Row.asDict() method for proper conversion
+                result_data.append(row.asDict())
+            elif hasattr(row, "data"):
                 # Row object - convert data to dict
                 if isinstance(row.data, dict):
                     result_data.append(row.data)
                 elif isinstance(row.data, list):
                     # List of (key, value) tuples
                     result_data.append(dict(row.data))
-                elif hasattr(row.data, "items"):  # type: ignore[unreachable]
+                elif hasattr(row.data, "items"):
                     result_data.append(dict(row.data))
                 else:
                     result_data.append({})
             elif hasattr(row, "__dict__"):
+                # row.__dict__ is already a dict
                 result_data.append(row.__dict__)
             else:
                 result_data.append(dict(row) if hasattr(row, "items") else {})
