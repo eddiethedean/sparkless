@@ -708,9 +708,25 @@ class PolarsMaterializer:
                     other_df = other_df_payload
 
                 result_df = self.operation_executor.apply_union(df_collected, other_df)
+                # Schema may change after union if type coercion occurred
+                # PySpark normalizes types (e.g., LongType + StringType -> StringType)
+                # Update current_schema to reflect coerced types from result_df
+                from .type_mapper import polars_dtype_to_mock_type
+
+                if result_df.schema:
+                    # Extract schema from result DataFrame (reflects coerced types)
+                    result_schema_fields = []
+                    for col_name, dtype in result_df.schema.items():
+                        mock_type = polars_dtype_to_mock_type(dtype)
+                        from ...spark_types import StructField
+
+                        result_schema_fields.append(
+                            StructField(col_name, mock_type, nullable=True)
+                        )
+                    if result_schema_fields:
+                        current_schema = StructType(result_schema_fields)
+
                 lazy_df = result_df.lazy()
-                # Schema doesn't change after union (uses first DataFrame's schema)
-                # current_schema remains the same
             elif op_name == "orderBy":
                 # OrderBy operation - can be done lazily
                 # Payload can be just columns (tuple) or (columns, ascending)
