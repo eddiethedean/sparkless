@@ -747,38 +747,54 @@ class PolarsMaterializer:
                     )
                     optimized_columns.append(optimized_col)
 
-                # Build sort expressions with descending flags
-                # Polars doesn't have .desc() on Expr, use sort() with descending parameter
+                # Build sort expressions with descending and nulls_last parameters
+                # Polars sort() accepts:
+                # - by: list of column names (str) or expressions
+                # - descending: list of bools for direction
+                # - nulls_last: list of bools for nulls handling
                 # Get available columns from lazy DataFrame schema for case-insensitive matching
                 available_columns = (
                     list(lazy_df.schema.keys()) if hasattr(lazy_df, "schema") else []
                 )
                 sort_by = []
                 descending_flags = []
+                nulls_last_flags = []
                 for col in optimized_columns:
                     is_desc = False
-                    col_expr = None
+                    nulls_last = None  # None means default behavior
+                    col_name = None
                     if isinstance(col, str):
-                        # Use case-insensitive matching if available columns are provided
-                        if available_columns:
-                            actual_col_name = None
-                            for available_col in available_columns:
-                                if available_col.lower() == col.lower():
-                                    actual_col_name = available_col
-                                    break
-                            if actual_col_name:
-                                col_expr = pl.col(actual_col_name)
-                            else:
-                                col_expr = pl.col(col)
-                        else:
-                            col_expr = pl.col(col)
+                        col_name = col
                         is_desc = not ascending
-                    elif hasattr(col, "operation") and col.operation == "desc":
+                        nulls_last = True  # PySpark default: nulls last
+                    elif hasattr(col, "operation"):
+                        operation = col.operation
                         col_name = (
                             col.column.name if hasattr(col, "column") else col.name
                         )
-                        col_expr = pl.col(col_name)
-                        is_desc = True
+                        # Handle nulls variant operations
+                        if operation == "desc_nulls_last":
+                            is_desc = True
+                            nulls_last = True
+                        elif operation == "desc_nulls_first":
+                            is_desc = True
+                            nulls_last = False
+                        elif operation == "asc_nulls_last":
+                            is_desc = False
+                            nulls_last = True
+                        elif operation == "asc_nulls_first":
+                            is_desc = False
+                            nulls_last = False
+                        elif operation == "desc":
+                            is_desc = True
+                            nulls_last = True  # PySpark default: nulls last for desc()
+                        elif operation == "asc":
+                            is_desc = False
+                            nulls_last = True  # PySpark default: nulls last for asc()
+                        else:
+                            # Fallback for other operations
+                            is_desc = not ascending
+                            nulls_last = True  # PySpark default: nulls last
                     else:
                         # For ColumnOperation with asc/desc, get the actual column name
                         if hasattr(col, "column") and hasattr(col.column, "name"):
@@ -789,9 +805,17 @@ class PolarsMaterializer:
                             col_name = str(col)
                         # Remove any " ASC" or " DESC" suffix that might be in the name
                         col_name = (
-                            col_name.replace(" ASC", "").replace(" DESC", "").strip()
+                            col_name.replace(" ASC", "")
+                            .replace(" DESC", "")
+                            .replace(" NULLS FIRST", "")
+                            .replace(" NULLS LAST", "")
+                            .strip()
                         )
-                        # Use case-insensitive matching if available columns are provided
+                        is_desc = not ascending
+                        nulls_last = True  # PySpark default: nulls last
+
+                    # Resolve column name case-insensitively if available columns are provided
+                    if col_name is not None:
                         if available_columns:
                             actual_col_name = None
                             for available_col in available_columns:
@@ -799,20 +823,26 @@ class PolarsMaterializer:
                                     actual_col_name = available_col
                                     break
                             if actual_col_name:
-                                col_expr = pl.col(actual_col_name)
-                            else:
-                                col_expr = pl.col(col_name)
-                        else:
-                            col_expr = pl.col(col_name)
-                        is_desc = not ascending
+                                col_name = actual_col_name
 
-                    if col_expr is not None:
-                        sort_by.append(col_expr)
+                        sort_by.append(col_name)
                         descending_flags.append(is_desc)
+                        nulls_last_flags.append(nulls_last)
 
                 if sort_by:
-                    # Polars sort() accepts by (list of expressions) and descending (list of bools)
-                    lazy_df = lazy_df.sort(sort_by, descending=descending_flags)
+                    # Use sort() with by, descending, and nulls_last parameters
+                    # nulls_last can be None (default), True, or False
+                    # We only pass nulls_last if at least one value is not None
+                    has_nulls_specification = any(
+                        n is not None for n in nulls_last_flags
+                    )
+                    if has_nulls_specification:
+                        lazy_df = lazy_df.sort(
+                            sort_by, descending=descending_flags, nulls_last=nulls_last_flags
+                        )
+                    else:
+                        # No nulls specification, use default
+                        lazy_df = lazy_df.sort(sort_by, descending=descending_flags)
             elif op_name == "limit":
                 # Limit operation
                 n = payload

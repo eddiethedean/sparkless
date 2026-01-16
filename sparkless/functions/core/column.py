@@ -224,6 +224,22 @@ class ColumnOperatorMixin:
         """Descending sort order."""
         return self._create_operation("desc", None)
 
+    def desc_nulls_last(self) -> "ColumnOperation":
+        """Descending sort order with nulls last."""
+        return self._create_operation("desc_nulls_last", None)
+
+    def desc_nulls_first(self) -> "ColumnOperation":
+        """Descending sort order with nulls first."""
+        return self._create_operation("desc_nulls_first", None)
+
+    def asc_nulls_last(self) -> "ColumnOperation":
+        """Ascending sort order with nulls last."""
+        return self._create_operation("asc_nulls_last", None)
+
+    def asc_nulls_first(self) -> "ColumnOperation":
+        """Ascending sort order with nulls first."""
+        return self._create_operation("asc_nulls_first", None)
+
     def cast(self, data_type: DataType) -> "ColumnOperation":
         """Cast column to different data type."""
         return self._create_operation("cast", data_type)
@@ -615,6 +631,22 @@ class ColumnOperation(Column):
             if column is None or not hasattr(column, "name"):
                 return "DESC"
             return f"{column.name} DESC"
+        elif operation == "desc_nulls_last":
+            if column is None or not hasattr(column, "name"):
+                return "DESC NULLS LAST"
+            return f"{column.name} DESC NULLS LAST"
+        elif operation == "desc_nulls_first":
+            if column is None or not hasattr(column, "name"):
+                return "DESC NULLS FIRST"
+            return f"{column.name} DESC NULLS FIRST"
+        elif operation == "asc_nulls_last":
+            if column is None or not hasattr(column, "name"):
+                return "ASC NULLS LAST"
+            return f"{column.name} ASC NULLS LAST"
+        elif operation == "asc_nulls_first":
+            if column is None or not hasattr(column, "name"):
+                return "ASC NULLS FIRST"
+            return f"{column.name} ASC NULLS FIRST"
         elif operation == "cast":
             # Map PySpark type names to DuckDB/SQL type names (DuckDB backend only)
             type_mapping = {
