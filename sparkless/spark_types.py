@@ -288,10 +288,33 @@ class DecimalType(DataType):
 class ArrayType(DataType):
     """Mock array type."""
 
-    def __init__(self, element_type: DataType, nullable: bool = True):
-        """Initialize ArrayType."""
+    def __init__(
+        self,
+        element_type: Optional[DataType] = None,
+        elementType: Optional[DataType] = None,  # PySpark keyword name
+        nullable: bool = True,
+    ):
+        """Initialize ArrayType.
+
+        Args:
+            element_type: Element data type (positional or keyword with snake_case)
+            elementType: Element data type (keyword, PySpark convention)
+            nullable: Whether the array can contain null values
+
+        Either element_type (positional/keyword) or elementType (keyword) must be provided.
+        """
+        # Handle both camelCase (PySpark) and snake_case (backward compat)
+        if elementType is not None and element_type is not None:
+            raise TypeError("Cannot specify both 'elementType' and 'element_type'")
+
+        # Prefer elementType (PySpark convention), fallback to element_type
+        final_element_type = elementType if elementType is not None else element_type
+
+        if final_element_type is None:
+            raise TypeError("elementType or element_type is required")
+
         super().__init__(nullable)
-        self.element_type = element_type
+        self.element_type = final_element_type
 
     def __repr__(self) -> str:
         """String representation."""
