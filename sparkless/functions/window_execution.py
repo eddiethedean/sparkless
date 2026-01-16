@@ -6,9 +6,13 @@ This module contains window function implementations including row_number, rank,
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
 import contextlib
+import sys
 
 if TYPE_CHECKING:
     from sparkless.sql import WindowSpec
+    from sparkless.functions.base import ColumnOperation
+else:
+    from sparkless.functions.base import ColumnOperation
 
 
 class WindowFunction:
@@ -92,6 +96,20 @@ class WindowFunction:
         """
         self.name = name
         return self
+
+    def cast(self, data_type: Any) -> ColumnOperation:
+        """Cast the window function result to a different data type.
+
+        Args:
+            data_type: The target data type (DataType instance or string type name).
+
+        Returns:
+            ColumnOperation representing the cast operation.
+
+        Example:
+            >>> F.row_number().over(window_spec).cast("long")
+        """
+        return ColumnOperation(self, "cast", data_type)
 
     def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate the window function over the data.
@@ -893,17 +911,45 @@ class WindowFunction:
             else:
                 sorted_indices = partition_indices
 
-            # Calculate sum for this partition
-            partition_sum = 0.0
-            for idx in sorted_indices:
-                row = data[idx]
-                if col_name in row and row[col_name] is not None:
-                    with contextlib.suppress(ValueError, TypeError):
-                        partition_sum += float(row[col_name])
+            # Check for window frame (rowsBetween)
+            rows_between = getattr(self.window_spec, "_rows_between", None)
+            # Window.unboundedPreceding is -sys.maxsize - 1, Window.currentRow is 0
+            unbounded_preceding = -sys.maxsize - 1
+            current_row = 0
+            if (
+                rows_between
+                and rows_between[0] == unbounded_preceding
+                and rows_between[1] == current_row
+            ):
+                # Cumulative sum (running total) - sum from start to current row
+                cumulative_sum = 0.0
+                # Map sorted indices back to original indices
+                # sorted_indices contains the indices in sorted order
+                # partition_indices contains the original indices
+                # We need to assign cumulative sum to rows in sorted order, but store in original positions
+                for sorted_pos, sorted_idx in enumerate(sorted_indices):
+                    row = data[sorted_idx]
+                    if col_name in row and row[col_name] is not None:
+                        with contextlib.suppress(ValueError, TypeError):
+                            cumulative_sum += float(row[col_name])
+                    # Find the original index position for this sorted index
+                    # sorted_indices[sorted_pos] = sorted_idx, and we need to find where sorted_idx is in partition_indices
+                    original_idx = (
+                        sorted_idx  # sorted_idx is already the original index from data
+                    )
+                    results[original_idx] = cumulative_sum
+            else:
+                # Calculate sum for entire partition (default behavior)
+                partition_sum = 0.0
+                for idx in sorted_indices:
+                    row = data[idx]
+                    if col_name in row and row[col_name] is not None:
+                        with contextlib.suppress(ValueError, TypeError):
+                            partition_sum += float(row[col_name])
 
-            # Assign same sum to all rows in partition
-            for idx in partition_indices:
-                results[idx] = partition_sum
+                # Assign same sum to all rows in partition
+                for idx in partition_indices:
+                    results[idx] = partition_sum
 
         return results
 

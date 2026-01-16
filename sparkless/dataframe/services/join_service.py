@@ -14,9 +14,6 @@ from ...spark_types import (
     IntegerType,
     LongType,
     DoubleType,
-    ByteType,
-    ShortType,
-    FloatType,
 )
 from ..protocols import SupportsDataFrameOps
 
@@ -279,12 +276,12 @@ class JoinService:
             nullable: bool = True
 
             # Get field types from both schemas
-            self_field: Optional[StructField] = None
-            other_field: Optional[StructField] = None
+            self_field_coerce: Optional[StructField] = None
+            other_field_coerce: Optional[StructField] = None
 
             for field in self._df.schema.fields:
                 if field.name == col:
-                    self_field = field
+                    self_field_coerce = field
                     field_type = field.dataType
                     nullable = field.nullable
                     break
@@ -294,21 +291,21 @@ class JoinService:
             if other_col_name:
                 for field in other.schema.fields:
                     if field.name == other_col_name:
-                        other_field = field
+                        other_field_coerce = field
                         break
 
             # If not found in self schema, use other schema
-            if self_field is None and other_field:
-                field_type = other_field.dataType
-                nullable = other_field.nullable
+            if self_field_coerce is None and other_field_coerce:
+                field_type = other_field_coerce.dataType
+                nullable = other_field_coerce.nullable
 
             # For common columns, apply type coercion
-            if col in common_cols and self_field and other_field:
+            if col in common_cols and self_field_coerce and other_field_coerce:
                 # Determine coerced type (PySpark behavior: numeric+string -> string)
-                is_numeric1 = isinstance(self_field.dataType, numeric_types)
-                is_numeric2 = isinstance(other_field.dataType, numeric_types)
-                is_string1 = isinstance(self_field.dataType, StringType)
-                is_string2 = isinstance(other_field.dataType, StringType)
+                is_numeric1 = isinstance(self_field_coerce.dataType, numeric_types)
+                is_numeric2 = isinstance(other_field_coerce.dataType, numeric_types)
+                is_string1 = isinstance(self_field_coerce.dataType, StringType)
+                is_string2 = isinstance(other_field_coerce.dataType, StringType)
 
                 if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
                     # Numeric + String -> String (PySpark behavior, issue #242)
@@ -321,24 +318,30 @@ class JoinService:
                 elif is_numeric1 and is_numeric2:
                     # Both numeric - promote to wider type
                     if isinstance(
-                        self_field.dataType, (FloatType, DoubleType)
-                    ) or isinstance(other_field.dataType, (FloatType, DoubleType)):
+                        self_field_coerce.dataType, (FloatType, DoubleType)
+                    ) or isinstance(
+                        other_field_coerce.dataType, (FloatType, DoubleType)
+                    ):
                         target_type = DoubleType()
-                    elif isinstance(self_field.dataType, LongType) or isinstance(
-                        other_field.dataType, LongType
+                    elif isinstance(self_field_coerce.dataType, LongType) or isinstance(
+                        other_field_coerce.dataType, LongType
                     ):
                         target_type = LongType()
                     else:
-                        target_type = self_field.dataType
+                        target_type = self_field_coerce.dataType
                     # Coerce data values if needed
                     if target_type != field_type:
                         for row in coerced_combined_data:
                             if col in row:
-                                row[col] = TypeConverter.cast_to_type(row[col], target_type)
+                                row[col] = TypeConverter.cast_to_type(
+                                    row[col], target_type
+                                )
                     field_type = target_type
 
                 # Nullable is True if either is nullable
-                nullable = bool(self_field.nullable or other_field.nullable)
+                nullable = bool(
+                    self_field_coerce.nullable or other_field_coerce.nullable
+                )
 
             new_fields.append(StructField(col, field_type, nullable))
 
