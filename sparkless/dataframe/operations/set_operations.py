@@ -253,7 +253,7 @@ class SetOperations:
 
         # Convert back to dict format
         result_data: List[Dict[str, Any]] = []
-        for row in unioned_rows:  # type: ignore[assignment]
+        for row in unioned_rows:
             if isinstance(row, Row):
                 # Use Row.asDict() method for proper conversion
                 row_dict: Dict[str, Any] = row.asDict()
