@@ -145,18 +145,30 @@ class MiscService:
                 if col not in available_cols:
                     raise ColumnNotFoundException(col)
 
+        # Materialize lazy operations first to ensure all columns are present
+        # This is especially important after joins where columns might be missing
+        # until materialization
+        if self._df._operations_queue:
+            materialized_df = self._df._materialize_if_lazy()
+            # Use materialized DataFrame for processing
+            df_to_process = materialized_df
+        else:
+            df_to_process = self._df
+
         # Get column types for type checking
-        column_types = {field.name: field.dataType for field in self._df.schema.fields}
+        column_types = {
+            field.name: field.dataType for field in df_to_process.schema.fields
+        }
 
         # Validate dict keys exist before processing (PySpark behavior)
         if isinstance(value, dict):
-            available_cols = [field.name for field in self._df.schema.fields]
+            available_cols = [field.name for field in df_to_process.schema.fields]
             for col in value:
                 if col not in available_cols:
                     raise ColumnNotFoundException(col)
 
         new_data = []
-        for row in self._df.data:
+        for row in df_to_process.data:
             new_row = row.copy()
             if isinstance(value, dict):
                 # When value is a dict, subset is ignored (PySpark behavior)
@@ -211,7 +223,7 @@ class MiscService:
 
         return cast(
             "SupportsDataFrameOps",
-            DataFrame(new_data, self._df.schema, self._df.storage),
+            DataFrame(new_data, df_to_process.schema, df_to_process.storage),
         )
 
     # Sampling Operations

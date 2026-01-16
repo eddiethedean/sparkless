@@ -120,10 +120,6 @@ class TestNaFill:
         assert rows[1]["value"] == "FILLED"  # Was null, now filled
         assert rows[1]["other"] is None  # Not in subset, unchanged
 
-    @pytest.mark.xfail(
-        reason="Known issue: join materialization may produce rows with missing columns. "
-        "This exposes a join materialization bug, not a fillna bug."
-    )
     def test_na_fill_after_join(self, spark):
         """Test .na.fill() after join operation (exact scenario from issue #245)."""
         # Use integers for the exact scenario from issue #245
