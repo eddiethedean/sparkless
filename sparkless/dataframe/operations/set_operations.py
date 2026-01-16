@@ -1,6 +1,6 @@
 """Set operations for DataFrame."""
 
-from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Type, cast
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Type
 
 from ...spark_types import (
     Row,
@@ -253,10 +253,11 @@ class SetOperations:
 
         # Convert back to dict format
         result_data: List[Dict[str, Any]] = []
-        for row in unioned_rows:
+        for row in unioned_rows:  # type: ignore[assignment]
             if isinstance(row, Row):
                 # Use Row.asDict() method for proper conversion
-                result_data.append(row.asDict())
+                row_dict: Dict[str, Any] = row.asDict()
+                result_data.append(row_dict)
             elif hasattr(row, "data"):
                 # Row object - convert data to dict
                 if isinstance(row.data, dict):
