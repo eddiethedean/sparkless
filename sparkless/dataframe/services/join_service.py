@@ -6,7 +6,18 @@ This service provides join and set operations using composition instead of mixin
 
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 
-from ...spark_types import DataType, StringType, StructField, StructType
+from ...spark_types import (
+    DataType,
+    StringType,
+    StructField,
+    StructType,
+    IntegerType,
+    LongType,
+    DoubleType,
+    ByteType,
+    ShortType,
+    FloatType,
+)
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
@@ -241,43 +252,94 @@ class JoinService:
             combined_data.append(other_new_row)
 
         # Create new schema with all columns
-        # For common columns, use the type from the first DataFrame
+        # For common columns, apply type coercion (PySpark behavior: numeric+string -> string)
         # For nullable flags, result is nullable if either input is nullable
+        from ...dataframe.casting.type_converter import TypeConverter
+        from ...spark_types import (
+            ByteType,
+            ShortType,
+            FloatType,
+        )
+
+        numeric_types = (
+            ByteType,
+            ShortType,
+            IntegerType,
+            LongType,
+            FloatType,
+            DoubleType,
+        )
+
         new_fields: List[StructField] = []
+        coerced_combined_data = combined_data.copy()
+
         for col in all_cols:
-            # Try to get the data type from the original schema, default to StringType
+            # Determine target type for coercion (PySpark behavior)
             field_type: DataType = StringType()
             nullable: bool = True
+
+            # Get field types from both schemas
+            self_field: Optional[StructField] = None
+            other_field: Optional[StructField] = None
+
             for field in self._df.schema.fields:
                 if field.name == col:
+                    self_field = field
                     field_type = field.dataType
                     nullable = field.nullable
                     break
-            # If not found in self schema, check other schema
-            if isinstance(field_type, StringType):
+
+            # Find other field case-insensitively
+            other_col_name = other_cols_lower.get(col.lower())
+            if other_col_name:
                 for field in other.schema.fields:
-                    if field.name == col:
-                        field_type = field.dataType
-                        nullable = field.nullable
+                    if field.name == other_col_name:
+                        other_field = field
                         break
-            # For common columns, ensure nullable is True if either is nullable
-            if col in common_cols:
-                self_field_for_nullable: StructField = next(
-                    f for f in self._df.schema.fields if f.name == col
-                )
-                # Find other field case-insensitively
-                other_field_for_nullable: Optional[StructField] = None
-                for field in other.schema.fields:
-                    if field.name.lower() == col.lower():
-                        other_field_for_nullable = field
-                        break
-                if other_field_for_nullable is None:
-                    # Skip nullable check if field not found
-                    continue
-                nullable = bool(
-                    self_field_for_nullable.nullable
-                    or other_field_for_nullable.nullable
-                )
+
+            # If not found in self schema, use other schema
+            if self_field is None and other_field:
+                field_type = other_field.dataType
+                nullable = other_field.nullable
+
+            # For common columns, apply type coercion
+            if col in common_cols and self_field and other_field:
+                # Determine coerced type (PySpark behavior: numeric+string -> string)
+                is_numeric1 = isinstance(self_field.dataType, numeric_types)
+                is_numeric2 = isinstance(other_field.dataType, numeric_types)
+                is_string1 = isinstance(self_field.dataType, StringType)
+                is_string2 = isinstance(other_field.dataType, StringType)
+
+                if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
+                    # Numeric + String -> String (PySpark behavior, issue #242)
+                    target_type = StringType()
+                    # Coerce data values
+                    for row in coerced_combined_data:
+                        if col in row:
+                            row[col] = TypeConverter.cast_to_type(row[col], target_type)
+                    field_type = target_type
+                elif is_numeric1 and is_numeric2:
+                    # Both numeric - promote to wider type
+                    if isinstance(
+                        self_field.dataType, (FloatType, DoubleType)
+                    ) or isinstance(other_field.dataType, (FloatType, DoubleType)):
+                        target_type = DoubleType()
+                    elif isinstance(self_field.dataType, LongType) or isinstance(
+                        other_field.dataType, LongType
+                    ):
+                        target_type = LongType()
+                    else:
+                        target_type = self_field.dataType
+                    # Coerce data values if needed
+                    if target_type != field_type:
+                        for row in coerced_combined_data:
+                            if col in row:
+                                row[col] = TypeConverter.cast_to_type(row[col], target_type)
+                    field_type = target_type
+
+                # Nullable is True if either is nullable
+                nullable = bool(self_field.nullable or other_field.nullable)
+
             new_fields.append(StructField(col, field_type, nullable))
 
         new_schema = StructType(new_fields)
@@ -285,7 +347,7 @@ class JoinService:
 
         return cast(
             "SupportsDataFrameOps",
-            DataFrame(combined_data, new_schema, self._df.storage),
+            DataFrame(coerced_combined_data, new_schema, self._df.storage),
         )
 
     def unionAll(self, other: SupportsDataFrameOps) -> "SupportsDataFrameOps":
