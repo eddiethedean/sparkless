@@ -187,21 +187,57 @@ class WindowFunction:
             row = data[idx]
             key_values = []
             for col in order_by_cols:
-                # Extract column name
+                # Extract column name and operation
+                operation = None
+                nulls_last = True  # Default: nulls last
+                is_desc = False
+
                 if hasattr(col, "column") and hasattr(col.column, "name"):
                     col_name = col.column.name
-                    is_desc = getattr(col, "operation", None) == "desc"
+                    operation = getattr(col, "operation", None)
+                elif hasattr(col, "operation"):
+                    col_name = col.name if hasattr(col, "name") else str(col)
+                    operation = col.operation
                 elif hasattr(col, "name"):
                     col_name = col.name
-                    is_desc = getattr(col, "operation", None) == "desc"
+                    operation = getattr(col, "operation", None)
                 else:
                     col_name = str(col)
+                    operation = None
+
+                # Handle nulls variant operations
+                if operation == "desc_nulls_last":
+                    is_desc = True
+                    nulls_last = True
+                elif operation == "desc_nulls_first":
+                    is_desc = True
+                    nulls_last = False
+                elif operation == "asc_nulls_last":
                     is_desc = False
+                    nulls_last = True
+                elif operation == "asc_nulls_first":
+                    is_desc = False
+                    nulls_last = False
+                elif operation == "desc":
+                    is_desc = True
+                    nulls_last = True  # Default for desc
+                elif operation == "asc":
+                    is_desc = False
+                    nulls_last = True  # Default for asc
 
                 value = row.get(col_name)
-                # Handle None values - put them at the end for ascending, at start for descending
+                # Handle None values based on nulls_last flag
                 if value is None:
-                    key_values.append((float("inf") if not is_desc else float("-inf"),))
+                    if nulls_last:
+                        # Put nulls at the end: use max value for asc, min value for desc
+                        key_values.append(
+                            (float("inf") if not is_desc else float("-inf"),)
+                        )
+                    else:
+                        # Put nulls at the start: use min value for asc, max value for desc
+                        key_values.append(
+                            (float("-inf") if not is_desc else float("inf"),)
+                        )
                 else:
                     key_values.append((value,))
 
@@ -209,11 +245,15 @@ class WindowFunction:
 
         # Check if any column has desc operation
         has_desc = any(
-            (hasattr(col, "operation") and col.operation == "desc")
+            (
+                hasattr(col, "operation")
+                and col.operation in ("desc", "desc_nulls_last", "desc_nulls_first")
+            )
             or (
                 hasattr(col, "column")
                 and hasattr(col.column, "operation")
-                and col.column.operation == "desc"
+                and col.column.operation
+                in ("desc", "desc_nulls_last", "desc_nulls_first")
             )
             for col in order_by_cols
         )

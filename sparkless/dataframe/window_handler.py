@@ -221,6 +221,32 @@ class WindowFunctionHandler:
             key_values = []
             for col in order_by_cols:
                 # Handle ColumnOperation objects (like col("salary").desc())
+                operation = None
+                nulls_last = True  # Default: nulls last
+                is_desc = False
+
+                if hasattr(col, "operation"):
+                    operation = col.operation
+                    # Check for nulls variant operations
+                    if operation == "desc_nulls_last":
+                        is_desc = True
+                        nulls_last = True
+                    elif operation == "desc_nulls_first":
+                        is_desc = True
+                        nulls_last = False
+                    elif operation == "asc_nulls_last":
+                        is_desc = False
+                        nulls_last = True
+                    elif operation == "asc_nulls_first":
+                        is_desc = False
+                        nulls_last = False
+                    elif operation == "desc":
+                        is_desc = True
+                        nulls_last = True  # Default for desc
+                    elif operation == "asc":
+                        is_desc = False
+                        nulls_last = True  # Default for asc
+
                 if hasattr(col, "column") and hasattr(col.column, "name"):
                     col_name = col.column.name
                 elif hasattr(col, "name"):
@@ -228,16 +254,29 @@ class WindowFunctionHandler:
                 else:
                     col_name = str(col)
                 value = row.get(col_name)
-                # Handle None values for sorting - put them at the end
+
+                # Handle None values based on nulls_last flag
                 if value is None:
-                    key_values.append(float("inf"))  # Sort None values last
+                    if nulls_last:
+                        # Put nulls at the end: use max value for asc, min value for desc
+                        key_values.append(
+                            float("inf") if not is_desc else float("-inf")
+                        )
+                    else:
+                        # Put nulls at the start: use min value for asc, max value for desc
+                        key_values.append(
+                            float("-inf") if not is_desc else float("inf")
+                        )
                 else:
                     key_values.append(value)
             return tuple(key_values)
 
         # Check if any column has desc operation
         has_desc = any(
-            hasattr(col, "operation") and col.operation == "desc"
+            (
+                hasattr(col, "operation")
+                and col.operation in ("desc", "desc_nulls_last", "desc_nulls_first")
+            )
             for col in order_by_cols
         )
 

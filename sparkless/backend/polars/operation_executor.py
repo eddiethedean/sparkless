@@ -650,14 +650,21 @@ class PolarsOperationExecutor:
             values.append("" if val is None else str(val))
         return ",".join(values)
 
-    def _extract_column_name(self, expr: Any) -> Union[str, None]:
+    def _extract_column_name(self, expr: Any) -> Optional[str]:
         if isinstance(expr, Column):
-            return expr.name
+            name = expr.name
+            return str(name) if name is not None else None
         if isinstance(expr, ColumnOperation) and hasattr(expr, "name"):
-            return expr.name
+            name_attr = getattr(expr, "name", None)
+            if name_attr is not None:
+                return str(name_attr)
+            return None
         if isinstance(expr, str):
             return expr
-        return getattr(expr, "name", None)
+        name_attr = getattr(expr, "name", None)
+        if name_attr is not None:
+            return str(name_attr)
+        return None
 
     def _extract_struct_field_names(self, expr: Any) -> List[str]:
         names: List[str] = []
@@ -759,33 +766,66 @@ class PolarsOperationExecutor:
                         elif hasattr(col, "name"):
                             sort_cols.append(col.name)
                 # Add order_by columns
+                # Build sort parameters for window functions
+                window_sort_cols = []
+                window_desc_flags = []
+                window_nulls_last_flags = []
                 for col in window_spec._order_by:
                     col_name = None
                     is_desc = False
+                    nulls_last = None  # None means default
                     if isinstance(col, str):
                         col_name = col
-                    elif hasattr(col, "name"):
-                        col_name = col.name
-                    elif hasattr(col, "operation") and col.operation == "desc":
-                        is_desc = True
+                        is_desc = False  # Default ascending
+                        nulls_last = None
+                    elif hasattr(col, "operation"):
+                        operation = col.operation
                         if hasattr(col, "column") and hasattr(col.column, "name"):
                             col_name = col.column.name
                         elif hasattr(col, "name"):
                             col_name = col.name
+                        # Handle nulls variant operations
+                        if operation == "desc_nulls_last":
+                            is_desc = True
+                            nulls_last = True
+                        elif operation == "desc_nulls_first":
+                            is_desc = True
+                            nulls_last = False
+                        elif operation == "asc_nulls_last":
+                            is_desc = False
+                            nulls_last = True
+                        elif operation == "asc_nulls_first":
+                            is_desc = False
+                            nulls_last = False
+                        elif operation == "desc":
+                            is_desc = True
+                            nulls_last = True  # PySpark default: nulls last for desc()
+                        elif operation == "asc":
+                            is_desc = False
+                            nulls_last = True  # PySpark default: nulls last for asc()
+                    elif hasattr(col, "name"):
+                        col_name = col.name
+                        is_desc = False
+                        nulls_last = True  # PySpark default: nulls last
 
                     if col_name:
-                        if is_desc:
-                            # For descending, convert to Polars expression
-                            if all(isinstance(c, str) for c in sort_cols):
-                                # Convert all to expressions
-                                expr_cols = [pl.col(c) for c in sort_cols]
-                                expr_cols.append(pl.col(col_name).desc())
-                                df = df.sort(expr_cols)
-                                sort_cols = []  # Mark as sorted
-                            else:
-                                sort_cols.append(pl.col(col_name).desc())
-                        else:
-                            sort_cols.append(col_name)
+                        window_sort_cols.append(col_name)
+                        window_desc_flags.append(is_desc)
+                        window_nulls_last_flags.append(nulls_last)
+                        # Also add to sort_cols for compatibility with existing code
+                        sort_cols.append(col_name)
+
+                # Sort window function data with proper nulls handling
+                if window_sort_cols:
+                    has_nulls_spec = any(n is not None for n in window_nulls_last_flags)
+                    if has_nulls_spec:
+                        df = df.sort(
+                            window_sort_cols,
+                            descending=window_desc_flags,
+                            nulls_last=window_nulls_last_flags,
+                        )
+                    else:
+                        df = df.sort(window_sort_cols, descending=window_desc_flags)
 
             # Sort if we have string column names (and haven't already sorted with expressions)
             # CRITICAL: For lag/lead functions, we MUST sort before applying the window function
@@ -1329,26 +1369,64 @@ class PolarsOperationExecutor:
             Sorted DataFrame
         """
         sort_by = []
+        descending_flags = []
+        nulls_last_flags = []
         for col in columns:
+            is_desc = False
+            nulls_last = None  # None means default behavior
+            col_name = None
             if isinstance(col, str):
-                if ascending:
-                    sort_by.append(pl.col(col))
-                else:
-                    sort_by.append(pl.col(col).desc())
-            elif hasattr(col, "operation") and col.operation == "desc":
+                col_name = col
+                is_desc = not ascending
+                nulls_last = True  # PySpark default: nulls last
+            elif hasattr(col, "operation"):
+                operation = col.operation
                 col_name = col.column.name if hasattr(col, "column") else col.name
-                sort_by.append(pl.col(col_name).desc())
+                # Handle nulls variant operations
+                if operation == "desc_nulls_last":
+                    is_desc = True
+                    nulls_last = True
+                elif operation == "desc_nulls_first":
+                    is_desc = True
+                    nulls_last = False
+                elif operation == "asc_nulls_last":
+                    is_desc = False
+                    nulls_last = True
+                elif operation == "asc_nulls_first":
+                    is_desc = False
+                    nulls_last = False
+                elif operation == "desc":
+                    is_desc = True
+                    nulls_last = True  # PySpark default: nulls last for desc()
+                elif operation == "asc":
+                    is_desc = False
+                    nulls_last = True  # PySpark default: nulls last for asc()
+                else:
+                    # Fallback for other operations
+                    is_desc = not ascending
+                    nulls_last = True  # PySpark default: nulls last
             else:
                 col_name = col.name if hasattr(col, "name") else str(col)
-                if ascending:
-                    sort_by.append(pl.col(col_name))
-                else:
-                    sort_by.append(pl.col(col_name).desc())
+                is_desc = not ascending
+                nulls_last = True  # PySpark default: nulls last
+
+            if col_name:
+                sort_by.append(col_name)
+                descending_flags.append(is_desc)
+                nulls_last_flags.append(nulls_last)
 
         if not sort_by:
             return df
 
-        return df.sort(sort_by)
+        # Use sort() with by, descending, and nulls_last parameters
+        has_nulls_specification = any(n is not None for n in nulls_last_flags)
+        if has_nulls_specification:
+            return df.sort(
+                sort_by, descending=descending_flags, nulls_last=nulls_last_flags
+            )
+        else:
+            # No nulls specification, use default
+            return df.sort(sort_by, descending=descending_flags)
 
     def apply_limit(self, df: pl.DataFrame, n: int) -> pl.DataFrame:
         """Apply a limit operation.
