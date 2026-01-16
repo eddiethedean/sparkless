@@ -2,11 +2,56 @@
 Attribute handler for DataFrame.
 
 This module provides attribute access handling for DataFrame, including
-column access via dot notation.
+column access via dot notation and special attributes like .na.
 """
 
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from ..functions import Column
+
+
+class NAHandler:
+    """Handler for null/NA operations on DataFrame.
+
+    Provides methods for handling null values in a DataFrame, matching PySpark's
+    `.na` namespace API.
+
+    Example:
+        >>> df.na.fill(0)  # Fill all nulls with 0
+        >>> df.na.fill({"col1": 0, "col2": "default"})  # Fill with dict mapping
+    """
+
+    def __init__(self, df: Any) -> None:
+        """Initialize NAHandler with a DataFrame reference.
+
+        Args:
+            df: The DataFrame instance to operate on.
+        """
+        self._df = df
+
+    def fill(
+        self,
+        value: Union[Any, Dict[str, Any]],
+        subset: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
+    ) -> Any:
+        """Fill null values (alias for fillna).
+
+        Args:
+            value: Value to fill nulls with. Can be a single value or a dict mapping
+                   column names to fill values.
+            subset: Optional column name(s) to limit fill operation to. Can be a
+                    string (single column), list, or tuple of column names. If value
+                    is a dict, subset is ignored.
+
+        Returns:
+            DataFrame with null values filled.
+
+        Example:
+            >>> df.na.fill(0)  # Fill all nulls with 0
+            >>> df.na.fill({"col1": 0, "col2": "default"})  # Fill with dict
+            >>> df.na.fill(0, subset=["col1", "col2"])  # Fill specific columns
+        """
+        return self._df.fillna(value, subset)
 
 
 class DataFrameAttributeHandler:
@@ -49,11 +94,16 @@ class DataFrameAttributeHandler:
             name: Name of the attribute being accessed
 
         Returns:
-            Column instance for the column
+            Column instance for the column or NAHandler for 'na'
 
         Raises:
             SparkColumnNotFoundError: If column doesn't exist
         """
+        # Special case: 'na' attribute returns NAHandler
+        # This is a defensive check in case property access doesn't work
+        if name == "na":
+            return NAHandler(obj)
+
         # Avoid infinite recursion - access object.__getattribute__ directly
         try:
             columns = object.__getattribute__(obj, "columns")
