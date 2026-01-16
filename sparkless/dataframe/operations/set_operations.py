@@ -12,6 +12,7 @@ from ...spark_types import (
     DoubleType,
     ShortType,
     ByteType,
+    StructField,
 )
 
 if TYPE_CHECKING:
@@ -102,7 +103,7 @@ class SetOperations:
         """Check if two types are compatible for union operations.
 
         PySpark allows some type promotions (e.g., IntegerType -> LongType),
-        but generally requires exact matches or compatible numeric types.
+        and also allows numeric/string combinations (normalizes to string).
 
         Args:
             type1: First data type
@@ -125,13 +126,26 @@ class SetOperations:
             FloatType,
             DoubleType,
         )
-        if isinstance(type1, numeric_types) and isinstance(type2, numeric_types):
+        is_numeric1 = isinstance(type1, numeric_types)
+        is_numeric2 = isinstance(type2, numeric_types)
+        is_string1 = isinstance(type1, StringType)
+        is_string2 = isinstance(type2, StringType)
+
+        if is_numeric1 and is_numeric2:
             # All numeric types are compatible for union (PySpark promotes to wider type)
             return True
 
         # String types are generally compatible
+        if is_string1 and is_string2:
+            return True
+
+        # PySpark allows numeric/string combinations (normalizes to string)
+        # Issue #242: LongType + StringType -> StringType
+        if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
+            return True
+
         # For other types, require exact match
-        return isinstance(type1, StringType) and isinstance(type2, StringType)
+        return False
 
     @staticmethod
     def union(
@@ -157,7 +171,14 @@ class SetOperations:
                 f"the second table has {len(schema2.fields)} columns"
             )
 
-        # Check column names and types
+        # Check column names and types, and determine coercion targets
+        from ...dataframe.casting.type_converter import TypeConverter
+
+        coerced_data1 = data1.copy()
+        coerced_data2 = data2.copy()
+        result_fields = []
+        needs_coercion = False
+
         for i, (field1, field2) in enumerate(zip(schema1.fields, schema2.fields)):
             if field1.name != field2.name:
                 raise AnalysisException(
@@ -175,9 +196,64 @@ class SetOperations:
                     f"{field1.dataType} vs {field2.dataType}"
                 )
 
+            # Determine target type for coercion (PySpark behavior)
+            target_type = field1.dataType
+            if field1.dataType != field2.dataType:
+                needs_coercion = True
+                # PySpark normalizes numeric+string to string (issue #242)
+                if isinstance(field1.dataType, StringType) or isinstance(
+                    field2.dataType, StringType
+                ):
+                    target_type = StringType()
+                # Numeric type promotion (already compatible, but ensure wider type)
+                numeric_type_tuple: Tuple[Type[DataType], ...] = (
+                    ByteType,
+                    ShortType,
+                    IntegerType,
+                    LongType,
+                    FloatType,
+                    DoubleType,
+                )
+                if isinstance(field1.dataType, numeric_type_tuple) and isinstance(
+                    field2.dataType, numeric_type_tuple
+                ):
+                    # Prefer Float over Int, Long over Int
+                    if isinstance(field1.dataType, (FloatType, DoubleType)) or isinstance(
+                        field2.dataType, (FloatType, DoubleType)
+                    ):
+                        target_type = DoubleType()
+                    elif isinstance(field1.dataType, LongType) or isinstance(
+                        field2.dataType, LongType
+                    ):
+                        target_type = LongType()
+                    else:
+                        target_type = field1.dataType  # Keep first type if compatible
+
+            result_fields.append(
+                StructField(field1.name, target_type, nullable=True)
+            )
+
+            # Coerce data if types differ
+            if target_type != field1.dataType or target_type != field2.dataType:
+                col_name = field1.name
+                # Coerce data1 values if needed
+                if target_type != field1.dataType:
+                    for row in coerced_data1:
+                        if col_name in row:
+                            row[col_name] = TypeConverter.cast_to_type(
+                                row[col_name], target_type
+                            )
+                # Coerce data2 values if needed
+                if target_type != field2.dataType:
+                    for row in coerced_data2:
+                        if col_name in row:
+                            row[col_name] = TypeConverter.cast_to_type(
+                                row[col_name], target_type
+                            )
+
         # Convert data to Row objects for union
-        rows1 = [Row(row) for row in data1]
-        rows2 = [Row(row) for row in data2]
+        rows1 = [Row(row) for row in coerced_data1]
+        rows2 = [Row(row) for row in coerced_data2]
 
         # Perform union
         unioned_rows = SetOperations.union_rows(rows1, rows2)
@@ -201,8 +277,12 @@ class SetOperations:
             else:
                 result_data.append(dict(row) if hasattr(row, "items") else {})
 
-        # Return the schema from the first DataFrame (schemas are compatible)
-        return result_data, schema1
+        # Create result schema with coerced types
+        from ...spark_types import StructType
+
+        result_schema = StructType(result_fields)
+
+        return result_data, result_schema
 
     @staticmethod
     def intersect_rows(rows1: List[Row], rows2: List[Row]) -> List[Row]:

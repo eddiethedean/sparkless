@@ -1543,6 +1543,100 @@ class PolarsOperationExecutor:
                     # resolved_join_keys is empty list, fallback to original join_keys
                     return df1.join(df2, on=join_keys, how=polars_how)
 
+    def _coerce_union_types(
+        self, df1: pl.DataFrame, df2: pl.DataFrame
+    ) -> Tuple[pl.DataFrame, pl.DataFrame]:
+        """Coerce union column types to match if needed (numeric vs string).
+
+        PySpark allows unioning DataFrames with different types (e.g., i64 vs str),
+        automatically normalizing to string when mixing numeric and string types.
+
+        Args:
+            df1: First DataFrame
+            df2: Second DataFrame
+
+        Returns:
+            Tuple of (coerced_df1, coerced_df2)
+        """
+        # Define numeric types
+        numeric_types = (
+            pl.Int8,
+            pl.Int16,
+            pl.Int32,
+            pl.Int64,
+            pl.UInt8,
+            pl.UInt16,
+            pl.UInt32,
+            pl.UInt64,
+            pl.Float32,
+            pl.Float64,
+        )
+        string_type = pl.Utf8
+
+        cast_exprs_df1 = []
+        cast_exprs_df2 = []
+        result_df1 = df1
+        result_df2 = df2
+
+        # Ensure both DataFrames have the same columns
+        df1_cols = set(df1.columns)
+        df2_cols = set(df2.columns)
+        all_cols = sorted(df1_cols | df2_cols)
+
+        # Process each column that exists in both DataFrames
+        for col in all_cols:
+            if col not in df1.columns or col not in df2.columns:
+                continue
+
+            dtype1 = df1[col].dtype
+            dtype2 = df2[col].dtype
+
+            # If types match, no coercion needed
+            if dtype1 == dtype2:
+                continue
+
+            # Check if one is numeric and one is string
+            is_numeric1 = dtype1 in numeric_types
+            is_numeric2 = dtype2 in numeric_types
+            is_string1 = dtype1 == string_type
+            is_string2 = dtype2 == string_type
+
+            if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
+                # One is numeric, one is string - normalize to string (PySpark behavior)
+                # Issue #242: LongType + StringType -> StringType
+                if is_numeric1 and is_string2:
+                    # df1[col] is numeric, cast to string
+                    cast_exprs_df1.append(pl.col(col).cast(string_type, strict=False))
+                else:
+                    # df2[col] is numeric, cast to string
+                    cast_exprs_df2.append(pl.col(col).cast(string_type, strict=False))
+            elif is_numeric1 and is_numeric2:
+                # Both numeric but different types - promote to wider type
+                if isinstance(dtype1, (pl.Float32, pl.Float64)) or isinstance(
+                    dtype2, (pl.Float32, pl.Float64)
+                ):
+                    target_dtype = pl.Float64
+                else:
+                    target_dtype = pl.Int64
+
+                if dtype1 != target_dtype:
+                    cast_exprs_df1.append(
+                        pl.col(col).cast(target_dtype, strict=False)
+                    )
+                if dtype2 != target_dtype:
+                    cast_exprs_df2.append(
+                        pl.col(col).cast(target_dtype, strict=False)
+                    )
+            # For other type combinations, don't coerce (will be handled by validation)
+
+        # Apply casts if any
+        if cast_exprs_df1:
+            result_df1 = df1.with_columns(cast_exprs_df1)
+        if cast_exprs_df2:
+            result_df2 = df2.with_columns(cast_exprs_df2)
+
+        return result_df1, result_df2
+
     def apply_union(self, df1: pl.DataFrame, df2: pl.DataFrame) -> pl.DataFrame:
         """Apply a union operation.
 
@@ -1553,6 +1647,9 @@ class PolarsOperationExecutor:
         Returns:
             Unioned DataFrame
         """
+        # Coerce types before union (PySpark behavior: normalize numeric+string to string)
+        df1, df2 = self._coerce_union_types(df1, df2)
+
         # Ensure schemas match
         df1_cols = set(df1.columns)
         df2_cols = set(df2.columns)

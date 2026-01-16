@@ -19,6 +19,9 @@ from ...spark_types import (
     DecimalType,
     ArrayType,
     MapType,
+    ByteType,
+    ShortType,
+    FloatType,
 )
 from ...functions import Literal, Column, ColumnOperation
 from ...core.ddl_adapter import parse_ddl_schema
@@ -139,6 +142,69 @@ class SchemaManager:
                         # For column expression joins or non-duplicate columns, add the field
                         fields_list.append(field)
                         existing_field_names.add(field.name)
+            elif op_name == "union":
+                # Union operation - handle type coercion
+                other_df = op_val
+                other_schema = other_df.schema
+
+                # Convert dict to list if needed
+                if not using_list:
+                    fields_list = list(fields_map.values())
+                    using_list = True
+
+                if fields_list is not None:
+                    # Determine coerced types for each column
+                    from ...dataframe.operations.set_operations import SetOperations
+
+                    # Numeric types for coercion logic
+                    numeric_types = (
+                        ByteType,
+                        ShortType,
+                        IntegerType,
+                        LongType,
+                        FloatType,
+                        DoubleType,
+                    )
+
+                    # Update each field's type based on coercion rules
+                    for i, field in enumerate(fields_list):
+                        if i < len(other_schema.fields):
+                            other_field = other_schema.fields[i]
+                            if field.name == other_field.name:
+                                # Determine target type after coercion
+                                target_type = field.dataType
+                                if field.dataType != other_field.dataType:
+                                    # Type coercion needed
+                                    is_numeric1 = isinstance(field.dataType, numeric_types)
+                                    is_numeric2 = isinstance(other_field.dataType, numeric_types)
+                                    is_string1 = isinstance(field.dataType, StringType)
+                                    is_string2 = isinstance(other_field.dataType, StringType)
+
+                                    if (is_numeric1 and is_string2) or (
+                                        is_string1 and is_numeric2
+                                    ):
+                                        # Numeric + String -> String (PySpark behavior, issue #242)
+                                        target_type = StringType()
+                                    elif is_numeric1 and is_numeric2:
+                                        # Both numeric - promote to wider type
+                                        if isinstance(
+                                            field.dataType, (FloatType, DoubleType)
+                                        ) or isinstance(
+                                            other_field.dataType, (FloatType, DoubleType)
+                                        ):
+                                            target_type = DoubleType()
+                                        elif isinstance(field.dataType, LongType) or isinstance(
+                                            other_field.dataType, LongType
+                                        ):
+                                            target_type = LongType()
+                                        else:
+                                            # Keep first type or promote to Integer
+                                            target_type = field.dataType
+
+                                # Update field with coerced type
+                                fields_list[i] = StructField(
+                                    field.name, target_type, field.nullable
+                                )
 
         # Return appropriate format
         if using_list and fields_list is not None:
