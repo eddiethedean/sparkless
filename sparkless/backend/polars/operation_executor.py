@@ -1421,7 +1421,9 @@ class PolarsOperationExecutor:
         # Use sort() with by, descending, and nulls_last parameters
         has_nulls_specification = any(n is not None for n in nulls_last_flags)
         if has_nulls_specification:
-            return df.sort(sort_by, descending=descending_flags, nulls_last=nulls_last_flags)
+            return df.sort(
+                sort_by, descending=descending_flags, nulls_last=nulls_last_flags
+            )
         else:
             # No nulls specification, use default
             return df.sort(sort_by, descending=descending_flags)

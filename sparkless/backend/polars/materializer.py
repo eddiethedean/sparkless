@@ -838,7 +838,9 @@ class PolarsMaterializer:
                     )
                     if has_nulls_specification:
                         lazy_df = lazy_df.sort(
-                            sort_by, descending=descending_flags, nulls_last=nulls_last_flags
+                            sort_by,
+                            descending=descending_flags,
+                            nulls_last=nulls_last_flags,
                         )
                     else:
                         # No nulls specification, use default
