@@ -47,7 +47,7 @@ class PolarsOperationExecutor:
                 return str(col)  # Ensure we return str, not Any
         return None
 
-    @profiled("polars.apply_filter", category="polars")
+    @profiled("polars.apply_filter", category="polars")  # type: ignore[untyped-decorator]
     def apply_filter(self, df: pl.DataFrame, condition: Any) -> pl.DataFrame:
         """Apply a filter operation.
 
@@ -82,7 +82,7 @@ class PolarsOperationExecutor:
         )
         return df.filter(filter_expr)
 
-    @profiled("polars.apply_select", category="polars")
+    @profiled("polars.apply_select", category="polars")  # type: ignore[untyped-decorator]
     def apply_select(self, df: pl.DataFrame, columns: Tuple[Any, ...]) -> pl.DataFrame:
         """Apply a select operation.
 
@@ -305,13 +305,85 @@ class PolarsOperationExecutor:
                     # Use column name as-is (case-insensitive matching handled earlier)
                     select_exprs.append(pl.col(col))
                     select_names.append(col)
-            elif isinstance(col, WindowFunction):
-                # Handle window functions
+            elif isinstance(col, WindowFunction) or (
+                isinstance(col, ColumnOperation)
+                and col.operation == "cast"
+                and isinstance(col.column, WindowFunction)
+            ):
+                # Handle window functions or ColumnOperation wrapping WindowFunction (e.g., WindowFunction.cast())
+                # Extract WindowFunction and cast type
+                window_func = col if isinstance(col, WindowFunction) else col.column
+                cast_type = (
+                    col.value
+                    if isinstance(col, ColumnOperation) and col.operation == "cast"
+                    else None
+                )
+
+                # Ensure function_name is set correctly
+                if (
+                    not hasattr(window_func, "function_name")
+                    or not window_func.function_name
+                    or window_func.function_name == "window_function"
+                ) and hasattr(window_func, "function"):
+                    function_name_from_func = getattr(
+                        window_func.function, "function_name", None
+                    )
+                    if function_name_from_func:
+                        window_func.function_name = function_name_from_func
+
                 try:
-                    window_expr = self.window_handler.translate_window_function(col, df)
+                    window_expr = self.window_handler.translate_window_function(
+                        window_func, df
+                    )
+
+                    # Apply cast if this is a cast operation
+                    if cast_type is not None:
+                        from .type_mapper import mock_type_to_polars_dtype
+                        from sparkless.spark_types import (
+                            StringType,
+                            IntegerType,
+                            LongType,
+                            DoubleType,
+                            FloatType,
+                            BooleanType,
+                            DateType,
+                            TimestampType,
+                            ShortType,
+                            ByteType,
+                        )
+
+                        # Handle string type names
+                        if isinstance(cast_type, str):
+                            type_name_map = {
+                                "string": StringType(),
+                                "str": StringType(),
+                                "int": IntegerType(),
+                                "integer": IntegerType(),
+                                "long": LongType(),
+                                "bigint": LongType(),
+                                "double": DoubleType(),
+                                "float": FloatType(),
+                                "boolean": BooleanType(),
+                                "bool": BooleanType(),
+                                "date": DateType(),
+                                "timestamp": TimestampType(),
+                                "short": ShortType(),
+                                "byte": ByteType(),
+                            }
+                            cast_type = type_name_map.get(cast_type.lower())
+
+                        if cast_type is not None:
+                            polars_dtype = mock_type_to_polars_dtype(cast_type)
+                            window_expr = window_expr.cast(polars_dtype, strict=False)
+
                     alias_name = (
                         getattr(col, "name", None)
-                        or f"{col.function_name.lower()}_window"
+                        or getattr(col, "_alias_name", None)
+                        or (
+                            f"{window_func.function_name.lower()}_window"
+                            if hasattr(window_func, "function_name")
+                            else "window_result"
+                        )
                     )
                     select_exprs.append(window_expr.alias(alias_name))
                     select_names.append(alias_name)
@@ -324,12 +396,71 @@ class PolarsOperationExecutor:
                         rows_cache = df.to_dicts()
                     # Store window function for batch evaluation
                     if not hasattr(self, "_python_window_functions"):
-                        self._python_window_functions = []
+                        self._python_window_functions: List[Any] = []
+                    # Get alias name - check both name and _alias_name attributes
                     alias_name = (
                         getattr(col, "name", None)
-                        or f"{col.function_name.lower()}_window"
+                        or getattr(col, "_alias_name", None)
+                        or (
+                            f"{window_func.function_name.lower()}_window"
+                            if hasattr(window_func, "function_name")
+                            else "window_result"
+                        )
                     )
-                    self._python_window_functions.append((alias_name, col, rows_cache))
+
+                    # Evaluate window function and apply cast if needed
+                    if rows_cache is None:
+                        rows_cache = df.to_dicts()
+                    results = window_func.evaluate(rows_cache)
+
+                    # Apply cast if this is a cast operation
+                    if cast_type is not None:
+                        from sparkless.dataframe.casting.type_converter import (
+                            TypeConverter,
+                        )
+                        from sparkless.spark_types import (
+                            StringType,
+                            IntegerType,
+                            LongType,
+                            DoubleType,
+                            FloatType,
+                            BooleanType,
+                            DateType,
+                            TimestampType,
+                            ShortType,
+                            ByteType,
+                        )
+
+                        # Handle string type names
+                        if isinstance(cast_type, str):
+                            type_name_map = {
+                                "string": StringType(),
+                                "str": StringType(),
+                                "int": IntegerType(),
+                                "integer": IntegerType(),
+                                "long": LongType(),
+                                "bigint": LongType(),
+                                "double": DoubleType(),
+                                "float": FloatType(),
+                                "boolean": BooleanType(),
+                                "bool": BooleanType(),
+                                "date": DateType(),
+                                "timestamp": TimestampType(),
+                                "short": ShortType(),
+                                "byte": ByteType(),
+                            }
+                            cast_type = type_name_map.get(cast_type.lower())
+
+                        if cast_type is not None:
+                            results = [
+                                TypeConverter.cast_to_type(r, cast_type)
+                                if r is not None
+                                else None
+                                for r in results
+                            ]
+
+                    # Add as Python column for later processing
+                    python_columns.append((alias_name, results))
                     select_names.append(alias_name)
                     continue
             else:
@@ -725,7 +856,7 @@ class PolarsOperationExecutor:
 
         return None
 
-    @profiled("polars.apply_with_column", category="polars")
+    @profiled("polars.apply_with_column", category="polars")  # type: ignore[untyped-decorator]
     def apply_with_column(
         self,
         df: pl.DataFrame,
@@ -743,12 +874,41 @@ class PolarsOperationExecutor:
         Returns:
             DataFrame with new column
         """
-        if isinstance(expression, WindowFunction):
+        # Check if expression is a WindowFunction or a ColumnOperation wrapping a WindowFunction (e.g., WindowFunction.cast())
+        is_window_function = isinstance(expression, WindowFunction)
+        is_window_function_cast = (
+            isinstance(expression, ColumnOperation)
+            and expression.operation == "cast"
+            and isinstance(expression.column, WindowFunction)
+        )
+
+        if is_window_function or is_window_function_cast:
             # Window functions need special handling
             # For window functions with order_by, we need to sort the DataFrame first
             # to ensure correct window function evaluation
-            window_spec = expression.window_spec
-            function_name = getattr(expression, "function_name", "").upper()
+
+            # Extract the WindowFunction if it's wrapped in a ColumnOperation
+            window_func = (
+                expression
+                if isinstance(expression, WindowFunction)
+                else expression.column
+            )
+            cast_type = expression.value if is_window_function_cast else None
+
+            # Ensure function_name is set correctly - extract from function if needed
+            if (
+                not hasattr(window_func, "function_name")
+                or not window_func.function_name
+                or window_func.function_name == "window_function"
+            ) and hasattr(window_func, "function"):
+                function_name_from_func = getattr(
+                    window_func.function, "function_name", None
+                )
+                if function_name_from_func:
+                    window_func.function_name = function_name_from_func
+
+            window_spec = window_func.window_spec
+            function_name = getattr(window_func, "function_name", "").upper()
 
             # Build sort columns from partition_by and order_by
             sort_cols = []
@@ -851,15 +1011,105 @@ class PolarsOperationExecutor:
 
             try:
                 window_expr = self.window_handler.translate_window_function(
-                    expression, df
+                    window_func, df
                 )
+
+                # Apply cast if this is a cast operation
+                if is_window_function_cast and cast_type is not None:
+                    from .type_mapper import mock_type_to_polars_dtype
+                    from sparkless.spark_types import (
+                        StringType,
+                        IntegerType,
+                        LongType,
+                        DoubleType,
+                        FloatType,
+                        BooleanType,
+                        DateType,
+                        TimestampType,
+                        ShortType,
+                        ByteType,
+                    )
+
+                    # Handle string type names
+                    if isinstance(cast_type, str):
+                        type_name_map = {
+                            "string": StringType(),
+                            "str": StringType(),
+                            "int": IntegerType(),
+                            "integer": IntegerType(),
+                            "long": LongType(),
+                            "bigint": LongType(),
+                            "double": DoubleType(),
+                            "float": FloatType(),
+                            "boolean": BooleanType(),
+                            "bool": BooleanType(),
+                            "date": DateType(),
+                            "timestamp": TimestampType(),
+                            "short": ShortType(),
+                            "byte": ByteType(),
+                        }
+                        cast_type = type_name_map.get(cast_type.lower())
+
+                    if cast_type is not None:
+                        polars_dtype = mock_type_to_polars_dtype(cast_type)
+                        window_expr = window_expr.cast(polars_dtype, strict=False)
+
                 result = df.with_columns(window_expr.alias(column_name))
+
             except ValueError:
                 # Fallback to Python evaluation for unsupported window functions
+                # Ensure data is sorted before evaluation (df should already be sorted above)
                 # Convert Polars DataFrame to list of dicts for Python evaluation
                 data = df.to_dicts()
+
                 # Evaluate window function using Python implementation
-                results = expression.evaluate(data)
+                # WindowFunction.evaluate() expects sorted data for correct results
+                results = window_func.evaluate(data)
+
+                # Apply cast if this is a cast operation
+                if is_window_function_cast and cast_type is not None:
+                    from sparkless.dataframe.casting.type_converter import TypeConverter
+                    from sparkless.spark_types import (
+                        StringType,
+                        IntegerType,
+                        LongType,
+                        DoubleType,
+                        FloatType,
+                        BooleanType,
+                        DateType,
+                        TimestampType,
+                        ShortType,
+                        ByteType,
+                    )
+
+                    # Handle string type names
+                    if isinstance(cast_type, str):
+                        type_name_map = {
+                            "string": StringType(),
+                            "str": StringType(),
+                            "int": IntegerType(),
+                            "integer": IntegerType(),
+                            "long": LongType(),
+                            "bigint": LongType(),
+                            "double": DoubleType(),
+                            "float": FloatType(),
+                            "boolean": BooleanType(),
+                            "bool": BooleanType(),
+                            "date": DateType(),
+                            "timestamp": TimestampType(),
+                            "short": ShortType(),
+                            "byte": ByteType(),
+                        }
+                        cast_type = type_name_map.get(cast_type.lower())
+
+                    if cast_type is not None:
+                        results = [
+                            TypeConverter.cast_to_type(r, cast_type)
+                            if r is not None
+                            else None
+                            for r in results
+                        ]
+
                 # Add results as new column
                 result = df.with_columns(pl.Series(column_name, results))
 
@@ -889,14 +1139,16 @@ class PolarsOperationExecutor:
             # Check if this is a to_timestamp operation and if the input column is a string
             # This helps us choose the right method (str.strptime vs map_elements)
             input_col_dtype = None
-            from sparkless.functions.core.column import ColumnOperation, Column
+            # ColumnOperation is already imported at the top of the file
 
             if (
                 isinstance(expression, ColumnOperation)
                 and expression.operation == "to_timestamp"
             ):
                 # Check if the input column is a simple Column (direct column reference)
-                if isinstance(expression.column, Column) and not isinstance(
+                from sparkless.functions import Column as ColumnType
+
+                if isinstance(expression.column, ColumnType) and not isinstance(
                     expression.column, ColumnOperation
                 ):
                     # Check the dtype of the input column in the DataFrame
@@ -958,9 +1210,142 @@ class PolarsOperationExecutor:
                     available_columns=list(df.columns),
                 )
             except ValueError as e:
-                # Fallback to Python evaluation for unsupported operations (e.g., withField, + with strings)
+                # Fallback to Python evaluation for unsupported operations (e.g., withField, + with strings, WindowFunction)
                 error_msg = str(e)
-                if (
+                # Check if this is a WindowFunction cast that should be handled above
+                # Check both the expression structure and the error message
+                is_window_function_cast_fallback = (
+                    isinstance(expression, ColumnOperation)
+                    and expression.operation == "cast"
+                    and isinstance(expression.column, WindowFunction)
+                ) or (
+                    "WindowFunction" in error_msg
+                    and isinstance(expression, ColumnOperation)
+                    and expression.operation == "cast"
+                )
+
+                if is_window_function_cast_fallback:
+                    # This should have been caught above, but handle it here as fallback
+                    # This is the same logic as above, but as a safety net
+                    # Extract WindowFunction and cast type
+                    window_func = expression.column
+                    cast_type = expression.value
+
+                    # Window functions need sorting - reuse the same logic from above
+                    window_spec = window_func.window_spec
+                    sort_cols = []
+                    has_order_by = (
+                        hasattr(window_spec, "_order_by") and window_spec._order_by
+                    )
+                    has_partition_by = (
+                        hasattr(window_spec, "_partition_by")
+                        and window_spec._partition_by
+                    )
+
+                    # Build sort columns
+                    if has_order_by:
+                        if has_partition_by:
+                            for col in window_spec._partition_by:
+                                if isinstance(col, str):
+                                    sort_cols.append(col)
+                                elif hasattr(col, "name"):
+                                    sort_cols.append(col.name)
+                        for col in window_spec._order_by:
+                            if isinstance(col, str):
+                                sort_cols.append(col)
+                            elif hasattr(col, "name"):
+                                sort_cols.append(col.name)
+
+                    # Sort DataFrame if needed for window function evaluation
+                    # Window functions need sorted data for correct evaluation
+                    df_sorted = (
+                        df.sort(sort_cols)
+                        if sort_cols and all(isinstance(c, str) for c in sort_cols)
+                        else df
+                    )
+
+                    # Evaluate window function on sorted data
+                    # WindowFunction.evaluate() handles sorting internally, but we need to sort first for correctness
+                    data = df_sorted.to_dicts()
+
+                    results = window_func.evaluate(data)
+
+                    # Apply cast
+                    if cast_type is not None:
+                        from sparkless.dataframe.casting.type_converter import (
+                            TypeConverter,
+                        )
+                        from sparkless.spark_types import (
+                            StringType,
+                            IntegerType,
+                            LongType,
+                            DoubleType,
+                            FloatType,
+                            BooleanType,
+                            DateType,
+                            TimestampType,
+                            ShortType,
+                            ByteType,
+                        )
+
+                        # Handle string type names
+                        if isinstance(cast_type, str):
+                            type_name_map = {
+                                "string": StringType(),
+                                "str": StringType(),
+                                "int": IntegerType(),
+                                "integer": IntegerType(),
+                                "long": LongType(),
+                                "bigint": LongType(),
+                                "double": DoubleType(),
+                                "float": FloatType(),
+                                "boolean": BooleanType(),
+                                "bool": BooleanType(),
+                                "date": DateType(),
+                                "timestamp": TimestampType(),
+                                "short": ShortType(),
+                                "byte": ByteType(),
+                            }
+                            cast_type = type_name_map.get(cast_type.lower())
+
+                        if cast_type is not None:
+                            results = [
+                                TypeConverter.cast_to_type(r, cast_type)
+                                if r is not None
+                                else None
+                                for r in results
+                            ]
+
+                    # Add results as new column to sorted DataFrame
+                    # Results are in the same order as df_sorted
+                    result = df_sorted.with_columns(pl.Series(column_name, results))
+
+                    # If we sorted, we need to restore original order
+                    # Create a row identifier to match back to original DataFrame
+                    if df_sorted is not df and sort_cols:
+                        # Use all columns as join keys to match rows
+                        join_cols = list(df.columns)
+                        # Add row number to both DataFrames for matching
+                        original_with_row_num = df.with_row_count("__original_index__")
+                        result_with_row_num = result.with_row_count("__sorted_index__")
+
+                        # Join to restore original order
+                        result_joined = (
+                            original_with_row_num.join(
+                                result_with_row_num.select(
+                                    join_cols + [column_name, "__sorted_index__"]
+                                ),
+                                on=join_cols,
+                                how="left",
+                            )
+                            .select(join_cols + [column_name])
+                            .drop("__original_index__")
+                        )
+
+                        return result_joined
+
+                    return result
+                elif (
                     "withField" in error_msg
                     or (
                         isinstance(expression, ColumnOperation)
@@ -1283,7 +1668,7 @@ class PolarsOperationExecutor:
 
         return result_df1, result_df2, join_keys, left_on, right_on
 
-    @profiled("polars.apply_join", category="polars")
+    @profiled("polars.apply_join", category="polars")  # type: ignore[untyped-decorator]
     def apply_join(
         self,
         df1: pl.DataFrame,
@@ -1620,13 +2005,9 @@ class PolarsOperationExecutor:
                     target_dtype = pl.Int64
 
                 if dtype1 != target_dtype:
-                    cast_exprs_df1.append(
-                        pl.col(col).cast(target_dtype, strict=False)
-                    )
+                    cast_exprs_df1.append(pl.col(col).cast(target_dtype, strict=False))
                 if dtype2 != target_dtype:
-                    cast_exprs_df2.append(
-                        pl.col(col).cast(target_dtype, strict=False)
-                    )
+                    cast_exprs_df2.append(pl.col(col).cast(target_dtype, strict=False))
             # For other type combinations, don't coerce (will be handled by validation)
 
         # Apply casts if any
@@ -1768,7 +2149,7 @@ class PolarsOperationExecutor:
         """
         return df.slice(n)
 
-    @profiled("polars.apply_group_by_agg", category="polars")
+    @profiled("polars.apply_group_by_agg", category="polars")  # type: ignore[untyped-decorator]
     def apply_group_by_agg(
         self, df: pl.DataFrame, group_by: List[Any], aggs: List[Any]
     ) -> pl.DataFrame:

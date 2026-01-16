@@ -154,8 +154,6 @@ class SchemaManager:
 
                 if fields_list is not None:
                     # Determine coerced types for each column
-                    from ...dataframe.operations.set_operations import SetOperations
-
                     # Numeric types for coercion logic
                     numeric_types = (
                         ByteType,
@@ -175,10 +173,16 @@ class SchemaManager:
                                 target_type = field.dataType
                                 if field.dataType != other_field.dataType:
                                     # Type coercion needed
-                                    is_numeric1 = isinstance(field.dataType, numeric_types)
-                                    is_numeric2 = isinstance(other_field.dataType, numeric_types)
+                                    is_numeric1 = isinstance(
+                                        field.dataType, numeric_types
+                                    )
+                                    is_numeric2 = isinstance(
+                                        other_field.dataType, numeric_types
+                                    )
                                     is_string1 = isinstance(field.dataType, StringType)
-                                    is_string2 = isinstance(other_field.dataType, StringType)
+                                    is_string2 = isinstance(
+                                        other_field.dataType, StringType
+                                    )
 
                                     if (is_numeric1 and is_string2) or (
                                         is_string1 and is_numeric2
@@ -190,12 +194,13 @@ class SchemaManager:
                                         if isinstance(
                                             field.dataType, (FloatType, DoubleType)
                                         ) or isinstance(
-                                            other_field.dataType, (FloatType, DoubleType)
+                                            other_field.dataType,
+                                            (FloatType, DoubleType),
                                         ):
                                             target_type = DoubleType()
-                                        elif isinstance(field.dataType, LongType) or isinstance(
-                                            other_field.dataType, LongType
-                                        ):
+                                        elif isinstance(
+                                            field.dataType, LongType
+                                        ) or isinstance(other_field.dataType, LongType):
                                             target_type = LongType()
                                         else:
                                             # Keep first type or promote to Integer
@@ -696,12 +701,14 @@ class SchemaManager:
     @staticmethod
     def _extract_column_name(expr: Any) -> Optional[str]:
         if isinstance(expr, Column):
-            return expr.name
+            return str(expr.name) if expr.name is not None else None
         if isinstance(expr, ColumnOperation) and hasattr(expr, "name"):
-            return expr.name
+            name = getattr(expr, "name", None)
+            return str(name) if name is not None else None
         if isinstance(expr, str):
             return expr
-        return getattr(expr, "name", None)
+        name = getattr(expr, "name", None)
+        return str(name) if name is not None else None
 
     @staticmethod
     def _infer_arithmetic_type(

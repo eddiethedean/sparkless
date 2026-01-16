@@ -1096,15 +1096,32 @@ class LazyEvaluationEngine:
                         from ..spark_types import StructType, StructField
                         from ..core.schema_inference import SchemaInferenceEngine
 
-                        # Check if this is a WindowFunction that needs special handling
+                        # Check if this is a WindowFunction or ColumnOperation wrapping a WindowFunction
                         # WindowFunction.evaluate() returns a sequence for all rows, not per-row
-                        if hasattr(col, "function_name") and hasattr(
-                            col, "window_spec"
-                        ):
+                        from ..functions.window_execution import WindowFunction
+                        from ..functions import ColumnOperation
+
+                        # Check if col is a WindowFunction directly
+                        is_window_function = isinstance(col, WindowFunction)
+                        # Check if col is a ColumnOperation wrapping a WindowFunction (e.g., WindowFunction.cast())
+                        is_window_function_cast = (
+                            isinstance(col, ColumnOperation)
+                            and col.operation == "cast"
+                            and isinstance(col.column, WindowFunction)
+                        )
+
+                        if is_window_function or is_window_function_cast:
+                            # Extract WindowFunction and cast type
+                            window_func = (
+                                col if isinstance(col, WindowFunction) else col.column
+                            )
+                            cast_type = col.value if is_window_function_cast else None
+
                             # Window function (lag, lead, rank, etc.)
                             try:
                                 # Evaluate window function for all rows at once
-                                result_raw = col.evaluate(current.data)
+                                result_raw = window_func.evaluate(current.data)
+
                                 result_seq: Optional[Sequence[Any]]
                                 if result_raw is None:
                                     result_seq = None
@@ -1112,6 +1129,52 @@ class LazyEvaluationEngine:
                                     result_seq = result_raw
                                 else:
                                     result_seq = cast("Sequence[Any]", result_raw)
+
+                                # Apply cast if this is a cast operation
+                                if is_window_function_cast and cast_type is not None:
+                                    from ..dataframe.casting.type_converter import (
+                                        TypeConverter,
+                                    )
+                                    from ..spark_types import (
+                                        StringType,
+                                        IntegerType,
+                                        LongType,
+                                        DoubleType,
+                                        FloatType,
+                                        BooleanType,
+                                        DateType,
+                                        TimestampType,
+                                        ShortType,
+                                        ByteType,
+                                    )
+
+                                    # Handle string type names
+                                    if isinstance(cast_type, str):
+                                        type_name_map = {
+                                            "string": StringType(),
+                                            "str": StringType(),
+                                            "int": IntegerType(),
+                                            "integer": IntegerType(),
+                                            "long": LongType(),
+                                            "bigint": LongType(),
+                                            "double": DoubleType(),
+                                            "float": FloatType(),
+                                            "boolean": BooleanType(),
+                                            "bool": BooleanType(),
+                                            "date": DateType(),
+                                            "timestamp": TimestampType(),
+                                            "short": ShortType(),
+                                            "byte": ByteType(),
+                                        }
+                                        cast_type = type_name_map.get(cast_type.lower())
+
+                                    if cast_type is not None and result_seq is not None:
+                                        result_seq = [
+                                            TypeConverter.cast_to_type(r, cast_type)
+                                            if r is not None
+                                            else None
+                                            for r in result_seq
+                                        ]
 
                                 # Create new data with window function results
                                 new_data = []
@@ -1125,6 +1188,7 @@ class LazyEvaluationEngine:
                                     else:
                                         new_row[col_name] = None
                                     new_data.append(new_row)
+
                             except Exception:
                                 # If window function evaluation fails, set all to None
                                 new_data = []
@@ -1221,6 +1285,139 @@ class LazyEvaluationEngine:
                             if field is not None:
                                 new_fields.append(field)
                         elif isinstance(col, ColumnOperation):
+                            # Check if this is a ColumnOperation wrapping a WindowFunction (e.g., WindowFunction.cast())
+                            from ..functions.window_execution import WindowFunction
+
+                            is_window_function_cast = (
+                                col.operation == "cast"
+                                and isinstance(col.column, WindowFunction)
+                            )
+
+                            if is_window_function_cast:
+                                # Handle WindowFunction cast - extract WindowFunction and cast type
+                                window_func = col.column
+                                cast_type = col.value
+
+                                # Ensure function_name is set correctly
+                                if (
+                                    not hasattr(window_func, "function_name")
+                                    or not window_func.function_name
+                                    or window_func.function_name == "window_function"
+                                ) and hasattr(window_func, "function"):
+                                    function_name_from_func = getattr(
+                                        window_func.function, "function_name", None
+                                    )
+                                    if function_name_from_func:
+                                        window_func.function_name = (
+                                            function_name_from_func
+                                        )
+
+                                # Get alias name
+                                col_name = (
+                                    getattr(col, "name", None)
+                                    or getattr(col, "_alias_name", None)
+                                    or (
+                                        f"{window_func.function_name}_over"
+                                        if hasattr(window_func, "function_name")
+                                        else "window_result"
+                                    )
+                                )
+
+                                # Evaluate window function for all rows at once
+                                try:
+                                    result_raw = window_func.evaluate(current.data)
+
+                                    result_seq_select: Optional[Sequence[Any]]
+                                    if result_raw is None:
+                                        result_seq_select = None
+                                    elif isinstance(result_raw, Sequence):
+                                        result_seq_select = result_raw
+                                    else:
+                                        result_seq_select = cast(
+                                            "Sequence[Any]", result_raw
+                                        )
+
+                                    # Apply cast if this is a cast operation
+                                    if cast_type is not None:
+                                        from ..dataframe.casting.type_converter import (
+                                            TypeConverter,
+                                        )
+                                        from ..spark_types import (
+                                            StringType,
+                                            IntegerType,
+                                            LongType,
+                                            DoubleType,
+                                            FloatType,
+                                            BooleanType,
+                                            DateType,
+                                            TimestampType,
+                                            ShortType,
+                                            ByteType,
+                                        )
+
+                                        # Handle string type names
+                                        if isinstance(cast_type, str):
+                                            type_name_map = {
+                                                "string": StringType(),
+                                                "str": StringType(),
+                                                "int": IntegerType(),
+                                                "integer": IntegerType(),
+                                                "long": LongType(),
+                                                "bigint": LongType(),
+                                                "double": DoubleType(),
+                                                "float": FloatType(),
+                                                "boolean": BooleanType(),
+                                                "bool": BooleanType(),
+                                                "date": DateType(),
+                                                "timestamp": TimestampType(),
+                                                "short": ShortType(),
+                                                "byte": ByteType(),
+                                            }
+                                            cast_type = type_name_map.get(
+                                                cast_type.lower()
+                                            )
+
+                                        if (
+                                            cast_type is not None
+                                            and result_seq_select is not None
+                                        ):
+                                            result_seq_select = [
+                                                TypeConverter.cast_to_type(r, cast_type)
+                                                if r is not None
+                                                else None
+                                                for r in result_seq_select
+                                            ]
+
+                                    # Store results for later use in data evaluation
+                                    # We'll add these to new_data when evaluating rows
+                                    if not hasattr(current, "_window_function_results"):
+                                        current._window_function_results = {}
+                                    current._window_function_results[col_name] = (
+                                        result_seq_select
+                                    )
+
+                                    # Infer type from cast type or window function result
+                                    if cast_type is not None:
+                                        col_type = cast_type
+                                    elif (
+                                        result_seq_select and len(result_seq_select) > 0
+                                    ):
+                                        col_type = SchemaInferenceEngine._infer_type(
+                                            result_seq_select[0]
+                                        )
+                                    else:
+                                        col_type = SchemaInferenceEngine._infer_type(
+                                            1
+                                        )  # Default to IntegerType
+
+                                    new_fields.append(
+                                        StructField(col_name, col_type, True)
+                                    )
+                                    continue  # Skip to next column
+                                except Exception:
+                                    # If window function evaluation fails, treat as regular ColumnOperation
+                                    pass  # Fall through to regular ColumnOperation handling
+
                             # Column operation - need to evaluate
                             col_name = getattr(col, "name", "result")
 
@@ -1369,6 +1566,39 @@ class LazyEvaluationEngine:
                                     # Column name not in row - try to get it
                                     new_row[field_name] = row.get(col.name, None)
                             elif isinstance(col, ColumnOperation):
+                                # Check if this is a ColumnOperation wrapping a WindowFunction (e.g., WindowFunction.cast())
+                                from ..functions.window_execution import WindowFunction
+
+                                is_window_function_cast = (
+                                    col.operation == "cast"
+                                    and isinstance(col.column, WindowFunction)
+                                )
+
+                                if is_window_function_cast:
+                                    # Use pre-computed window function results
+                                    field_name = (
+                                        new_fields[i].name
+                                        if i < len(new_fields)
+                                        else getattr(col, "name", "result")
+                                    )
+                                    if (
+                                        hasattr(current, "_window_function_results")
+                                        and field_name
+                                        in current._window_function_results
+                                    ):
+                                        result_seq = current._window_function_results[
+                                            field_name
+                                        ]
+                                        if result_seq is not None and row_index < len(
+                                            result_seq
+                                        ):
+                                            new_row[field_name] = result_seq[row_index]
+                                        else:
+                                            new_row[field_name] = None
+                                    else:
+                                        new_row[field_name] = None
+                                    continue  # Skip to next column
+
                                 # Column operation - evaluate using condition evaluator
                                 if col.operation == "transform":
                                     # Handle transform operation for higher-order array functions
@@ -1525,23 +1755,23 @@ class LazyEvaluationEngine:
                                 try:
                                     # The col is already a WindowFunction, just evaluate it
                                     result_raw = col.evaluate(current.data)
-                                    result_seq_select: Optional[Sequence[Any]]
+                                    result_seq_window: Optional[Sequence[Any]]
                                     if result_raw is None:
-                                        result_seq_select = None
+                                        result_seq_window = None
                                     elif isinstance(result_raw, Sequence):
-                                        result_seq_select = result_raw
+                                        result_seq_window = result_raw
                                     else:
-                                        result_seq_select = cast(
+                                        result_seq_window = cast(
                                             "Sequence[Any]", result_raw
                                         )
 
                                     # Get the result for this specific row using the row_index
                                     if (
-                                        result_seq_select is not None
-                                        and row_index < len(result_seq_select)
+                                        result_seq_window is not None
+                                        and row_index < len(result_seq_window)
                                         and i < len(new_fields)
                                     ):
-                                        new_row[new_fields[i].name] = result_seq_select[
+                                        new_row[new_fields[i].name] = result_seq_window[
                                             row_index
                                         ]
                                     elif i < len(new_fields):

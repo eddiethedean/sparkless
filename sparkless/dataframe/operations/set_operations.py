@@ -141,11 +141,8 @@ class SetOperations:
 
         # PySpark allows numeric/string combinations (normalizes to string)
         # Issue #242: LongType + StringType -> StringType
-        if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
-            return True
-
         # For other types, require exact match
-        return False
+        return (is_numeric1 and is_string2) or (is_string1 and is_numeric2)
 
     @staticmethod
     def union(
@@ -177,7 +174,6 @@ class SetOperations:
         coerced_data1 = data1.copy()
         coerced_data2 = data2.copy()
         result_fields = []
-        needs_coercion = False
 
         for i, (field1, field2) in enumerate(zip(schema1.fields, schema2.fields)):
             if field1.name != field2.name:
@@ -199,7 +195,6 @@ class SetOperations:
             # Determine target type for coercion (PySpark behavior)
             target_type = field1.dataType
             if field1.dataType != field2.dataType:
-                needs_coercion = True
                 # PySpark normalizes numeric+string to string (issue #242)
                 if isinstance(field1.dataType, StringType) or isinstance(
                     field2.dataType, StringType
@@ -218,9 +213,9 @@ class SetOperations:
                     field2.dataType, numeric_type_tuple
                 ):
                     # Prefer Float over Int, Long over Int
-                    if isinstance(field1.dataType, (FloatType, DoubleType)) or isinstance(
-                        field2.dataType, (FloatType, DoubleType)
-                    ):
+                    if isinstance(
+                        field1.dataType, (FloatType, DoubleType)
+                    ) or isinstance(field2.dataType, (FloatType, DoubleType)):
                         target_type = DoubleType()
                     elif isinstance(field1.dataType, LongType) or isinstance(
                         field2.dataType, LongType
@@ -229,9 +224,7 @@ class SetOperations:
                     else:
                         target_type = field1.dataType  # Keep first type if compatible
 
-            result_fields.append(
-                StructField(field1.name, target_type, nullable=True)
-            )
+            result_fields.append(StructField(field1.name, target_type, nullable=True))
 
             # Coerce data if types differ
             if target_type != field1.dataType or target_type != field2.dataType:

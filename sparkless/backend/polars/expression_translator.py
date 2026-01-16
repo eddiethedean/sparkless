@@ -202,7 +202,15 @@ class PolarsExpressionTranslator:
 
         # Translate left side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
-        if isinstance(column, ColumnOperation):
+        # Special case: WindowFunction wrapped in ColumnOperation (e.g., WindowFunction.cast())
+        # should be handled by OperationExecutor.apply_with_column, not here
+        if isinstance(column, WindowFunction):
+            # WindowFunction can't be translated directly - it raises ValueError
+            # This will be caught and handled in operation_executor.py
+            raise ValueError(
+                "WindowFunction expressions should be handled by OperationExecutor.apply_with_column"
+            )
+        elif isinstance(column, ColumnOperation):
             left = self._translate_operation(
                 column, input_col_dtype=None, available_columns=available_columns
             )

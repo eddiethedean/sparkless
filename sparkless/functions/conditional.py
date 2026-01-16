@@ -198,6 +198,20 @@ class CaseWhen:
         self.name = name
         return self
 
+    def cast(self, data_type: Any) -> ColumnOperation:
+        """Cast the CASE WHEN expression to a different data type.
+
+        Args:
+            data_type: The target data type (DataType instance or string type name).
+
+        Returns:
+            ColumnOperation representing the cast operation.
+
+        Example:
+            >>> F.when(F.col("value") == "A", F.lit(100)).otherwise(F.lit(200)).cast("long")
+        """
+        return ColumnOperation(self, "cast", data_type)
+
     def evaluate(self, row: Dict[str, Any]) -> Any:
         """Evaluate the CASE WHEN expression for a given row.
 
@@ -296,7 +310,8 @@ class CaseWhen:
         """
         from sparkless.core.condition_evaluator import ConditionEvaluator
 
-        return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
+        result = ConditionEvaluator.evaluate_condition(row, condition)
+        return bool(result)
 
     def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
         """Evaluate a value for a given row.
