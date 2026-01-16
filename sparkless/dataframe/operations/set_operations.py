@@ -40,7 +40,7 @@ class SetOperations:
                     row_dict = dict(row.data)
                 else:
                     # Check for _data_dict attribute for other row-like objects
-                    if hasattr(row.data, "_data_dict"):
+                    if hasattr(row.data, "_data_dict"):  # type: ignore[unreachable]
                         row_dict = row.data._data_dict
                     else:
                         row_dict = {}
@@ -253,7 +253,7 @@ class SetOperations:
 
         # Convert back to dict format
         result_data: List[Dict[str, Any]] = []
-        for row in unioned_rows:
+        for row in unioned_rows:  # type: ignore[assignment]
             if isinstance(row, Row):
                 # Use Row.asDict() method for proper conversion
                 row_dict: Dict[str, Any] = row.asDict()
