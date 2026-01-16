@@ -128,11 +128,7 @@ class TestArrayTypeRobust:
         )
 
         df = spark.createDataFrame(
-            [
-                {
-                    "map_array": [{"key1": 1, "key2": 2}, {"key3": 3, "key4": 4}]
-                }
-            ],
+            [{"map_array": [{"key1": 1, "key2": 2}, {"key3": 3, "key4": 4}]}],
             schema=schema,
         )
 
@@ -150,11 +146,7 @@ class TestArrayTypeRobust:
             ]
         )
         schema = StructType(
-            [
-                StructField(
-                    "struct_array", ArrayType(elementType=element_struct), True
-                )
-            ]
+            [StructField("struct_array", ArrayType(elementType=element_struct), True)]
         )
 
         df = spark.createDataFrame(
@@ -269,9 +261,7 @@ class TestArrayTypeRobust:
             ]
         )
 
-        df = spark.createDataFrame(
-            [{"values": [1, 2, 3, 4, 5]}], schema=schema
-        )
+        df = spark.createDataFrame([{"values": [1, 2, 3, 4, 5]}], schema=schema)
 
         # Select array column
         result = df.select("values")
@@ -344,9 +334,7 @@ class TestArrayTypeRobust:
             ]
         )
 
-        df = spark.createDataFrame(
-            [{"id": 1, "values": [1, 2, 3]}], schema=schema
-        )
+        df = spark.createDataFrame([{"id": 1, "values": [1, 2, 3]}], schema=schema)
 
         # Add computed column
         result = df.withColumn("sum", F.size("values"))
@@ -449,7 +437,9 @@ class TestArrayTypeRobust:
     def test_array_type_elementtype_pyspark_parity_simple(self, spark):
         """Test basic elementType usage matches PySpark behavior."""
         if not _is_pyspark_mode():
-            pytest.skip("PySpark parity test - run with MOCK_SPARK_TEST_BACKEND=pyspark")
+            pytest.skip(
+                "PySpark parity test - run with MOCK_SPARK_TEST_BACKEND=pyspark"
+            )
 
         from pyspark.sql import SparkSession as PySparkSession
         from pyspark.sql.types import (
@@ -510,7 +500,9 @@ class TestArrayTypeRobust:
     def test_array_type_elementtype_pyspark_parity_complex(self, spark):
         """Test complex nested elementType usage matches PySpark behavior."""
         if not _is_pyspark_mode():
-            pytest.skip("PySpark parity test - run with MOCK_SPARK_TEST_BACKEND=pyspark")
+            pytest.skip(
+                "PySpark parity test - run with MOCK_SPARK_TEST_BACKEND=pyspark"
+            )
 
         from pyspark.sql import SparkSession as PySparkSession
         from pyspark.sql.types import (
@@ -518,7 +510,6 @@ class TestArrayTypeRobust:
             StructField as PySparkStructField,
             ArrayType as PySparkArrayType,
             StringType as PySparkStringType,
-            IntegerType as PySparkIntegerType,
         )
 
         pyspark_session = PySparkSession.builder.appName("Parity").getOrCreate()
@@ -529,9 +520,7 @@ class TestArrayTypeRobust:
                 PySparkStructField(
                     "nested",
                     PySparkArrayType(
-                        elementType=PySparkArrayType(
-                            elementType=PySparkStringType()
-                        )
+                        elementType=PySparkArrayType(elementType=PySparkStringType())
                     ),
                     True,
                 )

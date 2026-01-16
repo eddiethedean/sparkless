@@ -151,9 +151,9 @@ class MiscService:
         if self._df._operations_queue:
             materialized_df = self._df._materialize_if_lazy()
             # Use materialized DataFrame for processing
-            df_to_process = materialized_df
+            df_to_process = cast("SupportsDataFrameOps", materialized_df)
         else:
-            df_to_process = self._df
+            df_to_process = cast("SupportsDataFrameOps", self._df)
 
         # Get column types for type checking
         column_types = {
