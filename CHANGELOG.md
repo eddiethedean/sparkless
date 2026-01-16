@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.24.0 — 2025-01-15
+
+### Added
+- **Issue #247** - Added `elementType` keyword argument support to `ArrayType` for PySpark compatibility
+  - `ArrayType(elementType=StringType())` now works (PySpark convention)
+  - Maintains backward compatibility with positional `element_type` parameter
+  - Added comprehensive test suite (32 tests) covering edge cases and PySpark parity
+
+### Fixed
+- **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
+  - Ensures all columns are present after joins before filling null values
+  - Prevents missing columns from being incorrectly filled as None
+  - Removed xfail marker from `test_na_fill_after_join` (now passing)
+
+### Testing
+- Added 32 new tests for ArrayType elementType support
+  - Basic keyword argument tests (10 tests)
+  - Robust tests covering all primitive types, nested arrays, complex types, and DataFrame operations (22 tests)
+- All 1106 tests passing (up from 1105), 12 skipped, 0 xfailed (down from 1)
+
+### Technical Details
+- Updated `ArrayType.__init__()` to accept both `elementType` (camelCase, PySpark) and `element_type` (snake_case, backward compat) keyword arguments
+- Enhanced `fillna()` in `MiscService` to materialize lazy DataFrames before processing rows
+- All code quality checks passing (ruff format, ruff check, mypy)
+
 ## 3.23.0 — 2025-01-14
 
 ### Fixed
