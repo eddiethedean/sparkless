@@ -44,6 +44,7 @@ class AggregateFunction:
         column: Union[Column, ColumnOperation, str, None],
         function_name: str,
         data_type: Optional[DataType] = None,
+        ignorenulls: Optional[bool] = None,
     ):
         """Initialize AggregateFunction.
 
@@ -51,6 +52,7 @@ class AggregateFunction:
             column: The column to aggregate (None for count(*)).
             function_name: Name of the aggregate function.
             data_type: Optional return data type.
+            ignorenulls: Optional flag to ignore nulls (for first/last functions).
         """
         self.column = column
         self.function_name = function_name
@@ -58,6 +60,7 @@ class AggregateFunction:
         self.name = self._generate_name()
         # Optional attributes for specific functions
         self.ord_column: Optional[Union[Column, str]] = None  # For max_by, min_by
+        self.ignorenulls: Optional[bool] = ignorenulls  # For first/last functions
 
     def _configure_data_type(self, data_type: Optional[DataType]) -> DataType:
         """Configure data type with appropriate nullability based on function type."""

@@ -955,9 +955,11 @@ class Functions:
         return AggregateFunctions.min(column)
 
     @staticmethod
-    def first(column: Union[Column, str]) -> AggregateFunction:
+    def first(
+        column: Union[Column, str], ignorenulls: bool = False
+    ) -> AggregateFunction:
         """First value."""
-        return AggregateFunctions.first(column)
+        return AggregateFunctions.first(column, ignorenulls=ignorenulls)
 
     @staticmethod
     def last(column: Union[Column, str]) -> AggregateFunction:
