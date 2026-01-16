@@ -148,6 +148,13 @@ class MiscService:
         # Get column types for type checking
         column_types = {field.name: field.dataType for field in self._df.schema.fields}
 
+        # Validate dict keys exist before processing (PySpark behavior)
+        if isinstance(value, dict):
+            available_cols = [field.name for field in self._df.schema.fields]
+            for col in value:
+                if col not in available_cols:
+                    raise ColumnNotFoundException(col)
+
         new_data = []
         for row in self._df.data:
             new_row = row.copy()
@@ -177,15 +184,27 @@ class MiscService:
                             # If not compatible, leave as None (PySpark behavior)
                 else:
                     # Fill nulls in all columns
-                    for col in new_row:
-                        if new_row[col] is None:
-                            # Check type compatibility (PySpark silently ignores mismatches)
+                    # Iterate over all columns in schema to handle joins properly
+                    # (after lazy join materialization, None columns might be missing from row dict)
+                    for col in column_types:
+                        # Check if column exists in row dict
+                        if col not in new_row:
+                            # Column is missing - assume it's None and fill it
+                            # (happens after lazy join materialization where None columns might be omitted)
+                            col_type = column_types.get(col)
+                            if col_type and self._is_value_compatible_with_type(
+                                value, col_type
+                            ):
+                                new_row[col] = value
+                        elif new_row[col] is None:
+                            # Column exists and is None - fill it
                             col_type = column_types.get(col)
                             if col_type and self._is_value_compatible_with_type(
                                 value, col_type
                             ):
                                 new_row[col] = value
                             # If not compatible, leave as None (PySpark behavior)
+                        # If column exists and has a non-None value, don't fill it (preserve existing value)
             new_data.append(new_row)
 
         from ..dataframe import DataFrame

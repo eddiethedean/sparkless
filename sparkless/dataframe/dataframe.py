@@ -624,6 +624,23 @@ class DataFrame:
         """
         return self._misc.fillna(value, subset)
 
+    @property
+    def na(self) -> Any:
+        """Access null-handling methods via .na namespace.
+
+        Provides PySpark-compatible API for handling null values in DataFrame.
+
+        Returns:
+            NAHandler instance for null-handling operations.
+
+        Example:
+            >>> df.na.fill(0)  # Fill all nulls with 0
+            >>> df.na.fill({"col1": 0, "col2": "default"})  # Fill with dict
+        """
+        from .attribute_handler import NAHandler
+
+        return NAHandler(self)
+
     def sample(
         self,
         fraction: float,
