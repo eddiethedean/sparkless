@@ -847,11 +847,23 @@ class GroupedData:
             result_key = alias_name if alias_name else f"collect_set({col_name})"
             return result_key, list(set(values))
         elif func_name == "first":
-            values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
-            ]
-            result_key = alias_name if alias_name else f"first({col_name})"
-            return result_key, values[0] if values else None
+            ignorenulls = getattr(expr, "ignorenulls", False)
+            if ignorenulls:
+                # Filter out None values and return first non-null value
+                values = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                result_key = alias_name if alias_name else f"first({col_name})"
+                return result_key, values[0] if values else None
+            else:
+                # Return first value even if it's None (default behavior)
+                result_key = alias_name if alias_name else f"first({col_name})"
+                if group_rows:
+                    return result_key, group_rows[0].get(col_name)
+                else:
+                    return result_key, None
         elif func_name == "last":
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None

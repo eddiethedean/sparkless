@@ -192,11 +192,15 @@ class AggregateFunctions:
         return op
 
     @staticmethod
-    def first(column: Union[Column, str]) -> AggregateFunction:
+    def first(
+        column: Union[Column, str], ignorenulls: bool = False
+    ) -> AggregateFunction:
         """First value.
 
         Args:
             column: The column to get first value of.
+            ignorenulls: If True, ignore null values and return first non-null value.
+                       If False (default), return first value even if it's null.
 
         Returns:
             AggregateFunction representing the first function.
@@ -205,7 +209,7 @@ class AggregateFunctions:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("first aggregate function")
-        return AggregateFunction(column, "first", DoubleType())
+        return AggregateFunction(column, "first", DoubleType(), ignorenulls=ignorenulls)
 
     @staticmethod
     def last(column: Union[Column, str]) -> AggregateFunction:

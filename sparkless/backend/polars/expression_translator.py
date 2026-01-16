@@ -3720,7 +3720,13 @@ class PolarsExpressionTranslator:
             return col_expr.unique(maintain_order=True).implode()
         elif function_name == "first":
             # First value in group
-            return col_expr.first()
+            ignorenulls = getattr(agg_func, "ignorenulls", False)
+            if ignorenulls:
+                # Filter out nulls before taking first value
+                return col_expr.filter(col_expr.is_not_null()).first()
+            else:
+                # Return first value even if it's null (default behavior)
+                return col_expr.first()
         elif function_name == "last":
             # Last value in group
             return col_expr.last()
