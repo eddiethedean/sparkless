@@ -228,6 +228,24 @@ class ColumnOperatorMixin:
         """Cast column to different data type."""
         return self._create_operation("cast", data_type)
 
+    def astype(self, data_type: Union[DataType, str]) -> "ColumnOperation":
+        """Cast column to different data type (alias for cast).
+
+        This method is an alias for cast() and matches PySpark's API.
+
+        Args:
+            data_type: The target data type (DataType object or string name like "date", "string", etc.).
+
+        Returns:
+            ColumnOperation representing the cast operation.
+
+        Example:
+            >>> df.select(F.col("name").astype("string"))
+            >>> df.select(F.substring("date", 1, 10).astype("date"))
+        """
+        # Note: cast() accepts both DataType and str in practice, despite type hint
+        return self.cast(data_type)  # type: ignore[arg-type]
+
     def getItem(self, key: Any) -> "ColumnOperation":
         """Get item from array by index or map by key.
 

@@ -400,25 +400,89 @@ class PolarsOperationExecutor:
                 explode_outer_index = i
 
         if select_exprs:
-            if has_explode or has_explode_outer:
-                result = df.select(select_exprs)
-                exploded_col_name = None
-                if (
-                    has_explode
-                    and explode_index is not None
-                    and explode_index < len(select_names)
-                ):
-                    exploded_col_name = select_names[explode_index]
-                elif (
-                    has_explode_outer
-                    and explode_outer_index is not None
-                    and explode_outer_index < len(select_names)
-                ):
-                    exploded_col_name = select_names[explode_outer_index]
-                if exploded_col_name:
-                    result = result.explode(exploded_col_name)
-            else:
-                result = df.select(select_exprs)
+            try:
+                if has_explode or has_explode_outer:
+                    result = df.select(select_exprs)
+                    exploded_col_name = None
+                    if (
+                        has_explode
+                        and explode_index is not None
+                        and explode_index < len(select_names)
+                    ):
+                        exploded_col_name = select_names[explode_index]
+                    elif (
+                        has_explode_outer
+                        and explode_outer_index is not None
+                        and explode_outer_index < len(select_names)
+                    ):
+                        exploded_col_name = select_names[explode_outer_index]
+                    if exploded_col_name:
+                        result = result.explode(exploded_col_name)
+                else:
+                    result = df.select(select_exprs)
+            except Exception as e:
+                # Catch Polars InvalidOperationError for unsupported casts
+                # (e.g., string to boolean which Polars doesn't support directly)
+                import polars.exceptions
+
+                error_msg = str(e)
+                error_type = type(e).__name__
+                is_invalid_cast = (
+                    isinstance(e, polars.exceptions.InvalidOperationError)
+                    or "InvalidOperationError" in error_type
+                    or (
+                        "not supported" in error_msg.lower()
+                        and "casting" in error_msg.lower()
+                    )
+                )
+
+                if is_invalid_cast:
+                    # Fallback to Python evaluation for all columns when Polars cast fails
+                    # This handles cases like string to boolean where Polars doesn't support the cast
+                    if rows_cache is None:
+                        rows_cache = df.to_dicts()
+                    if evaluator is None:
+                        from sparkless.dataframe.evaluation.expression_evaluator import (
+                            ExpressionEvaluator,
+                        )
+
+                        evaluator = ExpressionEvaluator()
+
+                    # Evaluate all columns in Python (both translated and Python ones)
+                    all_python_columns: List[Tuple[str, List[Any]]] = []
+                    all_python_names: List[str] = []
+
+                    # Process all columns (including ones that were in select_exprs)
+                    for col in columns:
+                        alias_name = None
+                        if isinstance(col, tuple):
+                            col, alias_name = col
+                        values = [
+                            self._evaluate_python_expression(row, col, evaluator)
+                            for row in rows_cache
+                        ]
+                        column_name_candidate = alias_name or getattr(col, "name", None)
+                        if not column_name_candidate:
+                            column_name_candidate = f"col_{len(all_python_columns) + 1}"
+                        column_name = str(column_name_candidate)
+                        if isinstance(col, ColumnOperation) and col.operation in {
+                            "to_json",
+                            "to_csv",
+                        }:
+                            struct_alias = self._format_struct_alias(col.column)
+                            column_name = f"{col.operation}({struct_alias})"
+                        all_python_columns.append((column_name, values))
+                        all_python_names.append(column_name)
+
+                    # Build result from Python-evaluated columns
+                    if all_python_columns:
+                        data_dict = dict(all_python_columns)
+                        result = pl.DataFrame(data_dict)
+                    else:
+                        return df
+                else:
+                    # Re-raise if it's not a cast-related error
+                    raise
         elif python_columns:
             # Only Python-evaluated columns; build DataFrame from values
             data_dict = dict(python_columns)

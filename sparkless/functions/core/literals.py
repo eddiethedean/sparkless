@@ -5,7 +5,7 @@ This module provides Literal class for representing literal values
 in column expressions and transformations.
 """
 
-from typing import Any, Callable, Optional, TYPE_CHECKING, cast
+from typing import Any, Callable, Optional, TYPE_CHECKING, Union, cast
 import math
 from ...spark_types import DataType
 from ...core.interfaces.functions import IColumn
@@ -272,6 +272,23 @@ class Literal(IColumn):
         from .column import ColumnOperation
 
         return ColumnOperation(self, "cast", data_type)
+
+    def astype(self, data_type: Union[DataType, str]) -> "ColumnOperation":
+        """Cast literal to different data type (alias for cast).
+
+        This method is an alias for cast() and matches PySpark's API.
+
+        Args:
+            data_type: The target data type (DataType object or string name).
+
+        Returns:
+            ColumnOperation representing the cast operation.
+
+        Example:
+            >>> F.lit(1).astype("string")
+        """
+        # Note: cast() accepts both DataType and str in practice, despite type hint
+        return self.cast(data_type)  # type: ignore[arg-type]
 
     def when(self, condition: "ColumnOperation", value: Any) -> Any:
         """Start a CASE WHEN expression."""

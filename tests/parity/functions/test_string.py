@@ -66,6 +66,29 @@ class TestStringFunctionsParity(ParityTestBase):
         assert rows[0]["partial_name"] == "Al"
         assert rows[1]["partial_name"] == "Bo"
 
+    def test_column_astype_method(self, spark):
+        """Test astype method matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        # Test the exact example from issue #239
+        df = spark.createDataFrame(
+            [
+                {"proc_date": "2025-01-01 ABC"},
+                {"proc_date": "2025-01-02 DEF"},
+            ]
+        )
+        # This should not raise AttributeError
+        result = df.withColumn(
+            "final_date", F.substring("proc_date", 1, 10).astype("date")
+        )
+        rows = result.collect()
+
+        # Verify results match PySpark behavior
+        assert len(rows) == 2
+        assert "final_date" in rows[0]
+        assert rows[0]["final_date"] is not None
+        assert rows[1]["final_date"] is not None
+
     def test_string_concat(self, spark):
         """Test concat function matches PySpark behavior."""
         imports = get_spark_imports()
