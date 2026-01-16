@@ -1107,6 +1107,182 @@ class PolarsOperationExecutor:
 
             return result
 
+    def _coerce_join_key_types(
+        self,
+        df1: pl.DataFrame,
+        df2: pl.DataFrame,
+        join_keys: Optional[List[str]] = None,
+        left_on: Optional[List[str]] = None,
+        right_on: Optional[List[str]] = None,
+    ) -> Tuple[
+        pl.DataFrame,
+        pl.DataFrame,
+        Optional[List[str]],
+        Optional[List[str]],
+        Optional[List[str]],
+    ]:
+        """Coerce join key types to match if needed (numeric vs string).
+
+        PySpark allows joining on columns with different types (e.g., i64 vs str),
+        automatically casting string keys to numeric. This method replicates that behavior.
+
+        Args:
+            df1: Left DataFrame
+            df2: Right DataFrame
+            join_keys: List of column names for on= joins (both DataFrames use same column names)
+            left_on: List of column names from df1 for left_on/right_on joins
+            right_on: List of column names from df2 for left_on/right_on joins
+
+        Returns:
+            Tuple of (casted_df1, casted_df2, updated_join_keys, updated_left_on, updated_right_on)
+        """
+        # Define numeric types
+        numeric_types = (
+            pl.Int8,
+            pl.Int16,
+            pl.Int32,
+            pl.Int64,
+            pl.UInt8,
+            pl.UInt16,
+            pl.UInt32,
+            pl.UInt64,
+            pl.Float32,
+            pl.Float64,
+        )
+        string_type = pl.Utf8
+
+        cast_exprs_df1 = []
+        cast_exprs_df2 = []
+        result_df1 = df1
+        result_df2 = df2
+
+        # Handle on= joins (same column names in both DataFrames)
+        if join_keys is not None:
+            for key in join_keys:
+                if key not in df1.columns or key not in df2.columns:
+                    continue  # Skip if column doesn't exist (will error later)
+
+                dtype1 = df1[key].dtype
+                dtype2 = df2[key].dtype
+
+                # If types match, no coercion needed
+                if dtype1 == dtype2:
+                    continue
+
+                # Check if one is numeric and one is string
+                is_numeric1 = dtype1 in numeric_types
+                is_numeric2 = dtype2 in numeric_types
+                is_string1 = dtype1 == string_type
+                is_string2 = dtype2 == string_type
+
+                if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
+                    # One is numeric, one is string - cast string to numeric
+                    if is_numeric1 and is_string2:
+                        # df2[key] is string, cast to df1[key]'s numeric type
+                        cast_exprs_df2.append(pl.col(key).cast(dtype1, strict=False))
+                    else:
+                        # df1[key] is string, cast to df2[key]'s numeric type
+                        cast_exprs_df1.append(pl.col(key).cast(dtype2, strict=False))
+                elif is_numeric1 and is_numeric2:
+                    # Both numeric but different types - prefer larger type
+                    # Int8 < Int16 < Int32 < Int64, Float32 < Float64
+                    # Prefer Int64 over Int32, Float64 over Float32
+                    # Prefer Float over Int
+                    if isinstance(dtype1, (pl.Float32, pl.Float64)) or isinstance(
+                        dtype2, (pl.Float32, pl.Float64)
+                    ):
+                        # At least one is float, use Float64
+                        target_dtype = pl.Float64
+                    else:
+                        # Both integers, use Int64
+                        target_dtype = pl.Int64
+
+                    if dtype1 != target_dtype:
+                        cast_exprs_df1.append(
+                            pl.col(key).cast(target_dtype, strict=False)
+                        )
+                    if dtype2 != target_dtype:
+                        cast_exprs_df2.append(
+                            pl.col(key).cast(target_dtype, strict=False)
+                        )
+                else:
+                    # Types can't be coerced (e.g., boolean vs string, date vs string)
+                    raise ValueError(
+                        f"Cannot join on column '{key}' with incompatible types: "
+                        f"left={dtype1}, right={dtype2}. "
+                        f"PySpark only supports joining numeric types with string types."
+                    )
+
+        # Handle left_on/right_on joins (different column names)
+        elif left_on is not None and right_on is not None:
+            if len(left_on) != len(right_on):
+                raise ValueError(
+                    f"left_on and right_on must have the same length: "
+                    f"left_on={left_on}, right_on={right_on}"
+                )
+
+            for i, (left_key, right_key) in enumerate(zip(left_on, right_on)):
+                if left_key not in df1.columns or right_key not in df2.columns:
+                    continue  # Skip if column doesn't exist (will error later)
+
+                dtype1 = df1[left_key].dtype
+                dtype2 = df2[right_key].dtype
+
+                # If types match, no coercion needed
+                if dtype1 == dtype2:
+                    continue
+
+                # Check if one is numeric and one is string
+                is_numeric1 = dtype1 in numeric_types
+                is_numeric2 = dtype2 in numeric_types
+                is_string1 = dtype1 == string_type
+                is_string2 = dtype2 == string_type
+
+                if (is_numeric1 and is_string2) or (is_string1 and is_numeric2):
+                    # One is numeric, one is string - cast string to numeric
+                    if is_numeric1 and is_string2:
+                        # df2[right_key] is string, cast to df1[left_key]'s numeric type
+                        cast_exprs_df2.append(
+                            pl.col(right_key).cast(dtype1, strict=False)
+                        )
+                    else:
+                        # df1[left_key] is string, cast to df2[right_key]'s numeric type
+                        cast_exprs_df1.append(
+                            pl.col(left_key).cast(dtype2, strict=False)
+                        )
+                elif is_numeric1 and is_numeric2:
+                    # Both numeric but different types - prefer larger type
+                    if isinstance(dtype1, (pl.Float32, pl.Float64)) or isinstance(
+                        dtype2, (pl.Float32, pl.Float64)
+                    ):
+                        target_dtype = pl.Float64
+                    else:
+                        target_dtype = pl.Int64
+
+                    if dtype1 != target_dtype:
+                        cast_exprs_df1.append(
+                            pl.col(left_key).cast(target_dtype, strict=False)
+                        )
+                    if dtype2 != target_dtype:
+                        cast_exprs_df2.append(
+                            pl.col(right_key).cast(target_dtype, strict=False)
+                        )
+                else:
+                    # Types can't be coerced
+                    raise ValueError(
+                        f"Cannot join on columns '{left_key}' (left) and '{right_key}' (right) "
+                        f"with incompatible types: left={dtype1}, right={dtype2}. "
+                        f"PySpark only supports joining numeric types with string types."
+                    )
+
+        # Apply casts if any
+        if cast_exprs_df1:
+            result_df1 = df1.with_columns(cast_exprs_df1)
+        if cast_exprs_df2:
+            result_df2 = df2.with_columns(cast_exprs_df2)
+
+        return result_df1, result_df2, join_keys, left_on, right_on
+
     @profiled("polars.apply_join", category="polars")
     def apply_join(
         self,
@@ -1205,6 +1381,38 @@ class PolarsOperationExecutor:
                 # Note: join_keys is List[str], so all items are strings
                 # Non-string items would be handled above
 
+        # Coerce join key types if needed (e.g., numeric vs string)
+        # PySpark allows joining on columns with different types, casting string to numeric
+        # Coerce types after resolving column names (case-insensitively)
+        if use_left_right_on and left_on_keys and right_on_keys:
+            # Use left_on/right_on for coercion
+            df1, df2, _, coerced_left_on, coerced_right_on = (
+                self._coerce_join_key_types(df1, df2, None, left_on_keys, right_on_keys)
+            )
+            left_on_keys = (
+                coerced_left_on if coerced_left_on is not None else left_on_keys
+            )
+            right_on_keys = (
+                coerced_right_on if coerced_right_on is not None else right_on_keys
+            )
+        elif resolved_join_keys:
+            # Use resolved_join_keys for coercion
+            df1, df2, coerced_join_keys, _, _ = self._coerce_join_key_types(
+                df1, df2, resolved_join_keys, None, None
+            )
+            resolved_join_keys = (
+                coerced_join_keys
+                if coerced_join_keys is not None
+                else resolved_join_keys
+            )
+        elif join_keys:
+            # Fallback to original join_keys
+            df1, df2, coerced_join_keys, _, _ = self._coerce_join_key_types(
+                df1, df2, join_keys, None, None
+            )
+            if coerced_join_keys is not None:
+                resolved_join_keys = coerced_join_keys
+
         # Handle semi and anti joins (Polars doesn't support natively)
         if how.lower() in ("semi", "left_semi"):
             # Semi join: return rows from left where match exists in right
@@ -1277,6 +1485,17 @@ class PolarsOperationExecutor:
                             f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
                         )
                     resolved_right_on.append(actual_col)
+
+                # Coerce join key types if needed (for left_on/right_on case)
+                df1, df2, _, coerced_left_on, coerced_right_on = (
+                    self._coerce_join_key_types(
+                        df1, df2, None, resolved_left_on, resolved_right_on
+                    )
+                )
+                if coerced_left_on is not None:
+                    resolved_left_on = coerced_left_on
+                if coerced_right_on is not None:
+                    resolved_right_on = coerced_right_on
 
                 # Polars join with left_on/right_on doesn't include right_on column
                 # But PySpark includes both columns, so we need to add it back

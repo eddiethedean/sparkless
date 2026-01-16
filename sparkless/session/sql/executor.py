@@ -1551,10 +1551,20 @@ class SQLExecutor:
 
             select_df = self.session.sql(query)
             # Convert DataFrame to list of dictionaries
-            data = [
-                dict(row) if hasattr(row, "__dict__") else row
-                for row in select_df.collect()
-            ]
+            data = []
+            for row in select_df.collect():
+                if isinstance(row, dict):
+                    data.append(row)
+                elif hasattr(row, "asDict"):
+                    # Row object - use asDict() method
+                    row_dict = row.asDict()
+                    data.append(row_dict if isinstance(row_dict, dict) else {})
+                elif hasattr(row, "__dict__"):
+                    # Object with __dict__ attribute
+                    data.append(row.__dict__)
+                else:
+                    # Try to convert to dict, or use as-is if it's already a dict-like structure
+                    data.append(row if isinstance(row, dict) else {})
 
         else:
             raise QueryExecutionException(f"Unsupported INSERT type: {insert_type}")

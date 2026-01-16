@@ -39,7 +39,7 @@ from typing import (
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from collections.abc import ItemsView, KeysView, ValuesView
+    from collections.abc import ItemsView, ValuesView
 
 # Try to import PySpark types for compatibility
 try:
@@ -803,16 +803,6 @@ class Row:
         if isinstance(self.data, list):
             return any(k == key for k, v in self.data)
         return key in self.data
-
-    def keys(self) -> KeysView[str]:
-        """Get keys."""
-        if hasattr(self, "_data_dict"):
-            return self._data_dict.keys()
-        if isinstance(self.data, list):
-            from collections import OrderedDict
-
-            return OrderedDict(self.data).keys()
-        return self.data.keys()
 
     def values(self) -> ValuesView[Any]:
         """Get values."""
