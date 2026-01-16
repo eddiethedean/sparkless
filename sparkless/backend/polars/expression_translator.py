@@ -925,6 +925,16 @@ class PolarsExpressionTranslator:
                         parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
                     )
 
+        # Special handling for string to boolean casting - Polars doesn't support this directly
+        # Raise ValueError to trigger Python fallback evaluation
+        if isinstance(target_type, BooleanType):
+            # Check if source is likely a string (we can't always know for sure, but we can try)
+            # For now, raise ValueError to force Python fallback for all string->boolean casts
+            # This is safer than trying to detect string types at this level
+            raise ValueError(
+                "String to boolean casting requires Python evaluation (Polars limitation)"
+            )
+
         # For other types, use strict=False to return null for invalid casts (PySpark behavior)
         # Special handling: if expr is a None literal (pl.lit(None)), create typed None
         # This handles F.lit(None).cast(TimestampType()) correctly
@@ -945,7 +955,16 @@ class PolarsExpressionTranslator:
                     raise
             else:
                 return expr.cast(polars_dtype, strict=False)
-        except Exception:
+        except Exception as e:
+            # Check if this is an InvalidOperationError for unsupported casts
+            error_msg = str(e)
+            if "not supported" in error_msg.lower() or "InvalidOperationError" in str(
+                type(e).__name__
+            ):
+                # Raise ValueError to trigger Python fallback
+                raise ValueError(
+                    f"Cast operation requires Python evaluation: {error_msg}"
+                ) from e
             # Fallback: try to create typed None if cast fails
             # This handles the case where pl.lit(None) can't be cast directly
             logger.debug(
