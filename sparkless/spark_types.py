@@ -286,7 +286,20 @@ class DecimalType(DataType):
 
 
 class ArrayType(DataType):
-    """Mock array type."""
+    """Mock array type.
+
+    Represents an array data type with PySpark-compatible initialization.
+    Supports both PySpark's camelCase keyword convention and backward-compatible
+    snake_case naming.
+
+    Example:
+        >>> # PySpark convention (camelCase)
+        >>> ArrayType(elementType=StringType())
+        >>> # Backward-compatible (snake_case)
+        >>> ArrayType(element_type=StringType())
+        >>> # Positional argument
+        >>> ArrayType(StringType())
+    """
 
     def __init__(
         self,
@@ -298,10 +311,17 @@ class ArrayType(DataType):
 
         Args:
             element_type: Element data type (positional or keyword with snake_case)
-            elementType: Element data type (keyword, PySpark convention)
+            elementType: Element data type (keyword, PySpark convention - Issue #247)
             nullable: Whether the array can contain null values
 
         Either element_type (positional/keyword) or elementType (keyword) must be provided.
+
+        Raises:
+            TypeError: If both elementType and element_type are provided, or if neither is provided.
+
+        Note:
+            This matches PySpark's ArrayType API. Using `elementType` keyword argument
+            provides full PySpark compatibility (Issue #247).
         """
         # Handle both camelCase (PySpark) and snake_case (backward compat)
         if elementType is not None and element_type is not None:

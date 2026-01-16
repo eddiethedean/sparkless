@@ -75,7 +75,7 @@ def complex_schema():
             StructField("city", StringType(), True),
             StructField("zip", StringType(), True)
         ]), True),
-        StructField("scores", ArrayType(IntegerType()), True)
+        StructField("scores", ArrayType(elementType=IntegerType()), True)
     ])
 ```
 

@@ -113,6 +113,10 @@ class MiscService:
     ) -> SupportsDataFrameOps:
         """Fill null values.
 
+        Materializes lazy DataFrames before processing to ensure all columns
+        are present after operations like joins. This prevents missing columns
+        from being incorrectly filled as None.
+
         Args:
             value: Value to fill nulls with. Can be a single value or a dict mapping
                    column names to fill values.
@@ -125,6 +129,11 @@ class MiscService:
 
         Raises:
             ColumnNotFoundException: If any column in subset doesn't exist.
+
+        Note:
+            This method automatically materializes lazy DataFrames to ensure
+            all columns from previous operations (like joins) are available
+            before filling null values. This matches PySpark behavior.
         """
         # Normalize subset to a list
         subset_cols: Optional[List[str]] = None

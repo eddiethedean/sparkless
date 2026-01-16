@@ -366,6 +366,11 @@ TimestampType()
 
 ```python
 # Array type
+# PySpark convention (camelCase keyword - Issue #247)
+ArrayType(elementType=StringType())
+# Backward-compatible (snake_case keyword)
+ArrayType(element_type=StringType())
+# Positional argument
 ArrayType(StringType())
 
 # Map type

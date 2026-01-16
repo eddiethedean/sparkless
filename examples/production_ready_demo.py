@@ -87,7 +87,7 @@ def main() -> None:
             StructField("birth_date", DateType()),
             StructField("created_at", TimestampType()),
             StructField("balance", DecimalType(10, 2)),
-            StructField("tags", ArrayType(StringType())),
+            StructField("tags", ArrayType(elementType=StringType())),
             StructField("metadata", MapType(StringType(), StringType())),
             StructField("avatar", BinaryType()),
             StructField("optional_field", NullType()),
