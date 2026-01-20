@@ -549,6 +549,18 @@ class ColumnOperation(Column):
         if name is not None:
             self._name = name
 
+        # Dynamic attributes for aggregate functions, UDFs, and window operations
+        # These are set dynamically and may not always be present
+        self._aggregate_function: Optional[AggregateFunction] = None
+        self._udf_func: Optional[Any] = None
+        self._udf_return_type: Optional[Any] = None
+        self._udf_cols: Optional[List[Any]] = None
+        self._is_pandas_udf: Optional[bool] = None
+        self._is_table_udf: Optional[bool] = None
+        self._window_duration: Optional[str] = None
+        self._window_slide: Optional[str] = None
+        self._window_start: Optional[str] = None
+
         # Ensure column_name is set (Column.__init__ sets it, but we want the operation name)
         self.column_name = self._name
 
@@ -910,7 +922,7 @@ class ColumnOperation(Column):
         aliased_operation._alias_name = name
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)
         if hasattr(self, "_aggregate_function"):
-            aliased_operation._aggregate_function = self._aggregate_function  # type: ignore[attr-defined]
+            aliased_operation._aggregate_function = self._aggregate_function
         return aliased_operation
 
     def over(self, window_spec: "WindowSpec") -> "WindowFunction":

@@ -1048,9 +1048,17 @@ class Functions:
         return AggregateFunctions.mean(column)
 
     @staticmethod
-    def approx_count_distinct(column: Union[Column, str]) -> AggregateFunction:
-        """Approximate count of distinct elements."""
-        return AggregateFunctions.approx_count_distinct(column)
+    def approx_count_distinct(
+        column: Union[Column, str], rsd: Optional[float] = None
+    ) -> ColumnOperation:
+        """Approximate count of distinct elements.
+
+        Args:
+            column: Column to count distinct values.
+            rsd: Optional relative standard deviation (default: None, which uses PySpark's default of 0.05).
+                 Controls the approximation accuracy. Lower values provide better accuracy but use more memory.
+        """
+        return AggregateFunctions.approx_count_distinct(column, rsd=rsd)
 
     @staticmethod
     def stddev_pop(column: Union[Column, str]) -> AggregateFunction:
@@ -2613,8 +2621,8 @@ class Functions:
                 column = Column(col) if isinstance(col, str) else col
                 # Create a UDF operation that stores the function
                 op = ColumnOperation(column, "udf", name=f"udf({column.name})")
-                op._udf_func = func  # type: ignore
-                op._udf_return_type = returnType  # type: ignore
+                op._udf_func = func
+                op._udf_return_type = returnType
                 return op
 
             return apply_udf
@@ -2705,9 +2713,9 @@ class Functions:
 
         # Create a window operation
         op = ColumnOperation(column, "window", name=f"window({column.name})")
-        op._window_duration = windowDuration  # type: ignore
-        op._window_slide = slideDuration or windowDuration  # type: ignore
-        op._window_start = startTime or "0 seconds"  # type: ignore
+        op._window_duration = windowDuration
+        op._window_slide = slideDuration or windowDuration
+        op._window_start = startTime or "0 seconds"
         return op
 
     @staticmethod

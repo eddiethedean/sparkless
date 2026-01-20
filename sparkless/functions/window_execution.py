@@ -4,7 +4,7 @@ Window functions for Sparkless.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple
 import contextlib
 import sys
 
@@ -41,7 +41,8 @@ class WindowFunction:
             # Unwrap the AggregateFunction from ColumnOperation
             agg_func = function._aggregate_function
             self.function_name = getattr(agg_func, "function_name", "window_function")
-            self.column_name = getattr(agg_func, "column_name", None)
+            # Get column_name from the AggregateFunction's column_name property
+            self.column_name = agg_func.column_name
         else:
             # Regular function (not wrapping AggregateFunction)
             self.function_name = getattr(function, "function_name", "window_function")
@@ -150,6 +151,11 @@ class WindowFunction:
             return self._evaluate_sum(data)
         elif self.function_name == "avg":
             return self._evaluate_avg(data)
+        elif (
+            self.function_name == "approx_count_distinct"
+            or self.function_name == "countDistinct"
+        ):
+            return self._evaluate_approx_count_distinct(data)
         else:
             return [None] * len(data)
 
@@ -982,6 +988,74 @@ class WindowFunction:
                 result.append(None)
 
         return result
+
+    def _evaluate_approx_count_distinct(self, data: List[Dict[str, Any]]) -> List[Any]:
+        """Evaluate approx_count_distinct() window function with proper partitioning."""
+        if not data:
+            return []
+
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: Dict[Any, List[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None  # Single partition = all rows
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results: List[Any] = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # For window functions without orderBy, PySpark returns the same value
+            # for all rows in the partition (total distinct count in partition)
+            # For window functions with orderBy, it's a running distinct count
+            if order_by_cols:
+                # With orderBy: running distinct count (UNBOUNDED PRECEDING to CURRENT ROW)
+                seen_values: Set[Any] = set()
+                for i, idx in enumerate(sorted_indices):
+                    value = data[idx].get(col_name)
+                    if value is not None:
+                        seen_values.add(value)
+                    results[idx] = len(seen_values)
+            else:
+                # Without orderBy: same distinct count for all rows in partition
+                # Calculate distinct count for entire partition
+                partition_values = [
+                    data[idx].get(col_name)
+                    for idx in partition_indices
+                    if data[idx].get(col_name) is not None
+                ]
+                distinct_count = len(set(partition_values))
+                # Assign same value to all rows in partition
+                for idx in partition_indices:
+                    results[idx] = distinct_count
+
+        return results
 
     def _evaluate_first_value(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate first_value() window function with proper partitioning and ordering."""

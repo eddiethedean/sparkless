@@ -82,10 +82,10 @@ class UserDefinedFunction:
         # Get column name safely
         col_name = getattr(first_col, "name", str(first_col))
         op = ColumnOperation(first_col, "udf", name=self._name or f"udf({col_name})")
-        op._udf_func = self.func  # type: ignore
-        op._udf_return_type = self.returnType  # type: ignore
-        op._udf_cols = column_objs  # type: ignore
-        op._is_pandas_udf = self._is_pandas_udf  # type: ignore
+        op._udf_func = self.func
+        op._udf_return_type = self.returnType
+        op._udf_cols = column_objs
+        op._is_pandas_udf = self._is_pandas_udf
 
         return op
 
@@ -147,9 +147,9 @@ class UserDefinedTableFunction:
         op = ColumnOperation(
             first_col, "table_udf", name=self._name or f"table_udf({col_name})"
         )
-        op._udf_func = self.func  # type: ignore
-        op._udf_return_type = self.returnType  # type: ignore
-        op._udf_cols = column_objs  # type: ignore
-        op._is_table_udf = True  # type: ignore
+        op._udf_func = self.func
+        op._udf_return_type = self.returnType
+        op._udf_cols = column_objs
+        op._is_table_udf = True
 
         return op

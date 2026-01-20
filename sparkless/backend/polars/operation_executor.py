@@ -669,8 +669,11 @@ class PolarsOperationExecutor:
             # Evaluate all window functions
             for alias_name, window_func, _ in self._python_window_functions:
                 # Evaluate window function across all rows
+                # Pass the alias name so the window handler uses it instead of window_func.name
                 # The window handler modifies data_rows in place
-                window_handler.evaluate_window_functions(data_rows, [(0, window_func)])
+                window_handler.evaluate_window_functions(
+                    data_rows, [(alias_name, window_func)]
+                )
                 # Extract values from evaluated data
                 values = [row.get(alias_name) for row in data_rows]
                 result = result.with_columns(pl.Series(alias_name, values))
