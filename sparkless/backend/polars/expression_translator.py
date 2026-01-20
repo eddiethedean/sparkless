@@ -3314,19 +3314,25 @@ class PolarsExpressionTranslator:
             ),  # Handle both string and array reverse
             "size": lambda e: self._size_expr(e, op),  # Handle both array and map size
             # Issue #263: Polars is_nan() doesn't support Utf8 (string) dtype.
-            # PySpark allows isnan() on strings and it always returns False.
-            # PySpark also returns False for NULL values: isnan(NULL) == False.
+            # PySpark allows isnan() on strings:
+            # - String "NaN" (case-sensitive) returns True (special case)
+            # - Other strings return False
+            # - NULL values return False: isnan(NULL) == False
             "isnan": lambda e: e.map_elements(
                 lambda x: (
                     False
                     if x is None
                     else (
-                        False
-                        if isinstance(x, str)
+                        True
+                        if isinstance(x, str) and x == "NaN"
                         else (
-                            math.isnan(float(x))
-                            if isinstance(x, (int, float))
-                            else False
+                            False
+                            if isinstance(x, str)
+                            else (
+                                math.isnan(float(x))
+                                if isinstance(x, (int, float))
+                                else False
+                            )
                         )
                     )
                 ),
