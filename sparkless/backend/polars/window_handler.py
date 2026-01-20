@@ -281,6 +281,19 @@ class PolarsWindowHandler:
                     return column_expr.min()
             else:
                 raise ValueError("MIN window function requires a column")
+        elif (
+            function_name == "COUNTDISTINCT" or function_name == "APPROX_COUNT_DISTINCT"
+        ):
+            if column_expr is not None:
+                if partition_by:
+                    # Use n_unique() for approximate distinct count (similar to approx_count_distinct)
+                    return column_expr.n_unique().over(partition_by)
+                else:
+                    return column_expr.n_unique()
+            else:
+                raise ValueError(
+                    "APPROX_COUNT_DISTINCT window function requires a column"
+                )
         elif function_name == "LAG":
             if column_expr is not None:
                 offset = getattr(window_func, "offset", 1)

@@ -61,6 +61,10 @@ class AggregateFunction:
         # Optional attributes for specific functions
         self.ord_column: Optional[Union[Column, str]] = None  # For max_by, min_by
         self.ignorenulls: Optional[bool] = ignorenulls  # For first/last functions
+        self.rsd: Optional[float] = (
+            None  # For approx_count_distinct (relative standard deviation)
+        )
+        self.percentage: Optional[float] = None  # For percentile function
 
     def _configure_data_type(self, data_type: Optional[DataType]) -> DataType:
         """Configure data type with appropriate nullability based on function type."""
@@ -129,6 +133,9 @@ class AggregateFunction:
             if self.function_name == "countDistinct":
                 # PySpark uses "count(column)" not "count(DISTINCT column)" for column names
                 return f"count({self.column.name})"
+            elif self.function_name == "approx_count_distinct":
+                # PySpark doesn't include rsd in column name, just use the base name
+                return f"{display_name}({self.column.name})"
             else:
                 return f"{display_name}({self.column.name})"
 

@@ -32,7 +32,7 @@ Example:
     IT 2 55000.0 60000
 """
 
-from typing import Union
+from typing import Optional, Union
 from sparkless.functions.base import AggregateFunction, Column, ColumnOperation
 from sparkless.spark_types import (
     LongType,
@@ -96,7 +96,7 @@ class AggregateFunctions:
         # This matches PySpark's behavior where aggregate functions return Column objects
         op = ColumnOperation(col, "count", value=None, name=agg_func.name)
         # Store the aggregate function info for evaluation
-        op._aggregate_function = agg_func  # type: ignore
+        op._aggregate_function = agg_func
         return op
 
     @staticmethod
@@ -119,7 +119,7 @@ class AggregateFunctions:
         # This matches PySpark's behavior where aggregate functions return Column objects
         op = ColumnOperation(col, "sum", value=None, name=f"sum({col.name})")
         # Store the aggregate function info for evaluation
-        op._aggregate_function = AggregateFunction(column, "sum", DoubleType())  # type: ignore
+        op._aggregate_function = AggregateFunction(column, "sum", DoubleType())
         return op
 
     @staticmethod
@@ -142,7 +142,7 @@ class AggregateFunctions:
         # This matches PySpark's behavior where aggregate functions return Column objects
         op = ColumnOperation(col, "avg", value=None, name=f"avg({col.name})")
         # Store the aggregate function info for evaluation
-        op._aggregate_function = AggregateFunction(column, "avg", DoubleType())  # type: ignore
+        op._aggregate_function = AggregateFunction(column, "avg", DoubleType())
         return op
 
     @staticmethod
@@ -165,7 +165,7 @@ class AggregateFunctions:
         # This matches PySpark's behavior where aggregate functions return Column objects
         op = ColumnOperation(col, "max", value=None, name=f"max({col.name})")
         # Store the aggregate function info for evaluation
-        op._aggregate_function = AggregateFunction(column, "max", DoubleType())  # type: ignore
+        op._aggregate_function = AggregateFunction(column, "max", DoubleType())
         return op
 
     @staticmethod
@@ -188,7 +188,7 @@ class AggregateFunctions:
         # This matches PySpark's behavior where aggregate functions return Column objects
         op = ColumnOperation(col, "min", value=None, name=f"min({col.name})")
         # Store the aggregate function info for evaluation
-        op._aggregate_function = AggregateFunction(column, "min", DoubleType())  # type: ignore
+        op._aggregate_function = AggregateFunction(column, "min", DoubleType())
         return op
 
     @staticmethod
@@ -452,8 +452,8 @@ class AggregateFunctions:
             col1, "corr", value=col2, name=f"corr({col1.name}, {col2.name})"
         )
         # Store the aggregate function info for evaluation
-        op._aggregate_function = AggregateFunction(col1, "corr", DoubleType())  # type: ignore
-        op._aggregate_function.ord_column = col2  # type: ignore
+        op._aggregate_function = AggregateFunction(col1, "corr", DoubleType())
+        op._aggregate_function.ord_column = col2
         return op
 
     @staticmethod
@@ -481,8 +481,8 @@ class AggregateFunctions:
             col1, "covar_samp", value=col2, name=f"covar_samp({col1.name}, {col2.name})"
         )
         # Store the aggregate function info for evaluation
-        op._aggregate_function = AggregateFunction(col1, "covar_samp", DoubleType())  # type: ignore
-        op._aggregate_function.ord_column = col2  # type: ignore
+        op._aggregate_function = AggregateFunction(col1, "covar_samp", DoubleType())
+        op._aggregate_function.ord_column = col2
         return op
 
     @staticmethod
@@ -662,14 +662,19 @@ class AggregateFunctions:
         return AggregateFunction(column, "mean", DoubleType())
 
     @staticmethod
-    def approx_count_distinct(column: Union[Column, str]) -> AggregateFunction:
+    def approx_count_distinct(
+        column: Union[Column, str], rsd: Optional[float] = None
+    ) -> ColumnOperation:
         """Returns approximate count of distinct elements (alias for approxCountDistinct).
 
         Args:
             column: Column to count distinct values.
+            rsd: Optional relative standard deviation (default: None, which uses PySpark's default of 0.05).
+                 Controls the approximation accuracy. Lower values provide better accuracy but use more memory.
+                 Typical values range from 0.01 (1% error) to 0.1 (10% error).
 
         Returns:
-            AggregateFunction representing the approx_count_distinct function.
+            ColumnOperation representing the approx_count_distinct function (PySpark-compatible).
 
 
         Raises:
@@ -679,7 +684,21 @@ class AggregateFunctions:
         AggregateFunctions._require_active_session(
             "approx_count_distinct aggregate function"
         )
-        return AggregateFunction(column, "approx_count_distinct", LongType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(column, "approx_count_distinct", LongType())
+        agg_func.rsd = rsd
+        # Regenerate name after setting rsd to include it in the name
+        agg_func.name = agg_func._generate_name()
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(
+            col, "approx_count_distinct", value=None, name=agg_func.name
+        )
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
     @staticmethod
     def stddev_pop(column: Union[Column, str]) -> AggregateFunction:
@@ -821,7 +840,7 @@ class AggregateFunctions:
             AggregateFunction representing the percentile function.
         """
         agg_func = AggregateFunction(column, "percentile", DoubleType())
-        agg_func.percentage = percentage  # type: ignore
+        agg_func.percentage = percentage
         return agg_func
 
     # Deprecated Aliases
@@ -832,7 +851,7 @@ class AggregateFunctions:
         Use approx_count_distinct instead.
 
         Args:
-            cols: Columns to count distinct values for.
+            cols: Columns to count distinct values for. Only the first column is used.
 
         Returns:
             AggregateFunction for approximate distinct count.
@@ -844,7 +863,16 @@ class AggregateFunctions:
             FutureWarning,
             stacklevel=2,
         )
-        return AggregateFunctions.approx_count_distinct(*cols)
+        if not cols:
+            raise ValueError("approxCountDistinct requires at least one column")
+        # Take the first column and create an AggregateFunction directly
+        # (to match the return type, since approx_count_distinct returns ColumnOperation)
+        column = cols[0]
+        AggregateFunctions._require_active_session(
+            "approxCountDistinct aggregate function"
+        )
+        agg_func = AggregateFunction(column, "approx_count_distinct", LongType())
+        return agg_func
 
     @staticmethod
     def sumDistinct(column: Union[Column, str]) -> AggregateFunction:

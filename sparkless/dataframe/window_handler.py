@@ -26,8 +26,28 @@ class WindowFunctionHandler:
         """Evaluate window functions across all rows."""
         result_data = data.copy()
 
-        for col_index, window_func in window_functions:
-            col_name = window_func.name
+        for window_func_info in window_functions:
+            # Handle both (col_index, window_func) and (col_name, window_func) formats
+            if len(window_func_info) == 2:
+                col_index_or_name, window_func = window_func_info
+                # If first element is an int, it's an index, use window_func.name
+                # Otherwise, it's the column name to use
+                if isinstance(col_index_or_name, int):
+                    col_name = window_func.name
+                else:
+                    col_name = col_index_or_name
+            else:
+                # Fallback: just use window_func.name
+                window_func = (
+                    window_func_info[-1]
+                    if isinstance(window_func_info, tuple)
+                    else window_func_info
+                )
+                col_name = (
+                    window_func.name
+                    if hasattr(window_func, "name")
+                    else "window_result"
+                )
 
             if window_func.function_name == "row_number":
                 # For row_number(), we need to handle partitionBy and orderBy
@@ -121,6 +141,7 @@ class WindowFunctionHandler:
                 "sum",
                 "count",
                 "countDistinct",
+                "approx_count_distinct",
                 "max",
                 "min",
             ]:
@@ -522,6 +543,25 @@ class WindowFunctionHandler:
         self, data: List[Dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate aggregate window functions like avg, sum, count, etc."""
+        # Try to extract column_name from the function if not already set
+        if not window_func.column_name and hasattr(window_func, "function"):
+            func = window_func.function
+            if hasattr(func, "_aggregate_function") and func._aggregate_function:
+                # Use the property directly to get column_name
+                window_func.column_name = func._aggregate_function.column_name
+
+        # For approx_count_distinct, if column_name is still not set, try to get it from the function
+        if (
+            not window_func.column_name
+            and window_func.function_name == "approx_count_distinct"
+            and hasattr(window_func, "function")
+        ):
+            func = window_func.function
+            if hasattr(func, "column") and hasattr(func.column, "name"):
+                window_func.column_name = func.column.name
+            elif hasattr(func, "_aggregate_function") and func._aggregate_function:
+                window_func.column_name = func._aggregate_function.column_name
+
         if not window_func.column_name and window_func.function_name not in ["count"]:
             # No column specified for functions that need it
             for row in data:
@@ -581,6 +621,14 @@ class WindowFunctionHandler:
             return
 
         source_col = window_func.column_name
+        # Fallback: try to extract column_name if not set
+        if not source_col and hasattr(window_func, "function"):
+            func = window_func.function
+            if hasattr(func, "_aggregate_function") and func._aggregate_function:
+                source_col = func._aggregate_function.column_name
+            elif hasattr(func, "column") and hasattr(func.column, "name"):
+                source_col = func.column.name
+
         func_name = window_func.function_name
 
         # Get window boundaries if specified
@@ -629,9 +677,12 @@ class WindowFunctionHandler:
                 data[idx][col_name] = sum(window_values) if window_values else None
             elif func_name == "count":
                 data[idx][col_name] = len(window_values)
-            elif func_name == "countDistinct":
-                data[idx][col_name] = len(set(window_values))
+            elif func_name == "countDistinct" or func_name == "approx_count_distinct":
+                data[idx][col_name] = len(set(window_values)) if window_values else 0
             elif func_name == "max":
                 data[idx][col_name] = max(window_values) if window_values else None
             elif func_name == "min":
                 data[idx][col_name] = min(window_values) if window_values else None
+            else:
+                # Unknown function, set to None
+                data[idx][col_name] = None

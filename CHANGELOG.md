@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.30.0 — 2025-01-21
+
+### Added
+- **Issue #266** - Added `rsd` parameter support to `approx_count_distinct()` function
+  - Added optional `rsd` (relative standard deviation) parameter to `approx_count_distinct()` function
+  - Matches PySpark API: `approx_count_distinct(column, rsd=0.01)`
+  - `rsd` parameter controls approximation accuracy (lower values = better accuracy, more memory)
+  - Default value is `None`, which uses PySpark's default of 0.05 (5% relative error) when in PySpark mode
+  - Function name generation includes `rsd` parameter when provided: `approx_count_distinct(column, rsd=0.01)`
+
+### Fixed
+- **Issue #266** - Fixed `approx_count_distinct()` returning `None` in Window functions
+  - Added `approx_count_distinct` support to Window function handler
+  - Window functions now correctly compute distinct counts instead of returning `None`
+  - Fixes the issue where `F.approx_count_distinct("value", rsd=0.01).over(window)` returned `None`
+
+### Testing
+- Added 7 unit tests covering backward compatibility, rsd parameter, different values, groupBy, and Window functions
+- Added 6 PySpark parity tests including the exact example from issue #266
+- All tests verify that Window functions no longer return `None` for `approx_count_distinct`
+
+### Technical Details
+- Updated `AggregateFunction` class to store `rsd` attribute (similar to `ord_column`, `ignorenulls`)
+- Updated `AggregateFunctions.approx_count_distinct()` and `Functions.approx_count_distinct()` to accept `rsd` parameter
+- Enhanced function name generation in `_generate_name()` to include `rsd` when provided
+- Added `approx_count_distinct` case to `WindowFunctionHandler._apply_aggregate_to_partition()`
+- For mock implementation, `rsd` is accepted for API compatibility but exact counting is used (more accurate than approximation)
+
 ## 3.29.0 — 2025-01-21
 
 ### Added
