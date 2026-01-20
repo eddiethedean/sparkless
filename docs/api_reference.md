@@ -121,6 +121,11 @@ df.where(df.age > 25)
 df.filter(F.col("id").eqNullSafe(F.col("manager_id")))
 df.filter(F.col("value").eqNullSafe(F.lit(None)))
 
+# Range checks with between (inclusive on both ends)
+df.filter(F.col("age").between(18, 65))  # 18 <= age <= 65
+df.filter(F.col("value").between(F.lit(0), F.lit(100)))  # Using literals
+df.filter(F.col("salary").between(50000, 100000))  # Salary range
+
 # Multiple conditions
 df.filter((df.age > 25) & (df.salary > 50000))
 df.filter(df.age > 25).filter(df.salary > 50000)
@@ -186,6 +191,8 @@ F.col("age") + 1
 F.col("salary") * 1.1
 F.col("name").isNull()
 F.col("age").isNotNull()
+F.col("age").between(18, 65)  # Range check (inclusive)
+F.col("value").isin(1, 2, 3)  # Check if value is in list
 ```
 
 #### String Functions

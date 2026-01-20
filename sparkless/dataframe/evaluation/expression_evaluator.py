@@ -1598,6 +1598,7 @@ class ExpressionEvaluator:
             "endswith": self._func_endswith,
             "like": self._func_like,
             "rlike": self._func_rlike,
+            "between": self._func_between,
             "replace": self._func_replace,
             "substr": self._func_substr,
             "split_part": self._func_split_part,
@@ -1916,6 +1917,79 @@ class ExpressionEvaluator:
         import re
 
         return bool(re.search(pattern, str(value)))
+
+    def _func_between(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
+        """Between function - check if value is between lower and upper bounds (inclusive).
+
+        PySpark behavior: between is inclusive on both ends (lower <= value <= upper).
+        Returns None if value is None (NULL handling).
+
+        Args:
+            value: The column value to check
+            operation: ColumnOperation with value as tuple (lower, upper)
+
+        Returns:
+            True if lower <= value <= upper, False otherwise, None if value is None
+        """
+        if value is None:
+            return None
+
+        if not isinstance(operation.value, tuple) or len(operation.value) != 2:
+            return None
+
+        lower, upper = operation.value
+
+        # Extract lower bound value
+        # Note: ColumnOperations in bounds should be handled by Polars translator
+        # This Python fallback only handles simple literals and direct values
+        # Check ColumnOperation first since it's a subclass of Column
+        if isinstance(lower, ColumnOperation):
+            # ColumnOperation - can't evaluate without row context
+            # This case should be handled by Polars translator, not Python fallback
+            return None
+        elif isinstance(lower, Column):
+            # Simple Column reference - can't evaluate without row context
+            # This case should be handled by Polars translator, not Python fallback
+            return None
+        elif hasattr(lower, "value") and hasattr(lower, "name"):  # Literal
+            lower_val = (
+                lower.value
+                if not (hasattr(lower, "_is_lazy") and lower._is_lazy)
+                else lower._resolve_lazy_value()
+            )
+        else:
+            # Direct value (int, float, str, etc.)
+            lower_val = lower
+
+        # Extract upper bound value
+        if isinstance(upper, ColumnOperation):
+            # ColumnOperation - can't evaluate without row context
+            # This case should be handled by Polars translator, not Python fallback
+            return None
+        elif isinstance(upper, Column):
+            # Simple Column reference - can't evaluate without row context
+            # This case should be handled by Polars translator, not Python fallback
+            return None
+        elif hasattr(upper, "value") and hasattr(upper, "name"):  # Literal
+            upper_val = (
+                upper.value
+                if not (hasattr(upper, "_is_lazy") and upper._is_lazy)
+                else upper._resolve_lazy_value()
+            )
+        else:
+            # Direct value (int, float, str, etc.)
+            upper_val = upper
+
+        # Handle None bounds (PySpark behavior: None bounds return None)
+        if lower_val is None or upper_val is None:
+            return None
+
+        # PySpark between is inclusive: lower <= value <= upper
+        try:
+            return bool(lower_val <= value <= upper_val)
+        except (TypeError, ValueError):
+            # Type mismatch - return None (PySpark behavior)
+            return None
 
     def _func_replace(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Replace function - replace occurrences of substring."""

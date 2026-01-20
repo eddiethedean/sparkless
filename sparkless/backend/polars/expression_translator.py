@@ -307,6 +307,65 @@ class PolarsExpressionTranslator:
                     coerced_value = str(value)
                 return left.is_in([coerced_value])
 
+        # Special handling for between - value is a tuple (lower, upper), don't translate it as a whole
+        # Need to handle type coercion and translate lower/upper bounds separately
+        if operation == "between":
+            # Handle between operation: value is a tuple (lower, upper)
+            # PySpark between is inclusive on both ends: lower <= col <= upper
+            if not isinstance(value, tuple) or len(value) != 2:
+                raise ValueError(
+                    f"between operation requires a tuple of (lower, upper) bounds, got {type(value)}"
+                )
+            lower, upper = value
+
+            # Translate lower bound
+            if isinstance(lower, ColumnOperation):
+                lower_expr = self._translate_operation(
+                    lower, input_col_dtype=None, available_columns=available_columns
+                )
+            elif isinstance(lower, Column):
+                lower_expr = self._translate_column(
+                    lower, available_columns=available_columns
+                )
+            elif isinstance(lower, Literal):
+                if hasattr(lower, "_is_lazy") and lower._is_lazy:
+                    lower_expr = pl.lit(lower._resolve_lazy_value())
+                else:
+                    lower_expr = pl.lit(lower.value)
+            elif isinstance(lower, (int, float, bool, str, datetime, date)):
+                lower_expr = pl.lit(lower)
+            elif lower is None:
+                lower_expr = pl.lit(None)
+            else:
+                # Fallback: try to translate as a literal
+                lower_expr = pl.lit(lower)
+
+            # Translate upper bound
+            if isinstance(upper, ColumnOperation):
+                upper_expr = self._translate_operation(
+                    upper, input_col_dtype=None, available_columns=available_columns
+                )
+            elif isinstance(upper, Column):
+                upper_expr = self._translate_column(
+                    upper, available_columns=available_columns
+                )
+            elif isinstance(upper, Literal):
+                if hasattr(upper, "_is_lazy") and upper._is_lazy:
+                    upper_expr = pl.lit(upper._resolve_lazy_value())
+                else:
+                    upper_expr = pl.lit(upper.value)
+            elif isinstance(upper, (int, float, bool, str, datetime, date)):
+                upper_expr = pl.lit(upper)
+            elif upper is None:
+                upper_expr = pl.lit(None)
+            else:
+                # Fallback: try to translate as a literal
+                upper_expr = pl.lit(upper)
+
+            # Use Polars is_between with inclusive bounds (closed="both" means both ends inclusive)
+            # This matches PySpark behavior where between is inclusive: lower <= col <= upper
+            return left.is_between(lower_expr, upper_expr, closed="both")
+
         # Special handling for withField - add or replace field in struct
         if operation == "withField":
             # Extract field name and column from operation value
@@ -428,8 +487,9 @@ class PolarsExpressionTranslator:
             "like",
             "rlike",
             "isin",
+            "between",
         ]:
-            # String operations and isin should NOT be routed to function calls - handle as binary operation below
+            # String operations, isin, and between should NOT be routed to function calls - handle as binary operation below
             pass
         # Check if this is a unary operator (must be handled as unary operation, not function)
         elif value is None and operation in ["!", "-"]:
@@ -602,7 +662,7 @@ class PolarsExpressionTranslator:
         elif operation == "cast":
             # Handle cast operation
             return self._translate_cast(left, value)
-        # isin is handled earlier, before value translation
+        # isin and between are handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
             # operation is guaranteed to be a string in ColumnOperation
             op_str = cast("str", operation)
