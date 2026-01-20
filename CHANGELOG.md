@@ -3,6 +3,18 @@
 ## 3.31.0 — Unreleased
 
 ### Added
+- **Case-Insensitive Column Names Refactor** - Complete refactoring of column name resolution to use centralized `ColumnResolver` system
+  - Added `spark.sql.caseSensitive` configuration (default: `false`, case-insensitive, matching PySpark)
+  - Added `Configuration.is_case_sensitive()` method for checking case sensitivity setting
+  - Created `sparkless.core.column_resolver.ColumnResolver` for centralized column name resolution
+  - All column resolution now goes through `ColumnResolver.resolve_column_name()` respecting session configuration
+  - Ambiguity detection: raises `AnalysisException` when multiple columns differ only by case (in case-insensitive mode)
+  - Updated all DataFrame operations (select, filter, groupBy, join, etc.) to use centralized resolver
+  - Updated Polars backend (operation executor, expression translator, materializer) to use resolver
+  - Updated SchemaManager, JoinService, AggregationService, and all validation logic
+  - Comprehensive test coverage: 12 unit tests for ColumnResolver, integration tests for case sensitivity
+
+### Added
 - **Issue #267** - Added aggregate function convenience methods to `PivotGroupedData` class
   - Added `sum()`, `avg()`, `mean()`, `count()`, `max()`, `min()` methods
   - Added `count_distinct()`, `collect_list()`, `collect_set()` methods
