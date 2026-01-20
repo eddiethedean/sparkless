@@ -82,69 +82,6 @@
 - Improved type narrowing in `GroupedData.agg()` for better mypy compliance
 - All code quality checks passing (ruff format, ruff check, mypy type checking)
 
-## 3.28.0 — 2025-01-21
-
-### Fixed
-- **Issue #263** - Fixed `isnan()` on string columns to match PySpark behavior
-  - Prevents Polars backend error: `polars.exceptions.InvalidOperationError: is_nan operation not supported for dtype str`
-  - `isnan()` now returns `False` for string values (strings are never NaN in PySpark)
-  - `isnan(NULL)` returns `False` (PySpark behavior)
-
-### Testing
-- Added regression tests covering `isnan()` on string columns, numeric NaN behavior, and `NULL` handling
-
-## 3.27.0 — 2025-01-21
-
-### Fixed
-- **Issue #262** - Fixed `ArrayType` initialization with positional arguments
-  - Fixed `TypeError: Cannot specify both 'elementType' and 'element_type'` when using positional arguments like `ArrayType(DoubleType(), True)`
-  - Added detection for when `elementType` parameter is incorrectly matched as a bool from positional arguments
-  - When `elementType` is a bool, it's now correctly treated as the `nullable` parameter instead
-  - Maintains full backward compatibility with all existing `ArrayType` initialization patterns:
-    - `ArrayType(elementType=StringType())` (PySpark keyword convention)
-    - `ArrayType(element_type=StringType())` (snake_case keyword)
-    - `ArrayType(StringType())` (positional element_type)
-    - `ArrayType(StringType(), nullable=False)` (positional with nullable)
-  - Added comprehensive test suite (4 test cases) covering the issue reproduction, all initialization patterns, DataFrame usage, and PySpark parity
-
-### Testing
-- Added 4 new tests for `ArrayType` positional arguments
-- All existing ArrayType tests still pass (22 tests)
-- All 1162 tests passing (up from 1158), 10 skipped
-
-### Technical Details
-- Updated `ArrayType.__init__()` to detect and handle bool values incorrectly matched to `elementType` parameter
-- The fix ensures that `ArrayType(DoubleType(), True)` correctly interprets `True` as `nullable=True` rather than raising a TypeError
-
-## 3.26.0 — 2025-01-21
-
-### Added
-- **Issue #261** - Implemented full support for `Column.between()` API
-  - Added `between` operation translation in Polars backend using `is_between()` with inclusive bounds (`closed="both"`)
-  - Implemented Python fallback evaluator `_func_between` for row-wise evaluation when Polars backend cannot handle the operation
-  - Added comprehensive test suite (13 test cases) covering:
-    - Basic between functionality with inclusive bounds
-    - Various data types (int, float, string, date)
-    - Null handling (PySpark behavior: returns None for NULL values)
-    - Literal bounds using `F.lit()`
-    - Column-based bounds (per-row evaluation)
-    - Usage in select expressions and when/otherwise constructs
-    - PySpark parity verification
-  - Documented `between` behavior and usage in `api_reference.md` with examples
-  - Implementation matches PySpark's behavior: `between` is inclusive on both ends (`lower <= value <= upper`)
-
-### Testing
-- Added 13 new tests for `between` functionality
-- All 1158 tests passing (up from 1145), 10 skipped
-- Tests verified in both sparkless and PySpark modes
-- PySpark parity test confirms behavior matches PySpark exactly
-
-### Technical Details
-- Updated `PolarsExpressionTranslator._translate_operation()` to handle `between` operation with tuple bounds `(lower, upper)`
-- Added support for translating various bound types: ColumnOperation, Column, Literal, and direct values (int, float, bool, str, datetime, date)
-- Enhanced `ExpressionEvaluator._func_between()` to handle row-wise evaluation with proper null handling
-- Added `between` to the list of special operations that should not be routed to generic function call translation
-
 ## 3.25.0 — 2025-01-20
 
 ### Fixed
@@ -161,6 +98,42 @@
   - Preserves field order as specified in schema
   - Comprehensive test coverage: 23 unit tests covering tuple/list data, None values, various data types, mixed data, edge cases (single row, empty DataFrame, long schemas, complex types), error scenarios, and PySpark parity validation
   - All tests pass in both Sparkless and PySpark modes, confirming full PySpark compatibility
+- **Case-Sensitive Mode Enforcement** - Fixed case-sensitive mode (`spark.sql.caseSensitive = true`) to properly enforce exact case matching
+  - Fixed attribute access (`df.columnName`) to correctly fail when wrong case is used in case-sensitive mode
+  - Fixed `DataFrameAttributeHandler` to use DataFrame's `_is_case_sensitive()` method for proper configuration retrieval
+  - Case-sensitive mode now correctly rejects column references with wrong casing across all operations
+  - Added comprehensive tests for case-sensitive mode: `withColumn`, `filter`, `select`, `groupBy`, `join`, attribute access, SQL queries
+  - All tests pass in both Sparkless and PySpark modes, confirming full PySpark compatibility
+  - **Issue #264** - Fixed case-insensitive column resolution in `withColumn` with `F.col()`, specifically when column names differ by case
+- **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
+  - Ensures all columns are present after joins before filling null values
+  - Prevents missing columns from being incorrectly filled as None
+  - Removed xfail marker from `test_na_fill_after_join` (now passing)
+- **Issue #263** - Fixed `isnan()` on string columns to match PySpark behavior
+  - Prevents Polars backend error: `polars.exceptions.InvalidOperationError: is_nan operation not supported for dtype str`
+  - `isnan()` now returns `False` for string values (strings are never NaN in PySpark)
+  - `isnan(NULL)` returns `False` (PySpark behavior)
+- **Issue #262** - Fixed `ArrayType` initialization with positional arguments
+  - Fixed `TypeError: Cannot specify both 'elementType' and 'element_type'` when using positional arguments like `ArrayType(DoubleType(), True)`
+  - Added detection for when `elementType` parameter is incorrectly matched as a bool from positional arguments
+  - When `elementType` is a bool, it's now correctly treated as the `nullable` parameter instead
+  - Maintains full backward compatibility with all existing `ArrayType` initialization patterns:
+    - `ArrayType(elementType=StringType())` (PySpark keyword convention)
+    - `ArrayType(element_type=StringType())` (snake_case keyword)
+    - `ArrayType(StringType())` (positional element_type)
+    - `ArrayType(StringType(), nullable=False)` (positional with nullable)
+  - Added comprehensive test suite (4 test cases) covering the issue reproduction, all initialization patterns, DataFrame usage, and PySpark parity
+- **CI Linting and Type Checking** - Fixed all CI failures related to code quality checks
+  - Fixed redundant casts in `misc_service.py` fillna method
+  - Fixed return type annotation in `attribute_handler.py` to allow `NAHandler` return type
+  - Fixed Row to dict conversion in `set_operations.py` using `Row.asDict()` method
+  - Fixed dynamic attribute access in `lazy.py` for window functions using `setattr`/`getattr`
+  - Removed unused `type: ignore` comments in `operation_executor.py` decorators
+  - Added appropriate `type: ignore` comments where needed for mypy full codebase checks
+  - Cleaned up mypy warnings and decorator typing around the Polars `operation_executor` used by `eqNullSafe`
+- **PySpark Parity Test Environment** - Ensured PySpark driver and workers use the same Python executable during parity tests
+  - Updated `tests/fixtures/spark_backend.py` to set `PYSPARK_PYTHON` / `PYSPARK_DRIVER_PYTHON` and corresponding Spark config keys (`spark.pyspark.python`, `spark.pyspark.driver.python`)
+  - Allows running `MOCK_SPARK_TEST_BACKEND=pyspark` tests for `eqNullSafe` without Python version mismatch errors
 
 ### Added
 - **Case-Insensitive Column Names Refactor** - Complete refactoring of column name resolution to use centralized `ColumnResolver` system
@@ -182,30 +155,19 @@
   - Updated Polars backend comparison coercion and join handling to support null-safe equality alongside existing numeric and datetime coercion
   - Added focused regression tests (including string, integer, float, date, and timestamp columns) plus optional PySpark parity tests for column–column and column–literal comparisons
   - Documented `eqNullSafe` behavior and usage in `api_reference.md`, `getting_started.md`, and `function_api_audit.md`
-
-### Fixed
-- **Case-Sensitive Mode Enforcement** - Fixed case-sensitive mode (`spark.sql.caseSensitive = true`) to properly enforce exact case matching
-  - Fixed attribute access (`df.columnName`) to correctly fail when wrong case is used in case-sensitive mode
-  - Fixed `DataFrameAttributeHandler` to use DataFrame's `_is_case_sensitive()` method for proper configuration retrieval
-  - Case-sensitive mode now correctly rejects column references with wrong casing across all operations
-  - Added comprehensive tests for case-sensitive mode: `withColumn`, `filter`, `select`, `groupBy`, `join`, attribute access, SQL queries
-  - All tests pass in both Sparkless and PySpark modes, confirming full PySpark compatibility
-  - **Issue #264** - Fixed case-insensitive column resolution in `withColumn` with `F.col()`, specifically when column names differ by case
-- **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
-  - Ensures all columns are present after joins before filling null values
-  - Prevents missing columns from being incorrectly filled as None
-  - Removed xfail marker from `test_na_fill_after_join` (now passing)
-- **CI Linting and Type Checking** - Fixed all CI failures related to code quality checks
-  - Fixed redundant casts in `misc_service.py` fillna method
-  - Fixed return type annotation in `attribute_handler.py` to allow `NAHandler` return type
-  - Fixed Row to dict conversion in `set_operations.py` using `Row.asDict()` method
-  - Fixed dynamic attribute access in `lazy.py` for window functions using `setattr`/`getattr`
-  - Removed unused `type: ignore` comments in `operation_executor.py` decorators
-  - Added appropriate `type: ignore` comments where needed for mypy full codebase checks
-  - Cleaned up mypy warnings and decorator typing around the Polars `operation_executor` used by `eqNullSafe`
-- **PySpark Parity Test Environment** - Ensured PySpark driver and workers use the same Python executable during parity tests
-  - Updated `tests/fixtures/spark_backend.py` to set `PYSPARK_PYTHON` / `PYSPARK_DRIVER_PYTHON` and corresponding Spark config keys (`spark.pyspark.python`, `spark.pyspark.driver.python`)
-  - Allows running `MOCK_SPARK_TEST_BACKEND=pyspark` tests for `eqNullSafe` without Python version mismatch errors
+- **Issue #261** - Implemented full support for `Column.between()` API
+  - Added `between` operation translation in Polars backend using `is_between()` with inclusive bounds (`closed="both"`)
+  - Implemented Python fallback evaluator `_func_between` for row-wise evaluation when Polars backend cannot handle the operation
+  - Added comprehensive test suite (13 test cases) covering:
+    - Basic between functionality with inclusive bounds
+    - Various data types (int, float, string, date)
+    - Null handling (PySpark behavior: returns None for NULL values)
+    - Literal bounds using `F.lit()`
+    - Column-based bounds (per-row evaluation)
+    - Usage in select expressions and when/otherwise constructs
+    - PySpark parity verification
+  - Documented `between` behavior and usage in `api_reference.md` with examples
+  - Implementation matches PySpark's behavior: `between` is inclusive on both ends (`lower <= value <= upper`)
 
 ### Changed
 - **Code Quality** - All CI checks now passing (ruff format, ruff check, mypy)
@@ -220,12 +182,19 @@
 - Added 32 new tests for ArrayType elementType support
   - Basic keyword argument tests (10 tests)
   - Robust tests covering all primitive types, nested arrays, complex types, and DataFrame operations (22 tests)
+- Added 13 new tests for `between` functionality
+- Added 4 new tests for `ArrayType` positional arguments
+- Added regression tests covering `isnan()` on string columns, numeric NaN behavior, and `NULL` handling
 - All tests pass in both Sparkless and PySpark modes for full compatibility validation
-- All 1106 tests passing (up from 1105), 12 skipped, 0 xfailed (down from 1)
+- All 1309 tests passing (up from 1105), 12 skipped, 0 xfailed (down from 1)
 
 ### Technical Details
-- Updated `ArrayType.__init__()` to accept both `elementType` (camelCase, PySpark) and `element_type` (snake_case, backward compat) keyword arguments
+- Updated `ArrayType.__init__()` to accept both `elementType` (camelCase, PySpark) and `element_type` (snake_case, backward compat) keyword arguments, and to detect and handle bool values incorrectly matched to `elementType` parameter
 - Enhanced `fillna()` in `MiscService` to materialize lazy DataFrames before processing rows
+- Updated `PolarsExpressionTranslator._translate_operation()` to handle `between` operation with tuple bounds `(lower, upper)`
+- Added support for translating various bound types: ColumnOperation, Column, Literal, and direct values (int, float, bool, str, datetime, date)
+- Enhanced `ExpressionEvaluator._func_between()` to handle row-wise evaluation with proper null handling
+- Added `between` to the list of special operations that should not be routed to generic function call translation
 - Fixed type annotations across multiple modules for improved type safety
 - All code quality checks passing (ruff format, ruff check, mypy type checking)
 

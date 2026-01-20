@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
-[![Tests](https://img.shields.io/badge/tests-1106+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
+[![Tests](https://img.shields.io/badge/tests-1309+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
 [![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from sparkless.sql import SparkSession
 | 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 1106+ passing tests, 100% mypy typed |
+| 🏭 **Production Ready** | 1309+ passing tests, 100% mypy typed |
 | 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
@@ -368,25 +368,32 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
-### Version 3.25.0 - ArrayType PySpark Compatibility, eqNullSafe, & fillna Improvements
+### Version 3.25.0 - Case-Insensitive Column Names, Tuple DataFrame Creation, & Enhanced Compatibility
 
-- ✅ **Issue #247** - Added `elementType` keyword argument support to `ArrayType` for full PySpark compatibility
-  - `ArrayType(elementType=StringType())` now works (PySpark camelCase convention)
-  - Maintains backward compatibility with positional `element_type` parameter
-  - Comprehensive test suite with 32 tests covering edge cases and PySpark parity
-- ✅ **Issue #260** - Implemented `Column.eqNullSafe` for null-safe equality comparisons
-  - Added `eqNullSafe` method to `Column` and `Literal` APIs, matching PySpark semantics (`NULL <=> NULL` returns `True`)
-  - Supports all data types (strings, integers, floats, dates, datetimes)
-  - Works in filter conditions, select expressions, and join scenarios
-  - Comprehensive test suite with 24 tests including PySpark parity tests
-- 🐛 **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
-  - Ensures all columns are present after joins before filling null values
-  - Prevents missing columns from being incorrectly filled as None
-  - Removed xfail marker from `test_na_fill_after_join` (now passing)
-- 🔧 **Code Quality** - All CI checks now passing (ruff format, ruff check, mypy)
-  - Improved type annotations for better mypy compliance
-  - Enhanced type safety in DataFrame operations
-  - All 1106 tests passing, 12 skipped, 0 xfailed
+- 🔤 **Case-Insensitive Column Names** - Complete refactoring with centralized `ColumnResolver` system
+  - Added `spark.sql.caseSensitive` configuration (default: `false`, matching PySpark)
+  - All column resolution respects case sensitivity settings
+  - Ambiguity detection for multiple columns differing only by case
+  - Comprehensive test coverage: 34 unit tests + 17 integration tests
+  - **Issue #264**: Fixed case-insensitive column resolution in `withColumn` with `F.col()`
+  - Fixed case-sensitive mode enforcement for all DataFrame operations
+- 📊 **Tuple-Based DataFrame Creation** - Fixed tuple-based data parameter support
+  - **Issue #270**: Fixed `createDataFrame` with tuple-based data to convert tuples to dictionaries
+  - All operations now work correctly: `.show()`, `.unionByName()`, `.fillna()`, `.replace()`, `.dropna()`, `.join()`, etc.
+  - Strict length validation matching PySpark behavior (`LENGTH_SHOULD_BE_THE_SAME` error)
+  - Supports tuple, list, and mixed tuple/dict/Row data
+  - 23 comprehensive unit tests, all passing in Sparkless and PySpark modes
+- 🔧 **PySpark Compatibility Enhancements**
+  - **Issue #247**: Added `elementType` keyword argument support to `ArrayType` (PySpark convention)
+  - **Issue #260**: Implemented `Column.eqNullSafe` for null-safe equality comparisons (`NULL <=> NULL` returns `True`)
+  - **Issue #261**: Implemented full support for `Column.between()` API with inclusive bounds
+  - **Issue #262**: Fixed `ArrayType` initialization with positional arguments (e.g., `ArrayType(DoubleType(), True)`)
+  - **Issue #263**: Fixed `isnan()` on string columns to match PySpark behavior (returns `False` for strings)
+- 🐛 **Bug Fixes**
+  - Fixed `fillna()` to properly materialize lazy DataFrames after joins
+  - Fixed all AttributeError issues with tuple-based data (`.keys()`, `.get()`, `.items()`, `.copy()`)
+  - Fixed `isnan()` Polars backend errors on string columns
+
 
 ### Version 3.23.0 - Issues 225-231 Fixes & PySpark Compatibility Improvements
 
@@ -474,7 +481,7 @@ Real-world test suite improvements:
 - 🗑️ **Code Cleanup** - Removed unused legacy SQL translation modules (`sql_translator.py`, `spark_function_mapper.py`)
 - ✅ **Type Safety** - Fixed 177 type errors using `ty` type checker, improved return type annotations
 - 🔍 **Linting** - Fixed all 63 ruff linting errors, codebase fully formatted
-- ✅ **All Tests Passing** - Full test suite validated (1106+ tests, all passing)
+- ✅ **All Tests Passing** - Full test suite validated (1309+ tests, all passing)
 - 📦 **Cleaner Dependencies** - Reduced dependency footprint, faster installation
 
 ### Version 3.0.0 - MAJOR UPDATE
