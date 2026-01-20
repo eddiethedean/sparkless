@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.31.0 — Unreleased
+
+### Added
+- **Issue #267** - Added aggregate function convenience methods to `PivotGroupedData` class
+  - Added `sum()`, `avg()`, `mean()`, `count()`, `max()`, `min()` methods
+  - Added `count_distinct()`, `collect_list()`, `collect_set()` methods
+  - Added `first()`, `last()`, `stddev()`, `variance()` methods
+  - All methods match the `GroupedData` API for consistency with PySpark
+
+### Fixed
+- **Issue #267** - Fixed `PivotGroupedData` column naming to match PySpark behavior
+  - Single aggregate expression without alias: uses pivot value as column name (e.g., `A`, `B`)
+  - Single aggregate expression with alias: uses alias as column name
+  - Multiple aggregate expressions: uses `{pivot_value}_{alias}` or `{pivot_value}_{function_name}` format
+- Enhanced `PivotGroupedData._evaluate_aggregate_function()` to support all aggregate functions from `GroupedData`
+- Enhanced `PivotGroupedData._evaluate_column_expression()` to support all column operations
+- Fixed handling of empty pivot groups (returns `None` instead of `0`)
+
+### Testing
+- Added 16 unit tests covering all convenience methods, column naming, and edge cases
+- Added 6 PySpark parity tests including the exact example from issue #267
+- All tests verify that column naming matches PySpark exactly
+
 ## 3.30.0 — 2025-01-21
 
 ### Added
