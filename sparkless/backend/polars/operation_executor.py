@@ -1692,7 +1692,7 @@ class PolarsOperationExecutor:
         left_on: Optional[List[str]] = None
         right_on: Optional[List[str]] = None
 
-        if isinstance(on, ColumnOperation) and getattr(on, "operation", None) == "==":
+        if isinstance(on, ColumnOperation) and getattr(on, "operation", None) in ("==", "eqNullSafe"):
             if not hasattr(on, "column") or not hasattr(on, "value"):
                 raise ValueError("Join condition must have column and value attributes")
             left_col = on.column.name if hasattr(on.column, "name") else str(on.column)

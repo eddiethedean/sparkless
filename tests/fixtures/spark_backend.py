@@ -162,8 +162,10 @@ class SparkBackend:
         import sys
 
         python_executable = sys.executable
-        os.environ.setdefault("PYSPARK_PYTHON", python_executable)
-        os.environ.setdefault("PYSPARK_DRIVER_PYTHON", python_executable)
+        # Explicitly set both to ensure driver and worker use the same Python version
+        # This prevents Python version mismatch errors
+        os.environ["PYSPARK_PYTHON"] = python_executable
+        os.environ["PYSPARK_DRIVER_PYTHON"] = python_executable
         os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
 
         # Set JAVA_HOME if not already set - critical for PySpark JVM startup
@@ -411,6 +413,17 @@ class SparkBackend:
                         builder = builder.config(
                             "spark.driver.extraJavaOptions", f"-Djava.home={java_home}"
                         )
+                    # Explicitly set Python executable for workers to prevent version mismatch
+                    # PySpark requires both environment variables and Spark config properties
+                    builder = builder.config(
+                        "spark.executorEnv.PYSPARK_PYTHON", python_executable
+                    )
+                    builder = builder.config(
+                        "spark.executorEnv.PYSPARK_DRIVER_PYTHON", python_executable
+                    )
+                    # Also set as Spark config properties (used by Spark to launch Python)
+                    builder = builder.config("spark.pyspark.python", python_executable)
+                    builder = builder.config("spark.pyspark.driver.python", python_executable)
                     # Apply any additional config from kwargs
                     for key, value in kwargs.items():
                         if key.startswith("spark."):
@@ -464,6 +477,17 @@ class SparkBackend:
                     builder = builder.config(
                         "spark.sql.warehouse.dir", unique_warehouse
                     )
+                    # Explicitly set Python executable for workers to prevent version mismatch
+                    # Set both as environment variables and Spark config properties
+                    builder = builder.config(
+                        "spark.executorEnv.PYSPARK_PYTHON", python_executable
+                    )
+                    builder = builder.config(
+                        "spark.executorEnv.PYSPARK_DRIVER_PYTHON", python_executable
+                    )
+                    # Also set as Spark config properties (alternative method)
+                    builder = builder.config("spark.pyspark.python", python_executable)
+                    builder = builder.config("spark.pyspark.driver.python", python_executable)
                     for key, value in kwargs.items():
                         if key.startswith("spark."):
                             builder = builder.config(key, str(value))
@@ -527,6 +551,17 @@ class SparkBackend:
                     builder = builder.config(
                         "spark.driver.extraJavaOptions", f"-Djava.home={java_home}"
                     )
+                # Explicitly set Python executable for workers to prevent version mismatch
+                # Set both as environment variables and Spark config properties
+                builder = builder.config(
+                    "spark.executorEnv.PYSPARK_PYTHON", python_executable
+                )
+                builder = builder.config(
+                    "spark.executorEnv.PYSPARK_DRIVER_PYTHON", python_executable
+                )
+                # Also set as Spark config properties (alternative method)
+                builder = builder.config("spark.pyspark.python", python_executable)
+                builder = builder.config("spark.pyspark.driver.python", python_executable)
                 for key, value in kwargs.items():
                     if key.startswith("spark."):
                         builder = builder.config(key, str(value))
