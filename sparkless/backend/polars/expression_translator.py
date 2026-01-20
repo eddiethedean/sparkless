@@ -17,6 +17,11 @@ from sparkless.functions import Column, ColumnOperation, Literal
 from sparkless.functions.base import AggregateFunction
 from sparkless.functions.window_execution import WindowFunction
 
+try:  # pragma: no cover - optional dependency
+    from pandas import Timestamp as PandasTimestamp
+except Exception:  # pragma: no cover - pandas is optional
+    PandasTimestamp = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -647,9 +652,43 @@ class PolarsExpressionTranslator:
         }
         compare_fn = comparison_ops[op]
 
+        def _is_date_like(value: Any) -> bool:
+            """Return True if value behaves like a date (no time component)."""
+            return isinstance(value, date) and not isinstance(value, datetime)
+
+        def _is_datetime_like(value: Any) -> bool:
+            """Return True if value behaves like a full datetime or timestamp."""
+            if isinstance(value, datetime):
+                return True
+            return PandasTimestamp is not None and isinstance(value, PandasTimestamp)
+
+        def _parse_date_string(value: str) -> Optional[date]:
+            """Parse ISO-8601 date string to date, matching PySpark yyyy-MM-dd default."""
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                return None
+
+        def _parse_datetime_string(value: str) -> Optional[datetime]:
+            """Parse ISO-8601 datetime string, matching PySpark yyyy-MM-dd HH:mm:ss default."""
+            try:
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                return None
+
+        def _to_python_datetime(value: Any) -> datetime:
+            """Convert supported timestamp-like values to a Python datetime."""
+            if isinstance(value, datetime):
+                return value
+            if PandasTimestamp is not None and isinstance(value, PandasTimestamp):
+                # Use pandas helper to normalise to Python datetime
+                return cast("datetime", value.to_pydatetime())
+            # Fallback – this should not normally be hit because callers gate on _is_datetime_like
+            return datetime.fromtimestamp(0)
+
         # Use map_elements to handle type coercion at runtime
         def _compare_with_coercion(left_val: Any, right_val: Any) -> Any:
-            """Compare values with automatic string-to-numeric coercion."""
+            """Compare values with automatic type coercion for numeric and datetime + string."""
             if left_val is None or right_val is None:
                 return None
 
@@ -683,6 +722,32 @@ class PolarsExpressionTranslator:
                     return compare_fn(left_val, right_num)
                 except (ValueError, TypeError):
                     return None
+
+            # Date-like vs string: parse string as date (yyyy-MM-dd) then compare
+            if _is_date_like(left_val) and isinstance(right_val, str):
+                parsed = _parse_date_string(right_val)
+                if parsed is None:
+                    return None
+                return compare_fn(left_val, parsed)
+            elif _is_date_like(right_val) and isinstance(left_val, str):
+                parsed = _parse_date_string(left_val)
+                if parsed is None:
+                    return None
+                return compare_fn(parsed, right_val)
+
+            # Datetime/Timestamp-like vs string: parse string as datetime then compare
+            if _is_datetime_like(left_val) and isinstance(right_val, str):
+                parsed_dt = _parse_datetime_string(right_val)
+                if parsed_dt is None:
+                    return None
+                left_dt = _to_python_datetime(left_val)
+                return compare_fn(left_dt, parsed_dt)
+            elif _is_datetime_like(right_val) and isinstance(left_val, str):
+                parsed_dt = _parse_datetime_string(left_val)
+                if parsed_dt is None:
+                    return None
+                right_dt = _to_python_datetime(right_val)
+                return compare_fn(parsed_dt, right_dt)
 
             # Default comparison (same types or other combinations)
             return compare_fn(left_val, right_val)
