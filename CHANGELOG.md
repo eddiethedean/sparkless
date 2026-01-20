@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.29.0 — 2025-01-21
+
+### Added
+- **Issue #265** - Implemented `cast()` method for `AggregateFunction` objects
+  - Added `cast()` method to `AggregateFunction` class, enabling type casting of aggregate function results
+  - Supports casting aggregate results to different data types (string, int, long, double, float, boolean)
+  - Works with all aggregate functions: `sum()`, `avg()`, `mean()`, `max()`, `min()`, `count()`, `countDistinct()`, `stddev()`, `variance()`, etc.
+  - Example usage: `df.groupby("type").agg(F.mean(F.col("value")).cast("string"))`
+  - Generates PySpark-compatible column names: `CAST(avg(value) AS STRING)`
+  - Properly handles nested `ColumnOperation` structures when aggregate functions are wrapped
+  - Cast operations are evaluated after aggregate computation, ensuring correct type conversion
+
+### Fixed
+- Fixed `GroupedData.agg()` to correctly handle cast operations on aggregate functions
+  - Detects when a `ColumnOperation` with "cast" operation wraps an `AggregateFunction`
+  - Evaluates the aggregate function first, then applies the cast transformation
+  - Uses `TypeConverter` for proper type conversion between different data types
+  - Handles both string type names (e.g., "string", "int") and `DataType` objects
+
+### Testing
+- Added 7 unit tests covering basic functionality, return types, multiple aggregates, and null handling
+- Added 11 PySpark parity tests ensuring exact compatibility with PySpark behavior
+- Tests cover various aggregate functions, cast types, null values, empty groups, and chained operations
+- All tests work in both normal and PySpark modes via `MOCK_SPARK_TEST_BACKEND` environment variable
+
+### Technical Details
+- Updated `AggregateFunction.cast()` to return a `ColumnOperation` wrapping the aggregate and target type
+- Enhanced `GroupedData.agg()` evaluation logic to detect and handle cast-wrapped aggregates
+- Improved type narrowing in `GroupedData.agg()` for better mypy compliance
+- All code quality checks passing (ruff format, ruff check, mypy type checking)
+
 ## 3.28.0 — 2025-01-21
 
 ### Fixed
