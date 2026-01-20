@@ -147,6 +147,21 @@
 
 ## 3.25.0 — 2025-01-20
 
+### Fixed
+- **Issue #270** - Fixed `createDataFrame` with tuple-based data parameter to convert tuples to dictionaries
+  - Fixed `AttributeError: 'tuple' object has no attribute 'keys'` when calling `.show()` with tuple-based data
+  - Fixed `AttributeError: 'tuple' object has no attribute 'get'` in operations that use `.get()` on rows
+  - Fixed `AttributeError: 'tuple' object has no attribute 'items'` in transformation operations
+  - Fixed `AttributeError: 'tuple' object has no attribute 'copy'` in misc operations
+  - When `createDataFrame` is called with tuple-based data (e.g., `[('Alice', 1), ('Bob', 2)]`) and an explicit `StructType` schema, tuples are now converted to dictionaries using schema field names in order
+  - Added strict length validation matching PySpark behavior: raises `IllegalArgumentException` with `LENGTH_SHOULD_BE_THE_SAME` error when tuple length doesn't match schema field count (matching PySpark's `PySparkValueError`)
+  - All downstream operations now work correctly with tuple-based data: `.show()`, `.unionByName()`, `.union()`, `.fillna()`, `.replace()`, `.dropna()`, `.groupBy()`, `.join()`, `.select()`, `.filter()`, `.orderBy()`, `.distinct()`, etc.
+  - Supports both tuple and list data (e.g., `[(1, 2), (3, 4)]` or `[[1, 2], [3, 4]]`)
+  - Handles mixed tuple/dict/Row data correctly
+  - Preserves field order as specified in schema
+  - Comprehensive test coverage: 23 unit tests covering tuple/list data, None values, various data types, mixed data, edge cases (single row, empty DataFrame, long schemas, complex types), error scenarios, and PySpark parity validation
+  - All tests pass in both Sparkless and PySpark modes, confirming full PySpark compatibility
+
 ### Added
 - **Case-Insensitive Column Names Refactor** - Complete refactoring of column name resolution to use centralized `ColumnResolver` system
   - Added `spark.sql.caseSensitive` configuration (default: `false`, case-insensitive, matching PySpark)
