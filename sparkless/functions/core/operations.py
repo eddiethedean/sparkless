@@ -133,6 +133,17 @@ class ComparisonOperations:
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
+    def eqNullSafe(self, other: Any) -> ColumnOperation:
+        """Null-safe equality comparison (PySpark eqNullSafe).
+
+        This behaves like PySpark's eqNullSafe:
+        - If both sides are null, the comparison is True.
+        - If exactly one side is null, the comparison is False.
+        - Otherwise, it behaves like standard equality, including any
+          backend-specific type coercion rules.
+        """
+        return ColumnOperation(self, "eqNullSafe", other)
+
     def isin(self, *values: Any) -> ColumnOperation:
         """Check if column value is in list of values."""
         # Normalize: if single list argument provided, use it directly

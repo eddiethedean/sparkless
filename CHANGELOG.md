@@ -7,6 +7,10 @@
   - `ArrayType(elementType=StringType())` now works (PySpark convention)
   - Maintains backward compatibility with positional `element_type` parameter
   - Added comprehensive test suite (32 tests) covering edge cases and PySpark parity
+ - **Issue #260** - Implemented `Column.eqNullSafe` for null-safe equality comparisons
+   - Added `eqNullSafe` method to the `Column` API, matching PySpark semantics (treats `NULL` <=> `NULL` as `True`)
+   - Updated Polars backend comparison coercion to handle null-safe equality alongside existing numeric and datetime coercion
+   - Added regression and parity tests ensuring behavior matches PySpark for column–column and column–literal comparisons involving nulls
 
 ### Fixed
 - **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
