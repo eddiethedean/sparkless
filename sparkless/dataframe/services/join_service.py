@@ -158,24 +158,38 @@ class JoinService:
         from ...core.exceptions.analysis import AnalysisException
         from ...dataframe.operations.set_operations import SetOperations
 
-        # Get column names from both DataFrames (case-insensitive matching)
-
+        # Get column names from both DataFrames
+        case_sensitive = self._df._is_case_sensitive()
         self_cols: Set[str] = {field.name for field in self._df.schema.fields}
         other_cols: Set[str] = {field.name for field in other.schema.fields}
 
-        # Build case-insensitive mappings
-        self_cols_lower = {col.lower(): col for col in self_cols}
-        other_cols_lower = {col.lower(): col for col in other_cols}
+        # Build mappings using ColumnResolver
+        self_cols_list = list(self_cols)
+        other_cols_list = list(other_cols)
+        
+        # Map self columns to other columns (case-insensitive or case-sensitive)
+        self_to_other_map: Dict[str, Optional[str]] = {}
+        for self_col in self_cols:
+            other_match = ColumnResolver.resolve_column_name(
+                self_col, other_cols_list, case_sensitive
+            )
+            self_to_other_map[self_col] = other_match
 
-        # Check for missing columns (case-insensitive)
+        # Check for missing columns
         missing_in_other: Set[str] = set()
         for self_col in self_cols:
-            if self_col.lower() not in other_cols_lower:
+            if self_to_other_map[self_col] is None:
                 missing_in_other.add(self_col)
 
         missing_in_self: Set[str] = set()
+        # Build reverse mapping for missing in self check
+        other_to_self_map: Dict[str, Optional[str]] = {}
         for other_col in other_cols:
-            if other_col.lower() not in self_cols_lower:
+            self_match = ColumnResolver.resolve_column_name(
+                other_col, self_cols_list, case_sensitive
+            )
+            other_to_self_map[other_col] = self_match
+            if self_match is None:
                 missing_in_self.add(other_col)
 
         if not allowMissingColumns and (missing_in_other or missing_in_self):
@@ -184,10 +198,10 @@ class JoinService:
                 f"Missing in other: {missing_in_other}, Missing in self: {missing_in_self}"
             )
 
-        # Check type compatibility for columns that exist in both schemas (case-insensitive)
+        # Check type compatibility for columns that exist in both schemas
         common_cols: Set[str] = set()
         for self_col in self_cols:
-            if self_col.lower() in other_cols_lower:
+            if self_to_other_map[self_col] is not None:
                 common_cols.add(self_col)
 
         for col_name in common_cols:
@@ -195,8 +209,8 @@ class JoinService:
             self_field: StructField = next(
                 f for f in self._df.schema.fields if f.name == col_name
             )
-            # Find corresponding field in other schema (case-insensitive)
-            other_col_name = other_cols_lower.get(col_name.lower())
+            # Find corresponding field in other schema using mapping
+            other_col_name = self_to_other_map.get(col_name)
             if other_col_name is None:
                 # Skip if no matching column found (shouldn't happen, but handle gracefully)
                 continue
@@ -234,15 +248,23 @@ class JoinService:
             combined_data.append(new_row)
 
         # Add rows from other DataFrame
-        # Build a mapping from case-insensitive column names to actual column names in other DataFrame
-        other_row_keys_lower = {
-            key.lower(): key for key in (other.data[0].keys() if other.data else [])
-        }
+        # Build a mapping from column names to actual column names in other DataFrame rows
+        if other.data:
+            other_row_keys = list(other.data[0].keys())
+            other_row_map: Dict[str, Optional[str]] = {}
+            for col in all_cols:
+                actual_col_in_row = ColumnResolver.resolve_column_name(
+                    col, other_row_keys, case_sensitive
+                )
+                other_row_map[col] = actual_col_in_row
+        else:
+            other_row_map = {col: None for col in all_cols}
+
         for row in other.data:
             other_new_row: Dict[str, Any] = {}
             for col in all_cols:
-                # Find actual column name case-insensitively in row
-                actual_col_in_row = other_row_keys_lower.get(col.lower())
+                # Find actual column name using ColumnResolver
+                actual_col_in_row = other_row_map.get(col)
                 if actual_col_in_row and actual_col_in_row in row:
                     other_new_row[col] = row[actual_col_in_row]
                 else:
@@ -287,8 +309,11 @@ class JoinService:
                     nullable = field.nullable
                     break
 
-            # Find other field case-insensitively
-            other_col_name = other_cols_lower.get(col.lower())
+            # Find other field using ColumnResolver
+            other_col_name = self_to_other_map.get(col) if col in self_cols else None
+            if not other_col_name and col in other_cols:
+                # Column might be only in other DataFrame
+                other_col_name = col
             if other_col_name:
                 for field in other.schema.fields:
                     if field.name == other_col_name:

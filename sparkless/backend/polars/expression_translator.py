@@ -59,11 +59,31 @@ class PolarsExpressionTranslator:
         self._translation_cache: OrderedDict[Any, pl.Expr] = OrderedDict()
         self._cache_size = 512
 
+    def _get_case_sensitive(self) -> bool:
+        """Get case sensitivity setting from active session.
+
+        Returns:
+            True if case-sensitive mode is enabled, False otherwise.
+            Defaults to False (case-insensitive) to match PySpark behavior.
+        """
+        try:
+            from sparkless.session.core.session import SparkSession
+
+            active_sessions = getattr(SparkSession, "_active_sessions", [])
+            if active_sessions:
+                session = active_sessions[-1]
+                if hasattr(session, "conf"):
+                    return session.conf.is_case_sensitive()
+        except Exception:
+            pass
+        return False  # Default to case-insensitive (matching PySpark)
+
     def translate(
         self,
         expr: Any,
         input_col_dtype: Any = None,
         available_columns: Optional[List[str]] = None,
+        case_sensitive: Optional[bool] = None,
     ) -> pl.Expr:
         """Translate Column expression to Polars expression.
 
@@ -71,10 +91,15 @@ class PolarsExpressionTranslator:
             expr: Column, ColumnOperation, or other expression
             input_col_dtype: Optional Polars dtype of input column (for to_timestamp optimization)
             available_columns: Optional list of available column names for case-insensitive matching
+            case_sensitive: Optional case sensitivity flag. If None, gets from session.
 
         Returns:
             Polars expression (pl.Expr)
         """
+        # Get case sensitivity if not provided
+        if case_sensitive is None:
+            case_sensitive = self._get_case_sensitive()
+
         cache_key = self._build_cache_key(expr) if self._cache_enabled else None
         if cache_key is not None:
             cached = self._cache_get(cache_key)
@@ -92,9 +117,12 @@ class PolarsExpressionTranslator:
                 expr,
                 input_col_dtype=input_col_dtype,
                 available_columns=available_columns,
+                case_sensitive=case_sensitive,
             )
         elif isinstance(expr, Column):
-            result = self._translate_column(expr, available_columns=available_columns)
+            result = self._translate_column(
+                expr, available_columns=available_columns, case_sensitive=case_sensitive
+            )
         elif isinstance(expr, Literal):
             result = self._translate_literal(expr)
         elif isinstance(expr, AggregateFunction):
@@ -132,7 +160,10 @@ class PolarsExpressionTranslator:
         return result
 
     def _translate_column(
-        self, col: Column, available_columns: Optional[List[str]] = None
+        self,
+        col: Column,
+        available_columns: Optional[List[str]] = None,
+        case_sensitive: bool = False,
     ) -> pl.Expr:
         """Translate Column to Polars column expression.
 
@@ -151,10 +182,10 @@ class PolarsExpressionTranslator:
         else:
             col_name = col.name
 
-        # Use case-insensitive matching if available columns are provided
+        # Use ColumnResolver matching if available columns are provided
         if available_columns:
             actual_col_name = self._find_column(
-                available_columns, col_name
+                available_columns, col_name, case_sensitive
             )
             if actual_col_name:
                 col_name = actual_col_name
@@ -202,6 +233,7 @@ class PolarsExpressionTranslator:
         op: ColumnOperation,
         input_col_dtype: Any = None,
         available_columns: Optional[List[str]] = None,
+        case_sensitive: bool = False,
     ) -> pl.Expr:
         """Translate ColumnOperation to Polars expression.
 
@@ -227,10 +259,15 @@ class PolarsExpressionTranslator:
             )
         elif isinstance(column, ColumnOperation):
             left = self._translate_operation(
-                column, input_col_dtype=None, available_columns=available_columns
+                column,
+                input_col_dtype=None,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
             )
         elif isinstance(column, Column):
-            left = self._translate_column(column, available_columns=available_columns)
+            left = self._translate_column(
+                column, available_columns=available_columns, case_sensitive=case_sensitive
+            )
         elif isinstance(column, Literal):
             # Resolve lazy literals before translating
             if hasattr(column, "_is_lazy") and column._is_lazy:
@@ -242,11 +279,11 @@ class PolarsExpressionTranslator:
             # For now, create the literal - the cast will handle the dtype
             left = pl.lit(lit_value)
         elif isinstance(column, str):
-            # Use case-insensitive matching if available columns are provided
+            # Use ColumnResolver matching if available columns are provided
             if available_columns:
                 actual_col_name = (
                     PolarsExpressionTranslator._find_column(
-                        available_columns, column
+                        available_columns, column, case_sensitive
                     )
                 )
                 left = pl.col(actual_col_name) if actual_col_name else pl.col(column)
@@ -255,7 +292,9 @@ class PolarsExpressionTranslator:
         elif isinstance(column, (int, float, bool)):
             left = pl.lit(column)
         else:
-            left = self.translate(column, available_columns=available_columns)
+            left = self.translate(
+                column, available_columns=available_columns, case_sensitive=case_sensitive
+            )
 
         # Special handling for cast operation - value should be a type name, not a column
         if operation == "cast":
@@ -643,7 +682,9 @@ class PolarsExpressionTranslator:
         elif value is None:
             right = pl.lit(None)
         else:
-            right = self.translate(value, available_columns=available_columns)
+            right = self.translate(
+                value, available_columns=available_columns, case_sensitive=case_sensitive
+            )
 
         # Handle binary operations with type coercion for string-to-numeric comparisons
         if operation in ["==", "!=", "<", "<=", ">", ">=", "eqNullSafe"]:

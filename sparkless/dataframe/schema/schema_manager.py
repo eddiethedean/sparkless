@@ -25,6 +25,7 @@ from ...spark_types import (
 )
 from ...functions import Literal, Column, ColumnOperation
 from ...core.ddl_adapter import parse_ddl_schema
+from ...core.column_resolver import ColumnResolver
 
 
 class SchemaManager:
@@ -40,7 +41,9 @@ class SchemaManager:
 
     @staticmethod
     def project_schema_with_operations(
-        base_schema: StructType, operations_queue: List[Tuple[str, Any]]
+        base_schema: StructType,
+        operations_queue: List[Tuple[str, Any]],
+        case_sensitive: bool = False,
     ) -> StructType:
         """Compute schema after applying queued lazy operations.
 
@@ -88,7 +91,9 @@ class SchemaManager:
                     fields_map = {f.name: f for f in fields_list}
                     fields_list = None
                     using_list = False
-                fields_map = SchemaManager._handle_drop_operation(fields_map, op_val)
+                fields_map = SchemaManager._handle_drop_operation(
+                    fields_map, op_val, case_sensitive
+                )
             elif op_name == "withColumnRenamed":
                 # Handle column rename - update field names in schema
                 if using_list and fields_list is not None:
@@ -97,12 +102,11 @@ class SchemaManager:
                     fields_list = None
                     using_list = False
                 old_name, new_name = op_val
-                # Find actual column name case-insensitively
-                actual_old_name = None
-                for field_name in fields_map:
-                    if field_name.lower() == old_name.lower():
-                        actual_old_name = field_name
-                        break
+                # Find actual column name using ColumnResolver
+                available_columns = list(fields_map.keys())
+                actual_old_name = ColumnResolver.resolve_column_name(
+                    old_name, available_columns, case_sensitive
+                )
                 if actual_old_name:
                     # Rename the field
                     field = fields_map.pop(actual_old_name)
@@ -370,12 +374,14 @@ class SchemaManager:
                         base_col.name if hasattr(base_col, "name") else str(base_col)
                     )
 
-                    # Find the base struct column in fields_map
-                    base_struct_field = None
-                    for field_name, field in fields_map.items():
-                        if field_name.lower() == base_col_name.lower():
-                            base_struct_field = field
-                            break
+                    # Find the base struct column in fields_map using ColumnResolver
+                    available_columns = list(fields_map.keys())
+                    actual_base_col_name = ColumnResolver.resolve_column_name(
+                        base_col_name, available_columns, case_sensitive
+                    )
+                    base_struct_field = (
+                        fields_map.get(actual_base_col_name) if actual_base_col_name else None
+                    )
 
                     if base_struct_field is None:
                         # Base column not found - default to StringType
@@ -481,6 +487,7 @@ class SchemaManager:
     def _handle_drop_operation(
         fields_map: Dict[str, StructField],
         columns_to_drop: Union[str, List[str], Tuple[str, ...]],
+        case_sensitive: bool = False,
     ) -> Dict[str, StructField]:
         """Handle drop operation schema changes.
 
@@ -499,14 +506,13 @@ class SchemaManager:
             # Convert tuple to list
             columns_to_drop = list(columns_to_drop)
 
-        # Remove columns from fields_map (case-insensitive)
+        # Remove columns from fields_map using ColumnResolver
+        available_columns = list(fields_map.keys())
         for col_name in columns_to_drop:
-            # Find actual column name case-insensitively
-            actual_col_name = None
-            for field_name in fields_map:
-                if field_name.lower() == col_name.lower():
-                    actual_col_name = field_name
-                    break
+            # Find actual column name using ColumnResolver
+            actual_col_name = ColumnResolver.resolve_column_name(
+                col_name, available_columns, case_sensitive
+            )
             if actual_col_name:
                 del fields_map[actual_col_name]
 

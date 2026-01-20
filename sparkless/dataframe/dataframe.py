@@ -1159,8 +1159,9 @@ class DataFrame:
         from .schema.schema_manager import SchemaManager
 
         # Use _schema directly to avoid recursion (schema property calls this method)
+        case_sensitive = self._is_case_sensitive()
         return SchemaManager.project_schema_with_operations(
-            self._schema, self._operations_queue
+            self._schema, self._operations_queue, case_sensitive
         )
 
     @property

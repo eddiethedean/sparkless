@@ -47,6 +47,25 @@ class PolarsMaterializer:
         self.translator = PolarsExpressionTranslator()
         self.operation_executor = PolarsOperationExecutor(self.translator)
 
+    def _get_case_sensitive(self) -> bool:
+        """Get case sensitivity setting from active session.
+
+        Returns:
+            True if case-sensitive mode is enabled, False otherwise.
+            Defaults to False (case-insensitive) to match PySpark behavior.
+        """
+        try:
+            from sparkless.session.core.session import SparkSession
+
+            active_sessions = getattr(SparkSession, "_active_sessions", [])
+            if active_sessions:
+                session = active_sessions[-1]
+                if hasattr(session, "conf"):
+                    return session.conf.is_case_sensitive()
+        except Exception:
+            pass
+        return False  # Default to case-insensitive (matching PySpark)
+
     def materialize(
         self,
         data: List[Dict[str, Any]],
@@ -399,8 +418,10 @@ class PolarsMaterializer:
                 # Update schema after select
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
             elif op_name == "withColumn":
                 # WithColumn operation - need to collect first for window functions
@@ -498,8 +519,10 @@ class PolarsMaterializer:
                 # Update schema and available columns after withColumn
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
                 current_available_columns.add(column_name)
             elif op_name == "join":
@@ -830,14 +853,16 @@ class PolarsMaterializer:
                         is_desc = not ascending
                         nulls_last = True  # PySpark default: nulls last
 
-                    # Resolve column name case-insensitively if available columns are provided
+                    # Resolve column name using ColumnResolver if available columns are provided
                     if col_name is not None:
                         if available_columns:
-                            actual_col_name = None
-                            for available_col in available_columns:
-                                if available_col.lower() == col_name.lower():
-                                    actual_col_name = available_col
-                                    break
+                            from sparkless.core.column_resolver import ColumnResolver
+
+                            # Get case sensitivity from session
+                            case_sensitive = self._get_case_sensitive()
+                            actual_col_name = ColumnResolver.resolve_column_name(
+                                col_name, available_columns, case_sensitive
+                            )
                             if actual_col_name:
                                 col_name = actual_col_name
 
@@ -897,15 +922,18 @@ class PolarsMaterializer:
                 )
 
                 # Filter out non-existent columns (PySpark allows dropping non-existent columns silently)
-                # Resolve column names case-insensitively
+                # Resolve column names using ColumnResolver
+                from sparkless.core.column_resolver import ColumnResolver
+
+                available_cols_list = list(current_available_columns)
+                # Get case sensitivity from session
+                case_sensitive = self._get_case_sensitive()
                 existing_columns_to_drop = []
                 for col in columns_to_drop:
-                    # Find actual column name case-insensitively
-                    actual_col = None
-                    for available_col in current_available_columns:
-                        if available_col.lower() == col.lower():
-                            actual_col = available_col
-                            break
+                    # Find actual column name using ColumnResolver
+                    actual_col = ColumnResolver.resolve_column_name(
+                        col, available_cols_list, case_sensitive
+                    )
                     if actual_col:
                         existing_columns_to_drop.append(actual_col)
 
@@ -1075,8 +1103,10 @@ class PolarsMaterializer:
                 # Update schema after drop
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
             elif op_name == "withColumnRenamed":
                 # WithColumnRenamed operation
@@ -1114,8 +1144,10 @@ class PolarsMaterializer:
                 # Update schema and available columns after rename
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
                 # Update available columns set
                 if old_name in current_available_columns:
