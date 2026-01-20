@@ -151,7 +151,6 @@ class TestCaseSensitivityConfiguration:
         # Create DataFrame with ambiguous column names (different case)
         # Note: This might not be possible to create directly, but if we can,
         # it should be detected during resolution
-        data = [{"Name": "Alice", "name": "Bob"}]  # This might not be valid
         # Actually, Python dicts can't have duplicate keys, so this is tricky
         # Let's test with schema instead
         from sparkless.spark_types import StructType, StructField, StringType

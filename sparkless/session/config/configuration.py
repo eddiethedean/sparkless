@@ -137,6 +137,8 @@ class Configuration:
             Defaults to False (case-insensitive) to match PySpark behavior.
         """
         value = self.get("spark.sql.caseSensitive", "false")
+        if value is None:
+            return False
         return value.lower() in ("true", "1", "yes")
 
     def __str__(self) -> str:

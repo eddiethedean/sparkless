@@ -61,7 +61,7 @@ class PolarsMaterializer:
             if active_sessions:
                 session = active_sessions[-1]
                 if hasattr(session, "conf"):
-                    return session.conf.is_case_sensitive()
+                    return bool(session.conf.is_case_sensitive())
         except Exception:
             pass
         return False  # Default to case-insensitive (matching PySpark)
@@ -390,9 +390,57 @@ class PolarsMaterializer:
                 # Check if columns are being dropped (columns before select vs after)
                 columns_before = set(df_collected.columns)
 
-                # Apply select - this should work even if filter was applied first
+                # Resolve column names in payload if they are strings
+                # This handles case-insensitive resolution after joins when columns weren't resolved earlier
+                resolved_payload = []
+                available_cols = list(df_collected.columns)
+                case_sensitive = self._get_case_sensitive()
+                for col in payload:
+                    if isinstance(col, str) and col != "*":
+                        from sparkless.core.column_resolver import ColumnResolver
+
+                        # Handle nested struct field access (e.g., "Person.name")
+                        if "." in col:
+                            # Split into struct column and field name
+                            parts = col.split(".", 1)
+                            struct_col = parts[0]
+                            # Resolve the struct column name case-insensitively
+                            resolved_struct_col = ColumnResolver.resolve_column_name(
+                                struct_col, available_cols, case_sensitive
+                            )
+                            if resolved_struct_col is None:
+                                from ...core.exceptions.operation import (
+                                    SparkColumnNotFoundError,
+                                )
+
+                                raise SparkColumnNotFoundError(
+                                    struct_col, available_cols
+                                )
+                            # Use the resolved struct column name + field path
+                            nested_resolved_col = f"{resolved_struct_col}.{parts[1]}"
+                            resolved_payload.append(nested_resolved_col)
+                        else:
+                            resolved_col: Optional[str] = (
+                                ColumnResolver.resolve_column_name(
+                                    col, available_cols, case_sensitive
+                                )
+                            )
+                            if resolved_col is None:
+                                from ...core.exceptions.operation import (
+                                    SparkColumnNotFoundError,
+                                )
+
+                                raise SparkColumnNotFoundError(col, available_cols)
+                            resolved_payload.append(resolved_col)
+                    else:
+                        resolved_payload.append(col)
+
+                # Apply select with resolved column names
+                # This should work even if filter was applied first
                 # because select expressions reference column names, not DataFrame objects
-                result_df = self.operation_executor.apply_select(df_collected, payload)
+                result_df = self.operation_executor.apply_select(
+                    df_collected, tuple(resolved_payload)
+                )
 
                 # If we started with df_materialized, keep the result materialized
                 # to preserve computed values (e.g., from to_timestamp operations)

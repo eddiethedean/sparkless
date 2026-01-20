@@ -38,7 +38,7 @@ class ValidationHandler:
             True if case-sensitive mode is enabled, False otherwise.
         """
         if self._dataframe and hasattr(self._dataframe, "_is_case_sensitive"):
-            return self._dataframe._is_case_sensitive()
+            return bool(self._dataframe._is_case_sensitive())
         return False  # Default to case-insensitive
 
     def validate_column_exists(

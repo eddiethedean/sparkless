@@ -166,7 +166,7 @@ class JoinService:
         # Build mappings using ColumnResolver
         self_cols_list = list(self_cols)
         other_cols_list = list(other_cols)
-        
+
         # Map self columns to other columns (case-insensitive or case-sensitive)
         self_to_other_map: Dict[str, Optional[str]] = {}
         for self_col in self_cols:
@@ -232,7 +232,32 @@ class JoinService:
                 )
 
         # Get all unique column names in order
-        all_cols: List[str] = list(self_cols.union(other_cols))
+        # Use case-insensitive normalization: for each case-insensitive match,
+        # use the column name from self DataFrame (matching PySpark behavior)
+        all_cols: List[str] = []
+        seen_lower: Set[str] = set()
+
+        # First add columns from self DataFrame
+        for col in sorted(self_cols):
+            col_lower = col.lower()
+            if col_lower not in seen_lower:
+                all_cols.append(col)
+                seen_lower.add(col_lower)
+
+        # Then add columns from other DataFrame that don't match any in self
+        for col in sorted(other_cols):
+            col_lower = col.lower()
+            if col_lower not in seen_lower:
+                # This column doesn't match any in self - use other's column name
+                all_cols.append(col)
+                seen_lower.add(col_lower)
+            else:
+                # Column matches one in self (case-insensitive) - use self's column name
+                # Find the matching column in self and use that name instead
+                for self_col in self_cols:
+                    if self_col.lower() == col_lower:
+                        # Already added, skip
+                        break
 
         # Create combined data with all columns
         combined_data: List[Dict[str, Any]] = []
@@ -258,7 +283,7 @@ class JoinService:
                 )
                 other_row_map[col] = actual_col_in_row
         else:
-            other_row_map = {col: None for col in all_cols}
+            other_row_map = dict.fromkeys(all_cols, None)
 
         for row in other.data:
             other_new_row: Dict[str, Any] = {}

@@ -169,7 +169,11 @@ class ColumnValidator:
                 )  # Always allow lazy mode for filters
                 # Recursively validate the column references in the expression
                 ColumnValidator.validate_expression_columns(
-                    schema, condition, operation, in_lazy_materialization=is_lazy, case_sensitive=case_sensitive
+                    schema,
+                    condition,
+                    operation,
+                    in_lazy_materialization=is_lazy,
+                    case_sensitive=case_sensitive,
                 )
             return
 
@@ -199,7 +203,11 @@ class ColumnValidator:
                 # For filter operations, allow lazy materialization mode
                 is_lazy = operation == "filter"
                 ColumnValidator.validate_expression_columns(
-                    schema, condition, operation, in_lazy_materialization=is_lazy, case_sensitive=case_sensitive
+                    schema,
+                    condition,
+                    operation,
+                    in_lazy_materialization=is_lazy,
+                    case_sensitive=case_sensitive,
                 )
                 return
             # Simple column reference
@@ -213,7 +221,9 @@ class ColumnValidator:
             and not hasattr(condition, "data_type")
         ):
             # Simple column reference without operation, value, or data_type (not a literal)
-            ColumnValidator.validate_column_exists(schema, condition.name, operation, case_sensitive)
+            ColumnValidator.validate_column_exists(
+                schema, condition.name, operation, case_sensitive
+            )
         # For complex expressions (with operations, literals, etc.), skip validation
         # as they will be handled by SQL generation
 
@@ -316,7 +326,9 @@ class ColumnValidator:
                         # If column exists in schema, skip recursive validation of its internal structure
                         # This prevents validation errors when the column was created from expressions
                         # that referenced dropped columns (issue #168)
-                        if ColumnValidator._column_exists_in_schema(schema, col_name, case_sensitive):
+                        if ColumnValidator._column_exists_in_schema(
+                            schema, col_name, case_sensitive
+                        ):
                             # Column exists in schema - skip recursive validation of internal structure
                             # The column is already validated as existing, so we don't need to check
                             # its internal ColumnOperation structure which might reference dropped columns
@@ -339,7 +351,9 @@ class ColumnValidator:
                     should_skip_recursive = False
                     if hasattr(expression.column, "name"):
                         col_name = expression.column.name
-                        if ColumnValidator._column_exists_in_schema(schema, col_name, case_sensitive):
+                        if ColumnValidator._column_exists_in_schema(
+                            schema, col_name, case_sensitive
+                        ):
                             should_skip_recursive = True
 
                     if not should_skip_recursive:
@@ -353,7 +367,9 @@ class ColumnValidator:
                 elif isinstance(expression.column, Column):
                     # If this Column exists in schema, skip recursive validation
                     col_name = expression.column.name
-                    if ColumnValidator._column_exists_in_schema(schema, col_name, case_sensitive):
+                    if ColumnValidator._column_exists_in_schema(
+                        schema, col_name, case_sensitive
+                    ):
                         # Column exists - already validated, skip recursive validation
                         pass
                     else:
@@ -368,12 +384,18 @@ class ColumnValidator:
                 should_skip_recursive = False
                 if hasattr(expression.value, "name"):
                     col_name = expression.value.name
-                    if ColumnValidator._column_exists_in_schema(schema, col_name, case_sensitive):
+                    if ColumnValidator._column_exists_in_schema(
+                        schema, col_name, case_sensitive
+                    ):
                         should_skip_recursive = True
 
                 if not should_skip_recursive:
                     ColumnValidator.validate_expression_columns(
-                        schema, expression.value, operation, in_lazy_materialization, case_sensitive
+                        schema,
+                        expression.value,
+                        operation,
+                        in_lazy_materialization,
+                        case_sensitive,
                     )
             elif hasattr(expression, "value") and is_literal(expression.value):
                 # Skip validation for literals
@@ -410,7 +432,11 @@ class ColumnValidator:
 
                         if not should_skip_recursive:
                             ColumnValidator.validate_expression_columns(
-                                schema, item, operation, in_lazy_materialization, case_sensitive
+                                schema,
+                                item,
+                                operation,
+                                in_lazy_materialization,
+                                case_sensitive,
                             )
                     elif (
                         isinstance(item, Column)
@@ -440,7 +466,10 @@ class ColumnValidator:
                     ):
                         # Skip validation for wildcard selector
                         ColumnValidator.validate_column_exists(
-                            schema, expression._original_column.name, operation, case_sensitive
+                            schema,
+                            expression._original_column.name,
+                            operation,
+                            case_sensitive,
                         )
                 elif isinstance(expression._original_column, ColumnOperation):  # type: ignore[unreachable]
                     ColumnValidator.validate_expression_columns(

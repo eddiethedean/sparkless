@@ -130,9 +130,7 @@ class TestColumnResolver:
 
     def test_resolve_column_name_empty_list(self):
         """Test resolution with empty column list."""
-        result = ColumnResolver.resolve_column_name(
-            "name", [], case_sensitive=False
-        )
+        result = ColumnResolver.resolve_column_name("name", [], case_sensitive=False)
         assert result is None
 
     def test_resolve_column_name_special_characters(self):

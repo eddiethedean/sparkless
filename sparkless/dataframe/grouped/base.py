@@ -774,7 +774,7 @@ class GroupedData:
                 from ..validation.column_validator import ColumnValidator
 
                 # Resolve column name using ColumnResolver
-                case_sensitive = self.df._is_case_sensitive()
+                case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
                 actual_col_name = ColumnValidator._find_column(
                     self.df.schema, col_name, case_sensitive
                 )
@@ -826,29 +826,34 @@ class GroupedData:
                         pass
                 result_key = alias_name if alias_name else f"avg({col_name})"
                 return result_key, (sum(values) / len(values)) if values else None
-            # Simple column: validate and average
-            if (
-                col_name
-                and not any(
-                    op in col_name
-                    for op in [
-                        "+",
-                        "-",
-                        "*",
-                        "/",
-                        "(",
-                        ")",
-                        "extract",
-                        "TRY_CAST",
-                        "AS",
-                    ]
-                )
-                and col_name not in [field.name for field in self.df.schema.fields]
+            # Simple column: validate and average (case-insensitive)
+            if col_name and not any(
+                op in col_name
+                for op in [
+                    "+",
+                    "-",
+                    "*",
+                    "/",
+                    "(",
+                    ")",
+                    "extract",
+                    "TRY_CAST",
+                    "AS",
+                ]
             ):
-                available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import SparkColumnNotFoundError
+                from ..validation.column_validator import ColumnValidator
 
-                raise SparkColumnNotFoundError(col_name, available_columns)
+                # Resolve column name using ColumnResolver
+                case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+                actual_col_name = ColumnValidator._find_column(
+                    self.df.schema, col_name, case_sensitive
+                )
+                if actual_col_name is None:
+                    available_columns = [field.name for field in self.df.schema.fields]
+                    from ...core.exceptions.operation import SparkColumnNotFoundError
+
+                    raise SparkColumnNotFoundError(col_name, available_columns)
+                col_name = actual_col_name
             values = []
             for row in group_rows:
                 val = row.get(col_name)
@@ -1891,12 +1896,21 @@ class GroupedData:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
-        for col_name in col_names:
-            if col_name not in [field.name for field in self.df.schema.fields]:
-                raise AnalysisException(f"Column '{col_name}' does not exist")
+        # Validate that all columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
 
-        return RollupGroupedData(self.df, col_names)
+        available_cols = [field.name for field in self.df.schema.fields]
+        case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+        resolved_col_names = []
+        for col_name in col_names:
+            resolved_col = ColumnResolver.resolve_column_name(
+                col_name, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                raise AnalysisException(f"Column '{col_name}' does not exist")
+            resolved_col_names.append(resolved_col)
+
+        return RollupGroupedData(self.df, resolved_col_names)
 
     def cube(self, *columns: Union[str, Column]) -> "CubeGroupedData":
         """Create cube grouped data for multi-dimensional grouping.
@@ -1916,12 +1930,21 @@ class GroupedData:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
-        for col_name in col_names:
-            if col_name not in [field.name for field in self.df.schema.fields]:
-                raise AnalysisException(f"Column '{col_name}' does not exist")
+        # Validate that all columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
 
-        return CubeGroupedData(self.df, col_names)
+        available_cols = [field.name for field in self.df.schema.fields]
+        case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+        resolved_col_names = []
+        for col_name in col_names:
+            resolved_col = ColumnResolver.resolve_column_name(
+                col_name, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                raise AnalysisException(f"Column '{col_name}' does not exist")
+            resolved_col_names.append(resolved_col)
+
+        return CubeGroupedData(self.df, resolved_col_names)
 
     def pivot(
         self, pivot_col: str, values: Optional[List[Any]] = None
@@ -1937,22 +1960,29 @@ class GroupedData:
         """
         from .pivot import PivotGroupedData
 
-        # Validate that pivot column exists
-        if pivot_col not in [field.name for field in self.df.schema.fields]:
+        # Validate that pivot column exists and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = [field.name for field in self.df.schema.fields]
+        case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+        resolved_pivot_col = ColumnResolver.resolve_column_name(
+            pivot_col, available_cols, case_sensitive
+        )
+        if resolved_pivot_col is None:
             raise AnalysisException(f"Column '{pivot_col}' does not exist")
 
         # If values not provided, get unique values from pivot column
         if values is None:
             values = list(
                 {
-                    row.get(pivot_col)
+                    row.get(resolved_pivot_col)
                     for row in self.df.data
-                    if row.get(pivot_col) is not None
+                    if row.get(resolved_pivot_col) is not None
                 }
             )
             values.sort()  # Sort for consistent ordering
 
-        return PivotGroupedData(self.df, self.group_columns, pivot_col, values)
+        return PivotGroupedData(self.df, self.group_columns, resolved_pivot_col, values)
 
     def applyInPandas(self, func: Any, schema: Any) -> "DataFrame":
         """Apply a Python native function to each group using pandas DataFrames.

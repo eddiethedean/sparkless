@@ -111,16 +111,26 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
+        # Validate that all columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = [field.name for field in self._df.schema.fields]
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_col_names = []
         for col_name in col_names:
-            if col_name not in [field.name for field in self._df.schema.fields]:
-                available_columns = [field.name for field in self._df.schema.fields]
-                raise SparkColumnNotFoundError(col_name, available_columns)
+            resolved_col = ColumnResolver.resolve_column_name(
+                col_name, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                raise SparkColumnNotFoundError(col_name, available_cols)
+            resolved_col_names.append(resolved_col)
 
         from ..grouped.rollup import RollupGroupedData
 
         # Cast to SupportsDataFrameOps to satisfy type checker
-        return RollupGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
+        return RollupGroupedData(
+            cast("SupportsDataFrameOps", self._df), resolved_col_names
+        )
 
     def cube(self, *columns: Union[str, Column]) -> Any:  # Returns CubeGroupedData
         """Create cube grouped data for multi-dimensional grouping.
@@ -149,16 +159,26 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
+        # Validate that all columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = [field.name for field in self._df.schema.fields]
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_col_names = []
         for col_name in col_names:
-            if col_name not in [field.name for field in self._df.schema.fields]:
-                available_columns = [field.name for field in self._df.schema.fields]
-                raise SparkColumnNotFoundError(col_name, available_columns)
+            resolved_col = ColumnResolver.resolve_column_name(
+                col_name, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                raise SparkColumnNotFoundError(col_name, available_cols)
+            resolved_col_names.append(resolved_col)
 
         from ..grouped.cube import CubeGroupedData
 
         # Cast to SupportsDataFrameOps to satisfy type checker
-        return CubeGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
+        return CubeGroupedData(
+            cast("SupportsDataFrameOps", self._df), resolved_col_names
+        )
 
     def agg(
         self, *exprs: Union[str, Column, ColumnOperation, Dict[str, str]]

@@ -141,8 +141,33 @@ class ExpressionEvaluator:
             # Check for nested struct field access (e.g., "my_struct.value_1")
             if "." in col_name:
                 return self._evaluate_nested_field_access(row, col_name)
-            # Simple column reference
-            return row.get(column.name)
+            # Simple column reference - resolve column name case-insensitively
+            # First try exact match
+            if col_name in row:
+                return row.get(col_name)
+            # If not found, try case-insensitive match using ColumnResolver
+            from ...core.column_resolver import ColumnResolver
+
+            available_columns = list(row.keys())
+            case_sensitive = False
+            # Try to get case sensitivity from dataframe context if available
+            if (
+                self._dataframe_context is not None
+                and hasattr(self._dataframe_context, "_spark")
+                and hasattr(self._dataframe_context._spark, "conf")
+            ):
+                spark = self._dataframe_context._spark
+                case_sensitive = (
+                    spark.conf.get("spark.sql.caseSensitive", "false") == "true"
+                )
+
+            resolved_name = ColumnResolver.resolve_column_name(
+                col_name, available_columns, case_sensitive
+            )
+            if resolved_name:
+                return row.get(resolved_name)
+            # Fallback to original name if resolution fails
+            return row.get(col_name)
 
     def _evaluate_nested_field_access(self, row: Dict[str, Any], col_path: str) -> Any:
         """Evaluate nested struct field access like 'my_struct.value_1'.
@@ -158,19 +183,63 @@ class ExpressionEvaluator:
         if not parts:
             return None
 
-        # Start with the row
-        current: Any = row
+        # Get case sensitivity setting
+        case_sensitive = False
+        if (
+            self._dataframe_context is not None
+            and hasattr(self._dataframe_context, "_spark")
+            and hasattr(self._dataframe_context._spark, "conf")
+        ):
+            spark = self._dataframe_context._spark
+            case_sensitive = (
+                spark.conf.get("spark.sql.caseSensitive", "false") == "true"
+            )
 
-        # Navigate through each part of the path
-        for part in parts:
+        # Start with the row - resolve first part (struct column name) case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_columns = list(row.keys())
+        resolved_first_part = ColumnResolver.resolve_column_name(
+            parts[0], available_columns, case_sensitive
+        )
+        if resolved_first_part is None:
+            # Fallback to exact match
+            resolved_first_part = parts[0]
+
+        current: Any = row.get(resolved_first_part)
+        if current is None:
+            return None
+
+        # Navigate through remaining parts of the path, resolving each part case-insensitively
+        for part in parts[1:]:
             if current is None:
                 return None
 
             if isinstance(current, dict):
-                current = current.get(part)
+                # Resolve field name case-insensitively within the struct
+                struct_keys = list(current.keys())
+                resolved_part = ColumnResolver.resolve_column_name(
+                    part, struct_keys, case_sensitive
+                )
+                if resolved_part:
+                    current = current.get(resolved_part)
+                else:
+                    # Fallback to exact match
+                    current = current.get(part)
             elif hasattr(current, "__getitem__"):
                 try:
-                    current = current[part]
+                    # Try case-insensitive lookup if it's a dict-like object
+                    if hasattr(current, "keys") and hasattr(current.keys, "__call__"):
+                        struct_keys = list(current.keys())
+                        resolved_part = ColumnResolver.resolve_column_name(
+                            part, struct_keys, case_sensitive
+                        )
+                        if resolved_part:
+                            current = current[resolved_part]
+                        else:
+                            current = current[part]
+                    else:
+                        current = current[part]
                 except (KeyError, TypeError, IndexError):
                     return None
             else:
@@ -731,7 +800,34 @@ class ExpressionEvaluator:
                         # This is a Literal
                         col_value = self._get_literal_value(col)
                     elif hasattr(col, "name"):
-                        col_value = row.get(col.name)
+                        # Resolve column name case-insensitively
+                        col_name = col.name
+                        # First try exact match
+                        if col_name in row:
+                            col_value = row.get(col_name)
+                        else:
+                            # Try case-insensitive match using ColumnResolver
+                            from ...core.column_resolver import ColumnResolver
+
+                            available_columns = list(row.keys())
+                            case_sensitive = False
+                            if (
+                                self._dataframe_context is not None
+                                and hasattr(self._dataframe_context, "_spark")
+                                and hasattr(self._dataframe_context._spark, "conf")
+                            ):
+                                spark = self._dataframe_context._spark
+                                case_sensitive = (
+                                    spark.conf.get("spark.sql.caseSensitive", "false")
+                                    == "true"
+                                )
+                            resolved_name = ColumnResolver.resolve_column_name(
+                                col_name, available_columns, case_sensitive
+                            )
+                            if resolved_name:
+                                col_value = row.get(resolved_name)
+                            else:
+                                col_value = row.get(col_name)  # Fallback
                     elif hasattr(col, "value"):
                         col_value = col.value  # For other values
                     else:

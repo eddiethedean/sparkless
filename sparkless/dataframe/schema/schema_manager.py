@@ -74,7 +74,9 @@ class SchemaManager:
                     fields_map = {f.name: f for f in fields_list}
                     fields_list = None
                     using_list = False
-                fields_map = SchemaManager._handle_select_operation(fields_map, op_val)
+                fields_map = SchemaManager._handle_select_operation(
+                    fields_map, op_val, case_sensitive
+                )
             elif op_name == "withColumn":
                 if using_list and fields_list is not None:
                     # Convert list back to dict for withColumn operation
@@ -83,7 +85,7 @@ class SchemaManager:
                     using_list = False
                 col_name, col = op_val
                 fields_map = SchemaManager._handle_withcolumn_operation(
-                    fields_map, col_name, col, base_schema
+                    fields_map, col_name, col, base_schema, case_sensitive
                 )
             elif op_name == "drop":
                 if using_list and fields_list is not None:
@@ -223,7 +225,9 @@ class SchemaManager:
 
     @staticmethod
     def _handle_select_operation(
-        fields_map: Dict[str, StructField], columns: Tuple[Any, ...]
+        fields_map: Dict[str, StructField],
+        columns: Tuple[Any, ...],
+        case_sensitive: bool = False,
     ) -> Dict[str, StructField]:
         """Handle select operation schema changes."""
         new_fields_map = {}
@@ -233,6 +237,51 @@ class SchemaManager:
                 if col == "*":
                     # Add all existing fields
                     new_fields_map.update(fields_map)
+                elif "." in col:
+                    # Handle nested struct field access (e.g., "Person.name")
+                    # Split into struct column and field name
+                    parts = col.split(".", 1)
+                    struct_col = parts[0]
+                    field_name = parts[1]
+                    # Check if struct column exists in fields_map
+                    if struct_col in fields_map:
+                        struct_field = fields_map[struct_col]
+                        struct_type = struct_field.dataType
+                        if isinstance(struct_type, StructType):
+                            # Find the nested field within the struct
+                            nested_field = None
+                            for f in struct_type.fields:
+                                if f.name == field_name:
+                                    nested_field = f
+                                    break
+                            if nested_field:
+                                # Create a new field with the nested field's type
+                                new_fields_map[col] = StructField(
+                                    col, nested_field.dataType, nested_field.nullable
+                                )
+                    # If nested field not found, infer type as String (fallback)
+                    # This handles cases where the field name doesn't match exactly
+                    elif struct_col in fields_map:
+                        struct_field = fields_map[struct_col]
+                        struct_type = struct_field.dataType
+                        if isinstance(struct_type, StructType):
+                            # Try case-insensitive match
+                            from ...core.column_resolver import ColumnResolver
+
+                            field_names = [f.name for f in struct_type.fields]
+                            resolved_field = ColumnResolver.resolve_column_name(
+                                field_name, field_names, False
+                            )
+                            if resolved_field:
+                                for f in struct_type.fields:
+                                    if f.name == resolved_field:
+                                        new_fields_map[col] = StructField(
+                                            col, f.dataType, f.nullable
+                                        )
+                                        break
+                    else:
+                        # Struct column doesn't exist - infer as String (fallback)
+                        new_fields_map[col] = StructField(col, StringType(), True)
                 elif col in fields_map:
                     new_fields_map[col] = fields_map[col]
             elif hasattr(col, "name"):
@@ -257,6 +306,7 @@ class SchemaManager:
         col_name: str,
         col: Union[Column, ColumnOperation, Literal, Any],
         base_schema: StructType,
+        case_sensitive: bool = False,
     ) -> Dict[str, StructField]:
         """Handle withColumn operation schema changes."""
         col_any = cast("Any", col)
@@ -380,7 +430,9 @@ class SchemaManager:
                         base_col_name, available_columns, case_sensitive
                     )
                     base_struct_field = (
-                        fields_map.get(actual_base_col_name) if actual_base_col_name else None
+                        fields_map.get(actual_base_col_name)
+                        if actual_base_col_name
+                        else None
                     )
 
                     if base_struct_field is None:

@@ -73,7 +73,7 @@ class PolarsExpressionTranslator:
             if active_sessions:
                 session = active_sessions[-1]
                 if hasattr(session, "conf"):
-                    return session.conf.is_case_sensitive()
+                    return bool(session.conf.is_case_sensitive())
         except Exception:
             pass
         return False  # Default to case-insensitive (matching PySpark)
@@ -182,6 +182,23 @@ class PolarsExpressionTranslator:
         else:
             col_name = col.name
 
+        # Handle nested struct field access (e.g., "Person.name")
+        if "." in col_name and available_columns:
+            # Split into struct column and field name
+            parts = col_name.split(".", 1)
+            struct_col = parts[0]
+
+            # Resolve struct column name case-insensitively
+            actual_struct_col = self._find_column(
+                available_columns, struct_col, case_sensitive
+            )
+            if actual_struct_col:
+                # For nested fields, we need to use struct.field() syntax
+                # But we don't have access to the DataFrame here to check the struct type
+                # So we'll return a column reference and let the caller handle it
+                # This will be handled in apply_select when the column is processed
+                return pl.col(col_name)
+
         # Use ColumnResolver matching if available columns are provided
         if available_columns:
             actual_col_name = self._find_column(
@@ -266,7 +283,9 @@ class PolarsExpressionTranslator:
             )
         elif isinstance(column, Column):
             left = self._translate_column(
-                column, available_columns=available_columns, case_sensitive=case_sensitive
+                column,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
             )
         elif isinstance(column, Literal):
             # Resolve lazy literals before translating
@@ -281,10 +300,8 @@ class PolarsExpressionTranslator:
         elif isinstance(column, str):
             # Use ColumnResolver matching if available columns are provided
             if available_columns:
-                actual_col_name = (
-                    PolarsExpressionTranslator._find_column(
-                        available_columns, column, case_sensitive
-                    )
+                actual_col_name = PolarsExpressionTranslator._find_column(
+                    available_columns, column, case_sensitive
                 )
                 left = pl.col(actual_col_name) if actual_col_name else pl.col(column)
             else:
@@ -293,7 +310,9 @@ class PolarsExpressionTranslator:
             left = pl.lit(column)
         else:
             left = self.translate(
-                column, available_columns=available_columns, case_sensitive=case_sensitive
+                column,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
             )
 
         # Special handling for cast operation - value should be a type name, not a column
@@ -370,11 +389,16 @@ class PolarsExpressionTranslator:
             # Translate lower bound
             if isinstance(lower, ColumnOperation):
                 lower_expr = self._translate_operation(
-                    lower, input_col_dtype=None, available_columns=available_columns
+                    lower,
+                    input_col_dtype=None,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
                 )
             elif isinstance(lower, Column):
                 lower_expr = self._translate_column(
-                    lower, available_columns=available_columns
+                    lower,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
                 )
             elif isinstance(lower, Literal):
                 if hasattr(lower, "_is_lazy") and lower._is_lazy:
@@ -392,11 +416,16 @@ class PolarsExpressionTranslator:
             # Translate upper bound
             if isinstance(upper, ColumnOperation):
                 upper_expr = self._translate_operation(
-                    upper, input_col_dtype=None, available_columns=available_columns
+                    upper,
+                    input_col_dtype=None,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
                 )
             elif isinstance(upper, Column):
                 upper_expr = self._translate_column(
-                    upper, available_columns=available_columns
+                    upper,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
                 )
             elif isinstance(upper, Literal):
                 if hasattr(upper, "_is_lazy") and upper._is_lazy:
@@ -579,7 +608,12 @@ class PolarsExpressionTranslator:
             "map_entries",
             "map_concat",
         ]:
-            return self._translate_function_call(op, input_col_dtype=input_col_dtype)
+            return self._translate_function_call(
+                op,
+                input_col_dtype=input_col_dtype,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
 
         # Handle unary operations
         if value is None:
@@ -656,7 +690,11 @@ class PolarsExpressionTranslator:
                 "map_entries",
                 "map_concat",
             ]:
-                return self._translate_function_call(op)
+                return self._translate_function_call(
+                    op,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
+                )
             else:
                 raise ValueError(f"Unsupported unary operation: {operation}")
 
@@ -664,10 +702,17 @@ class PolarsExpressionTranslator:
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(value, ColumnOperation):
             right = self._translate_operation(
-                value, input_col_dtype=None, available_columns=available_columns
+                value,
+                input_col_dtype=None,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
             )
         elif isinstance(value, Column):
-            right = self._translate_column(value, available_columns=available_columns)
+            right = self._translate_column(
+                value,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
         elif isinstance(value, Literal):
             # Resolve lazy literals before translating
             if hasattr(value, "_is_lazy") and value._is_lazy:
@@ -683,7 +728,9 @@ class PolarsExpressionTranslator:
             right = pl.lit(None)
         else:
             right = self.translate(
-                value, available_columns=available_columns, case_sensitive=case_sensitive
+                value,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
             )
 
         # Handle binary operations with type coercion for string-to-numeric comparisons
@@ -720,10 +767,20 @@ class PolarsExpressionTranslator:
             return self._translate_string_operation(left, op_str, value)
         elif operation == "contains":
             # Handle contains as a function call
-            return self._translate_function_call(op, input_col_dtype=input_col_dtype)
+            return self._translate_function_call(
+                op,
+                input_col_dtype=input_col_dtype,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
         elif hasattr(op, "function_name"):
             # Handle function calls (e.g., upper, lower, sum, etc.)
-            return self._translate_function_call(op, input_col_dtype=input_col_dtype)
+            return self._translate_function_call(
+                op,
+                input_col_dtype=input_col_dtype,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
         else:
             raise ValueError(f"Unsupported operation: {operation}")
 
@@ -1300,12 +1357,19 @@ class PolarsExpressionTranslator:
             self._translation_cache.clear()
 
     def _translate_function_call(
-        self, op: ColumnOperation, input_col_dtype: Any = None
+        self,
+        op: ColumnOperation,
+        input_col_dtype: Any = None,
+        available_columns: Optional[List[str]] = None,
+        case_sensitive: bool = False,
     ) -> pl.Expr:
         """Translate function call operations.
 
         Args:
             op: ColumnOperation with function call
+            input_col_dtype: Optional input column dtype
+            available_columns: Optional list of available column names for case-insensitive matching
+            case_sensitive: Whether to use case-sensitive matching
 
         Returns:
             Polars expression for function call
@@ -1406,13 +1470,35 @@ class PolarsExpressionTranslator:
         # Translate column expression
         # Check ColumnOperation BEFORE Column since ColumnOperation inherits from Column
         if isinstance(column, ColumnOperation):
-            col_expr = self._translate_operation(column, input_col_dtype=None)
+            col_expr = self._translate_operation(
+                column,
+                input_col_dtype=None,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
         elif isinstance(column, Column):
-            col_expr = pl.col(column.name)
+            col_expr = self._translate_column(
+                column,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
         elif isinstance(column, str):
-            col_expr = pl.col(column)
+            # Use ColumnResolver matching if available columns are provided
+            if available_columns:
+                actual_col_name = self._find_column(
+                    available_columns, column, case_sensitive
+                )
+                col_expr = (
+                    pl.col(actual_col_name) if actual_col_name else pl.col(column)
+                )
+            else:
+                col_expr = pl.col(column)
         else:
-            col_expr = self.translate(column)
+            col_expr = self.translate(
+                column,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+            )
 
         # Special-case eqNullSafe when it is treated as a function call.
         # Some call-sites may surface null-safe equality via op.function_name
@@ -3041,7 +3127,14 @@ class PolarsExpressionTranslator:
         if function_name == "coalesce":
             # coalesce(*cols) - op.value should be list of columns
             if op.value is not None and isinstance(op.value, (list, tuple)):
-                cols = [col_expr] + [self.translate(col) for col in op.value]
+                cols = [col_expr] + [
+                    self.translate(
+                        col,
+                        available_columns=available_columns,
+                        case_sensitive=case_sensitive,
+                    )
+                    for col in op.value
+                ]
                 return pl.coalesce(cols)
             else:
                 return col_expr

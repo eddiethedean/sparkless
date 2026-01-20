@@ -260,7 +260,7 @@ class DataFrame:
                 # Use the most recent active session
                 session = active_sessions[-1]
                 if hasattr(session, "conf"):
-                    return session.conf.is_case_sensitive()
+                    return bool(session.conf.is_case_sensitive())
         except Exception:
             # If we can't get session, default to case-insensitive
             pass

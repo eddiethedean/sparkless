@@ -52,7 +52,7 @@ class PolarsOperationExecutor:
             if active_sessions:
                 session = active_sessions[-1]
                 if hasattr(session, "conf"):
-                    return session.conf.is_case_sensitive()
+                    return bool(session.conf.is_case_sensitive())
         except Exception:
             pass
         return False  # Default to case-insensitive (matching PySpark)
@@ -335,6 +335,37 @@ class PolarsOperationExecutor:
                 if col == "*":
                     # Select all columns - return original DataFrame
                     return df
+                elif "." in col:
+                    # Handle nested struct field access (e.g., "Person.name")
+                    # Split into struct column and field name
+                    parts = col.split(".", 1)
+                    struct_col = parts[0]
+                    field_name = parts[1]
+                    if struct_col in df.columns:
+                        # Get struct dtype
+                        struct_dtype = df[struct_col].dtype
+                        if hasattr(struct_dtype, "fields") and struct_dtype.fields:
+                            # Resolve field name case-insensitively within struct
+                            from ...core.column_resolver import ColumnResolver
+
+                            case_sensitive = self._get_case_sensitive()
+                            field_names = [f.name for f in struct_dtype.fields]
+                            resolved_field = ColumnResolver.resolve_column_name(
+                                field_name, field_names, case_sensitive
+                            )
+                            if resolved_field:
+                                # Use Polars struct.field() syntax for nested access
+                                select_exprs.append(
+                                    pl.col(struct_col)
+                                    .struct.field(resolved_field)
+                                    .alias(col)
+                                )
+                                select_names.append(col)
+                                continue
+                    # If nested access failed, fall through to error handling
+                    raise ValueError(
+                        f"Cannot access nested field '{col}' - struct column '{struct_col}' or field '{field_name}' not found"
+                    )
                 else:
                     # Use column name as-is (case-insensitive matching handled earlier)
                     select_exprs.append(pl.col(col))
@@ -501,8 +532,49 @@ class PolarsOperationExecutor:
                 alias_name = getattr(col, "name", None) or getattr(
                     col, "_alias_name", None
                 )
+
+                # Handle nested struct field access for Column objects (e.g., F.col("Person.name"))
+                if hasattr(col, "name") and "." in col.name:
+                    # Split into struct column and field name
+                    parts = col.name.split(".", 1)
+                    struct_col = parts[0]
+                    field_name = parts[1]
+
+                    # Resolve struct column name case-insensitively
+                    from ...core.column_resolver import ColumnResolver
+
+                    case_sensitive = self._get_case_sensitive()
+                    resolved_struct_col = ColumnResolver.resolve_column_name(
+                        struct_col, list(df.columns), case_sensitive
+                    )
+                    if resolved_struct_col and resolved_struct_col in df.columns:
+                        # Get struct dtype
+                        struct_dtype = df[resolved_struct_col].dtype
+                        if hasattr(struct_dtype, "fields") and struct_dtype.fields:
+                            # Resolve field name case-insensitively within struct
+                            field_names = [f.name for f in struct_dtype.fields]
+                            resolved_field = ColumnResolver.resolve_column_name(
+                                field_name, field_names, case_sensitive
+                            )
+                            if resolved_field:
+                                # Use Polars struct.field() syntax for nested access
+                                expr = pl.col(resolved_struct_col).struct.field(
+                                    resolved_field
+                                )
+                                if alias_name:
+                                    expr = expr.alias(alias_name)
+                                select_exprs.append(expr)
+                                select_names.append(alias_name or col.name)
+                                continue
+
                 try:
-                    expr = self.translator.translate(col)
+                    # Pass available columns and case sensitivity for column resolution
+                    case_sensitive = self._get_case_sensitive()
+                    expr = self.translator.translate(
+                        col,
+                        available_columns=list(df.columns),
+                        case_sensitive=case_sensitive,
+                    )
                     if alias_name:
                         expr = expr.alias(alias_name)
                         select_exprs.append(expr)
@@ -1241,10 +1313,13 @@ class PolarsOperationExecutor:
                             input_col_dtype = pl.Utf8
 
             try:
+                # Pass case sensitivity for column resolution
+                case_sensitive = self._get_case_sensitive()
                 expr = self.translator.translate(
                     expression,
                     input_col_dtype=input_col_dtype,
                     available_columns=list(df.columns),
+                    case_sensitive=case_sensitive,
                 )
             except ValueError as e:
                 # Fallback to Python evaluation for unsupported operations (e.g., withField, + with strings, WindowFunction)
@@ -1397,7 +1472,16 @@ class PolarsOperationExecutor:
                         ExpressionEvaluator,
                     )
 
-                    evaluator = ExpressionEvaluator()
+                    # Get dataframe context from expression if available (for case sensitivity)
+                    dataframe_context = None
+                    if hasattr(expression, "_dataframe_context"):
+                        dataframe_context = expression._dataframe_context
+                    elif hasattr(expression, "column") and hasattr(
+                        expression.column, "_dataframe_context"
+                    ):
+                        dataframe_context = expression.column._dataframe_context
+
+                    evaluator = ExpressionEvaluator(dataframe_context=dataframe_context)
                     results = [
                         evaluator.evaluate_expression(row, expression) for row in data
                     ]
@@ -1525,9 +1609,61 @@ class PolarsOperationExecutor:
                 except Exception:
                     pass  # Fall through to with_columns
 
-            result = df.with_columns(expr.alias(column_name))
+            # Try to execute with Polars, but catch ColumnNotFoundError for Python evaluation fallback
+            try:
+                result = df.with_columns(expr.alias(column_name))
+                return result
+            except pl.exceptions.ColumnNotFoundError as e:
+                # Polars couldn't find a column - this might be a case sensitivity issue
+                # Fall back to Python evaluation
+                error_msg = str(e)
+                # Check if this looks like a case sensitivity issue
+                # (column name exists but with different case)
+                missing_col_match = None
+                for col in df.columns:
+                    # Check if the missing column name matches any existing column case-insensitively
+                    if col.lower() in error_msg.lower() or any(
+                        missing.lower() == col.lower()
+                        for missing in error_msg.split('"')
+                        if missing and missing.strip()
+                    ):
+                        missing_col_match = col
+                        break
 
-            return result
+                if missing_col_match:
+                    # Column exists but with different case - use Python evaluation
+                    data = df.to_dicts()
+                    from sparkless.dataframe.evaluation.expression_evaluator import (
+                        ExpressionEvaluator,
+                    )
+
+                    # Get dataframe context from expression if available (for case sensitivity)
+                    dataframe_context = None
+                    if hasattr(expression, "_dataframe_context"):
+                        dataframe_context = expression._dataframe_context
+                    elif hasattr(expression, "column") and hasattr(
+                        expression.column, "_dataframe_context"
+                    ):
+                        dataframe_context = expression.column._dataframe_context
+
+                    evaluator = ExpressionEvaluator(dataframe_context=dataframe_context)
+                    results = [
+                        evaluator.evaluate_expression(row, expression) for row in data
+                    ]
+                    try:
+                        result_series = pl.Series(column_name, results, strict=False)
+                    except TypeError:
+                        try:
+                            result_series = pl.Series(column_name, results)
+                        except TypeError:
+                            result_series = pl.Series(
+                                column_name, results, dtype=pl.Object
+                            )
+                    result = df.with_columns(result_series)
+                    return result
+                else:
+                    # Re-raise if it's not a case sensitivity issue
+                    raise
 
     def _coerce_join_key_types(
         self,
