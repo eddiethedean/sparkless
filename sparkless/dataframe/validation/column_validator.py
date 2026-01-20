@@ -10,6 +10,7 @@ from typing import Any, List, Optional
 from ...spark_types import StructType
 from ...functions import Column, ColumnOperation
 from ...core.exceptions.operation import SparkColumnNotFoundError
+from ...core.column_resolver import ColumnResolver
 
 
 def is_literal(expression: Any) -> bool:
@@ -50,37 +51,42 @@ class ColumnValidator:
     """
 
     @staticmethod
-    def _find_column_case_insensitive(
-        schema: StructType, column_name: str
+    def _find_column(
+        schema: StructType, column_name: str, case_sensitive: bool = False
     ) -> Optional[str]:
-        """Find column name in schema case-insensitively.
+        """Find column name in schema.
 
         Args:
             schema: Schema to search in.
-            column_name: Column name to find (case-insensitive).
+            column_name: Column name to find.
+            case_sensitive: Whether to use case-sensitive matching.
 
         Returns:
             Actual column name from schema if found, None otherwise.
 
         Note:
-            Fixed in version 3.23.0 (Issue #230): Case-insensitive column matching
-            is now supported across all DataFrame operations, matching PySpark behavior.
+            Uses ColumnResolver for centralized column resolution respecting
+            spark.sql.caseSensitive configuration.
         """
-        for field in schema.fields:
-            if field.name.lower() == column_name.lower():
-                return field.name
-        return None
+        available_columns = [field.name for field in schema.fields]
+        return ColumnResolver.resolve_column_name(
+            column_name, available_columns, case_sensitive
+        )
 
     @staticmethod
     def validate_column_exists(
-        schema: StructType, column_name: str, operation: str
+        schema: StructType,
+        column_name: str,
+        operation: str,
+        case_sensitive: bool = False,
     ) -> None:
-        """Validate that a single column exists in schema (case-insensitive).
+        """Validate that a single column exists in schema.
 
         Args:
             schema: The DataFrame schema to validate against.
             column_name: Name of the column to validate.
             operation: Name of the operation being performed (for error messages).
+            case_sensitive: Whether to use case-sensitive matching.
 
         Raises:
             SparkColumnNotFoundError: If column doesn't exist in schema.
@@ -89,31 +95,42 @@ class ColumnValidator:
         if column_name == "*":
             return
 
-        if ColumnValidator._find_column_case_insensitive(schema, column_name) is None:
+        if ColumnValidator._find_column(schema, column_name, case_sensitive) is None:
             column_names = [field.name for field in schema.fields]
             raise SparkColumnNotFoundError(column_name, column_names)
 
     @staticmethod
     def validate_columns_exist(
-        schema: StructType, column_names: List[str], operation: str
+        schema: StructType,
+        column_names: List[str],
+        operation: str,
+        case_sensitive: bool = False,
     ) -> None:
-        """Validate that multiple columns exist in schema (case-insensitive).
+        """Validate that multiple columns exist in schema.
 
         Args:
             schema: The DataFrame schema to validate against.
             column_names: List of column names to validate.
             operation: Name of the operation being performed (for error messages).
+            case_sensitive: Whether to use case-sensitive matching.
 
         Raises:
             SparkColumnNotFoundError: If any column doesn't exist in schema.
         """
         available_columns = [field.name for field in schema.fields]
-        missing_columns = []
-        for col in column_names:
-            if ColumnValidator._find_column_case_insensitive(schema, col) is None:
-                missing_columns.append(col)
-        if missing_columns:
-            raise SparkColumnNotFoundError(missing_columns[0], available_columns)
+        try:
+            ColumnResolver.resolve_columns(
+                column_names, available_columns, case_sensitive
+            )
+        except Exception as e:
+            # If resolution fails, raise SparkColumnNotFoundError
+            from ...core.exceptions.analysis import AnalysisException
+
+            if isinstance(e, AnalysisException):
+                # Re-raise AnalysisException as-is (for ambiguity)
+                raise
+            # Otherwise, convert to SparkColumnNotFoundError
+            raise SparkColumnNotFoundError(column_names[0], available_columns) from e
 
     @staticmethod
     def validate_filter_expression(
@@ -121,6 +138,7 @@ class ColumnValidator:
         condition: Any,
         operation: str,
         has_pending_joins: bool = False,
+        case_sensitive: bool = False,
     ) -> None:
         """Validate filter expressions before execution.
 
@@ -151,7 +169,11 @@ class ColumnValidator:
                 )  # Always allow lazy mode for filters
                 # Recursively validate the column references in the expression
                 ColumnValidator.validate_expression_columns(
-                    schema, condition, operation, in_lazy_materialization=is_lazy
+                    schema,
+                    condition,
+                    operation,
+                    in_lazy_materialization=is_lazy,
+                    case_sensitive=case_sensitive,
                 )
             return
 
@@ -181,12 +203,16 @@ class ColumnValidator:
                 # For filter operations, allow lazy materialization mode
                 is_lazy = operation == "filter"
                 ColumnValidator.validate_expression_columns(
-                    schema, condition, operation, in_lazy_materialization=is_lazy
+                    schema,
+                    condition,
+                    operation,
+                    in_lazy_materialization=is_lazy,
+                    case_sensitive=case_sensitive,
                 )
                 return
             # Simple column reference
             ColumnValidator.validate_column_exists(
-                schema, condition.column.name, operation
+                schema, condition.column.name, operation, case_sensitive
             )
         elif (
             hasattr(condition, "name")
@@ -195,24 +221,29 @@ class ColumnValidator:
             and not hasattr(condition, "data_type")
         ):
             # Simple column reference without operation, value, or data_type (not a literal)
-            ColumnValidator.validate_column_exists(schema, condition.name, operation)
+            ColumnValidator.validate_column_exists(
+                schema, condition.name, operation, case_sensitive
+            )
         # For complex expressions (with operations, literals, etc.), skip validation
         # as they will be handled by SQL generation
 
     @staticmethod
-    def _column_exists_in_schema(schema: StructType, column_name: str) -> bool:
-        """Check if column exists in schema (case-insensitive).
+    def _column_exists_in_schema(
+        schema: StructType, column_name: str, case_sensitive: bool = False
+    ) -> bool:
+        """Check if column exists in schema.
 
         Args:
             schema: The DataFrame schema to check against.
             column_name: Name of the column to check.
+            case_sensitive: Whether to use case-sensitive matching.
 
         Returns:
             True if column exists in schema, False otherwise.
         """
-        return (
-            ColumnValidator._find_column_case_insensitive(schema, column_name)
-            is not None
+        available_columns = [field.name for field in schema.fields]
+        return ColumnResolver.column_exists(
+            column_name, available_columns, case_sensitive
         )
 
     @staticmethod
@@ -221,6 +252,7 @@ class ColumnValidator:
         expression: Any,
         operation: str,
         in_lazy_materialization: bool = False,
+        case_sensitive: bool = False,
     ) -> None:
         """Recursively validate column references in complex expressions.
 
@@ -289,12 +321,14 @@ class ColumnValidator:
                         # Always validate column exists in schema, even for filters
                         # This ensures consistent error messages and catches errors early
                         ColumnValidator.validate_column_exists(
-                            schema, col_name, operation
+                            schema, col_name, operation, case_sensitive
                         )
                         # If column exists in schema, skip recursive validation of its internal structure
                         # This prevents validation errors when the column was created from expressions
                         # that referenced dropped columns (issue #168)
-                        if ColumnValidator._column_exists_in_schema(schema, col_name):
+                        if ColumnValidator._column_exists_in_schema(
+                            schema, col_name, case_sensitive
+                        ):
                             # Column exists in schema - skip recursive validation of internal structure
                             # The column is already validated as existing, so we don't need to check
                             # its internal ColumnOperation structure which might reference dropped columns
@@ -317,7 +351,9 @@ class ColumnValidator:
                     should_skip_recursive = False
                     if hasattr(expression.column, "name"):
                         col_name = expression.column.name
-                        if ColumnValidator._column_exists_in_schema(schema, col_name):
+                        if ColumnValidator._column_exists_in_schema(
+                            schema, col_name, case_sensitive
+                        ):
                             should_skip_recursive = True
 
                     if not should_skip_recursive:
@@ -326,11 +362,14 @@ class ColumnValidator:
                             expression.column,
                             operation,
                             in_lazy_materialization,
+                            case_sensitive,
                         )
                 elif isinstance(expression.column, Column):
                     # If this Column exists in schema, skip recursive validation
                     col_name = expression.column.name
-                    if ColumnValidator._column_exists_in_schema(schema, col_name):
+                    if ColumnValidator._column_exists_in_schema(
+                        schema, col_name, case_sensitive
+                    ):
                         # Column exists - already validated, skip recursive validation
                         pass
                     else:
@@ -345,12 +384,18 @@ class ColumnValidator:
                 should_skip_recursive = False
                 if hasattr(expression.value, "name"):
                     col_name = expression.value.name
-                    if ColumnValidator._column_exists_in_schema(schema, col_name):
+                    if ColumnValidator._column_exists_in_schema(
+                        schema, col_name, case_sensitive
+                    ):
                         should_skip_recursive = True
 
                 if not should_skip_recursive:
                     ColumnValidator.validate_expression_columns(
-                        schema, expression.value, operation, in_lazy_materialization
+                        schema,
+                        expression.value,
+                        operation,
+                        in_lazy_materialization,
+                        case_sensitive,
                     )
             elif hasattr(expression, "value") and is_literal(expression.value):
                 # Skip validation for literals
@@ -364,7 +409,7 @@ class ColumnValidator:
                 # Direct column reference in value
                 # Skip validation for wildcard selector
                 ColumnValidator.validate_column_exists(
-                    schema, expression.value.name, operation
+                    schema, expression.value.name, operation, case_sensitive
                 )
             # Handle list/tuple of values (e.g., create_map with multiple args, array with literals)
             elif hasattr(expression, "value") and isinstance(
@@ -381,13 +426,17 @@ class ColumnValidator:
                         if hasattr(item, "name"):
                             col_name = item.name
                             if ColumnValidator._column_exists_in_schema(
-                                schema, col_name
+                                schema, col_name, case_sensitive
                             ):
                                 should_skip_recursive = True
 
                         if not should_skip_recursive:
                             ColumnValidator.validate_expression_columns(
-                                schema, item, operation, in_lazy_materialization
+                                schema,
+                                item,
+                                operation,
+                                in_lazy_materialization,
+                                case_sensitive,
                             )
                     elif (
                         isinstance(item, Column)
@@ -395,7 +444,7 @@ class ColumnValidator:
                         and item.name != "*"
                     ):
                         ColumnValidator.validate_column_exists(
-                            schema, item.name, operation
+                            schema, item.name, operation, case_sensitive
                         )
                     # Skip other non-column types
         elif isinstance(expression, Column):
@@ -417,7 +466,10 @@ class ColumnValidator:
                     ):
                         # Skip validation for wildcard selector
                         ColumnValidator.validate_column_exists(
-                            schema, expression._original_column.name, operation
+                            schema,
+                            expression._original_column.name,
+                            operation,
+                            case_sensitive,
                         )
                 elif isinstance(expression._original_column, ColumnOperation):  # type: ignore[unreachable]
                     ColumnValidator.validate_expression_columns(
@@ -425,6 +477,7 @@ class ColumnValidator:
                         expression._original_column,
                         operation,
                         in_lazy_materialization,
+                        case_sensitive,
                     )
             elif hasattr(expression, "column") and isinstance(
                 expression.column, Column
@@ -433,12 +486,12 @@ class ColumnValidator:
                 if not in_lazy_materialization and expression.column.name != "*":
                     # Skip validation for wildcard selector
                     ColumnValidator.validate_column_exists(
-                        schema, expression.column.name, operation
+                        schema, expression.column.name, operation, case_sensitive
                     )
             else:
                 # Simple column reference - validate directly
                 if not in_lazy_materialization and expression.name != "*":
                     # Skip validation for wildcard selector
                     ColumnValidator.validate_column_exists(
-                        schema, expression.name, operation
+                        schema, expression.name, operation, case_sensitive
                     )

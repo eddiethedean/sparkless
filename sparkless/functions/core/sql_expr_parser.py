@@ -223,7 +223,35 @@ class SQLExprParser:
                 and_result = ColumnOperation(and_result, "&", part)
             return and_result
 
-        # Parse comparison operators: =, >, <, >=, <=, !=, <>
+        # Parse arithmetic operators: *, /, %, +, - (before comparison operators)
+        # These have higher precedence than comparison operators
+        # Handle + and - carefully to avoid matching in numeric literals
+        arithmetic_ops = [
+            ("*", "*"),
+            ("/", "/"),
+            ("%", "%"),
+            ("+", "+"),
+            (
+                "-",
+                "-",
+            ),  # Minus needs special handling to avoid matching in negative numbers
+        ]
+
+        for op_symbol, op in arithmetic_ops:
+            # Split by operator, but handle string literals and negative numbers
+            parts = SQLExprParser._split_by_operator(expr, op_symbol)
+            if len(parts) == 2:
+                # Check if this is a unary minus (e.g., "-5") rather than subtraction
+                # This is a simple check - if the first part is empty, it's unary minus
+                if op_symbol == "-" and not parts[0].strip():
+                    # This is a unary minus, not subtraction - skip and let it be parsed as negative number
+                    continue
+                left = SQLExprParser._parse_expression(parts[0].strip())
+                right = SQLExprParser._parse_expression(parts[1].strip())
+                return ColumnOperation(left, op, right)
+
+        # Parse comparison operators: =, >, <, >=, <=, !=, <> (after arithmetic operators)
+        # These have lower precedence than arithmetic operators
         comparison_ops = [
             (r">=", ">="),
             (r"<=", "<="),

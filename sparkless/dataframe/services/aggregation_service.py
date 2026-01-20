@@ -51,15 +51,18 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist (case-insensitive) and resolve to actual case-sensitive names
+        # Validate that all columns exist and resolve to actual case-sensitive names
         from ..validation.column_validator import ColumnValidator
 
+        case_sensitive = self._df._is_case_sensitive()
         resolved_col_names = []
         for col_name in col_names:
-            ColumnValidator.validate_column_exists(self._df.schema, col_name, "groupBy")
+            ColumnValidator.validate_column_exists(
+                self._df.schema, col_name, "groupBy", case_sensitive
+            )
             # Resolve column name to actual case-sensitive name
-            actual_col_name = ColumnValidator._find_column_case_insensitive(
-                self._df.schema, col_name
+            actual_col_name = ColumnValidator._find_column(
+                self._df.schema, col_name, case_sensitive
             )
             resolved_col_names.append(actual_col_name if actual_col_name else col_name)
         col_names = resolved_col_names
@@ -108,16 +111,26 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
+        # Validate that all columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = [field.name for field in self._df.schema.fields]
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_col_names = []
         for col_name in col_names:
-            if col_name not in [field.name for field in self._df.schema.fields]:
-                available_columns = [field.name for field in self._df.schema.fields]
-                raise SparkColumnNotFoundError(col_name, available_columns)
+            resolved_col = ColumnResolver.resolve_column_name(
+                col_name, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                raise SparkColumnNotFoundError(col_name, available_cols)
+            resolved_col_names.append(resolved_col)
 
         from ..grouped.rollup import RollupGroupedData
 
         # Cast to SupportsDataFrameOps to satisfy type checker
-        return RollupGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
+        return RollupGroupedData(
+            cast("SupportsDataFrameOps", self._df), resolved_col_names
+        )
 
     def cube(self, *columns: Union[str, Column]) -> Any:  # Returns CubeGroupedData
         """Create cube grouped data for multi-dimensional grouping.
@@ -146,16 +159,26 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist
+        # Validate that all columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = [field.name for field in self._df.schema.fields]
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_col_names = []
         for col_name in col_names:
-            if col_name not in [field.name for field in self._df.schema.fields]:
-                available_columns = [field.name for field in self._df.schema.fields]
-                raise SparkColumnNotFoundError(col_name, available_columns)
+            resolved_col = ColumnResolver.resolve_column_name(
+                col_name, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                raise SparkColumnNotFoundError(col_name, available_cols)
+            resolved_col_names.append(resolved_col)
 
         from ..grouped.cube import CubeGroupedData
 
         # Cast to SupportsDataFrameOps to satisfy type checker
-        return CubeGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
+        return CubeGroupedData(
+            cast("SupportsDataFrameOps", self._df), resolved_col_names
+        )
 
     def agg(
         self, *exprs: Union[str, Column, ColumnOperation, Dict[str, str]]

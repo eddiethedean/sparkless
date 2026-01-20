@@ -460,6 +460,15 @@ class SQLExecutor:
                 # Look for next subquery
                 subquery = extract_subquery(where_condition)
 
+            # Get case sensitivity setting
+            case_sensitive = False
+            if hasattr(self.session, "conf"):
+                case_sensitive = (
+                    self.session.conf.get("spark.sql.caseSensitive", "false") == "true"
+                )
+
+            from ...core.column_resolver import ColumnResolver
+
             # Try to parse different WHERE condition types
             # Check for LIKE clause: column LIKE 'pattern'
             like_match = re.search(
@@ -468,8 +477,13 @@ class SQLExecutor:
             if like_match:
                 col_name = like_match.group(1)
                 pattern = like_match.group(2)
-                if col_name in df.columns:
-                    df = cast("DataFrame", df_ops.filter(F.col(col_name).like(pattern)))
+                resolved_col = ColumnResolver.resolve_column_name(
+                    col_name, df.columns, case_sensitive
+                )
+                if resolved_col:
+                    df = cast(
+                        "DataFrame", df_ops.filter(F.col(resolved_col).like(pattern))
+                    )
                     df_ops = cast("SupportsDataFrameOps", df)
             # Check for string equality: column = 'value'
             elif re.search(r"(\w+)\s*=\s*['\"]", where_condition, re.IGNORECASE):
@@ -479,8 +493,13 @@ class SQLExecutor:
                 if eq_match:
                     col_name = eq_match.group(1)
                     value = eq_match.group(2)
-                    if col_name in df.columns:
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name) == value))
+                    resolved_col = ColumnResolver.resolve_column_name(
+                        col_name, df.columns, case_sensitive
+                    )
+                    if resolved_col:
+                        df = cast(
+                            "DataFrame", df_ops.filter(F.col(resolved_col) == value)
+                        )
                         df_ops = cast("SupportsDataFrameOps", df)
             # Check for IN clause: column IN (value1, value2, ...)
             elif re.search(r"(\w+)\s+IN\s*\(", where_condition, re.IGNORECASE):
@@ -505,9 +524,12 @@ class SQLExecutor:
                             val = val.strip("'\"")
                             values.append(val)
 
-                    if col_name in df.columns:
+                    resolved_col = ColumnResolver.resolve_column_name(
+                        col_name, df.columns, case_sensitive
+                    )
+                    if resolved_col:
                         df = cast(
-                            "DataFrame", df_ops.filter(F.col(col_name).isin(values))
+                            "DataFrame", df_ops.filter(F.col(resolved_col).isin(values))
                         )
                         df_ops = cast("SupportsDataFrameOps", df)
             # Check for comparison operators: column > value, column < value, etc.
@@ -525,27 +547,30 @@ class SQLExecutor:
                     except ValueError:
                         value = match.group(3)
 
-                    # Check if column exists in DataFrame
-                    if col_name in df.columns:
+                    # Resolve column name case-insensitively
+                    resolved_col = ColumnResolver.resolve_column_name(
+                        col_name, df.columns, case_sensitive
+                    )
+                    if resolved_col:
                         if operator == ">":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) > value)
+                                "DataFrame", df_ops.filter(F.col(resolved_col) > value)
                             )
                         elif operator == "<":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) < value)
+                                "DataFrame", df_ops.filter(F.col(resolved_col) < value)
                             )
                         elif operator in ("=", "=="):
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) == value)
+                                "DataFrame", df_ops.filter(F.col(resolved_col) == value)
                             )
                         elif operator == ">=":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                                "DataFrame", df_ops.filter(F.col(resolved_col) >= value)
                             )
                         elif operator == "<=":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                                "DataFrame", df_ops.filter(F.col(resolved_col) <= value)
                             )
                         df_ops = cast("SupportsDataFrameOps", df)
 

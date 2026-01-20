@@ -203,12 +203,28 @@ addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
-    "--disable-warnings",
     "--ignore=tests/archive",
     "--cov=sparkless",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
+    # Filter out warnings we can't control
+    # Pytest async fixture warnings (from green-light plugin compatibility)
+    "-W", "ignore::pytest.PytestRemovedIn9Warning",
+    "-W", "ignore::_pytest.warning_types.PytestRemovedIn9Warning",
+    "-W", "ignore:_pytest/fixtures.py::*",
+    # Third-party library deprecation warnings
+    "-W", "ignore::DeprecationWarning:polars.*",
+    "-W", "ignore::DeprecationWarning:pandas.*",
+    "-W", "ignore::FutureWarning:polars.*",
+    "-W", "ignore::FutureWarning:pandas.*",
+    "-W", "ignore::PendingDeprecationWarning:polars.*",
+    "-W", "ignore::PendingDeprecationWarning:pandas.*",
+    # Pytest internal deprecation warnings
+    "-W", "ignore::DeprecationWarning:_pytest.*",
+    # Our own intentional deprecation warnings (documented API compatibility)
+    "-W", "ignore::FutureWarning:sparkless.dataframe.services.join_service",
+    "-W", "ignore::FutureWarning:sparkless.functions.aggregate",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

@@ -52,6 +52,7 @@ class Configuration:
             "spark.sql.adaptive.localShuffleReader.enabled": "true",
             "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
             "spark.sql.execution.arrow.pyspark.enabled": "true",
+            "spark.sql.caseSensitive": "false",  # Default to case-insensitive (matching PySpark)
         }
 
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
@@ -127,6 +128,18 @@ class Configuration:
             True if key exists, False otherwise.
         """
         return key in self._config
+
+    def is_case_sensitive(self) -> bool:
+        """Check if case-sensitive identifier resolution is enabled.
+
+        Returns:
+            True if case-sensitive mode is enabled, False otherwise.
+            Defaults to False (case-insensitive) to match PySpark behavior.
+        """
+        value = self.get("spark.sql.caseSensitive", "false")
+        if value is None:
+            return False
+        return value.lower() in ("true", "1", "yes")
 
     def __str__(self) -> str:
         """String representation."""

@@ -148,6 +148,16 @@
 ## 3.25.0 — 2025-01-20
 
 ### Added
+- **Case-Insensitive Column Names Refactor** - Complete refactoring of column name resolution to use centralized `ColumnResolver` system
+  - Added `spark.sql.caseSensitive` configuration (default: `false`, case-insensitive, matching PySpark)
+  - Added `Configuration.is_case_sensitive()` method for checking case sensitivity setting
+  - Created `sparkless.core.column_resolver.ColumnResolver` for centralized column name resolution
+  - All column resolution now goes through `ColumnResolver.resolve_column_name()` respecting session configuration
+  - Ambiguity detection: raises `AnalysisException` when multiple columns differ only by case (in case-insensitive mode)
+  - Updated all DataFrame operations (select, filter, groupBy, join, etc.) to use centralized resolver
+  - Updated Polars backend (operation executor, expression translator, materializer) to use resolver
+  - Updated SchemaManager, JoinService, AggregationService, and all validation logic
+  - Comprehensive test coverage: 34 unit tests for case variations, 17 integration tests for case sensitivity configuration
 - **Issue #247** - Added `elementType` keyword argument support to `ArrayType` for PySpark compatibility
   - `ArrayType(elementType=StringType())` now works (PySpark convention)
   - Maintains backward compatibility with positional `element_type` parameter
@@ -159,6 +169,13 @@
   - Documented `eqNullSafe` behavior and usage in `api_reference.md`, `getting_started.md`, and `function_api_audit.md`
 
 ### Fixed
+- **Case-Sensitive Mode Enforcement** - Fixed case-sensitive mode (`spark.sql.caseSensitive = true`) to properly enforce exact case matching
+  - Fixed attribute access (`df.columnName`) to correctly fail when wrong case is used in case-sensitive mode
+  - Fixed `DataFrameAttributeHandler` to use DataFrame's `_is_case_sensitive()` method for proper configuration retrieval
+  - Case-sensitive mode now correctly rejects column references with wrong casing across all operations
+  - Added comprehensive tests for case-sensitive mode: `withColumn`, `filter`, `select`, `groupBy`, `join`, attribute access, SQL queries
+  - All tests pass in both Sparkless and PySpark modes, confirming full PySpark compatibility
+  - **Issue #264** - Fixed case-insensitive column resolution in `withColumn` with `F.col()`, specifically when column names differ by case
 - **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
   - Ensures all columns are present after joins before filling null values
   - Prevents missing columns from being incorrectly filled as None
@@ -183,9 +200,12 @@
   - Applied `ruff format`/`ruff check` and mypy cleanups for new `eqNullSafe` tests and supporting code
 
 ### Testing
+- Added 34 unit tests for case-insensitive column resolution covering all DataFrame operations
+- Added 17 integration tests for case sensitivity configuration (case-insensitive and case-sensitive modes)
 - Added 32 new tests for ArrayType elementType support
   - Basic keyword argument tests (10 tests)
   - Robust tests covering all primitive types, nested arrays, complex types, and DataFrame operations (22 tests)
+- All tests pass in both Sparkless and PySpark modes for full compatibility validation
 - All 1106 tests passing (up from 1105), 12 skipped, 0 xfailed (down from 1)
 
 ### Technical Details

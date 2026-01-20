@@ -107,11 +107,41 @@ class DataFrameAttributeHandler:
         # Avoid infinite recursion - access object.__getattribute__ directly
         try:
             columns = object.__getattribute__(obj, "columns")
-            if name in columns:
-                # Use F.col to create Column
+
+            # Get case sensitivity setting from DataFrame
+            # Use DataFrame's _is_case_sensitive() method if available
+            case_sensitive = False
+            try:
+                if hasattr(obj, "_is_case_sensitive"):
+                    case_sensitive = obj._is_case_sensitive()
+                else:
+                    # Fallback: try to get from SparkSession
+                    spark = object.__getattribute__(obj, "_spark")
+                    if hasattr(spark, "conf"):
+                        case_sensitive = (
+                            spark.conf.get("spark.sql.caseSensitive", "false") == "true"
+                        )
+            except (AttributeError, KeyError, TypeError):
+                pass
+
+            # Resolve column name with respect to case sensitivity setting
+            from ..core.column_resolver import ColumnResolver
+
+            resolved_name = ColumnResolver.resolve_column_name(
+                name, columns, case_sensitive
+            )
+
+            if resolved_name:
+                # Use F.col to create Column with resolved name
                 from ..functions import F
 
-                return F.col(name)
+                return F.col(resolved_name)
+
+            # In case-sensitive mode, if no exact match, raise error immediately
+            if case_sensitive:
+                from ..core.exceptions.operation import SparkColumnNotFoundError
+
+                raise SparkColumnNotFoundError(name, columns)
         except AttributeError:
             pass
 

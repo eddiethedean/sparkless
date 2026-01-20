@@ -47,6 +47,25 @@ class PolarsMaterializer:
         self.translator = PolarsExpressionTranslator()
         self.operation_executor = PolarsOperationExecutor(self.translator)
 
+    def _get_case_sensitive(self) -> bool:
+        """Get case sensitivity setting from active session.
+
+        Returns:
+            True if case-sensitive mode is enabled, False otherwise.
+            Defaults to False (case-insensitive) to match PySpark behavior.
+        """
+        try:
+            from sparkless.session.core.session import SparkSession
+
+            active_sessions = getattr(SparkSession, "_active_sessions", [])
+            if active_sessions:
+                session = active_sessions[-1]
+                if hasattr(session, "conf"):
+                    return bool(session.conf.is_case_sensitive())
+        except Exception:
+            pass
+        return False  # Default to case-insensitive (matching PySpark)
+
     def materialize(
         self,
         data: List[Dict[str, Any]],
@@ -371,9 +390,57 @@ class PolarsMaterializer:
                 # Check if columns are being dropped (columns before select vs after)
                 columns_before = set(df_collected.columns)
 
-                # Apply select - this should work even if filter was applied first
+                # Resolve column names in payload if they are strings
+                # This handles case-insensitive resolution after joins when columns weren't resolved earlier
+                resolved_payload = []
+                available_cols = list(df_collected.columns)
+                case_sensitive = self._get_case_sensitive()
+                for col in payload:
+                    if isinstance(col, str) and col != "*":
+                        from sparkless.core.column_resolver import ColumnResolver
+
+                        # Handle nested struct field access (e.g., "Person.name")
+                        if "." in col:
+                            # Split into struct column and field name
+                            parts = col.split(".", 1)
+                            struct_col = parts[0]
+                            # Resolve the struct column name case-insensitively
+                            resolved_struct_col = ColumnResolver.resolve_column_name(
+                                struct_col, available_cols, case_sensitive
+                            )
+                            if resolved_struct_col is None:
+                                from ...core.exceptions.operation import (
+                                    SparkColumnNotFoundError,
+                                )
+
+                                raise SparkColumnNotFoundError(
+                                    struct_col, available_cols
+                                )
+                            # Use the resolved struct column name + field path
+                            nested_resolved_col = f"{resolved_struct_col}.{parts[1]}"
+                            resolved_payload.append(nested_resolved_col)
+                        else:
+                            resolved_col: Optional[str] = (
+                                ColumnResolver.resolve_column_name(
+                                    col, available_cols, case_sensitive
+                                )
+                            )
+                            if resolved_col is None:
+                                from ...core.exceptions.operation import (
+                                    SparkColumnNotFoundError,
+                                )
+
+                                raise SparkColumnNotFoundError(col, available_cols)
+                            resolved_payload.append(resolved_col)
+                    else:
+                        resolved_payload.append(col)
+
+                # Apply select with resolved column names
+                # This should work even if filter was applied first
                 # because select expressions reference column names, not DataFrame objects
-                result_df = self.operation_executor.apply_select(df_collected, payload)
+                result_df = self.operation_executor.apply_select(
+                    df_collected, tuple(resolved_payload)
+                )
 
                 # If we started with df_materialized, keep the result materialized
                 # to preserve computed values (e.g., from to_timestamp operations)
@@ -399,8 +466,10 @@ class PolarsMaterializer:
                 # Update schema after select
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
             elif op_name == "withColumn":
                 # WithColumn operation - need to collect first for window functions
@@ -498,8 +567,10 @@ class PolarsMaterializer:
                 # Update schema and available columns after withColumn
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
                 current_available_columns.add(column_name)
             elif op_name == "join":
@@ -830,14 +901,16 @@ class PolarsMaterializer:
                         is_desc = not ascending
                         nulls_last = True  # PySpark default: nulls last
 
-                    # Resolve column name case-insensitively if available columns are provided
+                    # Resolve column name using ColumnResolver if available columns are provided
                     if col_name is not None:
                         if available_columns:
-                            actual_col_name = None
-                            for available_col in available_columns:
-                                if available_col.lower() == col_name.lower():
-                                    actual_col_name = available_col
-                                    break
+                            from sparkless.core.column_resolver import ColumnResolver
+
+                            # Get case sensitivity from session
+                            case_sensitive = self._get_case_sensitive()
+                            actual_col_name = ColumnResolver.resolve_column_name(
+                                col_name, available_columns, case_sensitive
+                            )
                             if actual_col_name:
                                 col_name = actual_col_name
 
@@ -897,15 +970,18 @@ class PolarsMaterializer:
                 )
 
                 # Filter out non-existent columns (PySpark allows dropping non-existent columns silently)
-                # Resolve column names case-insensitively
+                # Resolve column names using ColumnResolver
+                from sparkless.core.column_resolver import ColumnResolver
+
+                available_cols_list = list(current_available_columns)
+                # Get case sensitivity from session
+                case_sensitive = self._get_case_sensitive()
                 existing_columns_to_drop = []
                 for col in columns_to_drop:
-                    # Find actual column name case-insensitively
-                    actual_col = None
-                    for available_col in current_available_columns:
-                        if available_col.lower() == col.lower():
-                            actual_col = available_col
-                            break
+                    # Find actual column name using ColumnResolver
+                    actual_col = ColumnResolver.resolve_column_name(
+                        col, available_cols_list, case_sensitive
+                    )
                     if actual_col:
                         existing_columns_to_drop.append(actual_col)
 
@@ -1075,8 +1151,10 @@ class PolarsMaterializer:
                 # Update schema after drop
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
             elif op_name == "withColumnRenamed":
                 # WithColumnRenamed operation
@@ -1114,8 +1192,10 @@ class PolarsMaterializer:
                 # Update schema and available columns after rename
                 from ...dataframe.schema.schema_manager import SchemaManager
 
+                # Get case sensitivity from session for schema projection
+                case_sensitive = self._get_case_sensitive()
                 current_schema = SchemaManager.project_schema_with_operations(
-                    current_schema, [(op_name, payload)]
+                    current_schema, [(op_name, payload)], case_sensitive
                 )
                 # Update available columns set
                 if old_name in current_available_columns:

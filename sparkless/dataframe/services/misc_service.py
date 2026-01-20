@@ -80,11 +80,29 @@ class MiscService:
         subset: Optional[List[str]] = None,
     ) -> SupportsDataFrameOps:
         """Drop rows with null values."""
+        # Resolve subset column names case-insensitively if provided
+        resolved_subset = None
+        if subset:
+            from ...core.column_resolver import ColumnResolver
+
+            available_cols = self._df.columns
+            case_sensitive = self._df._is_case_sensitive()
+            resolved_subset = []
+            for col in subset:
+                resolved_col = ColumnResolver.resolve_column_name(
+                    col, available_cols, case_sensitive
+                )
+                if resolved_col is None:
+                    from ...core.exceptions.analysis import ColumnNotFoundException
+
+                    raise ColumnNotFoundException(col)
+                resolved_subset.append(resolved_col)
+
         filtered_data = []
         for row in self._df.data:
-            if subset:
+            if resolved_subset:
                 # Check only specified columns
-                null_count = sum(1 for col in subset if row.get(col) is None)
+                null_count = sum(1 for col in resolved_subset if row.get(col) is None)
             else:
                 # Check all columns
                 null_count = sum(1 for v in row.values() if v is None)
@@ -147,12 +165,22 @@ class MiscService:
                     f"subset must be a string, list, or tuple, got {type(subset).__name__}"
                 )
 
-        # Validate columns exist if subset is provided
+        # Validate columns exist if subset is provided and resolve case-insensitively
         if subset_cols is not None:
             available_cols = [field.name for field in self._df.schema.fields]
+            from ...core.column_resolver import ColumnResolver
+
+            case_sensitive = self._df._is_case_sensitive()
+
+            resolved_subset = []
             for col in subset_cols:
-                if col not in available_cols:
+                resolved_col = ColumnResolver.resolve_column_name(
+                    col, available_cols, case_sensitive
+                )
+                if resolved_col is None:
                     raise ColumnNotFoundException(col)
+                resolved_subset.append(resolved_col)
+            subset_cols = resolved_subset
 
         # Materialize lazy operations first to ensure all columns are present
         # This is especially important after joins where columns might be missing
@@ -171,12 +199,23 @@ class MiscService:
             field.name: field.dataType for field in df_to_process.schema.fields
         }
 
-        # Validate dict keys exist before processing (PySpark behavior)
+        # Validate dict keys exist before processing (PySpark behavior) and resolve case-insensitively
         if isinstance(value, dict):
             available_cols = [field.name for field in df_to_process.schema.fields]
+            from ...core.column_resolver import ColumnResolver
+
+            case_sensitive = df_to_process._is_case_sensitive()  # type: ignore[attr-defined]
+
+            # Resolve all dict keys case-insensitively
+            resolved_value_dict = {}
             for col in value:
-                if col not in available_cols:
+                resolved_col = ColumnResolver.resolve_column_name(
+                    col, available_cols, case_sensitive
+                )
+                if resolved_col is None:
                     raise ColumnNotFoundException(col)
+                resolved_value_dict[resolved_col] = value[col]
+            value = resolved_value_dict
 
         new_data = []
         for row in df_to_process.data:
@@ -328,9 +367,22 @@ class MiscService:
         if seed is not None:
             random.seed(seed)
 
+        # Resolve column name case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = self._df.columns
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_col = ColumnResolver.resolve_column_name(
+            col, available_cols, case_sensitive
+        )
+        if resolved_col is None:
+            from ...core.exceptions.analysis import ColumnNotFoundException
+
+            raise ColumnNotFoundException(col)
+
         result_data = []
         for row in self._df.data:
-            stratum_value = row.get(col)
+            stratum_value = row.get(resolved_col)
             fraction = fractions.get(stratum_value, 0.0)
             if random.random() < fraction:
                 result_data.append(row)
@@ -608,13 +660,33 @@ class MiscService:
         """
         from collections import defaultdict
 
+        # Resolve column names case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = self._df.columns
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_col1 = ColumnResolver.resolve_column_name(
+            col1, available_cols, case_sensitive
+        )
+        resolved_col2 = ColumnResolver.resolve_column_name(
+            col2, available_cols, case_sensitive
+        )
+        if resolved_col1 is None:
+            from ...core.exceptions.analysis import ColumnNotFoundException
+
+            raise ColumnNotFoundException(col1)
+        if resolved_col2 is None:
+            from ...core.exceptions.analysis import ColumnNotFoundException
+
+            raise ColumnNotFoundException(col2)
+
         # Build cross-tab structure
         crosstab_data: Dict[Any, Dict[Any, int]] = defaultdict(lambda: defaultdict(int))
         col2_values = set()
 
         for row in self._df.data:
-            val1 = row.get(col1)
-            val2 = row.get(col2)
+            val1 = row.get(resolved_col1)
+            val2 = row.get(resolved_col2)
             crosstab_data[val1][val2] += 1
             col2_values.add(val2)
 
@@ -659,11 +731,31 @@ class MiscService:
         if support is None:
             support = 0.01
 
+        # Resolve column names case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = self._df.columns
+        case_sensitive = self._df._is_case_sensitive()
+        resolved_cols = []
+        for col in cols:
+            resolved_col = ColumnResolver.resolve_column_name(
+                col, available_cols, case_sensitive
+            )
+            if resolved_col is None:
+                from ...core.exceptions.analysis import ColumnNotFoundException
+
+                raise ColumnNotFoundException(col)
+            resolved_cols.append(resolved_col)
+
         min_count = int(len(self._df.data) * support)
         result_row = {}
 
-        for col in cols:
-            values = [row.get(col) for row in self._df.data if row.get(col) is not None]
+        for col, resolved_col in zip(cols, resolved_cols):
+            values = [
+                row.get(resolved_col)
+                for row in self._df.data
+                if row.get(resolved_col) is not None
+            ]
             counter = Counter(values)
             freq_items = [item for item, count in counter.items() if count >= min_count]
             result_row[f"{col}_freqItems"] = freq_items
@@ -950,18 +1042,37 @@ class MiscService:
         id_cols = [ids] if isinstance(ids, str) else ids
         value_cols = [values] if isinstance(values, str) else values
 
-        # Validate columns exist
-        all_cols = set(materialized.columns)
+        # Validate columns exist and resolve case-insensitively
+        from ...core.column_resolver import ColumnResolver
+
+        available_cols = materialized.columns
+        case_sensitive = materialized._is_case_sensitive()  # type: ignore[attr-defined]
+
+        resolved_id_cols = []
         for col in id_cols:
-            if col not in all_cols:
+            resolved_col = ColumnResolver.resolve_column_name(
+                col, available_cols, case_sensitive
+            )
+            if resolved_col is None:
                 raise AnalysisException(
                     f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
                 )
+            resolved_id_cols.append(resolved_col)
+
+        resolved_value_cols = []
         for col in value_cols:
-            if col not in all_cols:
+            resolved_col = ColumnResolver.resolve_column_name(
+                col, available_cols, case_sensitive
+            )
+            if resolved_col is None:
                 raise AnalysisException(
                     f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
                 )
+            resolved_value_cols.append(resolved_col)
+
+        # Use resolved column names
+        id_cols = resolved_id_cols
+        value_cols = resolved_value_cols
 
         # Create unpivoted data
         unpivoted_data = []
