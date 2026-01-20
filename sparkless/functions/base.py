@@ -92,7 +92,7 @@ class AggregateFunction:
         elif isinstance(self.column, str):
             return self.column
         else:
-            return self.column.name
+            return str(self.column.name)
 
     def _generate_name(self) -> str:
         """Generate a name for this aggregate function."""
@@ -237,3 +237,17 @@ class AggregateFunction:
         """
         self.name = name
         return self
+
+    def cast(self, data_type: Union[DataType, str]) -> "ColumnOperation":
+        """Cast the aggregate function result to a different data type.
+
+        Args:
+            data_type: The target data type (DataType instance or string type name).
+
+        Returns:
+            ColumnOperation representing the cast operation.
+
+        Example:
+            >>> F.mean(F.col("value")).cast("string")
+        """
+        return ColumnOperation(self, "cast", data_type)

@@ -188,8 +188,100 @@ class GroupedData:
                 elif is_column_operation(expr):
                     # Handle ColumnOperation first (before AggregateFunction check)
                     # ColumnOperation has function_name but should be handled differently
-                    # Check if this ColumnOperation wraps an aggregate function (PySpark-style)
+                    # Check if this is a cast operation wrapping an aggregate function
                     if (
+                        isinstance(expr, ColumnOperation)
+                        and hasattr(expr, "operation")
+                        and expr.operation == "cast"
+                    ):
+                        # Check if the column being cast is an AggregateFunction or wraps one
+                        cast_agg_func: Optional[AggregateFunction] = None
+                        if isinstance(expr.column, AggregateFunction):
+                            cast_agg_func = expr.column
+                        elif (
+                            isinstance(expr.column, ColumnOperation)
+                            and hasattr(expr.column, "_aggregate_function")
+                            and expr.column._aggregate_function is not None
+                        ):
+                            # ColumnOperation wrapping an AggregateFunction (e.g., F.sum().cast())
+                            cast_agg_func = expr.column._aggregate_function
+
+                        if cast_agg_func is not None:
+                            # Evaluate the aggregate function first
+                            _, agg_result = self._evaluate_aggregate_function(
+                                cast_agg_func, group_rows
+                            )
+
+                            # Apply cast to the result
+                            from ...dataframe.casting.type_converter import (
+                                TypeConverter,
+                            )
+                            from ...spark_types import (
+                                DataType,
+                                StringType,
+                                IntegerType,
+                                LongType,
+                                DoubleType,
+                                FloatType,
+                                BooleanType,
+                            )
+
+                            # Handle string type names (e.g., "string", "int")
+                            # expr.value is the cast target type (ColumnOperation has value attribute)
+                            cast_type: Optional[DataType] = None
+                            if isinstance(expr, ColumnOperation) and hasattr(
+                                expr, "value"
+                            ):
+                                cast_type_value = expr.value
+                                if isinstance(cast_type_value, str):
+                                    type_name_map: Dict[str, DataType] = {
+                                        "string": StringType(),
+                                        "str": StringType(),
+                                        "int": IntegerType(),
+                                        "integer": IntegerType(),
+                                        "long": LongType(),
+                                        "bigint": LongType(),
+                                        "double": DoubleType(),
+                                        "float": FloatType(),
+                                        "boolean": BooleanType(),
+                                        "bool": BooleanType(),
+                                    }
+                                    cast_type = type_name_map.get(
+                                        cast_type_value.lower()
+                                    )
+                                elif isinstance(cast_type_value, DataType):
+                                    cast_type = cast_type_value
+
+                            # Apply cast transformation
+                            if cast_type is not None:
+                                cast_result = TypeConverter.cast_to_type(
+                                    agg_result, cast_type
+                                )
+                            else:
+                                # Fallback to string conversion if type not recognized
+                                cast_result = (
+                                    str(agg_result) if agg_result is not None else None
+                                )
+
+                            # Generate proper column name for cast operation (PySpark format)
+                            # Format: CAST(avg(value) AS STRING)
+                            if cast_type is not None:
+                                type_name = str(cast_type).upper()
+                            elif isinstance(expr, ColumnOperation) and hasattr(
+                                expr, "value"
+                            ):
+                                type_name = str(expr.value).upper()
+                            else:
+                                type_name = "STRING"
+                            result_key = f"CAST({cast_agg_func.name} AS {type_name})"
+                            result_value = cast_result
+                        else:
+                            # Regular cast operation (not on aggregate)
+                            result_key, result_value = self._evaluate_column_expression(
+                                cast("Union[Column, ColumnOperation]", expr), group_rows
+                            )
+                    # Check if this ColumnOperation wraps an aggregate function (PySpark-style)
+                    elif (
                         hasattr(expr, "_aggregate_function")
                         and expr._aggregate_function is not None
                     ):
