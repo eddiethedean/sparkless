@@ -347,6 +347,51 @@ class DataFrameFactory:
         # Note: When an explicit schema is provided with empty data, we still need to preserve
         # the schema even though validation is skipped (since there's no data to validate)
         if isinstance(schema, StructType) and data:
+            # Convert tuple-based data to dictionaries when StructType schema is provided
+            # This ensures compatibility with all DataFrame operations that expect dict rows
+            # (Issue #270: Fix for tuple-based data parameter)
+            def _is_positional_row(obj: Any) -> bool:
+                """Check if object is a positional row (sequence but not str/bytes/dict)."""
+                return isinstance(obj, Sequence) and not isinstance(
+                    obj, (str, bytes, dict, Row)
+                )
+
+            # Check if any rows are positional (tuple/list)
+            if any(_is_positional_row(row) for row in data):
+                field_names = [field.name for field in schema.fields]
+                field_count = len(field_names)
+
+                # PySpark requires strict length matching - validate before conversion
+                for i, row in enumerate(data):
+                    if _is_positional_row(row):
+                        row_seq = cast("Sequence[Any]", row)
+                        if len(row_seq) != field_count:
+                            raise IllegalArgumentException(
+                                f"LENGTH_SHOULD_BE_THE_SAME: obj and fields should be "
+                                f"of the same length, got {len(row_seq)} and {field_count}. "
+                                f"Row {i} has {len(row_seq)} elements but schema has {field_count} fields."
+                            )
+
+                tuple_to_dict_data: List[Dict[str, Any]] = []
+
+                for row in data:
+                    if isinstance(row, Row):
+                        # Row objects already handled earlier, convert to dict
+                        tuple_to_dict_data.append(row.asDict())
+                    elif _is_positional_row(row):
+                        # Convert tuple/list to dict using schema field names
+                        # At this point we know lengths match due to validation above
+                        row_seq = cast("Sequence[Any]", row)
+                        row_dict = {
+                            field_names[i]: row_seq[i] for i in range(field_count)
+                        }
+                        tuple_to_dict_data.append(row_dict)
+                    else:
+                        # Already a dict, keep as-is
+                        tuple_to_dict_data.append(cast("Dict[str, Any]", row))
+
+                data = tuple_to_dict_data
+
             from sparkless.core.data_validation import DataValidator
 
             validator = DataValidator(
