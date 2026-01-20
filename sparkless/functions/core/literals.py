@@ -122,73 +122,73 @@ class Literal(IColumn):
         """Less than comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "<", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "<", other)
 
     def __le__(self, other: Any) -> "IColumn":
         """Less than or equal comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "<=", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "<=", other)
 
     def __gt__(self, other: Any) -> "IColumn":
         """Greater than comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, ">", other)  # type: ignore[return-value]
+        return ColumnOperation(self, ">", other)
 
     def __ge__(self, other: Any) -> "IColumn":
         """Greater than or equal comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, ">=", other)  # type: ignore[return-value]
+        return ColumnOperation(self, ">=", other)
 
     def __add__(self, other: Any) -> "IColumn":
         """Addition operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "+", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "+", other)
 
     def __sub__(self, other: Any) -> "IColumn":
         """Subtraction operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "-", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "-", other)
 
     def __mul__(self, other: Any) -> "IColumn":
         """Multiplication operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "*", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "*", other)
 
     def __truediv__(self, other: Any) -> "IColumn":
         """Division operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "/", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "/", other)
 
     def __mod__(self, other: Any) -> "IColumn":
         """Modulo operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "%", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "%", other)
 
     def __and__(self, other: Any) -> "IColumn":
         """Logical AND operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "&", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "&", other)
 
     def __or__(self, other: Any) -> "IColumn":
         """Logical OR operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "|", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "|", other)
 
     def __invert__(self) -> "IColumn":
         """Logical NOT operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "!", None)  # type: ignore[return-value]
+        return ColumnOperation(self, "!", None)
 
     def __neg__(self) -> "ColumnOperation":
         """Unary minus operation (-literal)."""
@@ -215,6 +215,19 @@ class Literal(IColumn):
     def isNotNull(self) -> "ColumnOperation":
         """Check if literal value is not null (PySpark compatibility)."""
         return self.isnotnull()
+
+    def eqNullSafe(self, other: Any) -> "ColumnOperation":
+        """Null-safe equality comparison (PySpark eqNullSafe).
+
+        This behaves like PySpark's eqNullSafe:
+        - If both sides are null, the comparison is True.
+        - If exactly one side is null, the comparison is False.
+        - Otherwise, it behaves like standard equality, including any
+          backend-specific type coercion rules.
+        """
+        from .column import ColumnOperation
+
+        return ColumnOperation(self, "eqNullSafe", other)
 
     def isin(self, *values: Any) -> "ColumnOperation":
         """Check if literal value is in list of values."""
@@ -267,7 +280,7 @@ class Literal(IColumn):
 
         return ColumnOperation(self, "desc", None)
 
-    def cast(self, data_type: DataType) -> "ColumnOperation":
+    def cast(self, data_type: Union[DataType, str]) -> "ColumnOperation":
         """Cast literal to different data type."""
         from .column import ColumnOperation
 
@@ -287,8 +300,7 @@ class Literal(IColumn):
         Example:
             >>> F.lit(1).astype("string")
         """
-        # Note: cast() accepts both DataType and str in practice, despite type hint
-        return self.cast(data_type)  # type: ignore[arg-type]
+        return self.cast(data_type)
 
     def when(self, condition: "ColumnOperation", value: Any) -> Any:
         """Start a CASE WHEN expression."""

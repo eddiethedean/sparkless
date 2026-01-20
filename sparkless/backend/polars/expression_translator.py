@@ -576,7 +576,7 @@ class PolarsExpressionTranslator:
             right = self.translate(value, available_columns=available_columns)
 
         # Handle binary operations with type coercion for string-to-numeric comparisons
-        if operation in ["==", "!=", "<", "<=", ">", ">="]:
+        if operation in ["==", "!=", "<", "<=", ">", ">=", "eqNullSafe"]:
             # operation is guaranteed to be a string (from op.operation)
             op_str: str = str(operation)
             return self._coerce_for_comparison(left, right, op_str)
@@ -649,7 +649,12 @@ class PolarsExpressionTranslator:
             "<=": operator.le,
             ">": operator.gt,
             ">=": operator.ge,
+            # Null-safe equality uses the same underlying equality function but
+            # has special handling for nulls in _compare_with_coercion.
+            "eqNullSafe": operator.eq,
         }
+        if op not in comparison_ops:
+            raise ValueError(f"Unsupported comparison operation: {op}")
         compare_fn = comparison_ops[op]
 
         def _is_date_like(value: Any) -> bool:
@@ -688,9 +693,16 @@ class PolarsExpressionTranslator:
 
         # Use map_elements to handle type coercion at runtime
         def _compare_with_coercion(left_val: Any, right_val: Any) -> Any:
-            """Compare values with automatic type coercion for numeric and datetime + string."""
-            if left_val is None or right_val is None:
-                return None
+            """Compare values with automatic type coercion for numeric, datetime, and null-safe equality."""
+            # Special handling for null-safe equality (PySpark eqNullSafe semantics)
+            if op == "eqNullSafe":
+                if left_val is None and right_val is None:
+                    return True
+                if left_val is None or right_val is None:
+                    return False
+            else:
+                if left_val is None or right_val is None:
+                    return None
 
             # Left is string, right is numeric: convert left to numeric
             if isinstance(left_val, str) and isinstance(right_val, (int, float)):
@@ -781,7 +793,7 @@ class PolarsExpressionTranslator:
             Polars expression with appropriate arithmetic operation and type coercion
 
         Note:
-            Fixed in version 3.24.0 (Issue #236): String-to-numeric type coercion for
+            Fixed in version 3.23.0 (Issue #236): String-to-numeric type coercion for
             arithmetic operations now matches PySpark behavior.
         """
         # Perform the arithmetic operation
@@ -1290,6 +1302,14 @@ class PolarsExpressionTranslator:
             col_expr = pl.col(column)
         else:
             col_expr = self.translate(column)
+
+        # Special-case eqNullSafe when it is treated as a function call.
+        # Some call-sites may surface null-safe equality via op.function_name
+        # rather than the comparison operator path; delegate to the same
+        # comparison coercion helper to ensure consistent semantics.
+        if function_name == "eqnullsafe":
+            right_expr = self.translate(op.value)
+            return self._coerce_for_comparison(col_expr, right_expr, "eqNullSafe")
 
         # Handle array_sort before other checks since it can have op.value=None or op.value=bool
         if operation == "array_sort":

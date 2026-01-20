@@ -146,6 +146,15 @@ December 2024
 3. **Function signatures match** - All key functions have compatible signatures
 4. **Return types are compatible** - ColumnOperation/Column differences are acceptable for mock implementation
 
+### ✅ Newly Added Compatibility
+- **Column.eqNullSafe**: Implemented on the `Column` API with PySpark-compatible null-safe equality semantics (Issue #260):
+  - `NULL eqNullSafe NULL` evaluates to `True`.
+  - `NULL eqNullSafe non-NULL` (and vice versa) evaluates to `False`.
+  - Non-null comparisons behave like standard equality, including existing type coercion rules.
+  - Works with column-to-column, column-to-literal, and literal-to-column comparisons.
+  - Supports all data types (strings, integers, floats, dates, datetimes).
+  - Can be used in filter conditions, select expressions, and join scenarios.
+
 ### ✅ Improvements Made
 1. **Session validation added** - All functions now require active SparkSession (matching PySpark)
 2. **Type checking added** - to_timestamp() and to_date() now enforce StringType input

@@ -368,12 +368,17 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
-### Version 3.24.0 - ArrayType PySpark Compatibility & fillna Improvements
+### Version 3.25.0 - ArrayType PySpark Compatibility, eqNullSafe, & fillna Improvements
 
 - ✅ **Issue #247** - Added `elementType` keyword argument support to `ArrayType` for full PySpark compatibility
   - `ArrayType(elementType=StringType())` now works (PySpark camelCase convention)
   - Maintains backward compatibility with positional `element_type` parameter
   - Comprehensive test suite with 32 tests covering edge cases and PySpark parity
+- ✅ **Issue #260** - Implemented `Column.eqNullSafe` for null-safe equality comparisons
+  - Added `eqNullSafe` method to `Column` and `Literal` APIs, matching PySpark semantics (`NULL <=> NULL` returns `True`)
+  - Supports all data types (strings, integers, floats, dates, datetimes)
+  - Works in filter conditions, select expressions, and join scenarios
+  - Comprehensive test suite with 24 tests including PySpark parity tests
 - 🐛 **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
   - Ensures all columns are present after joins before filling null values
   - Prevents missing columns from being incorrectly filled as None

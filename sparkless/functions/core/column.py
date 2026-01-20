@@ -6,6 +6,8 @@ maintaining compatibility with PySpark's Column interface.
 """
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+
+from ...core.interfaces.functions import IColumn
 from ...spark_types import DataType, StringType
 
 if TYPE_CHECKING:
@@ -39,6 +41,17 @@ class ColumnOperatorMixin:
     def __eq__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Equality comparison."""
         return self._create_operation("==", other)
+
+    def eqNullSafe(self, other: Any) -> "ColumnOperation":
+        """Null-safe equality comparison (PySpark eqNullSafe).
+
+        This behaves like PySpark's eqNullSafe:
+        - If both sides are null, the comparison is True.
+        - If exactly one side is null, the comparison is False.
+        - Otherwise, it behaves like standard equality, including any
+          backend-specific type coercion rules.
+        """
+        return self._create_operation("eqNullSafe", other)
 
     def __ne__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Inequality comparison."""
@@ -324,7 +337,7 @@ class ColumnOperatorMixin:
         )
 
 
-class Column(ColumnOperatorMixin):
+class Column(ColumnOperatorMixin, IColumn):
     """Mock column expression for DataFrame operations.
 
     Provides a PySpark-compatible column expression that supports all comparison
@@ -571,6 +584,9 @@ class ColumnOperation(Column):
             return f"{column_ref} = {value_str}"
         elif operation == "!=":
             return f"{column_ref} != {value_str}"
+        elif operation == "eqNullSafe":
+            # Use SQL-style null-safe equality operator semantics in the name
+            return f"{column_ref} IS NOT DISTINCT FROM {value_str}"
         elif operation == "<":
             return f"{column_ref} < {value_str}"
         elif operation == "<=":
@@ -855,7 +871,7 @@ class ColumnOperation(Column):
             else:
                 target_type = "DATE" if self.operation == "to_date" else "TIMESTAMP"
                 return f"TRY_CAST({self.column.name} AS {target_type})"
-        elif self.operation in ["==", "!=", "<", ">", "<=", ">="]:
+        elif self.operation in ["==", "!=", "<", ">", "<=", ">=", "eqNullSafe"]:
             # For comparison operations, generate proper SQL
             left = (
                 str(self.column)
@@ -863,6 +879,10 @@ class ColumnOperation(Column):
                 else self.column.name
             )
             right = str(self.value) if self.value is not None else "NULL"
+            if self.operation == "eqNullSafe":
+                # Implement null-safe equality using SQL's IS NOT DISTINCT FROM,
+                # which treats NULL = NULL as TRUE and NULL compared to non-NULL as FALSE.
+                return f"({left} IS NOT DISTINCT FROM {right})"
             return f"({left} {self.operation} {right})"
         elif self.operation == "cast":
             # For cast operations, use the generated name which handles proper SQL syntax
