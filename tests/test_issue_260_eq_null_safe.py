@@ -91,12 +91,9 @@ class TestIssue260EqNullSafe:
                 ]
             )
             df = spark.createDataFrame([{"left": left, "right": right}], schema=schema)
-            result = (
-                df.select(
-                    F.col("left").eqNullSafe(F.col("right")).alias("equals"),
-                )
-                .collect()
-            )
+            result = df.select(
+                F.col("left").eqNullSafe(F.col("right")).alias("equals"),
+            ).collect()
             assert len(result) == 1
             assert result[0]["equals"] is expected
         finally:
@@ -114,12 +111,14 @@ class TestIssue260EqNullSafe:
             )
 
             # With standard equality, NULL == "x" and NULL == NULL behave like SQL: result is NULL -> filter drops them.
-            eq_result = df.where(F.col("value") == F.lit(None)).collect()
             # Depending on backend, this may yield zero rows (SQL three-valued logic).
             # The important thing is that eqNullSafe has distinct semantics.
+            _ = df.where(F.col("value") == F.lit(None)).collect()  # Demonstrate standard equality behavior
 
             # With eqNullSafe, NULL <=> NULL should be True.
-            null_safe_result = df.where(F.col("value").eqNullSafe(F.lit(None))).collect()
+            null_safe_result = df.where(
+                F.col("value").eqNullSafe(F.lit(None))
+            ).collect()
             names = [row["value"] for row in null_safe_result]
             assert None in names
         finally:
@@ -574,4 +573,3 @@ class TestIssue260EqNullSafeParity:
             assert names == {"Bob", "Charlie"}
         finally:
             spark.stop()
-

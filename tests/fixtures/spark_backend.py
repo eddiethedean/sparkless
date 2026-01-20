@@ -423,7 +423,9 @@ class SparkBackend:
                     )
                     # Also set as Spark config properties (used by Spark to launch Python)
                     builder = builder.config("spark.pyspark.python", python_executable)
-                    builder = builder.config("spark.pyspark.driver.python", python_executable)
+                    builder = builder.config(
+                        "spark.pyspark.driver.python", python_executable
+                    )
                     # Apply any additional config from kwargs
                     for key, value in kwargs.items():
                         if key.startswith("spark."):
@@ -487,7 +489,9 @@ class SparkBackend:
                     )
                     # Also set as Spark config properties (alternative method)
                     builder = builder.config("spark.pyspark.python", python_executable)
-                    builder = builder.config("spark.pyspark.driver.python", python_executable)
+                    builder = builder.config(
+                        "spark.pyspark.driver.python", python_executable
+                    )
                     for key, value in kwargs.items():
                         if key.startswith("spark."):
                             builder = builder.config(key, str(value))
@@ -561,7 +565,9 @@ class SparkBackend:
                 )
                 # Also set as Spark config properties (alternative method)
                 builder = builder.config("spark.pyspark.python", python_executable)
-                builder = builder.config("spark.pyspark.driver.python", python_executable)
+                builder = builder.config(
+                    "spark.pyspark.driver.python", python_executable
+                )
                 for key, value in kwargs.items():
                     if key.startswith("spark."):
                         builder = builder.config(key, str(value))
