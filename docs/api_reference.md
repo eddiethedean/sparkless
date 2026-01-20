@@ -116,6 +116,11 @@ df.filter(df.age > 25)
 df.filter(F.col("age") > 25)
 df.where(df.age > 25)
 
+# Null-safe equality (for comparing columns that may contain NULL)
+# NULL <=> NULL returns True, NULL <=> non-NULL returns False
+df.filter(F.col("id").eqNullSafe(F.col("manager_id")))
+df.filter(F.col("value").eqNullSafe(F.lit(None)))
+
 # Multiple conditions
 df.filter((df.age > 25) & (df.salary > 50000))
 df.filter(df.age > 25).filter(df.salary > 50000)
@@ -281,6 +286,11 @@ F.nanvl(F.col("float_col"), F.lit(0.0))
 # Null checks
 F.col("column").isNull()
 F.col("column").isNotNull()
+
+# Null-safe equality (PySpark <=> operator)
+# NULL <=> NULL returns True, NULL <=> non-NULL returns False
+F.col("id").eqNullSafe(F.col("manager_id"))
+F.col("value").eqNullSafe(F.lit(None))
 ```
 
 #### Type Casting

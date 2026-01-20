@@ -70,6 +70,10 @@ df = spark.createDataFrame(data)
 # Filter
 high_earners = df.filter(F.col("salary") > 75000)
 
+# Null-safe equality (for comparing columns that may contain NULL)
+# NULL <=> NULL returns True, NULL <=> non-NULL returns False
+employees_with_managers = df.filter(F.col("id").eqNullSafe(F.col("manager_id")))
+
 # Select
 names = df.select("name", "dept")
 
