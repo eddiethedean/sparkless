@@ -100,7 +100,7 @@ class Literal(IColumn):
 
         return cast("DataType", SchemaInferenceEngine._infer_type(value))
 
-    def __eq__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
+    def __eq__(self, other: Any) -> "ColumnOperation":
         """Equality comparison.
 
         Note: Returns ColumnOperation instead of bool for PySpark compatibility.
@@ -109,7 +109,7 @@ class Literal(IColumn):
 
         return ColumnOperation(self, "==", other)
 
-    def __ne__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
+    def __ne__(self, other: Any) -> "ColumnOperation":
         """Inequality comparison.
 
         Note: Returns ColumnOperation instead of bool for PySpark compatibility.
@@ -122,73 +122,73 @@ class Literal(IColumn):
         """Less than comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "<", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "<", other)
 
     def __le__(self, other: Any) -> "IColumn":
         """Less than or equal comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "<=", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "<=", other)
 
     def __gt__(self, other: Any) -> "IColumn":
         """Greater than comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, ">", other)  # type: ignore[return-value]
+        return ColumnOperation(self, ">", other)
 
     def __ge__(self, other: Any) -> "IColumn":
         """Greater than or equal comparison."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, ">=", other)  # type: ignore[return-value]
+        return ColumnOperation(self, ">=", other)
 
     def __add__(self, other: Any) -> "IColumn":
         """Addition operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "+", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "+", other)
 
     def __sub__(self, other: Any) -> "IColumn":
         """Subtraction operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "-", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "-", other)
 
     def __mul__(self, other: Any) -> "IColumn":
         """Multiplication operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "*", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "*", other)
 
     def __truediv__(self, other: Any) -> "IColumn":
         """Division operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "/", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "/", other)
 
     def __mod__(self, other: Any) -> "IColumn":
         """Modulo operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "%", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "%", other)
 
     def __and__(self, other: Any) -> "IColumn":
         """Logical AND operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "&", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "&", other)
 
     def __or__(self, other: Any) -> "IColumn":
         """Logical OR operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "|", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "|", other)
 
     def __invert__(self) -> "IColumn":
         """Logical NOT operation."""
         from .column import ColumnOperation
 
-        return ColumnOperation(self, "!", None)  # type: ignore[return-value]
+        return ColumnOperation(self, "!", None)
 
     def __neg__(self) -> "ColumnOperation":
         """Unary minus operation (-literal)."""
@@ -301,7 +301,7 @@ class Literal(IColumn):
             >>> F.lit(1).astype("string")
         """
         # Note: cast() accepts both DataType and str in practice, despite type hint
-        return self.cast(data_type)  # type: ignore[arg-type]
+        return self.cast(data_type)
 
     def when(self, condition: "ColumnOperation", value: Any) -> Any:
         """Start a CASE WHEN expression."""
