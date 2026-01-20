@@ -773,9 +773,10 @@ class GroupedData:
             ):
                 from ..validation.column_validator import ColumnValidator
 
-                # Resolve column name case-insensitively
-                actual_col_name = ColumnValidator._find_column_case_insensitive(
-                    self.df.schema, col_name
+                # Resolve column name using ColumnResolver
+                case_sensitive = self.df._is_case_sensitive()
+                actual_col_name = ColumnValidator._find_column(
+                    self.df.schema, col_name, case_sensitive
                 )
                 if actual_col_name is None:
                     available_columns = [field.name for field in self.df.schema.fields]

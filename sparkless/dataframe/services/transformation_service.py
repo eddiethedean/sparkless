@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, overlo
 from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField
 from ...core.exceptions import PySparkValueError
+from ...core.column_resolver import ColumnResolver
 
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
@@ -22,24 +23,23 @@ class TransformationService:
         """Initialize transformation service with DataFrame instance."""
         self._df = df
 
-    def _find_column_case_insensitive(self, column_name: str) -> Optional[str]:
-        """Find column name in schema case-insensitively.
+    def _find_column(self, column_name: str) -> Optional[str]:
+        """Find column name in schema using ColumnResolver.
 
         Args:
-            column_name: Column name to find (case-insensitive).
+            column_name: Column name to find.
 
         Returns:
             Actual column name from schema if found, None otherwise.
 
         Note:
-            Fixed in version 3.23.0 (Issue #230): Case-insensitive column matching
-            is now supported across all DataFrame operations (select, filter,
-            withColumn, groupBy, orderBy, etc.), matching PySpark behavior.
+            Uses ColumnResolver to respect spark.sql.caseSensitive configuration.
         """
-        for col in self._df.columns:
-            if col.lower() == column_name.lower():
-                return col
-        return None
+        case_sensitive = self._df._is_case_sensitive()
+        available_columns = self._df.columns
+        return ColumnResolver.resolve_column_name(
+            column_name, available_columns, case_sensitive
+        )
 
     def _validate_column_reference(self, col: Any) -> None:
         """Recursively validate column references in Column or ColumnOperation.
@@ -62,7 +62,7 @@ class TransformationService:
             # For simple Column, validate the column name exists
             col_name = col.name if hasattr(col, "name") else str(col)
             if col_name and col_name != "*":
-                actual_col_name = self._find_column_case_insensitive(col_name)
+                actual_col_name = self._find_column(col_name)
                 if actual_col_name is None:
                     raise SparkColumnNotFoundError(col_name, self._df.columns)
 
@@ -132,8 +132,8 @@ class TransformationService:
             resolved_columns: List[Union[str, Column, ColumnOperation, Any]] = []
             for col in columns:
                 if isinstance(col, str) and col != "*":
-                    # Use case-insensitive lookup and replace with actual column name
-                    actual_col_name = self._find_column_case_insensitive(col)
+                    # Use ColumnResolver to resolve column name and replace with actual name
+                    actual_col_name = self._find_column(col)
                     if actual_col_name is None:
                         from ...core.exceptions.operation import (
                             SparkColumnNotFoundError,
@@ -176,7 +176,7 @@ class TransformationService:
                         col_name = col.name if hasattr(col, "name") else str(col)
                         if col_name and col_name != "*":
                             # Use case-insensitive lookup to check if column exists
-                            actual_col_name = self._find_column_case_insensitive(
+                            actual_col_name = self._find_column(
                                 col_name
                             )
                             if actual_col_name is None:
@@ -423,7 +423,7 @@ class TransformationService:
         materialized = self._df._materialize_if_lazy()
 
         # Resolve column name case-insensitively
-        actual_existing = self._find_column_case_insensitive(existing)
+        actual_existing = self._find_column(existing)
         if actual_existing is None:
             from ...core.exceptions.operation import SparkColumnNotFoundError
 
@@ -468,7 +468,7 @@ class TransformationService:
         # Build case-insensitive mapping from actual column names to new names
         actual_to_new: Dict[str, str] = {}
         for old_name, new_name in colsMap.items():
-            actual_old = self._find_column_case_insensitive(old_name)
+            actual_old = self._find_column(old_name)
             if actual_old is None:
                 from ...core.exceptions.operation import SparkColumnNotFoundError
 
@@ -538,7 +538,7 @@ class TransformationService:
         # Resolve column names case-insensitively
         actual_subset = []
         for col_name in subset:
-            actual_col = self._find_column_case_insensitive(col_name)
+            actual_col = self._find_column(col_name)
             if actual_col is None:
                 from ...core.exceptions.operation import SparkColumnNotFoundError
 

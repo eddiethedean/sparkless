@@ -205,7 +205,7 @@ class DataFrame:
         if self._validation_handler is None:
             from .validation_handler import ValidationHandler
 
-            self._validation_handler = ValidationHandler()
+            self._validation_handler = ValidationHandler(self)
         return self._validation_handler
 
     def _get_condition_handler(self) -> "ConditionHandler":
@@ -243,6 +243,28 @@ class DataFrame:
             return list(self._materialized_columns)
         # Return only columns from base schema (not from transforms)
         return [f.name for f in self._schema.fields]
+
+    def _is_case_sensitive(self) -> bool:
+        """Get case sensitivity setting from session.
+
+        Returns:
+            True if case-sensitive mode is enabled, False otherwise.
+            Defaults to False (case-insensitive) to match PySpark behavior.
+        """
+        try:
+            # Try to get session from active sessions
+            from sparkless.session.core.session import SparkSession
+
+            active_sessions = getattr(SparkSession, "_active_sessions", [])
+            if active_sessions:
+                # Use the most recent active session
+                session = active_sessions[-1]
+                if hasattr(session, "conf"):
+                    return session.conf.is_case_sensitive()
+        except Exception:
+            # If we can't get session, default to case-insensitive
+            pass
+        return False  # Default to case-insensitive (matching PySpark)
 
     # ============================================================================
     # Delegation methods for service classes

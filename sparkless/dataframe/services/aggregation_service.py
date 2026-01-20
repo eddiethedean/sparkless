@@ -51,15 +51,18 @@ class AggregationService:
             else:
                 col_names.append(col)
 
-        # Validate that all columns exist (case-insensitive) and resolve to actual case-sensitive names
+        # Validate that all columns exist and resolve to actual case-sensitive names
         from ..validation.column_validator import ColumnValidator
 
+        case_sensitive = self._df._is_case_sensitive()
         resolved_col_names = []
         for col_name in col_names:
-            ColumnValidator.validate_column_exists(self._df.schema, col_name, "groupBy")
+            ColumnValidator.validate_column_exists(
+                self._df.schema, col_name, "groupBy", case_sensitive
+            )
             # Resolve column name to actual case-sensitive name
-            actual_col_name = ColumnValidator._find_column_case_insensitive(
-                self._df.schema, col_name
+            actual_col_name = ColumnValidator._find_column(
+                self._df.schema, col_name, case_sensitive
             )
             resolved_col_names.append(actual_col_name if actual_col_name else col_name)
         col_names = resolved_col_names

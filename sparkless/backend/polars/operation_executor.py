@@ -38,14 +38,26 @@ class PolarsOperationExecutor:
         )
         self._struct_field_cache: Dict[Tuple[str, str], List[str]] = {}
 
-    def _find_column_case_insensitive(
-        self, df: pl.DataFrame, column_name: str
+    def _find_column(
+        self, df: pl.DataFrame, column_name: str, case_sensitive: bool = False
     ) -> Optional[str]:
-        """Find column name in Polars DataFrame case-insensitively."""
-        for col in df.columns:
-            if col.lower() == column_name.lower():
-                return str(col)  # Ensure we return str, not Any
-        return None
+        """Find column name in Polars DataFrame using ColumnResolver.
+
+        Args:
+            df: Polars DataFrame to search in.
+            column_name: Column name to find.
+            case_sensitive: Whether to use case-sensitive matching.
+
+        Returns:
+            Actual column name if found, None otherwise.
+        """
+        from sparkless.core.column_resolver import ColumnResolver
+
+        available_columns = list(df.columns)
+        result = ColumnResolver.resolve_column_name(
+            column_name, available_columns, case_sensitive
+        )
+        return str(result) if result else None
 
     @profiled("polars.apply_filter", category="polars")
     def apply_filter(self, df: pl.DataFrame, condition: Any) -> pl.DataFrame:
@@ -70,7 +82,7 @@ class PolarsOperationExecutor:
             # Get the column name from the condition
             col_name = condition.column.name
             # Find column case-insensitively
-            actual_col_name = self._find_column_case_insensitive(df, col_name)
+            actual_col_name = self._find_column(df, col_name)
             if actual_col_name and actual_col_name in df.columns:
                 # Get the column's dtype
                 input_col_dtype = df[actual_col_name].dtype
@@ -1755,8 +1767,8 @@ class PolarsOperationExecutor:
             for col in join_keys:
                 if isinstance(col, str):
                     # Resolve column name case-insensitively in both DataFrames
-                    actual_col_df1 = self._find_column_case_insensitive(df1, col)
-                    actual_col_df2 = self._find_column_case_insensitive(df2, col)
+                    actual_col_df1 = self._find_column(df1, col)
+                    actual_col_df2 = self._find_column(df2, col)
                     if actual_col_df1 is None or actual_col_df2 is None:
                         # Will be handled in the else branch below
                         resolved_join_keys.append(col)
@@ -1862,7 +1874,7 @@ class PolarsOperationExecutor:
                 # Verify columns exist (case-insensitive)
                 resolved_left_on = []
                 for col in left_on:
-                    actual_col = self._find_column_case_insensitive(df1, col)
+                    actual_col = self._find_column(df1, col)
                     if actual_col is None:
                         raise ValueError(
                             f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
@@ -1870,7 +1882,7 @@ class PolarsOperationExecutor:
                     resolved_left_on.append(actual_col)
                 resolved_right_on = []
                 for col in right_on:
-                    actual_col = self._find_column_case_insensitive(df2, col)
+                    actual_col = self._find_column(df2, col)
                     if actual_col is None:
                         raise ValueError(
                             f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"

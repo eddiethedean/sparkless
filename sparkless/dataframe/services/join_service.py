@@ -15,6 +15,7 @@ from ...spark_types import (
     LongType,
     DoubleType,
 )
+from ...core.column_resolver import ColumnResolver
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:

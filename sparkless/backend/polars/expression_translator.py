@@ -153,7 +153,7 @@ class PolarsExpressionTranslator:
 
         # Use case-insensitive matching if available columns are provided
         if available_columns:
-            actual_col_name = self._find_column_case_insensitive(
+            actual_col_name = self._find_column(
                 available_columns, col_name
             )
             if actual_col_name:
@@ -162,14 +162,24 @@ class PolarsExpressionTranslator:
         return pl.col(col_name)
 
     @staticmethod
-    def _find_column_case_insensitive(
-        available_columns: List[str], column_name: str
+    def _find_column(
+        available_columns: List[str], column_name: str, case_sensitive: bool = False
     ) -> Optional[str]:
-        """Find column name in available columns case-insensitively."""
-        for col in available_columns:
-            if col.lower() == column_name.lower():
-                return col
-        return None
+        """Find column name in available columns using ColumnResolver.
+
+        Args:
+            available_columns: List of available column names.
+            column_name: Column name to find.
+            case_sensitive: Whether to use case-sensitive matching.
+
+        Returns:
+            Actual column name if found, None otherwise.
+        """
+        from sparkless.core.column_resolver import ColumnResolver
+
+        return ColumnResolver.resolve_column_name(
+            column_name, available_columns, case_sensitive
+        )
 
     def _translate_literal(self, lit: Literal) -> pl.Expr:
         """Translate Literal to Polars literal expression.
@@ -235,7 +245,7 @@ class PolarsExpressionTranslator:
             # Use case-insensitive matching if available columns are provided
             if available_columns:
                 actual_col_name = (
-                    PolarsExpressionTranslator._find_column_case_insensitive(
+                    PolarsExpressionTranslator._find_column(
                         available_columns, column
                     )
                 )
