@@ -47,7 +47,7 @@ class PolarsOperationExecutor:
                 return str(col)  # Ensure we return str, not Any
         return None
 
-    @profiled("polars.apply_filter", category="polars")  # type: ignore[untyped-decorator]
+    @profiled("polars.apply_filter", category="polars")
     def apply_filter(self, df: pl.DataFrame, condition: Any) -> pl.DataFrame:
         """Apply a filter operation.
 
@@ -82,7 +82,7 @@ class PolarsOperationExecutor:
         )
         return df.filter(filter_expr)
 
-    @profiled("polars.apply_select", category="polars")  # type: ignore[untyped-decorator]
+    @profiled("polars.apply_select", category="polars")
     def apply_select(self, df: pl.DataFrame, columns: Tuple[Any, ...]) -> pl.DataFrame:
         """Apply a select operation.
 
@@ -856,7 +856,7 @@ class PolarsOperationExecutor:
 
         return None
 
-    @profiled("polars.apply_with_column", category="polars")  # type: ignore[untyped-decorator]
+    @profiled("polars.apply_with_column", category="polars")
     def apply_with_column(
         self,
         df: pl.DataFrame,
@@ -1668,7 +1668,7 @@ class PolarsOperationExecutor:
 
         return result_df1, result_df2, join_keys, left_on, right_on
 
-    @profiled("polars.apply_join", category="polars")  # type: ignore[untyped-decorator]
+    @profiled("polars.apply_join", category="polars")
     def apply_join(
         self,
         df1: pl.DataFrame,
@@ -2152,7 +2152,7 @@ class PolarsOperationExecutor:
         """
         return df.slice(n)
 
-    @profiled("polars.apply_group_by_agg", category="polars")  # type: ignore[untyped-decorator]
+    @profiled("polars.apply_group_by_agg", category="polars")
     def apply_group_by_agg(
         self, df: pl.DataFrame, group_by: List[Any], aggs: List[Any]
     ) -> pl.DataFrame:

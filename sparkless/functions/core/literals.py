@@ -100,7 +100,7 @@ class Literal(IColumn):
 
         return cast("DataType", SchemaInferenceEngine._infer_type(value))
 
-    def __eq__(self, other: Any) -> "ColumnOperation":
+    def __eq__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Equality comparison.
 
         Note: Returns ColumnOperation instead of bool for PySpark compatibility.
@@ -109,7 +109,7 @@ class Literal(IColumn):
 
         return ColumnOperation(self, "==", other)
 
-    def __ne__(self, other: Any) -> "ColumnOperation":
+    def __ne__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Inequality comparison.
 
         Note: Returns ColumnOperation instead of bool for PySpark compatibility.
@@ -280,7 +280,7 @@ class Literal(IColumn):
 
         return ColumnOperation(self, "desc", None)
 
-    def cast(self, data_type: DataType) -> "ColumnOperation":
+    def cast(self, data_type: Union[DataType, str]) -> "ColumnOperation":
         """Cast literal to different data type."""
         from .column import ColumnOperation
 
@@ -300,7 +300,6 @@ class Literal(IColumn):
         Example:
             >>> F.lit(1).astype("string")
         """
-        # Note: cast() accepts both DataType and str in practice, despite type hint
         return self.cast(data_type)
 
     def when(self, condition: "ColumnOperation", value: Any) -> Any:

@@ -6,6 +6,8 @@ maintaining compatibility with PySpark's Column interface.
 """
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+
+from ...core.interfaces.functions import IColumn
 from ...spark_types import DataType, StringType
 
 if TYPE_CHECKING:
@@ -335,7 +337,7 @@ class ColumnOperatorMixin:
         )
 
 
-class Column(ColumnOperatorMixin):
+class Column(ColumnOperatorMixin, IColumn):
     """Mock column expression for DataFrame operations.
 
     Provides a PySpark-compatible column expression that supports all comparison
