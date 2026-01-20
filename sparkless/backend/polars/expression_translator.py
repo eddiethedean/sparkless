@@ -3313,7 +3313,26 @@ class PolarsExpressionTranslator:
                 e, op
             ),  # Handle both string and array reverse
             "size": lambda e: self._size_expr(e, op),  # Handle both array and map size
-            "isnan": lambda e: pl.when(e.is_null()).then(None).otherwise(e.is_nan()),
+            # Issue #263: Polars is_nan() doesn't support Utf8 (string) dtype.
+            # PySpark allows isnan() on strings and it always returns False.
+            # PySpark also returns False for NULL values: isnan(NULL) == False.
+            "isnan": lambda e: e.map_elements(
+                lambda x: (
+                    False
+                    if x is None
+                    else (
+                        False
+                        if isinstance(x, str)
+                        else (
+                            math.isnan(float(x))
+                            if isinstance(x, (int, float))
+                            else False
+                        )
+                    )
+                ),
+                skip_nulls=False,
+                return_dtype=pl.Boolean,
+            ),
             "bin": lambda e: e.map_elements(
                 lambda x: bin(int(x))[2:]
                 if isinstance(x, (int, float))
