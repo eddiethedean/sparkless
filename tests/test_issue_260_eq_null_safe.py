@@ -113,7 +113,9 @@ class TestIssue260EqNullSafe:
             # With standard equality, NULL == "x" and NULL == NULL behave like SQL: result is NULL -> filter drops them.
             # Depending on backend, this may yield zero rows (SQL three-valued logic).
             # The important thing is that eqNullSafe has distinct semantics.
-            _ = df.where(F.col("value") == F.lit(None)).collect()  # Demonstrate standard equality behavior
+            _ = df.where(
+                F.col("value") == F.lit(None)
+            ).collect()  # Demonstrate standard equality behavior
 
             # With eqNullSafe, NULL <=> NULL should be True.
             null_safe_result = df.where(
