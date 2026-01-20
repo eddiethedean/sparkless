@@ -7,6 +7,7 @@ across all DataFrame operations.
 
 import pytest
 from sparkless.sql import SparkSession, functions as F
+from sparkless.core.exceptions.analysis import AnalysisException
 
 
 class TestCaseSensitivityConfiguration:
