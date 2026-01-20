@@ -793,7 +793,7 @@ class PolarsExpressionTranslator:
             Polars expression with appropriate arithmetic operation and type coercion
 
         Note:
-            Fixed in version 3.24.0 (Issue #236): String-to-numeric type coercion for
+            Fixed in version 3.23.0 (Issue #236): String-to-numeric type coercion for
             arithmetic operations now matches PySpark behavior.
         """
         # Perform the arithmetic operation
