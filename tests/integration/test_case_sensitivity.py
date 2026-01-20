@@ -130,6 +130,232 @@ class TestCaseSensitivityConfiguration:
 
         spark.stop()
 
+    def test_case_sensitive_withColumn_fails_with_wrong_case(self):
+        """Test that withColumn fails with wrong case in case-sensitive mode."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        # Issue #264 scenario - but in case-sensitive mode
+        df = spark.createDataFrame(
+            [
+                {"key": "Alice"},
+                {"key": "Bob"},
+                {"key": "Charlie"},
+            ]
+        )
+
+        # Should fail: referencing "Key" (uppercase) when column is "key" (lowercase)
+        with pytest.raises(Exception):
+            df.withColumn("key_upper", F.upper(F.col("Key"))).collect()
+
+        # Should work: exact case match
+        result = df.withColumn("key_upper", F.upper(F.col("key"))).collect()
+        assert len(result) == 3
+        assert result[0]["key_upper"] == "ALICE"
+
+        spark.stop()
+
+    def test_case_sensitive_filter_fails_with_wrong_case(self):
+        """Test that filter fails with wrong case in case-sensitive mode."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        df = spark.createDataFrame(
+            [
+                {"Name": "Alice", "Age": 25},
+                {"Name": "Bob", "Age": 30},
+            ]
+        )
+
+        # Should fail: wrong case
+        with pytest.raises(Exception):
+            df.filter(F.col("name") == "Alice").collect()
+
+        with pytest.raises(Exception):
+            df.filter(F.col("AGE") > 25).collect()
+
+        # Should work: exact case match
+        result = df.filter(F.col("Name") == "Alice").collect()
+        assert len(result) == 1
+
+        result = df.filter(F.col("Age") > 25).collect()
+        assert len(result) == 1
+
+        spark.stop()
+
+    def test_case_sensitive_select_fails_with_wrong_case(self):
+        """Test that select fails with wrong case in case-sensitive mode."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        df = spark.createDataFrame(
+            [
+                {"Name": "Alice", "Age": 25, "Salary": 5000},
+                {"Name": "Bob", "Age": 30, "Salary": 6000},
+            ]
+        )
+
+        # Should fail: wrong case
+        with pytest.raises(Exception):
+            df.select("name", "age").collect()
+
+        with pytest.raises(Exception):
+            df.select(F.col("NAME"), F.col("AGE")).collect()
+
+        # Should work: exact case match
+        result = df.select("Name", "Age").collect()
+        assert len(result) == 2
+
+        result = df.select(F.col("Name"), F.col("Age")).collect()
+        assert len(result) == 2
+
+        spark.stop()
+
+    def test_case_sensitive_groupBy_fails_with_wrong_case(self):
+        """Test that groupBy fails with wrong case in case-sensitive mode."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        df = spark.createDataFrame(
+            [
+                {"Dept": "IT", "Salary": 100},
+                {"Dept": "IT", "Salary": 200},
+                {"Dept": "HR", "Salary": 150},
+            ]
+        )
+
+        # Should fail: wrong case
+        with pytest.raises(Exception):
+            df.groupBy("dept").agg(F.sum("salary").alias("total")).collect()
+
+        with pytest.raises(Exception):
+            df.groupBy("Dept").agg(F.sum("SALARY").alias("total")).collect()
+
+        # Should work: exact case match
+        result = df.groupBy("Dept").agg(F.sum("Salary").alias("total")).collect()
+        assert len(result) == 2
+
+        spark.stop()
+
+    def test_case_sensitive_join_fails_with_wrong_case(self):
+        """Test that join fails with wrong case in case-sensitive mode.
+
+        Note: Joins with Column expressions (df1['ID'] == df2['id']) allow
+        different column names as they match by value, not name. Case-sensitive
+        mode affects column name resolution within each DataFrame, but the join
+        condition itself can reference columns with different cases.
+        """
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        df1 = spark.createDataFrame([{"ID": 1, "Name": "Alice"}])
+        df2 = spark.createDataFrame([{"id": 1, "Dept": "IT"}])
+
+        # Join with Column expressions allows different column names (matches by value)
+        # The case-sensitive check happens when resolving each column reference
+        # Both df1["ID"] and df2["id"] resolve correctly within their own DataFrames
+        result = df1.join(df2, df1["ID"] == df2["id"], "inner").collect()
+        assert len(result) == 1
+
+        # Should work: exact case match (same case in both DataFrames)
+        df2_fixed = spark.createDataFrame([{"ID": 1, "Dept": "IT"}])
+        result = df1.join(df2_fixed, df1["ID"] == df2_fixed["ID"], "inner").collect()
+        assert len(result) == 1
+
+        # Test join with string column name (should require exact case match)
+        # When joining by string column name, both DataFrames need the column
+        df3 = spark.createDataFrame([{"ID": 2, "Name": "Bob"}])
+        # This should work - "ID" exists in both
+        result = df1.join(df3, "ID", "inner").collect()
+        assert len(result) == 0  # No matching IDs
+
+        spark.stop()
+
+    def test_case_sensitive_attribute_access_requires_exact_case(self):
+        """Test that attribute access requires exact case in case-sensitive mode."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        df = spark.createDataFrame([{"Name": "Alice", "Age": 25}])
+
+        # In case-sensitive mode, wrong case should fail
+        with pytest.raises(Exception):
+            _ = df.name  # Column is "Name", not "name"
+
+        with pytest.raises(Exception):
+            _ = df.AGE  # Column is "Age", not "AGE"
+
+        # Should work: exact case match
+        name_col = df.Name
+        assert name_col.name == "Name"
+
+        age_col = df.Age
+        assert age_col.name == "Age"
+
+        spark.stop()
+
+    def test_case_sensitive_sql_queries_require_exact_case(self):
+        """Test that SQL queries require exact case in case-sensitive mode."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        df = spark.createDataFrame(
+            [
+                {"Name": "Alice", "Age": 25, "Dept": "IT"},
+                {"Name": "Bob", "Age": 30, "Dept": "HR"},
+            ]
+        )
+        df.createOrReplaceTempView("employees")
+
+        # Should fail: wrong case in SQL
+        with pytest.raises(Exception):
+            spark.sql("SELECT name FROM employees").collect()
+
+        with pytest.raises(Exception):
+            spark.sql("SELECT Name, age FROM employees WHERE dept = 'IT'").collect()
+
+        # Should work: exact case match
+        result = spark.sql(
+            "SELECT Name, Age FROM employees WHERE Dept = 'IT'"
+        ).collect()
+        assert len(result) == 1
+        assert result[0]["Name"] == "Alice"
+
+        spark.stop()
+
+    def test_case_sensitive_issue_264_scenario(self):
+        """Test issue #264 scenario in case-sensitive mode (should fail)."""
+        spark = SparkSession.builder.config(
+            "spark.sql.caseSensitive", "true"
+        ).getOrCreate()
+
+        # Exact reproduction of issue #264
+        df = spark.createDataFrame(
+            [
+                {"key": "Alice"},
+                {"key": "Bob"},
+                {"key": "Charlie"},
+            ]
+        )
+
+        # In case-sensitive mode, this should FAIL (different from default case-insensitive mode)
+        with pytest.raises(Exception):
+            df.withColumn("key_upper", F.upper(F.col("Key"))).collect()
+
+        # Exact case should work
+        result = df.withColumn("key_upper", F.upper(F.col("key"))).collect()
+        assert len(result) == 3
+        assert result[0]["key_upper"] == "ALICE"
+
+        spark.stop()
+
     def test_case_insensitive_unionByName(self):
         """Test unionByName with case-insensitive matching."""
         spark = SparkSession("TestApp")

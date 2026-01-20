@@ -840,6 +840,66 @@ class TestColumnCaseVariations:
         result = df.crosstab("NAME", "DEPT").collect()
         assert len(result) >= 1
 
+    def test_issue_264_withColumn_case_insensitive(self, spark):
+        """Test issue #264: case-insensitive column resolution in withColumn with F.col().
+
+        Reproduces the exact scenario from issue #264 where a column named "key"
+        (lowercase) is referenced as "Key" (uppercase) in F.col() within withColumn.
+        """
+        # Create DataFrame with lowercase column name
+        df = spark.createDataFrame(
+            [
+                {"key": "Alice"},
+                {"key": "Bob"},
+                {"key": "Charlie"},
+            ]
+        )
+
+        # Test the exact scenario from issue #264
+        # Reference "Key" (uppercase) when column is actually "key" (lowercase)
+        df = df.withColumn("key_upper", F.upper(F.col("Key")))
+        result = df.collect()
+
+        # Verify results
+        assert len(result) == 3
+        assert result[0]["key"] == "Alice"
+        assert result[0]["key_upper"] == "ALICE"
+        assert result[1]["key"] == "Bob"
+        assert result[1]["key_upper"] == "BOB"
+        assert result[2]["key"] == "Charlie"
+        assert result[2]["key_upper"] == "CHARLIE"
+
+        # Test with opposite case (uppercase column, lowercase reference)
+        df2 = spark.createDataFrame(
+            [
+                {"Key": "Alice"},
+                {"Key": "Bob"},
+                {"Key": "Charlie"},
+            ]
+        )
+        df2 = df2.withColumn("key_lower", F.lower(F.col("key")))
+        result2 = df2.collect()
+
+        assert len(result2) == 3
+        assert result2[0]["Key"] == "Alice"
+        assert result2[0]["key_lower"] == "alice"
+        assert result2[1]["Key"] == "Bob"
+        assert result2[1]["key_lower"] == "bob"
+        assert result2[2]["Key"] == "Charlie"
+        assert result2[2]["key_lower"] == "charlie"
+
+        # Test with mixed case variations
+        df3 = spark.createDataFrame([{"Name": "Alice", "Age": 25}])
+        df3 = df3.withColumn("name_lower", F.lower(F.col("name")))
+        df3 = df3.withColumn("age_double", F.col("AGE") * 2)
+        result3 = df3.collect()
+
+        assert len(result3) == 1
+        assert result3[0]["Name"] == "Alice"
+        assert result3[0]["name_lower"] == "alice"
+        assert result3[0]["Age"] == 25
+        assert result3[0]["age_double"] == 50
+
     def test_unpivot_all_case_variations(self, spark):
         """Test unpivot with case variations."""
         data = [
