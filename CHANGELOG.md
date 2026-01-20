@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.28.0 — 2025-01-21
+
+### Fixed
+- **Issue #263** - Fixed `isnan()` on string columns to match PySpark behavior
+  - Prevents Polars backend error: `polars.exceptions.InvalidOperationError: is_nan operation not supported for dtype str`
+  - `isnan()` now returns `False` for string values (strings are never NaN in PySpark)
+  - `isnan(NULL)` returns `False` (PySpark behavior)
+
+### Testing
+- Added regression tests covering `isnan()` on string columns, numeric NaN behavior, and `NULL` handling
+
 ## 3.27.0 — 2025-01-21
 
 ### Fixed

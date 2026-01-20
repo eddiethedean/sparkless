@@ -131,7 +131,7 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
-exclude = '(^venv/|^\.venv/|^venv_exploration_py39/)'
+exclude = '(^venv/|^\.venv/|^venv_exploration_py\d+/)'
 files = ["sparkless", "tests"]
 
 [[tool.mypy.overrides]]
