@@ -324,6 +324,15 @@ class ArrayType(DataType):
             provides full PySpark compatibility (Issue #247).
         """
         # Handle both camelCase (PySpark) and snake_case (backward compat)
+        # Issue #262: Check if elementType is actually a DataType (not a bool from positional arg)
+        # If elementType is a bool, it was incorrectly matched from a positional argument
+        # In that case, it should be treated as None and the bool should be nullable
+        if isinstance(elementType, bool):
+            # elementType was incorrectly matched from a positional argument
+            # The bool value is actually the nullable parameter
+            nullable = elementType
+            elementType = None
+
         if elementType is not None and element_type is not None:
             raise TypeError("Cannot specify both 'elementType' and 'element_type'")
 

@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.27.0 — 2025-01-21
+
+### Fixed
+- **Issue #262** - Fixed `ArrayType` initialization with positional arguments
+  - Fixed `TypeError: Cannot specify both 'elementType' and 'element_type'` when using positional arguments like `ArrayType(DoubleType(), True)`
+  - Added detection for when `elementType` parameter is incorrectly matched as a bool from positional arguments
+  - When `elementType` is a bool, it's now correctly treated as the `nullable` parameter instead
+  - Maintains full backward compatibility with all existing `ArrayType` initialization patterns:
+    - `ArrayType(elementType=StringType())` (PySpark keyword convention)
+    - `ArrayType(element_type=StringType())` (snake_case keyword)
+    - `ArrayType(StringType())` (positional element_type)
+    - `ArrayType(StringType(), nullable=False)` (positional with nullable)
+  - Added comprehensive test suite (4 test cases) covering the issue reproduction, all initialization patterns, DataFrame usage, and PySpark parity
+
+### Testing
+- Added 4 new tests for `ArrayType` positional arguments
+- All existing ArrayType tests still pass (22 tests)
+- All 1162 tests passing (up from 1158), 10 skipped
+
+### Technical Details
+- Updated `ArrayType.__init__()` to detect and handle bool values incorrectly matched to `elementType` parameter
+- The fix ensures that `ArrayType(DoubleType(), True)` correctly interprets `True` as `nullable=True` rather than raising a TypeError
+
 ## 3.26.0 — 2025-01-21
 
 ### Added
