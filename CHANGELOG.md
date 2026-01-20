@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.26.0 — 2025-01-21
+
+### Added
+- **Issue #261** - Implemented full support for `Column.between()` API
+  - Added `between` operation translation in Polars backend using `is_between()` with inclusive bounds (`closed="both"`)
+  - Implemented Python fallback evaluator `_func_between` for row-wise evaluation when Polars backend cannot handle the operation
+  - Added comprehensive test suite (13 test cases) covering:
+    - Basic between functionality with inclusive bounds
+    - Various data types (int, float, string, date)
+    - Null handling (PySpark behavior: returns None for NULL values)
+    - Literal bounds using `F.lit()`
+    - Column-based bounds (per-row evaluation)
+    - Usage in select expressions and when/otherwise constructs
+    - PySpark parity verification
+  - Documented `between` behavior and usage in `api_reference.md` with examples
+  - Implementation matches PySpark's behavior: `between` is inclusive on both ends (`lower <= value <= upper`)
+
+### Testing
+- Added 13 new tests for `between` functionality
+- All 1158 tests passing (up from 1145), 10 skipped
+- Tests verified in both sparkless and PySpark modes
+- PySpark parity test confirms behavior matches PySpark exactly
+
+### Technical Details
+- Updated `PolarsExpressionTranslator._translate_operation()` to handle `between` operation with tuple bounds `(lower, upper)`
+- Added support for translating various bound types: ColumnOperation, Column, Literal, and direct values (int, float, bool, str, datetime, date)
+- Enhanced `ExpressionEvaluator._func_between()` to handle row-wise evaluation with proper null handling
+- Added `between` to the list of special operations that should not be routed to generic function call translation
+
 ## 3.25.0 — 2025-01-20
 
 ### Added
