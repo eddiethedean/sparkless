@@ -1,16 +1,17 @@
 # Changelog
 
-## 3.24.0 — 2025-01-15
+## 3.25.0 — 2025-01-20
 
 ### Added
 - **Issue #247** - Added `elementType` keyword argument support to `ArrayType` for PySpark compatibility
   - `ArrayType(elementType=StringType())` now works (PySpark convention)
   - Maintains backward compatibility with positional `element_type` parameter
   - Added comprehensive test suite (32 tests) covering edge cases and PySpark parity
- - **Issue #260** - Implemented `Column.eqNullSafe` for null-safe equality comparisons
-   - Added `eqNullSafe` method to the `Column` API, matching PySpark semantics (treats `NULL` <=> `NULL` as `True`)
-   - Updated Polars backend comparison coercion to handle null-safe equality alongside existing numeric and datetime coercion
-   - Added regression and parity tests ensuring behavior matches PySpark for column–column and column–literal comparisons involving nulls
+- **Issue #260** - Implemented `Column.eqNullSafe` for null-safe equality comparisons
+  - Added `eqNullSafe` method to the `Column` and `Literal` APIs, matching PySpark semantics (treats `NULL` <=> `NULL` as `True`)
+  - Updated Polars backend comparison coercion and join handling to support null-safe equality alongside existing numeric and datetime coercion
+  - Added focused regression tests (including string, integer, float, date, and timestamp columns) plus optional PySpark parity tests for column–column and column–literal comparisons
+  - Documented `eqNullSafe` behavior and usage in `api_reference.md`, `getting_started.md`, and `function_api_audit.md`
 
 ### Fixed
 - **fillna After Join** - Fixed `fillna()` to properly materialize lazy DataFrames before processing
@@ -24,12 +25,17 @@
   - Fixed dynamic attribute access in `lazy.py` for window functions using `setattr`/`getattr`
   - Removed unused `type: ignore` comments in `operation_executor.py` decorators
   - Added appropriate `type: ignore` comments where needed for mypy full codebase checks
+  - Cleaned up mypy warnings and decorator typing around the Polars `operation_executor` used by `eqNullSafe`
+- **PySpark Parity Test Environment** - Ensured PySpark driver and workers use the same Python executable during parity tests
+  - Updated `tests/fixtures/spark_backend.py` to set `PYSPARK_PYTHON` / `PYSPARK_DRIVER_PYTHON` and corresponding Spark config keys (`spark.pyspark.python`, `spark.pyspark.driver.python`)
+  - Allows running `MOCK_SPARK_TEST_BACKEND=pyspark` tests for `eqNullSafe` without Python version mismatch errors
 
 ### Changed
 - **Code Quality** - All CI checks now passing (ruff format, ruff check, mypy)
   - Improved type annotations for better mypy compliance
   - Cleaned up unused imports and type ignore comments
   - Enhanced type safety in DataFrame operations
+  - Applied `ruff format`/`ruff check` and mypy cleanups for new `eqNullSafe` tests and supporting code
 
 ### Testing
 - Added 32 new tests for ArrayType elementType support
