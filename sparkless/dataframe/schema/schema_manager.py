@@ -130,20 +130,23 @@ class SchemaManager:
                     fields_list = list(fields_map.values())
                     using_list = True
 
-                # Determine if join is on a single column name (string) or column expression
-                # PySpark behavior:
-                # - Single column join (string): deduplicates the join key column
-                # - Column expression join: allows duplicates (keeps both columns)
-                is_single_column_join = isinstance(on, str) or (
-                    isinstance(on, list) and len(on) == 1 and isinstance(on[0], str)
+                # Determine if join is on column name(s) (string / list of strings)
+                # vs a column expression join.
+                #
+                # Sparkless cannot represent duplicate column names reliably (many operations
+                # assume uniqueness). For joins using column names, we therefore deduplicate
+                # *all* right-side columns whose names already exist on the left. This also
+                # matches the long-standing behavior relied on by parity tests (e.g. issue #128).
+                is_column_name_join = isinstance(on, str) or (
+                    isinstance(on, list) and all(isinstance(c, str) for c in on)
                 )
 
                 # Add fields from right DataFrame
                 if fields_list is not None:
                     existing_field_names = {f.name for f in fields_list}
                     for field in other_df.schema.fields:
-                        if is_single_column_join and field.name in existing_field_names:
-                            # Single column join: skip duplicate join key (PySpark deduplicates)
+                        if is_column_name_join and field.name in existing_field_names:
+                            # Deduplicate any right-side column that already exists on the left.
                             continue
                         # For column expression joins or non-duplicate columns, add the field
                         fields_list.append(field)

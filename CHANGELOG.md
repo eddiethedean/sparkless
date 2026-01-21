@@ -10,6 +10,12 @@
   - All methods match the `GroupedData` API for consistency with PySpark
 
 ### Fixed
+- **Issue #279** - Added support for executing Python UDFs in the Polars backend
+  - Fixed `ValueError: Unsupported function: udf` when applying `F.udf(...)` via `withColumn`
+  - Supports single-argument and multi-argument UDFs
+- **Issue #280** - Fixed `join(..., on=[...])` followed by `groupBy([...])` raising ambiguous column errors
+  - Join schema projection now avoids duplicate column names for column-name joins
+  - Prevents downstream failures like `AnalysisException: Ambiguous column name` and duplicate output columns in chained joins
 - **Issue #267** - Fixed `PivotGroupedData` column naming to match PySpark behavior
   - Single aggregate expression without alias: uses pivot value as column name (e.g., `A`, `B`)
   - Single aggregate expression with alias: uses alias as column name
@@ -19,6 +25,9 @@
 - Fixed handling of empty pivot groups (returns `None` instead of `0`)
 
 ### Testing
+- Added regression and comprehensive tests for issues #279 and #280
+  - UDF regression + comprehensive UDF coverage
+  - Join-then-groupBy scenarios across join types, join keys, and follow-on operations
 - Added 16 unit tests covering all convenience methods, column naming, and edge cases
 - Added 6 PySpark parity tests including the exact example from issue #267
 - All tests verify that column naming matches PySpark exactly
