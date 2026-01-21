@@ -5,7 +5,7 @@ This module provides materialization of lazy DataFrame operations using Polars,
 replacing SQL-based materialization with Polars DataFrame operations.
 """
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 import polars as pl
 from sparkless.spark_types import StructType, Row
 from sparkless.functions import ColumnOperation
@@ -590,8 +590,33 @@ class PolarsMaterializer:
                         if hasattr(materialized_other, "collect"):
                             # It's still a Sparkless DataFrame, get the data
                             other_rows = materialized_other.collect()
+                            schema = getattr(materialized_other, "schema", None)
+
+                            def _row_to_dict(row: Any) -> Dict[str, Any]:
+                                # Sparkless Row
+                                if hasattr(row, "asDict") and callable(row.asDict):
+                                    return cast("Dict[str, Any]", row.asDict())
+                                # Already a mapping
+                                if isinstance(row, dict):
+                                    return cast("Dict[str, Any]", row)
+                                # Sequence-like rows (e.g. tuple/list) with a known schema
+                                if schema is not None and hasattr(schema, "fields"):
+                                    try:
+                                        values = list(row)
+                                        return {
+                                            field.name: values[i]
+                                            for i, field in enumerate(schema.fields)
+                                            if i < len(values)
+                                        }
+                                    except Exception:
+                                        pass
+                                # Fallback: iterables of (k, v) pairs
+                                return cast("Dict[str, Any]", dict(row))
+
                             other_data = (
-                                [dict(row) for row in other_rows] if other_rows else []
+                                [_row_to_dict(row) for row in other_rows]
+                                if other_rows
+                                else []
                             )
 
                             if not other_data:
