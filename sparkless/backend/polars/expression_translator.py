@@ -3549,13 +3549,16 @@ class PolarsExpressionTranslator:
             if not extra_cols:
                 # Fast-path: match Spark's output for a single string/binary input.
                 def _hash_one(v: Any) -> Any:
+                    # PySpark returns the seed value (42) for NULL inputs.
                     if v is None:
-                        return None
+                        return 42
                     if isinstance(v, bytes):
                         return _xxh64(v, seed=42)
                     return _xxh64(str(v).encode("utf-8"), seed=42)
 
-                return col_expr.map_elements(_hash_one, return_dtype=pl.Int64)
+                return col_expr.map_elements(
+                    _hash_one, return_dtype=pl.Int64, skip_nulls=False
+                )
 
             col_exprs = [col_expr] + [self.translate(c) for c in extra_cols]
 
