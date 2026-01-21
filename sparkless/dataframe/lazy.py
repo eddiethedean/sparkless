@@ -2385,10 +2385,12 @@ class LazyEvaluationEngine:
         # Then add right fields that DO exist in left (duplicates)
         for field in other_df.schema.fields:
             if field.name in left_field_names:
-                # Don't duplicate join key columns when joining "on" those keys.
+                # Sparkless generally avoids duplicate column names.
+                # For joins on column names, keep only the left-side columns.
                 if _is_join_key(field.name):
                     continue
-                new_fields.append(field)
+                # Also skip other duplicates (non-join keys) for consistency.
+                continue
 
         return StructType(new_fields)
 
