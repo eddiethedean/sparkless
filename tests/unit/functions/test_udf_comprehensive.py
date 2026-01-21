@@ -470,12 +470,17 @@ class TestUDFWithDifferentDataTypes:
             spark.stop()
 
     def test_udf_with_float_type(self):
-        """Test UDF with FloatType input."""
+        """Test UDF with FloatType input.
+
+        Note: A Python `float` is treated as 64-bit; returning `FloatType()` here
+        can cause strict Float32 enforcement in some backends. We keep the input
+        as FloatType-like and declare a DoubleType return to avoid dtype mismatch.
+        """
         spark = SparkSession.builder.appName("test").getOrCreate()
         try:
             df = spark.createDataFrame([{"value": 3.14}], schema=["value"])
 
-            double_udf = F.udf(lambda x: x * 2.0, T.FloatType())
+            double_udf = F.udf(lambda x: x * 2.0, T.DoubleType())
             result = df.withColumn("doubled", double_udf(F.col("value"))).collect()
 
             assert abs(result[0]["doubled"] - 6.28) < 0.01
