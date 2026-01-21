@@ -368,7 +368,21 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
-### Version 3.26.0 - Case-Insensitive Column Names, Tuple DataFrame Creation, & Enhanced Compatibility
+### Version 3.26.0 - Missing String & JSON Functions (Issue #189)
+
+- 🔤 **9 New String & JSON Functions** - Implemented missing PySpark functions for improved compatibility
+  - **String Functions**: `soundex()` (phonetic matching), `translate()` (character translation), `levenshtein()` (edit distance), `crc32()` (checksum), `xxhash64()` (deterministic hashing), `regexp_extract_all()` (array of regex matches), `substring_index()` (delimiter-based extraction)
+  - **JSON Functions**: `get_json_object()` (JSONPath extraction), `json_tuple()` (multi-field extraction to separate columns)
+  - All functions match PySpark behavior exactly, including edge cases (nulls, empty strings, invalid JSON)
+  - `xxhash64` uses deterministic XXHash64 algorithm (seed=42) matching PySpark output
+  - `regexp_extract_all` extracts all regex matches as arrays (PySpark 3.5+ feature)
+- 🧪 **Comprehensive Test Coverage** - 18 new tests ensuring full PySpark compatibility
+  - 8 parity tests validating exact PySpark behavior
+  - 9 robust edge case tests covering nulls, empty strings, invalid JSON, missing paths/fields
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- 📚 **Documentation Updates** - Updated CHANGELOG and PYSPARK_FUNCTION_MATRIX with implementation details
+
+### Version 3.25.0 - Case-Insensitive Column Names, Tuple DataFrame Creation, & Enhanced Compatibility
 
 - 🔤 **Case-Insensitive Column Names** - Complete refactoring with centralized `ColumnResolver` system
   - Added `spark.sql.caseSensitive` configuration (default: `false`, matching PySpark)
