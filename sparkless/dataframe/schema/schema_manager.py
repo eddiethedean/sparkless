@@ -132,18 +132,28 @@ class SchemaManager:
 
                 # Determine if join is on a single column name (string) or column expression
                 # PySpark behavior:
-                # - Single column join (string): deduplicates the join key column
+                # - Join on column name(s) (string or list of strings): deduplicates the join key column(s)
                 # - Column expression join: allows duplicates (keeps both columns)
-                is_single_column_join = isinstance(on, str) or (
-                    isinstance(on, list) and len(on) == 1 and isinstance(on[0], str)
+                is_column_name_join = isinstance(on, str) or (
+                    isinstance(on, list) and all(isinstance(c, str) for c in on)
                 )
+
+                join_key_names: set[str] = set()
+                if isinstance(on, str):
+                    join_key_names = {on}
+                elif isinstance(on, list) and all(isinstance(c, str) for c in on):
+                    join_key_names = set(cast("List[str]", on))
 
                 # Add fields from right DataFrame
                 if fields_list is not None:
                     existing_field_names = {f.name for f in fields_list}
                     for field in other_df.schema.fields:
-                        if is_single_column_join and field.name in existing_field_names:
-                            # Single column join: skip duplicate join key (PySpark deduplicates)
+                        if (
+                            is_column_name_join
+                            and field.name in existing_field_names
+                            and field.name in join_key_names
+                        ):
+                            # Join on column name(s): skip duplicate join keys (PySpark deduplicates)
                             continue
                         # For column expression joins or non-duplicate columns, add the field
                         fields_list.append(field)

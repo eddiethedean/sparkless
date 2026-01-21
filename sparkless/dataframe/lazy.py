@@ -2343,10 +2343,39 @@ class LazyEvaluationEngine:
         # Start with all fields from left DataFrame
         new_fields = df.schema.fields.copy()
 
-        # Add ALL fields from right DataFrame, including duplicates
-        # PySpark allows duplicate column names in join results
-        # Order: left fields first, then right fields (non-duplicates first, then duplicates)
+        # Add fields from right DataFrame.
+        #
+        # PySpark behavior for `df.join(other, on=["k1", "k2"], ...)` is to include
+        # the join key columns only once (from the left side) and include the
+        # remaining right-side columns. This avoids producing duplicate join keys
+        # like ["Name", "Name"] which later makes column resolution ambiguous.
+        #
+        # We still allow duplicates for *non-join-key* columns (Spark can disambiguate
+        # via qualifiers; Sparkless is more limited but keeps schema parity where possible).
         left_field_names = {f.name for f in df.schema.fields}
+
+        # Normalize join keys for case-(in)sensitive comparison.
+        case_sensitive = df._is_case_sensitive()
+        join_keys: List[str] = []
+        if isinstance(on, str):
+            join_keys = [on]
+        elif isinstance(on, (list, tuple)):
+            join_keys = [c for c in on if isinstance(c, str)]
+        # ColumnOperation join conditions are not handled here (schema inference only).
+
+        if case_sensitive:
+            join_key_set = set(join_keys)
+        else:
+            join_key_set = {k.lower() for k in join_keys}
+
+        def _is_join_key(field_name: str) -> bool:
+            if not join_key_set:
+                return False
+            return (
+                field_name in join_key_set
+                if case_sensitive
+                else field_name.lower() in join_key_set
+            )
 
         # First add right fields that don't exist in left
         for field in other_df.schema.fields:
@@ -2356,6 +2385,9 @@ class LazyEvaluationEngine:
         # Then add right fields that DO exist in left (duplicates)
         for field in other_df.schema.fields:
             if field.name in left_field_names:
+                # Don't duplicate join key columns when joining "on" those keys.
+                if _is_join_key(field.name):
+                    continue
                 new_fields.append(field)
 
         return StructType(new_fields)
