@@ -370,6 +370,42 @@ class PolarsOperationExecutor:
                     # Use column name as-is (case-insensitive matching handled earlier)
                     select_exprs.append(pl.col(col))
                     select_names.append(col)
+            elif isinstance(col, ColumnOperation) and col.operation == "json_tuple":
+                # json_tuple(col, *fields) expands to multiple output columns (c0, c1, ...)
+                fields = list(col.value) if isinstance(col.value, (list, tuple)) else []
+
+                case_sensitive = self._get_case_sensitive()
+                json_expr = self.translator.translate(
+                    col.column,
+                    available_columns=list(df.columns),
+                    case_sensitive=case_sensitive,
+                )
+
+                import json as _json
+
+                def _extract_field(val: Any, field: str) -> Any:
+                    if val is None:
+                        return None
+                    if not isinstance(val, str):
+                        val = str(val)
+                    try:
+                        obj = _json.loads(val)
+                    except Exception:
+                        return None
+                    if not isinstance(obj, dict):
+                        return None
+                    v = obj.get(field)
+                    return None if v is None else str(v)
+
+                for j, f in enumerate(fields):
+                    name = f"c{j}"
+                    select_exprs.append(
+                        json_expr.map_elements(
+                            lambda x, field=f: _extract_field(x, field),  # noqa: B023
+                            return_dtype=pl.Utf8,
+                        ).alias(name)
+                    )
+                    select_names.append(name)
             elif isinstance(col, WindowFunction) or (
                 isinstance(col, ColumnOperation)
                 and col.operation == "cast"

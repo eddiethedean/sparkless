@@ -297,6 +297,14 @@ class SchemaManager:
                 elif isinstance(col, Literal):
                     # For Literal objects - literals are never nullable
                     new_fields_map[col_name] = SchemaManager._create_literal_field(col)
+                elif isinstance(col, ColumnOperation) and col.operation == "json_tuple":
+                    # json_tuple(col, *fields) expands into multiple string columns (c0, c1, ...)
+                    fields = (
+                        list(col.value) if isinstance(col.value, (list, tuple)) else []
+                    )
+                    for i in range(len(fields)):
+                        name = f"c{i}"
+                        new_fields_map[name] = StructField(name, StringType(), True)
                 else:
                     # New column from expression - infer type based on operation
                     new_fields_map[col_name] = SchemaManager._infer_expression_type(col)

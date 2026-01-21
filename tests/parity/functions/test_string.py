@@ -224,6 +224,82 @@ class TestStringFunctionsParity(ParityTestBase):
         result = df.select(F.initcap(df.text))
         self.assert_parity(result, expected)
 
+    def test_soundex(self, spark):
+        """Test soundex function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "soundex")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.soundex(df.name))
+        self.assert_parity(result, expected)
+
+    def test_translate(self, spark):
+        """Test translate function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "translate")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.translate(df.text, "aeiou", "AEIOU"))
+        self.assert_parity(result, expected)
+
+    def test_levenshtein(self, spark):
+        """Test levenshtein function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "levenshtein")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.levenshtein(df.name, F.lit("Alice")))
+        self.assert_parity(result, expected)
+
+    def test_crc32(self, spark):
+        """Test crc32 function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "crc32")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.crc32(df.text))
+        self.assert_parity(result, expected)
+
+    def test_xxhash64(self, spark):
+        """Test xxhash64 function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "xxhash64")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.xxhash64(df.text))
+        self.assert_parity(result, expected)
+
+    def test_get_json_object(self, spark):
+        """Test get_json_object function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "get_json_object")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(
+            F.get_json_object(F.lit('{"name":"Alice","age":25}'), "$.name")
+        )
+        self.assert_parity(result, expected)
+
+    def test_json_tuple(self, spark):
+        """Test json_tuple function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "json_tuple")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(
+            F.json_tuple(F.lit('{"name":"Alice","age":25}'), "name", "age")
+        )
+        self.assert_parity(result, expected)
+
+    def test_substring_index(self, spark):
+        """Test substring_index function matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
+        expected = self.load_expected("functions", "substring_index")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.substring_index(df.email, "@", 1))
+        self.assert_parity(result, expected)
+
     def test_repeat(self, spark):
         """Test repeat function matches PySpark behavior."""
         imports = get_spark_imports()
