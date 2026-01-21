@@ -590,7 +590,7 @@ class PolarsMaterializer:
                         if hasattr(materialized_other, "collect"):
                             # It's still a Sparkless DataFrame, get the data
                             other_rows = materialized_other.collect()
-                            schema = getattr(materialized_other, "schema", None)
+                            other_schema = getattr(materialized_other, "schema", None)
 
                             def _row_to_dict(row: Any) -> Dict[str, Any]:
                                 # Sparkless Row
@@ -600,12 +600,16 @@ class PolarsMaterializer:
                                 if isinstance(row, dict):
                                     return cast("Dict[str, Any]", row)
                                 # Sequence-like rows (e.g. tuple/list) with a known schema
-                                if schema is not None and hasattr(schema, "fields"):
+                                if other_schema is not None and hasattr(
+                                    other_schema, "fields"
+                                ):
                                     try:
                                         values = list(row)
                                         return {
                                             field.name: values[i]
-                                            for i, field in enumerate(schema.fields)
+                                            for i, field in enumerate(
+                                                other_schema.fields
+                                            )
                                             if i < len(values)
                                         }
                                     except Exception:
