@@ -677,7 +677,8 @@ class StringFunctions:
             column,
             "translate",
             (matching_string, replace_string),
-            name=f"translate({column.name}, '{matching_string}', '{replace_string}')",
+            # Match PySpark's column naming style (no quotes in the expression name)
+            name=f"translate({column.name}, {matching_string}, {replace_string})",
         )
         return operation
 
@@ -1309,11 +1310,22 @@ class StringFunctions:
             else:
                 columns.append(col)
 
+        if len(columns) == 1:
+            col_name = (
+                columns[0].name if hasattr(columns[0], "name") else str(columns[0])
+            )
+            name = f"xxhash64({col_name})"
+        else:
+            col_names = ", ".join(
+                c.name if hasattr(c, "name") else str(c) for c in columns
+            )
+            name = f"xxhash64({col_names})"
+
         return ColumnOperation(
             columns[0] if columns else Column(""),
             "xxhash64",
             value=columns[1:] if len(columns) > 1 else [],
-            name="xxhash64(...)",
+            name=name,
         )
 
     @staticmethod

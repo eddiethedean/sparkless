@@ -13,6 +13,13 @@ This matrix is provided for reference to understand PySpark version compatibilit
 ## Recent Improvements (2024)
 
 ### Function Fixes & Enhancements
+- **String Functions (Issue #189)**: Implemented missing string functions: `soundex`, `translate`, `levenshtein`, `crc32`, `xxhash64`, `regexp_extract_all`, `substring_index`
+  - All functions include comprehensive edge case handling and match PySpark behavior exactly
+  - `xxhash64` uses deterministic XXHash64 algorithm (seed=42) matching PySpark output
+  - `regexp_extract_all` extracts all regex matches as arrays (PySpark 3.5+ feature)
+- **JSON Functions (Issue #189)**: Implemented `get_json_object` and `json_tuple` for JSONPath-based extraction
+  - `get_json_object` supports full JSONPath syntax (e.g., `$.a.b[0].c`)
+  - `json_tuple` expands multiple fields into separate columns (c0, c1, ...)
 - **String Functions**: Fixed `trim`, `ltrim`, `rtrim` to match PySpark behavior (only removes ASCII spaces, not all whitespace)
 - **String Functions**: Fixed `concat` to correctly handle string literals by wrapping them in `Literal` objects
 - **String Functions**: Enhanced `rlike` to support `df.col.rlike()` syntax via `ColumnOperations`

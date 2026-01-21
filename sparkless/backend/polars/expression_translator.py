@@ -5,7 +5,7 @@ This module translates Sparkless column expressions (Column, ColumnOperation)
 to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from datetime import datetime, date
 import logging
 import polars as pl
@@ -23,6 +23,111 @@ except Exception:  # pragma: no cover - pandas is optional
     PandasTimestamp = None
 
 logger = logging.getLogger(__name__)
+
+
+# -----------------------------
+# Helpers for missing functions
+# -----------------------------
+
+
+def _xxh64(data: bytes, seed: int = 42) -> int:
+    """XXHash64 implementation (Spark's xxhash64 uses seed=42).
+
+    This is a small, self-contained implementation intended for deterministic
+    hashing of bytes. It matches the standard XXH64 algorithm.
+    """
+
+    # Reference constants from XXH64 specification
+    PRIME1 = 11400714785074694791
+    PRIME2 = 14029467366897019727
+    PRIME3 = 1609587929392839161
+    PRIME4 = 9650029242287828579
+    PRIME5 = 2870177450012600261
+
+    def _rotl(x: int, r: int) -> int:
+        return ((x << r) | (x >> (64 - r))) & 0xFFFFFFFFFFFFFFFF
+
+    def _round(acc: int, lane: int) -> int:
+        acc = (acc + (lane * PRIME2 & 0xFFFFFFFFFFFFFFFF)) & 0xFFFFFFFFFFFFFFFF
+        acc = _rotl(acc, 31)
+        acc = (acc * PRIME1) & 0xFFFFFFFFFFFFFFFF
+        return acc
+
+    def _merge_round(acc: int, val: int) -> int:
+        acc ^= _round(0, val)
+        acc = (acc * PRIME1 + PRIME4) & 0xFFFFFFFFFFFFFFFF
+        return acc
+
+    length = len(data)
+    i = 0
+
+    if length >= 32:
+        v1 = (seed + PRIME1 + PRIME2) & 0xFFFFFFFFFFFFFFFF
+        v2 = (seed + PRIME2) & 0xFFFFFFFFFFFFFFFF
+        v3 = (seed + 0) & 0xFFFFFFFFFFFFFFFF
+        v4 = (seed - PRIME1) & 0xFFFFFFFFFFFFFFFF
+
+        limit = length - 32
+        while i <= limit:
+            v1 = _round(v1, int.from_bytes(data[i : i + 8], "little", signed=False))
+            v2 = _round(
+                v2, int.from_bytes(data[i + 8 : i + 16], "little", signed=False)
+            )
+            v3 = _round(
+                v3, int.from_bytes(data[i + 16 : i + 24], "little", signed=False)
+            )
+            v4 = _round(
+                v4, int.from_bytes(data[i + 24 : i + 32], "little", signed=False)
+            )
+            i += 32
+
+        h64 = (
+            _rotl(v1, 1) + _rotl(v2, 7) + _rotl(v3, 12) + _rotl(v4, 18)
+        ) & 0xFFFFFFFFFFFFFFFF
+
+        h64 = _merge_round(h64, v1)
+        h64 = _merge_round(h64, v2)
+        h64 = _merge_round(h64, v3)
+        h64 = _merge_round(h64, v4)
+    else:
+        h64 = (seed + PRIME5) & 0xFFFFFFFFFFFFFFFF
+
+    h64 = (h64 + length) & 0xFFFFFFFFFFFFFFFF
+
+    # Process remaining 8-byte chunks
+    while i + 8 <= length:
+        k1 = int.from_bytes(data[i : i + 8], "little", signed=False)
+        k1 = (k1 * PRIME2) & 0xFFFFFFFFFFFFFFFF
+        k1 = _rotl(k1, 31)
+        k1 = (k1 * PRIME1) & 0xFFFFFFFFFFFFFFFF
+        h64 ^= k1
+        h64 = (_rotl(h64, 27) * PRIME1 + PRIME4) & 0xFFFFFFFFFFFFFFFF
+        i += 8
+
+    # Process remaining 4-byte chunk
+    if i + 4 <= length:
+        k1_32 = int.from_bytes(data[i : i + 4], "little", signed=False)
+        h64 ^= (k1_32 * PRIME1) & 0xFFFFFFFFFFFFFFFF
+        h64 = (_rotl(h64, 23) * PRIME2 + PRIME3) & 0xFFFFFFFFFFFFFFFF
+        i += 4
+
+    # Process remaining bytes
+    while i < length:
+        h64 ^= (data[i] * PRIME5) & 0xFFFFFFFFFFFFFFFF
+        h64 = (_rotl(h64, 11) * PRIME1) & 0xFFFFFFFFFFFFFFFF
+        i += 1
+
+    # Final avalanche
+    h64 ^= h64 >> 33
+    h64 = (h64 * PRIME2) & 0xFFFFFFFFFFFFFFFF
+    h64 ^= h64 >> 29
+    h64 = (h64 * PRIME3) & 0xFFFFFFFFFFFFFFFF
+    h64 ^= h64 >> 32
+
+    # Spark returns a signed 64-bit long
+    if h64 >= 1 << 63:
+        h64 -= 1 << 64
+    return h64
 
 
 def _is_mock_case_when(expr: Any) -> bool:
@@ -3310,6 +3415,255 @@ class PolarsExpressionTranslator:
                 else "",
                 return_dtype=pl.Utf8,
             )
+        elif function_name == "translate":
+            # translate(col, matching, replace)
+            if not isinstance(op.value, tuple) or len(op.value) != 2:
+                raise ValueError(
+                    "translate() requires (matching_string, replace_string)"
+                )
+            matching_string, replace_string = op.value
+
+            def _translate_str(val: Any) -> Any:
+                if val is None:
+                    return None
+                if not isinstance(val, str):
+                    val = str(val)
+                match = matching_string or ""
+                repl = replace_string or ""
+                mapping: Dict[str, str] = {}
+                for i, ch in enumerate(match):
+                    mapping[ch] = repl[i] if i < len(repl) else ""
+                return "".join(mapping.get(ch, ch) for ch in val)
+
+            return col_expr.map_elements(_translate_str, return_dtype=pl.Utf8)
+        elif function_name == "substring_index":
+            # substring_index(col, delim, count)
+            if not isinstance(op.value, tuple) or len(op.value) != 2:
+                raise ValueError("substring_index() requires (delim, count)")
+            delim, count = op.value
+            if not isinstance(count, int):
+                try:
+                    count = int(count)
+                except Exception as e:
+                    raise ValueError("substring_index() count must be int") from e
+
+            def _substring_index(val: Any) -> Any:
+                if val is None:
+                    return None
+                if not isinstance(val, str):
+                    val = str(val)
+                d = "" if delim is None else str(delim)
+                if count == 0:
+                    return ""
+                if d == "":
+                    return ""
+                parts = val.split(d)
+                if abs(count) >= len(parts):
+                    return val
+                if count > 0:
+                    return d.join(parts[:count])
+                return d.join(parts[count:])
+
+            return col_expr.map_elements(_substring_index, return_dtype=pl.Utf8)
+        elif function_name == "levenshtein":
+            # levenshtein(col1, col2)
+            right_expr = self.translate(op.value)
+
+            def _lev(a: Any, b: Any) -> Any:
+                if a is None or b is None:
+                    return None
+                if not isinstance(a, str):
+                    a = str(a)
+                if not isinstance(b, str):
+                    b = str(b)
+                # Wagner–Fischer with O(min(m,n)) memory
+                if len(a) < len(b):
+                    a, b = b, a
+                prev = list(range(len(b) + 1))
+                for i, ca in enumerate(a, start=1):
+                    cur = [i]
+                    for j, cb in enumerate(b, start=1):
+                        ins = cur[j - 1] + 1
+                        dele = prev[j] + 1
+                        sub = prev[j - 1] + (0 if ca == cb else 1)
+                        cur.append(min(ins, dele, sub))
+                    prev = cur
+                return prev[-1]
+
+            return pl.struct(
+                [col_expr.alias("_l"), right_expr.alias("_r")]
+            ).map_elements(
+                lambda s: _lev(s["_l"], s["_r"]) if s is not None else None,
+                return_dtype=pl.Int64,
+            )
+        elif function_name == "soundex":
+            # soundex(col)
+            def _soundex(val: Any) -> Any:
+                if val is None:
+                    return None
+                if not isinstance(val, str):
+                    val = str(val)
+                if val == "":
+                    return ""
+                s = val.upper()
+                first = s[0]
+                codes: Dict[str, str] = {}
+                codes.update(dict.fromkeys("BFPV", "1"))
+                codes.update(dict.fromkeys("CGJKQSXZ", "2"))
+                codes.update(dict.fromkeys("DT", "3"))
+                codes["L"] = "4"
+                codes.update(dict.fromkeys("MN", "5"))
+                codes["R"] = "6"
+                out = [first]
+                prev = codes.get(first, "")
+                for ch in s[1:]:
+                    code = codes.get(ch, "")
+                    if code == prev:
+                        continue
+                    prev = code
+                    if code:
+                        out.append(code)
+                result = "".join(out)[:4].ljust(4, "0")
+                return result
+
+            return col_expr.map_elements(_soundex, return_dtype=pl.Utf8)
+        elif function_name == "crc32":
+            import zlib
+
+            def _crc32(val: Any) -> Any:
+                if val is None:
+                    return None
+                if isinstance(val, bytes):
+                    b = val
+                else:
+                    if not isinstance(val, str):
+                        val = str(val)
+                    b = val.encode("utf-8")
+                return zlib.crc32(b) & 0xFFFFFFFF
+
+            return col_expr.map_elements(_crc32, return_dtype=pl.Int64)
+        elif function_name == "xxhash64":
+            # xxhash64(*cols) – currently implemented for strings/bytes deterministically.
+            # Spark uses seed=42.
+            extra_cols = op.value if isinstance(op.value, (list, tuple)) else []
+            if not extra_cols:
+                # Fast-path: match Spark's output for a single string/binary input.
+                def _hash_one(v: Any) -> Any:
+                    # PySpark returns the seed value (42) for NULL inputs.
+                    if v is None:
+                        return 42
+                    if isinstance(v, bytes):
+                        return _xxh64(v, seed=42)
+                    return _xxh64(str(v).encode("utf-8"), seed=42)
+
+                return col_expr.map_elements(
+                    _hash_one, return_dtype=pl.Int64, skip_nulls=False
+                )
+
+            col_exprs = [col_expr] + [self.translate(c) for c in extra_cols]
+
+            field_names = [f"_x_{i}" for i in range(len(col_exprs))]
+            struct_expr = pl.struct(
+                [e.alias(n) for e, n in zip(col_exprs, field_names)]
+            )
+
+            def _hash_row(s: Any) -> Any:
+                if s is None:
+                    return None
+                # Deterministic multi-arg hashing (best-effort).
+                parts: List[bytes] = []
+                for name in field_names:
+                    v = s[name]
+                    if v is None:
+                        parts.append(b"\x00")
+                    elif isinstance(v, bytes):
+                        parts.append(v)
+                    else:
+                        parts.append(str(v).encode("utf-8"))
+                    parts.append(b"\x1f")
+                return _xxh64(b"".join(parts), seed=42)
+
+            return struct_expr.map_elements(_hash_row, return_dtype=pl.Int64)
+        elif function_name == "get_json_object":
+            # get_json_object(col, path)
+            path = op.value
+            if not isinstance(path, str):
+                path = str(path)
+
+            import json
+            import re
+
+            def _extract(obj: Any, p: str) -> Any:
+                if obj is None:
+                    return None
+                # Support very common '$.a.b[0]' paths used in Spark tests/docs.
+                if not p.startswith("$."):
+                    return None
+                cur: Any = obj
+                tokens = p[2:].split(".") if p.startswith("$.") else []
+                for t in tokens:
+                    m = re.match(r"^([^\[]+)(?:\[(\d+)\])?$", t)
+                    if not m:
+                        return None
+                    key = m.group(1)
+                    idx = m.group(2)
+                    if isinstance(cur, dict):
+                        cur = cur.get(key)
+                    else:
+                        return None
+                    if idx is not None:
+                        if isinstance(cur, list):
+                            i = int(idx)
+                            cur = cur[i] if 0 <= i < len(cur) else None
+                        else:
+                            return None
+                if cur is None:
+                    return None
+                if isinstance(cur, (dict, list)):
+                    return json.dumps(cur, separators=(",", ":"))
+                return str(cur)
+
+            def _get(val: Any) -> Any:
+                if val is None:
+                    return None
+                if not isinstance(val, str):
+                    val = str(val)
+                try:
+                    obj = json.loads(val)
+                except Exception:
+                    return None
+                return _extract(obj, path)
+
+            return col_expr.map_elements(_get, return_dtype=pl.Utf8)
+        elif function_name == "regexp_extract_all":
+            # regexp_extract_all(col, pattern, idx)
+            if not isinstance(op.value, tuple) or len(op.value) != 2:
+                raise ValueError("regexp_extract_all() requires (pattern, idx)")
+            pattern, idx = op.value
+            if not isinstance(idx, int):
+                try:
+                    idx = int(idx)
+                except Exception as e:
+                    raise ValueError("regexp_extract_all() idx must be int") from e
+
+            import re
+
+            regex = re.compile(pattern)
+
+            def _extract_all(val: Any) -> Any:
+                if val is None:
+                    return None
+                if not isinstance(val, str):
+                    val = str(val)
+                out: List[str] = []
+                for m in regex.finditer(val):
+                    try:
+                        out.append(m.group(idx))
+                    except Exception:
+                        out.append("")
+                return out
+
+            return col_expr.map_elements(_extract_all, return_dtype=pl.List(pl.Utf8))
         elif function_name == "map_keys":
             # map_keys(col) - extract all keys from map/dict as array
             # Polars converts dicts to structs, so we need to get only non-null struct fields
