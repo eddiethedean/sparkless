@@ -16,6 +16,9 @@
 - **Issue #280** - Fixed `join(..., on=[...])` followed by `groupBy([...])` raising ambiguous column errors
   - Join schema projection now avoids duplicate column names for column-name joins
   - Prevents downstream failures like `AnalysisException: Ambiguous column name` and duplicate output columns in chained joins
+- **Issue #281** - Fixed `ValueError: dictionary update sequence element ...` when joining DataFrames with unmaterialized operations
+  - Join materialization now correctly converts collected rows to dictionaries when the right DataFrame has pending operations (e.g., `withColumn`, `withColumnRenamed`, `drop`, `select`, `filter`)
+  - Handles Sparkless Row objects, dicts, and sequence-like rows with schema fallback
 - **Issue #267** - Fixed `PivotGroupedData` column naming to match PySpark behavior
   - Single aggregate expression without alias: uses pivot value as column name (e.g., `A`, `B`)
   - Single aggregate expression with alias: uses alias as column name
@@ -25,9 +28,10 @@
 - Fixed handling of empty pivot groups (returns `None` instead of `0`)
 
 ### Testing
-- Added regression and comprehensive tests for issues #279 and #280
+- Added regression and comprehensive tests for issues #279, #280, and #281
   - UDF regression + comprehensive UDF coverage
   - Join-then-groupBy scenarios across join types, join keys, and follow-on operations
+  - Join with unmaterialized operations: multiple pending ops, select+filter, both-sides operations, empty DataFrames
 - Added 16 unit tests covering all convenience methods, column naming, and edge cases
 - Added 6 PySpark parity tests including the exact example from issue #267
 - All tests verify that column naming matches PySpark exactly
