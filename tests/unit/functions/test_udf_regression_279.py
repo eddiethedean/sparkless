@@ -18,4 +18,3 @@ def test_udf_with_withColumn_regression_279():
 
     rows = df2.collect()
     assert [r["Value"] for r in rows] == ["ABC", "DEF"]
-

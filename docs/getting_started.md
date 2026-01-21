@@ -1,6 +1,6 @@
 # Getting Started with Sparkless
 
-> **Compatibility Snapshot:** This guide targets Sparkless `3.25.0`, which provides parity with PySpark 3.2–3.5 and ships with 1106+ passing regression tests.
+> **Compatibility Snapshot:** This guide targets Sparkless `3.26.0`, which provides parity with PySpark 3.2–3.5 and ships with 1106+ passing regression tests.
 
 ## Installation
 
