@@ -368,7 +368,7 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
-### Version 3.25.0 - Case-Insensitive Column Names, Tuple DataFrame Creation, & Enhanced Compatibility
+### Version 3.26.0 - Case-Insensitive Column Names, Tuple DataFrame Creation, & Enhanced Compatibility
 
 - 🔤 **Case-Insensitive Column Names** - Complete refactoring with centralized `ColumnResolver` system
   - Added `spark.sql.caseSensitive` configuration (default: `false`, matching PySpark)

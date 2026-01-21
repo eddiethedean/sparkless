@@ -1500,6 +1500,66 @@ class PolarsExpressionTranslator:
                 case_sensitive=case_sensitive,
             )
 
+        # User-defined functions (UDFs).
+        # Sparkless represents a UDF application as a ColumnOperation with:
+        # - operation/function_name = "udf"
+        # - op._udf_func: the Python callable
+        # - op._udf_return_type: Sparkless return type (optional)
+        # - op._udf_cols: list of Column/ColumnOperation args (optional; present for multi-col UDFs)
+        if function_name == "udf":
+            udf_func = getattr(op, "_udf_func", None)
+            if udf_func is None or not callable(udf_func):
+                raise ValueError("Unsupported function: udf")
+
+            udf_cols = getattr(op, "_udf_cols", None)
+            if udf_cols:
+                arg_exprs: List[pl.Expr] = [
+                    self.translate(
+                        c,
+                        available_columns=available_columns,
+                        case_sensitive=case_sensitive,
+                    )
+                    for c in udf_cols
+                ]
+            else:
+                # Back-compat: some call paths only store the first column on op.column
+                arg_exprs = [col_expr]
+
+            return_dtype = None
+            udf_return_type = getattr(op, "_udf_return_type", None)
+            if udf_return_type is not None:
+                try:
+                    from .type_mapper import mock_type_to_polars_dtype
+
+                    return_dtype = mock_type_to_polars_dtype(udf_return_type)
+                except Exception:
+                    # If we can't map the declared return type, let Polars infer it.
+                    return_dtype = None
+
+            if len(arg_exprs) == 1:
+                return arg_exprs[0].map_elements(
+                    lambda x: udf_func(x),  # noqa: B023 - udf_func is user-supplied
+                    return_dtype=return_dtype,
+                )
+
+            # Multi-argument UDF: bundle inputs into a struct and apply row-wise.
+            field_names = [f"_udf_{i}" for i in range(len(arg_exprs))]
+            struct_expr = pl.struct(
+                [expr.alias(name) for expr, name in zip(arg_exprs, field_names)]
+            )
+
+            def apply_udf_struct(s: Any) -> Any:
+                if s is None:
+                    return None
+                try:
+                    args = [s[name] for name in field_names]
+                except Exception:
+                    # Polars may pass a dict-like; be defensive.
+                    args = [getattr(s, name, None) for name in field_names]
+                return udf_func(*args)  # noqa: B023 - udf_func is user-supplied
+
+            return struct_expr.map_elements(apply_udf_struct, return_dtype=return_dtype)
+
         # Special-case eqNullSafe when it is treated as a function call.
         # Some call-sites may surface null-safe equality via op.function_name
         # rather than the comparison operator path; delegate to the same
