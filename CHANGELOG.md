@@ -3,6 +3,18 @@
 ## 3.31.0 — Unreleased
 
 ### Added
+- **Issue #189** - Implemented missing string and JSON functions for improved PySpark compatibility
+  - Added `soundex()` function for phonetic string matching (Soundex algorithm)
+  - Added `translate()` function for character-by-character string translation
+  - Added `levenshtein()` function for calculating edit distance between strings
+  - Added `crc32()` function for CRC32 checksum calculation
+  - Added `xxhash64()` function for XXHash64 hashing (deterministic, seed=42, matches PySpark)
+  - Added `regexp_extract_all()` function for extracting all regex matches as an array
+  - Added `get_json_object()` function for JSONPath-based JSON value extraction
+  - Added `json_tuple()` function for extracting multiple JSON fields into separate columns (c0, c1, ...)
+  - Added `substring_index()` function for substring extraction based on delimiter occurrences
+  - All functions include comprehensive edge case handling (nulls, empty strings, invalid JSON, etc.)
+  - All functions match PySpark behavior exactly, including `xxhash64(NULL)` returning seed value (42)
 - **Issue #267** - Added aggregate function convenience methods to `PivotGroupedData` class
   - Added `sum()`, `avg()`, `mean()`, `count()`, `max()`, `min()` methods
   - Added `count_distinct()`, `collect_list()`, `collect_set()` methods
@@ -28,6 +40,12 @@
 - Fixed handling of empty pivot groups (returns `None` instead of `0`)
 
 ### Testing
+- Added comprehensive tests for issue #189 string/JSON functions
+  - 8 new parity tests in `tests/parity/functions/test_string.py` for PySpark compatibility validation
+  - 1 unit test in `tests/unit/functions/test_regexp_extract_all_189.py` for regex extraction
+  - 9 robust edge case tests in `tests/unit/functions/test_issue_189_string_functions_robust.py`
+  - Tests cover null handling, empty strings, invalid JSON, missing paths/fields, delimiter edge cases, and multi-match scenarios
+  - All tests pass in both Sparkless (mock) and PySpark backends
 - Added regression and comprehensive tests for issues #279, #280, and #281
   - UDF regression + comprehensive UDF coverage
   - Join-then-groupBy scenarios across join types, join keys, and follow-on operations
