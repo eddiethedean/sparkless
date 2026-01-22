@@ -85,6 +85,8 @@ class SQLExecutor:
             # Execute based on query type
             if ast.query_type == "SELECT":
                 return self._execute_select(ast)
+            elif ast.query_type == "WITH":
+                return self._execute_with(ast)
             elif ast.query_type == "UNION":
                 return self._execute_union(ast)
             elif ast.query_type == "CREATE":
@@ -162,7 +164,11 @@ class SQLExecutor:
                 # Handle JOIN operation
                 table_name = from_tables[0]
                 try:
-                    df1_any = self.session.table(table_name)
+                    # Check if first table is a CTE
+                    if hasattr(self, "_temp_views") and table_name in self._temp_views:
+                        df1_any = self._temp_views[table_name]
+                    else:
+                        df1_any = self.session.table(table_name)
                     df1: DataFrame
                     if not isinstance(df1_any, DataFrame):  # type: ignore[unreachable]
                         from ...spark_types import StructType
@@ -180,7 +186,11 @@ class SQLExecutor:
                     # Get second table
                     join_info = joins[0]
                     table2_name = join_info["table"]
-                    df2_any = self.session.table(table2_name)
+                    # Check if second table is a CTE
+                    if hasattr(self, "_temp_views") and table2_name in self._temp_views:
+                        df2_any = self._temp_views[table2_name]
+                    else:
+                        df2_any = self.session.table(table2_name)
                     df2: DataFrame
                     if not isinstance(df2_any, DataFrame):  # type: ignore[unreachable]
                         from ...spark_types import StructType
@@ -371,31 +381,46 @@ class SQLExecutor:
                 # Single table (no JOIN)
                 table_name = from_tables[0]
                 # Try to get table as DataFrame
-                try:
-                    df_any = self.session.table(table_name)
+                # First check if this is a CTE (temporary view from WITH clause)
+                if hasattr(self, "_temp_views") and table_name in self._temp_views:
+                    df_any = self._temp_views[table_name]
                     # Convert IDataFrame to DataFrame if needed
-                    # DataFrame is already imported at module level
-
                     if isinstance(df_any, DataFrame):  # type: ignore[unreachable]
                         df = df_any  # type: ignore[unreachable]
                     else:
-                        # df_any may be an IDataFrame; construct DataFrame from its public API
                         from ...spark_types import StructType
 
-                        # Convert ISchema to StructType if needed
                         if hasattr(df_any.schema, "fields"):
                             schema = StructType(df_any.schema.fields)  # type: ignore[arg-type]
                         else:
                             schema = StructType([])
                         df = DataFrame(df_any.collect(), schema)
-                except Exception:
-                    # If table doesn't exist, return empty DataFrame
-                    # DataFrame is already imported at module level
-                    from ...spark_types import StructType
+                else:
+                    try:
+                        df_any = self.session.table(table_name)
+                        # Convert IDataFrame to DataFrame if needed
+                        # DataFrame is already imported at module level
 
-                    # Log the error for debugging (can be removed in production)
-                    # This helps identify why table lookup fails
-                    return DataFrame([], StructType([]))  # type: ignore[return-value]
+                        if isinstance(df_any, DataFrame):  # type: ignore[unreachable]
+                            df = df_any  # type: ignore[unreachable]
+                        else:
+                            # df_any may be an IDataFrame; construct DataFrame from its public API
+                            from ...spark_types import StructType
+
+                            # Convert ISchema to StructType if needed
+                            if hasattr(df_any.schema, "fields"):
+                                schema = StructType(df_any.schema.fields)  # type: ignore[arg-type]
+                            else:
+                                schema = StructType([])
+                            df = DataFrame(df_any.collect(), schema)
+                    except Exception:
+                        # If table doesn't exist, return empty DataFrame
+                        # DataFrame is already imported at module level
+                        from ...spark_types import StructType
+
+                        # Log the error for debugging (can be removed in production)
+                        # This helps identify why table lookup fails
+                        return DataFrame([], StructType([]))  # type: ignore[return-value]
 
         df_ops = cast("SupportsDataFrameOps", df)
 
@@ -1237,6 +1262,90 @@ class SQLExecutor:
             df_ops = cast("SupportsDataFrameOps", df)
 
         return cast("IDataFrame", df)
+
+    def _execute_with(self, ast: SQLAST) -> IDataFrame:
+        """Execute WITH clause (Common Table Expressions).
+
+        Steps:
+        1. Execute each CTE query and store result
+        2. Register results as temporary views for table resolution
+        3. Execute main query with CTEs available
+        4. Clean up temporary storage
+
+        Args:
+            ast: Parsed SQL AST with "WITH" query type.
+
+        Returns:
+            IDataFrame with query results.
+
+        Raises:
+            QueryExecutionException: If CTE execution fails.
+        """
+        components = ast.components
+        ctes = components.get("ctes", [])
+        main_query = components.get("main_query", "")
+
+        if not main_query:
+            raise QueryExecutionException("WITH clause missing main query")
+
+        # Initialize temporary storage for this query execution
+        # Store original _temp_views if exists (for nested CTEs)
+        original_temp_views = getattr(self, "_temp_views", None)
+        self._temp_views: Dict[str, IDataFrame] = {}
+
+        try:
+            # Step 1: Execute each CTE and store result
+            for cte in ctes:
+                cte_name = cte["name"]
+                cte_query = cte["query"]
+
+                # Parse CTE query (may be SELECT, UNION, or even another WITH)
+                cte_ast = self.parser.parse(cte_query)
+
+                # Execute based on query type
+                if cte_ast.query_type == "SELECT":
+                    cte_result = self._execute_select(cte_ast)
+                elif cte_ast.query_type == "WITH":
+                    # Recursive CTE support (nested WITH)
+                    cte_result = self._execute_with(cte_ast)
+                elif cte_ast.query_type == "UNION":
+                    cte_result = self._execute_union(cte_ast)
+                else:
+                    raise QueryExecutionException(
+                        f"CTE '{cte_name}' must be SELECT, WITH, or UNION, "
+                        f"got {cte_ast.query_type}"
+                    )
+
+                # Store in temporary views for use by subsequent CTEs and main query
+                self._temp_views[cte_name] = cte_result
+
+            # Step 2: Execute main query with CTEs available
+            main_ast = self.parser.parse(main_query)
+
+            if main_ast.query_type == "SELECT":
+                result = self._execute_select(main_ast)
+            elif main_ast.query_type == "UNION":
+                result = self._execute_union(main_ast)
+            elif main_ast.query_type == "INSERT":
+                result = self._execute_insert(main_ast)
+            elif main_ast.query_type == "UPDATE":
+                result = self._execute_update(main_ast)
+            elif main_ast.query_type == "DELETE":
+                result = self._execute_delete(main_ast)
+            else:
+                raise QueryExecutionException(
+                    f"WITH main query must be SELECT/UNION/INSERT/UPDATE/DELETE, "
+                    f"got {main_ast.query_type}"
+                )
+
+            return result
+
+        finally:
+            # Step 3: Restore original temp views (for nested CTE cleanup)
+            if original_temp_views is not None:
+                self._temp_views = original_temp_views
+            elif hasattr(self, "_temp_views"):
+                delattr(self, "_temp_views")
 
     def _execute_union(self, ast: SQLAST) -> IDataFrame:
         """Execute UNION query.
