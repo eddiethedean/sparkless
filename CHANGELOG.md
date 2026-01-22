@@ -92,6 +92,18 @@
   - Works with conditional expressions, multiple columns, and aliases
   - Fixes `TypeError: unsupported operand type(s) for ** or pow(): 'float' and 'Column'` error
 
+- **Issue #292** - Added support for look-around regex patterns in `rlike()` and related functions
+  - Added look-around pattern detection for `rlike`, `regexp`, and `regexp_like` operations
+  - Uses Python `re` module fallback when Polars doesn't support look-ahead/look-behind assertions
+  - Detects patterns containing `(?=...)`, `(?!...)`, `(?<=...)`, `(?<!...)` assertions
+  - Falls back to Python evaluation when Polars raises ComputeError about look-around not being supported
+  - Supports negative lookahead (e.g., `(?!.*(Alice\sCat))`), positive lookahead, lookbehind, and negative lookbehind
+  - Works with case-insensitive flags, multiple lookaheads, and complex nested patterns
+  - Maintains backward compatibility with regular patterns (no look-around)
+  - Works in various contexts: `filter`, `select`, `withColumn`, chained operations
+  - Properly handles null values and empty DataFrames
+  - Fixes `polars.exceptions.ComputeError: regex error: look-around, including look-ahead and look-behind, is not supported` error
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -184,6 +196,16 @@
   - Tests for multiple columns, aliases, and multiple withColumn operations
   - Tests for edge cases: one base/exponent, decimal base/exponent, very large exponents
   - Tests for empty DataFrames
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #292 (`tests/test_issue_292_rlike_lookaround.py`)
+  - 15 test cases covering all look-around regex functionality
+  - Tests for negative lookahead (from issue example)
+  - Tests for positive lookahead, lookbehind, and negative lookbehind
+  - Tests for complex look-around patterns and multiple lookaheads
+  - Tests for case-insensitive look-around patterns
+  - Tests for rlike with and without look-around (backward compatibility)
+  - Tests for look-around in filter, select, withColumn, and chained operations
+  - Tests for null handling and empty DataFrames
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
