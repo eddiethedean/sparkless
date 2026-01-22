@@ -24,8 +24,7 @@ class TestCreateMap:
         df = spark.createDataFrame([{"val1": "a", "val2": 1}])
         result = df.select(
             F.create_map(
-                F.lit("key1"), F.col("val1"),
-                F.lit("key2"), F.col("val2")
+                F.lit("key1"), F.col("val1"), F.lit("key2"), F.col("val2")
             ).alias("map_col")
         )
         row = result.first()
@@ -35,14 +34,18 @@ class TestCreateMap:
 
     def test_create_map_with_column_values(self, spark):
         """Test create_map with literal keys and column values (common use case)."""
-        df = spark.createDataFrame([
-            {"first": "Alice", "last": "Smith"},
-            {"first": "Bob", "last": "Jones"},
-        ])
+        df = spark.createDataFrame(
+            [
+                {"first": "Alice", "last": "Smith"},
+                {"first": "Bob", "last": "Jones"},
+            ]
+        )
         result = df.select(
             F.create_map(
-                F.lit("first_name"), F.col("first"),
-                F.lit("last_name"), F.col("last"),
+                F.lit("first_name"),
+                F.col("first"),
+                F.lit("last_name"),
+                F.col("last"),
             ).alias("map_col")
         )
         rows = result.collect()
@@ -56,9 +59,12 @@ class TestCreateMap:
         df = spark.createDataFrame([{"a": 1, "b": 2, "c": 3}])
         result = df.select(
             F.create_map(
-                F.lit("x"), F.col("a"),
-                F.lit("y"), F.col("b"),
-                F.lit("z"), F.col("c"),
+                F.lit("x"),
+                F.col("a"),
+                F.lit("y"),
+                F.col("b"),
+                F.lit("z"),
+                F.col("c"),
             ).alias("map_col")
         )
         row = result.first()
@@ -70,15 +76,16 @@ class TestCreateMap:
         """Test create_map handles null values correctly."""
         from sparkless.spark_types import StructType, StructField, StringType
 
-        schema = StructType([
-            StructField("val1", StringType()),
-            StructField("val2", StringType()),
-        ])
+        schema = StructType(
+            [
+                StructField("val1", StringType()),
+                StructField("val2", StringType()),
+            ]
+        )
         df = spark.createDataFrame([{"val1": "a", "val2": None}], schema=schema)
         result = df.select(
             F.create_map(
-                F.lit("key1"), F.col("val1"),
-                F.lit("key2"), F.col("val2")
+                F.lit("key1"), F.col("val1"), F.lit("key2"), F.col("val2")
             ).alias("map_col")
         )
         row = result.first()
@@ -103,9 +110,11 @@ class TestCreateMap:
         result = df.withColumn(
             "info",
             F.create_map(
-                F.lit("name"), F.col("name"),
-                F.lit("age"), F.col("age"),
-            )
+                F.lit("name"),
+                F.col("name"),
+                F.lit("age"),
+                F.col("age"),
+            ),
         )
         row = result.first()
 
@@ -114,13 +123,16 @@ class TestCreateMap:
 
     def test_create_map_after_filter(self, spark):
         """Test create_map works after filter operation."""
-        df = spark.createDataFrame([
-            {"val1": "a", "val2": 1},
-            {"val1": "b", "val2": 2},
-        ])
+        df = spark.createDataFrame(
+            [
+                {"val1": "a", "val2": 1},
+                {"val1": "b", "val2": 2},
+            ]
+        )
         result = df.filter(F.col("val2") > 1).select(
             F.create_map(
-                F.lit("key"), F.col("val1"),
+                F.lit("key"),
+                F.col("val1"),
             ).alias("map_col")
         )
         row = result.first()
@@ -133,7 +145,8 @@ class TestCreateMap:
         df = spark.createDataFrame([{"dummy": 1}])
         result = df.select(
             F.create_map(
-                F.lit("static_key"), F.lit("static_value"),
+                F.lit("static_key"),
+                F.lit("static_value"),
             ).alias("map_col")
         )
         row = result.first()

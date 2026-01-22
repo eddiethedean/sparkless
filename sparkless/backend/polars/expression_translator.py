@@ -3888,7 +3888,9 @@ class PolarsExpressionTranslator:
             from ...functions.core.literals import Literal
 
             # Check if all keys are literals
-            all_literal_keys = all(isinstance(args[i], Literal) for i in range(0, len(args), 2))
+            all_literal_keys = all(
+                isinstance(args[i], Literal) for i in range(0, len(args), 2)
+            )
 
             if all_literal_keys:
                 # All keys are literals - we can build the map more efficiently
@@ -3912,11 +3914,21 @@ class PolarsExpressionTranslator:
                 # Convert struct to dict using map_elements
                 return struct_expr.map_elements(
                     lambda x: (
-                        dict(x) if hasattr(x, "_asdict") else
-                        {k: getattr(x, k, None) for k in x.__class__._fields} if hasattr(x, "_fields") else
-                        dict(x.items()) if hasattr(x, "items") else
-                        {str(k): v for k, v in zip(key_names, [getattr(x, str(kn), None) for kn in key_names])}
-                        if x is not None else None
+                        dict(x)
+                        if hasattr(x, "_asdict")
+                        else {k: getattr(x, k, None) for k in x.__class__._fields}
+                        if hasattr(x, "_fields")
+                        else dict(x.items())
+                        if hasattr(x, "items")
+                        else {
+                            str(k): v
+                            for k, v in zip(
+                                key_names,
+                                [getattr(x, str(kn), None) for kn in key_names],
+                            )
+                        }
+                        if x is not None
+                        else None
                     ),
                     return_dtype=pl.Object,
                 )
