@@ -665,6 +665,42 @@ class Catalog:
         # Mock implementation - in real Spark this would clear the cache
         pass
 
+    def dropTempView(self, viewName: str) -> bool:
+        """Drop a temporary view.
+
+        Args:
+            viewName: Name of the temporary view to drop.
+
+        Returns:
+            True if the view existed and was dropped, False otherwise.
+
+        Raises:
+            IllegalArgumentException: If viewName is not a string or is empty.
+
+        Example:
+            >>> spark.catalog.dropTempView("my_view")
+            True
+        """
+        if not isinstance(viewName, str):
+            raise IllegalArgumentException("View name must be a string")
+
+        if not viewName:
+            raise IllegalArgumentException("View name cannot be empty")
+
+        return self._storage.drop_temp_view(viewName)
+
+    def listLocalTempViews(self) -> list:
+        """List all local temporary views.
+
+        Returns:
+            List of temporary view names.
+
+        Example:
+            >>> spark.catalog.listLocalTempViews()
+            ['view1', 'view2']
+        """
+        return self._storage.list_temp_views()
+
     def _ensure_table_visible(self, schema: str, table: str) -> None:
         """Ensure table is immediately visible in catalog after creation.
 

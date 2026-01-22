@@ -113,6 +113,36 @@ class IStorageManager(ABC):
         """Create a temporary view (optional)."""
         pass
 
+    def drop_temp_view(self, name: str) -> bool:
+        """Drop a temporary view (optional).
+
+        Args:
+            name: Name of the temporary view to drop.
+
+        Returns:
+            True if the view existed and was dropped, False otherwise.
+        """
+        return False
+
+    def temp_view_exists(self, name: str) -> bool:
+        """Check if a temporary view exists (optional).
+
+        Args:
+            name: Name of the temporary view.
+
+        Returns:
+            True if the view exists, False otherwise.
+        """
+        return False
+
+    def list_temp_views(self) -> List[str]:
+        """List all temporary views (optional).
+
+        Returns:
+            List of temporary view names.
+        """
+        return []
+
     def query_table(
         self, schema_name: str, table_name: str, filter_expr: Optional[str] = None
     ) -> List[Dict[str, Any]]:
