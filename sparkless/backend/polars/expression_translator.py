@@ -1665,6 +1665,74 @@ class PolarsExpressionTranslator:
 
             return struct_expr.map_elements(apply_udf_struct, return_dtype=return_dtype)
 
+        # Handle struct function - creates a struct from multiple columns
+        if operation == "struct":
+            # Collect all columns for the struct
+            struct_cols = []
+
+            # Check if first column is a literal (all columns stored in value)
+            if (
+                op.column
+                and isinstance(op.column, Column)
+                and op.column.name == "__struct_dummy__"
+            ):
+                # All columns are in op.value
+                if op.value:
+                    struct_cols = (
+                        op.value if isinstance(op.value, (list, tuple)) else [op.value]
+                    )
+            else:
+                # First column is in op.column, remaining in op.value
+                struct_cols = [op.column] if op.column else []
+                if op.value:
+                    if isinstance(op.value, (list, tuple)):
+                        struct_cols.extend(op.value)
+                    else:
+                        struct_cols.append(op.value)
+
+            if not struct_cols:
+                raise ValueError("struct requires at least one column")
+
+            # Translate each column to a Polars expression
+            struct_exprs = []
+            for col in struct_cols:
+                if isinstance(col, str):
+                    # Column name - resolve case-insensitively if needed
+                    if available_columns:
+                        actual_col_name = self._find_column(
+                            available_columns, col, case_sensitive
+                        )
+                        col_expr = (
+                            pl.col(actual_col_name) if actual_col_name else pl.col(col)
+                        )
+                    else:
+                        col_expr = pl.col(col)
+                else:
+                    # Column object - translate it
+                    col_expr = self.translate(
+                        col,
+                        available_columns=available_columns,
+                        case_sensitive=case_sensitive,
+                    )
+                struct_exprs.append(col_expr)
+
+            # Create struct with column names as field names
+            # Use column names from the original columns for field names
+            field_names = []
+            for col in struct_cols:
+                if isinstance(col, str):
+                    field_names.append(col)
+                elif isinstance(col, Column) or hasattr(col, "name"):
+                    field_names.append(col.name)
+                else:
+                    # Fallback: use index
+                    field_names.append(f"field_{len(field_names)}")
+
+            # Create struct with aliased expressions
+            return pl.struct(
+                [expr.alias(name) for expr, name in zip(struct_exprs, field_names)]
+            )
+
         # Special-case eqNullSafe when it is treated as a function call.
         # Some call-sites may surface null-safe equality via op.function_name
         # rather than the comparison operator path; delegate to the same
