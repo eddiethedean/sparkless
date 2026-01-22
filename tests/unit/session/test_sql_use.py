@@ -11,13 +11,14 @@ from tests.fixtures.spark_backend import BackendType, get_backend_type
 def _is_pyspark_mode() -> bool:
     """Check if running in PySpark mode."""
     backend: BackendType = get_backend_type()
-    return backend == BackendType.PYSPARK
+    result: bool = backend == BackendType.PYSPARK
+    return result
 
 
 class TestUseCatalog:
     """Tests for USE CATALOG."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE CATALOG behavior differs in PySpark",
     )
@@ -29,7 +30,7 @@ class TestUseCatalog:
         # Verify catalog was set
         assert spark.catalog.currentCatalog() == "my_catalog"
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE CATALOG behavior differs in PySpark",
     )
@@ -42,7 +43,7 @@ class TestUseCatalog:
 class TestUseDatabase:
     """Tests for USE DATABASE."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE DATABASE behavior differs in PySpark",
     )
@@ -60,7 +61,7 @@ class TestUseDatabase:
         finally:
             spark.sql("DROP SCHEMA IF EXISTS test_db")
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE DATABASE behavior differs in PySpark",
     )
@@ -75,7 +76,7 @@ class TestUseDatabase:
 class TestUseSchema:
     """Tests for USE SCHEMA."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE SCHEMA behavior differs in PySpark",
     )
@@ -97,7 +98,7 @@ class TestUseSchema:
 class TestUseShorthand:
     """Tests for USE shorthand (USE database_name)."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE shorthand behavior differs in PySpark",
     )
@@ -115,7 +116,7 @@ class TestUseShorthand:
         finally:
             spark.sql("DROP SCHEMA IF EXISTS shorthand_db")
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE shorthand behavior differs in PySpark",
     )
@@ -132,7 +133,7 @@ class TestUseShorthand:
 class TestUseCatalogIntegration:
     """Integration tests for USE with other operations."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="USE CATALOG behavior differs in PySpark",
     )
