@@ -12,13 +12,14 @@ from tests.fixtures.spark_backend import BackendType, get_backend_type
 def _is_pyspark_mode() -> bool:
     """Check if running in PySpark mode."""
     backend: BackendType = get_backend_type()
-    return backend == BackendType.PYSPARK
+    result: bool = backend == BackendType.PYSPARK
+    return result
 
 
 class TestAlterTableClusterBy:
     """Tests for ALTER TABLE ... CLUSTER BY."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE CLUSTER BY requires Databricks runtime",
     )
@@ -39,7 +40,7 @@ class TestAlterTableClusterBy:
         finally:
             spark.sql("DROP TABLE IF EXISTS cluster_test")
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE CLUSTER BY requires Databricks runtime",
     )
@@ -60,7 +61,7 @@ class TestAlterTableClusterBy:
         finally:
             spark.sql("DROP TABLE IF EXISTS cluster_none_test")
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE CLUSTER BY requires Databricks runtime",
     )
@@ -75,7 +76,7 @@ class TestAlterTableClusterBy:
 class TestAlterTableAddColumn:
     """Tests for ALTER TABLE ... ADD COLUMN."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE ADD COLUMN behavior differs in PySpark",
     )
@@ -100,7 +101,7 @@ class TestAlterTableAddColumn:
 class TestAlterTableAlterColumn:
     """Tests for ALTER TABLE ... ALTER COLUMN."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE ALTER COLUMN behavior differs in PySpark",
     )
@@ -121,7 +122,7 @@ class TestAlterTableAlterColumn:
         finally:
             spark.sql("DROP TABLE IF EXISTS alter_type_test")
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE SET NOT NULL behavior differs in PySpark",
     )
@@ -142,7 +143,7 @@ class TestAlterTableAlterColumn:
         finally:
             spark.sql("DROP TABLE IF EXISTS set_not_null_test")
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE DROP NOT NULL behavior differs in PySpark",
     )
@@ -167,7 +168,7 @@ class TestAlterTableAlterColumn:
 class TestAlterTableDropColumn:
     """Tests for ALTER TABLE ... DROP COLUMN."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE DROP COLUMN behavior differs in PySpark",
     )
@@ -192,7 +193,7 @@ class TestAlterTableDropColumn:
 class TestAlterTableSetProperties:
     """Tests for ALTER TABLE ... SET TBLPROPERTIES."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE SET TBLPROPERTIES behavior differs in PySpark",
     )
@@ -220,7 +221,7 @@ class TestAlterTableSetProperties:
 class TestAlterTableWithSchema:
     """Tests for ALTER TABLE with schema-qualified table names."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="ALTER TABLE CLUSTER BY requires Databricks runtime",
     )
