@@ -93,6 +93,10 @@ class ColumnOperatorMixin:
         """Modulo operation."""
         return self._create_operation("%", other)
 
+    def __pow__(self, other: Any) -> "ColumnOperation":
+        """Power operation (for `col ** 2`)."""
+        return self._create_operation("**", other)
+
     def __radd__(self, other: Any) -> "ColumnOperation":
         """Reverse addition operation (for `2 + col`)."""
         # For commutative operations, we can just swap operands
@@ -120,6 +124,12 @@ class ColumnOperatorMixin:
         # For non-commutative operations, create ColumnOperation with literal as left operand
         # This will evaluate as `other % self` which is correct for `2 % col`
         return ColumnOperation(other, "%", self)
+
+    def __rpow__(self, other: Any) -> "ColumnOperation":
+        """Reverse power operation (for `2 ** col` or `3.0 ** col`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        # This will evaluate as `other ** self` which is correct for `2 ** col`
+        return ColumnOperation(other, "**", self)
 
     def __and__(self, other: Any) -> "ColumnOperation":
         """Logical AND operation."""

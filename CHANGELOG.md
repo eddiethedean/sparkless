@@ -153,6 +153,16 @@
   - Tests for decorator pattern and backward compatibility with single-argument UDFs
   - Tests for edge cases: all null arguments, large number of columns, mixed types
   - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #291 (`tests/test_issue_291_power_operator_float_column.py`)
+  - 16 test cases covering all power operator (**) functionality
+  - Tests for float ** Column and float ** ColumnOperation (from issue examples)
+  - Tests for Column ** number (forward power operation)
+  - Tests for integer ** Column, Column ** Column
+  - Tests for nested expressions, chained operations, and mixed types
+  - Tests for null handling, zero base/exponent, negative exponents
+  - Tests for power in select, filter, and groupBy contexts
+  - Tests for empty DataFrames
+  - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
 
