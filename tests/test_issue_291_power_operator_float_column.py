@@ -12,9 +12,17 @@ import sparkless.sql.functions as F
 class TestIssue291PowerOperatorFloatColumn:
     """Test power operator (**) between floats and Column/ColumnOperation."""
 
+    def _get_unique_app_name(self, test_name: str) -> str:
+        """Generate a unique app name for each test to avoid conflicts in parallel execution."""
+        import uuid
+
+        return f"issue-291-{test_name}-{uuid.uuid4().hex[:8]}"
+
     def test_float_power_column(self):
         """Test float ** Column (from issue example)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name("test_float_power_column")
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -40,7 +48,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_float_power_column_operation(self):
         """Test float ** ColumnOperation (from issue example)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -68,7 +81,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_column_power_number(self):
         """Test Column ** number (forward power operation)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -94,7 +112,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_integer_power_column(self):
         """Test integer ** Column."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -114,7 +137,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_column_power_column(self):
         """Test Column ** Column."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -136,7 +164,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_float_power_nested_expression(self):
         """Test float ** nested ColumnOperation."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -156,7 +189,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_in_select(self):
         """Test power operator in select statement."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -176,7 +214,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_in_filter(self):
         """Test power operator in filter/where clause."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -197,7 +240,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_with_nulls(self):
         """Test power operator with null values."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -219,7 +267,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_zero_exponent(self):
         """Test power operator with zero exponent."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -239,7 +292,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_zero_base(self):
         """Test power operator with zero base."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -259,7 +317,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_negative_exponent(self):
         """Test power operator with negative exponent."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -279,7 +342,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_chained_operations(self):
         """Test chained power operations."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -303,7 +371,12 @@ class TestIssue291PowerOperatorFloatColumn:
         Note: Power operations with aggregations may have limitations.
         This test verifies the operation completes without error.
         """
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -327,7 +400,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_mixed_types(self):
         """Test power operator with mixed numeric types."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -350,7 +428,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_empty_dataframe(self):
         """Test power operator on empty DataFrame."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             from sparkless.spark_types import StructType, StructField, IntegerType
 
@@ -371,7 +454,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_fractional_exponent(self):
         """Test power operator with fractional exponents (square root, cube root, etc.)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -394,7 +482,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_large_numbers(self):
         """Test power operator with large numbers."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -414,7 +507,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_small_numbers(self):
         """Test power operator with very small numbers."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -434,7 +532,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_string_coercion(self):
         """Test power operator with string columns (should coerce to numeric)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -454,7 +557,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_in_orderby(self):
         """Test power operator in orderBy clause."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -479,7 +587,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_complex_nested_expression(self):
         """Test power operator in complex nested expressions."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -507,7 +620,12 @@ class TestIssue291PowerOperatorFloatColumn:
         Note: Complex arithmetic combinations may have limitations.
         This test verifies the operation completes without error.
         """
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -532,7 +650,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_with_conditional(self):
         """Test power operator in conditional expressions."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -562,7 +685,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_multiple_columns(self):
         """Test multiple power operations on different columns."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -586,7 +714,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_one_exponent(self):
         """Test power operator with exponent of 1 (should return base)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -608,7 +741,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_one_base(self):
         """Test power operator with base of 1 (should always return 1)."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -630,7 +768,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_decimal_base_exponent(self):
         """Test power operator with decimal base and exponent."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -656,7 +799,12 @@ class TestIssue291PowerOperatorFloatColumn:
         Note: Union operations with power may have limitations.
         This test verifies the operation completes without error.
         """
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df1 = spark.createDataFrame([{"Value": 2}])
             df2 = spark.createDataFrame([{"Value": 3}])
@@ -676,7 +824,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_with_alias(self):
         """Test power operator with column aliases."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -697,7 +850,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_very_large_exponent(self):
         """Test power operator with very large exponents."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -717,7 +875,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_float_base_integer_exponent(self):
         """Test power operator with float base and integer exponent."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [
@@ -737,7 +900,12 @@ class TestIssue291PowerOperatorFloatColumn:
 
     def test_power_in_multiple_withcolumns(self):
         """Test power operator in multiple withColumn operations."""
-        spark = SparkSession.builder.appName("issue-291").getOrCreate()
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
         try:
             df = spark.createDataFrame(
                 [

@@ -198,7 +198,7 @@
   - Tests for empty DataFrames
   - All tests pass in both Sparkless (mock) and PySpark backends
 - Added comprehensive test suite for issue #292 (`tests/test_issue_292_rlike_lookaround.py`)
-  - 15 test cases covering all look-around regex functionality
+  - 36 test cases covering all look-around regex functionality
   - Tests for negative lookahead (from issue example)
   - Tests for positive lookahead, lookbehind, and negative lookbehind
   - Tests for complex look-around patterns and multiple lookaheads
@@ -206,6 +206,10 @@
   - Tests for rlike with and without look-around (backward compatibility)
   - Tests for look-around in filter, select, withColumn, and chained operations
   - Tests for null handling and empty DataFrames
+  - Tests for anchored lookaheads, nested lookaheads, lookbehind with digits, combined lookahead/lookbehind
+  - Tests for multiple negative lookaheads, lookahead/lookbehind with word boundaries, quantifiers
+  - Tests for alternation, capture groups, unicode, escaped characters, large datasets, and case sensitivity
+  - Tests for fixed-width lookbehind patterns (Python re module limitation)
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
