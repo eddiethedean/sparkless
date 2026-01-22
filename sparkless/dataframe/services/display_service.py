@@ -278,3 +278,22 @@ class DisplayService:
             True if DataFrame has no rows
         """
         return len(self._df.data) == 0
+
+    def first(self) -> Union[Row, None]:
+        """Return the first row, or None if empty.
+
+        This matches PySpark's DataFrame.first() behavior exactly:
+        - Returns a single Row object (not a list)
+        - Returns None if the DataFrame is empty
+
+        Returns:
+            First Row, or None if DataFrame is empty.
+        """
+        if self._df._operations_queue:
+            materialized = self._df._materialize_if_lazy()
+            return self._df._get_collection_handler().first(
+                materialized.data, materialized.schema
+            )
+        return self._df._get_collection_handler().first(
+            self._df.data, self._df.schema
+        )
