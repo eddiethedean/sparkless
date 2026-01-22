@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.27.0 — Unreleased
+
+### Fixed
+- **Issue #297** - Fixed column name resolution after join when columns differ only by case
+  - Fixed `AnalysisException: Ambiguous column name` when selecting columns after a join where columns differ only by case (e.g., "name" vs "Name")
+  - Updated `ColumnResolver.resolve_column_name()` to return the first matching column in case-insensitive scenarios instead of raising an exception, matching PySpark behavior
+  - Modified `TransformationService.select()` to preserve the original requested column name (e.g., "NaMe") rather than replacing it with the resolved canonical name
+  - Updated `SchemaManager._handle_select_operation()` to dynamically determine output column name based on ambiguity:
+    - If multiple case-insensitive matches exist, use the requested column name (e.g., "NaMe")
+    - If only a single case-insensitive match exists, use the original column name from the schema (e.g., "Name" if "name" was requested)
+  - Updated `PolarsOperationExecutor.apply_select()` to correctly alias columns when ambiguity exists
+  - Modified `PolarsMaterializer` to pass original requested column names to `apply_select` for proper resolution and aliasing
+  - Fixes `KeyError` when accessing Row objects with the requested column name after a join and select operation
+
+- **Issue #286** - Added arithmetic operators to `AggregateFunction` class
+  - Added support for arithmetic operations on aggregate functions (e.g., `F.countDistinct("Value") - 1`), matching PySpark behavior
+  - Implemented `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__mod__` and their reverse counterparts (`__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rmod__`) on `AggregateFunction` class
+  - Updated `GroupedData._evaluate_column_expression()` to handle arithmetic operations on aggregate functions
+  - Supports both `AggregateFunction` and `ColumnOperation` wrapping aggregate functions
+  - Supports forward operations (e.g., `F.countDistinct() - 1`) and reverse operations (e.g., `10 - F.countDistinct()`)
+  - Supports chained arithmetic operations (e.g., `(F.countDistinct() - 1) * 2`)
+  - Properly handles division and modulo by zero (returns `None`, matching PySpark behavior)
+  - Works with all aggregate functions: `count`, `sum`, `avg`, `max`, `min`, `countDistinct`, `stddev`, `variance`, etc.
+
+### Testing
+- Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
+  - Tests for different join types (inner, left, right, outer)
+  - Tests for multiple ambiguous columns
+  - Tests for chained operations (filter, orderBy, groupBy)
+  - Tests for edge cases (empty DataFrames, null values)
+  - Tests for different case variations (NaMe, nAmE, NAME, etc.)
+  - Tests for operations after select (withColumn, drop)
+  - Verification of single-match vs. multiple-match behavior
+- Added comprehensive test suite for issue #286 (`tests/test_issue_286_aggregate_function_arithmetic.py`)
+  - 26 test cases covering all arithmetic operations (+, -, *, /, %)
+  - Tests for forward and reverse operations
+  - Tests for chained arithmetic operations
+  - Tests for null handling, floats, negative numbers, zero
+  - Tests for division/modulo by zero (returns None)
+  - Tests for min, stddev, variance aggregate functions
+  - Tests for complex nested operations
+  - Tests for count(*), empty groups, large numbers
+  - Tests for mixed aggregate functions
+  - Tests for aliases and operator precedence
+  - All tests pass in both Sparkless (mock) and PySpark backends
+
 ## 3.31.0 — Unreleased
 
 ### Added

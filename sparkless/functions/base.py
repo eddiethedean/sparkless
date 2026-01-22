@@ -258,3 +258,60 @@ class AggregateFunction:
             >>> F.mean(F.col("value")).cast("string")
         """
         return ColumnOperation(self, "cast", data_type)
+
+    def _create_operation(self, operation: str, other: Any) -> "ColumnOperation":
+        """Create a ColumnOperation with the given operation and other operand.
+
+        Args:
+            operation: The operation to perform (e.g., "+", "-", etc.)
+            other: The other operand
+
+        Returns:
+            ColumnOperation instance
+        """
+        return ColumnOperation(self, operation, other)
+
+    def __add__(self, other: Any) -> "ColumnOperation":
+        """Addition operation (PySpark-compatible)."""
+        return self._create_operation("+", other)
+
+    def __sub__(self, other: Any) -> "ColumnOperation":
+        """Subtraction operation (PySpark-compatible)."""
+        return self._create_operation("-", other)
+
+    def __mul__(self, other: Any) -> "ColumnOperation":
+        """Multiplication operation (PySpark-compatible)."""
+        return self._create_operation("*", other)
+
+    def __truediv__(self, other: Any) -> "ColumnOperation":
+        """Division operation (PySpark-compatible)."""
+        return self._create_operation("/", other)
+
+    def __mod__(self, other: Any) -> "ColumnOperation":
+        """Modulo operation (PySpark-compatible)."""
+        return self._create_operation("%", other)
+
+    def __radd__(self, other: Any) -> "ColumnOperation":
+        """Reverse addition operation (for `2 + agg_func`)."""
+        # For commutative operations, we can just swap operands
+        return self._create_operation("+", other)
+
+    def __rsub__(self, other: Any) -> "ColumnOperation":
+        """Reverse subtraction operation (for `2 - agg_func`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        return ColumnOperation(other, "-", self)
+
+    def __rmul__(self, other: Any) -> "ColumnOperation":
+        """Reverse multiplication operation (for `2 * agg_func`)."""
+        # For commutative operations, we can just swap operands
+        return self._create_operation("*", other)
+
+    def __rtruediv__(self, other: Any) -> "ColumnOperation":
+        """Reverse division operation (for `2 / agg_func`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        return ColumnOperation(other, "/", self)
+
+    def __rmod__(self, other: Any) -> "ColumnOperation":
+        """Reverse modulo operation (for `2 % agg_func`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        return ColumnOperation(other, "%", self)
