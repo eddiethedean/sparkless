@@ -105,6 +105,8 @@ class SQLExecutor:
                 return self._execute_describe(ast)
             elif ast.query_type == "REFRESH":
                 return self._execute_refresh(ast)
+            elif ast.query_type == "ALTER":
+                return self._execute_alter(ast)
             else:
                 raise QueryExecutionException(
                     f"Unsupported query type: {ast.query_type}"
@@ -1981,6 +1983,71 @@ class SQLExecutor:
         # Return empty DataFrame to indicate success
         from typing import cast
 
+        return cast("IDataFrame", DataFrame([], StructType([])))
+
+    def _execute_alter(self, ast: SQLAST) -> IDataFrame:
+        """Execute ALTER TABLE query.
+
+        Supports:
+        - ALTER TABLE table CLUSTER BY (col1, col2) - Enable liquid clustering
+        - ALTER TABLE table CLUSTER BY NONE - Disable clustering
+        - ALTER TABLE table ADD COLUMN col_def - Add column
+        - ALTER TABLE table ALTER COLUMN col TYPE new_type - Change column type
+        - ALTER TABLE table ALTER COLUMN col SET NOT NULL - Set not nullable
+        - ALTER TABLE table ALTER COLUMN col DROP NOT NULL - Drop not null
+        - ALTER TABLE table DROP COLUMN col - Drop column
+        - ALTER TABLE table SET TBLPROPERTIES (...) - Set properties
+
+        For sparkless, most ALTER operations are no-ops but we validate
+        that the table exists. Schema modifications are not persisted
+        since sparkless is designed for testing purposes.
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            Empty DataFrame indicating success.
+
+        Raises:
+            AnalysisException: If table does not exist.
+        """
+        from ...errors import AnalysisException
+
+        components = ast.components
+        _alter_type = components.get("alter_type", "UNKNOWN")  # noqa: F841
+        table_name = components.get("table_name")
+        schema_name = components.get("schema_name")
+
+        # Access storage through catalog
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog.get_storage_backend()
+
+        if schema_name is None:
+            schema_name = storage.get_current_schema()
+
+        # Build qualified table name for error messages
+        qualified_name = f"{schema_name}.{table_name}" if schema_name else table_name
+
+        # Validate table exists
+        if table_name and not storage.table_exists(schema_name, table_name):
+            raise AnalysisException(f"Table {qualified_name} does not exist")
+
+        # For sparkless, ALTER operations are mostly no-ops
+        # We validate the table exists but don't actually modify schema
+        # since sparkless is designed for testing and doesn't need
+        # persistent schema changes
+
+        # Log the operation for debugging (in real usage)
+        # In a full implementation, we might:
+        # - CLUSTER_BY: Store clustering info in table metadata
+        # - ADD_COLUMN: Add column to table schema
+        # - DROP_COLUMN: Remove column from table schema
+        # - ALTER_COLUMN_TYPE: Modify column type
+        # - SET_NOT_NULL/DROP_NOT_NULL: Update nullability
+        # - SET_TBLPROPERTIES: Store table properties
+
+        # Return empty DataFrame to indicate success
         return cast("IDataFrame", DataFrame([], StructType([])))
 
     def _execute_show(self, ast: SQLAST) -> IDataFrame:
