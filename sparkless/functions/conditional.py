@@ -212,6 +212,75 @@ class CaseWhen:
         """
         return ColumnOperation(self, "cast", data_type)
 
+    def _create_operation(self, operation: str, other: Any) -> ColumnOperation:
+        """Create a ColumnOperation with the given operation and other operand.
+
+        Args:
+            operation: The operation to perform (e.g., "+", "-", "|", etc.)
+            other: The other operand
+
+        Returns:
+            ColumnOperation instance
+        """
+        return ColumnOperation(self, operation, other)
+
+    def __add__(self, other: Any) -> ColumnOperation:
+        """Addition operation (PySpark-compatible)."""
+        return self._create_operation("+", other)
+
+    def __sub__(self, other: Any) -> ColumnOperation:
+        """Subtraction operation (PySpark-compatible)."""
+        return self._create_operation("-", other)
+
+    def __mul__(self, other: Any) -> ColumnOperation:
+        """Multiplication operation (PySpark-compatible)."""
+        return self._create_operation("*", other)
+
+    def __truediv__(self, other: Any) -> ColumnOperation:
+        """Division operation (PySpark-compatible)."""
+        return self._create_operation("/", other)
+
+    def __mod__(self, other: Any) -> ColumnOperation:
+        """Modulo operation (PySpark-compatible)."""
+        return self._create_operation("%", other)
+
+    def __radd__(self, other: Any) -> ColumnOperation:
+        """Reverse addition operation (for `2 + case_when`)."""
+        # For commutative operations, we can just swap operands
+        return self._create_operation("+", other)
+
+    def __rsub__(self, other: Any) -> ColumnOperation:
+        """Reverse subtraction operation (for `2 - case_when`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        return ColumnOperation(other, "-", self)
+
+    def __rmul__(self, other: Any) -> ColumnOperation:
+        """Reverse multiplication operation (for `2 * case_when`)."""
+        # For commutative operations, we can just swap operands
+        return self._create_operation("*", other)
+
+    def __rtruediv__(self, other: Any) -> ColumnOperation:
+        """Reverse division operation (for `2 / case_when`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        return ColumnOperation(other, "/", self)
+
+    def __rmod__(self, other: Any) -> ColumnOperation:
+        """Reverse modulo operation (for `2 % case_when`)."""
+        # For non-commutative operations, create ColumnOperation with literal as left operand
+        return ColumnOperation(other, "%", self)
+
+    def __or__(self, other: Any) -> ColumnOperation:
+        """Bitwise OR operation (PySpark-compatible)."""
+        return self._create_operation("|", other)
+
+    def __and__(self, other: Any) -> ColumnOperation:
+        """Bitwise AND operation (PySpark-compatible)."""
+        return self._create_operation("&", other)
+
+    def __invert__(self) -> ColumnOperation:
+        """Bitwise NOT operation (unary ~, PySpark-compatible)."""
+        return ColumnOperation(self, "~", None)
+
     def evaluate(self, row: Dict[str, Any]) -> Any:
         """Evaluate the CASE WHEN expression for a given row.
 
