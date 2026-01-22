@@ -537,7 +537,7 @@ class TransformationService:
         if actual_existing is None:
             # PySpark treats renaming a non-existent column as a no-op
             # Return the DataFrame unchanged
-            return cast("SupportsDataFrameOps", materialized)
+            return materialized
 
         new_data = []
         for row in materialized.data:
