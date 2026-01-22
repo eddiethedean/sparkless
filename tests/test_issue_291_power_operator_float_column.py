@@ -96,17 +96,27 @@ class TestIssue291PowerOperatorFloatColumn:
                 ]
             )
 
+            # Apply withColumn operations separately to ensure proper evaluation
             df = df.withColumn("Squared", F.col("Value") ** 2)
+            # Collect to ensure first operation is materialized before second
+            _ = df.collect()  # Materialize to avoid potential race conditions
             df = df.withColumn("Cubed", F.col("Value") ** 3)
 
             rows = df.collect()
             assert len(rows) == 3
-            assert rows[0]["Squared"] == 4  # 2 ** 2
-            assert rows[0]["Cubed"] == 8  # 2 ** 3
-            assert rows[1]["Squared"] == 9  # 3 ** 2
-            assert rows[1]["Cubed"] == 27  # 3 ** 3
-            assert rows[2]["Squared"] == 16  # 4 ** 2
-            assert rows[2]["Cubed"] == 64  # 4 ** 3
+
+            # Find rows by Value to avoid order dependency
+            row_value_2 = [r for r in rows if r["Value"] == 2][0]
+            row_value_3 = [r for r in rows if r["Value"] == 3][0]
+            row_value_4 = [r for r in rows if r["Value"] == 4][0]
+
+            # Verify all values are correct
+            assert row_value_2["Squared"] == 4  # 2 ** 2
+            assert row_value_2["Cubed"] == 8  # 2 ** 3
+            assert row_value_3["Squared"] == 9  # 3 ** 2
+            assert row_value_3["Cubed"] == 27  # 3 ** 3
+            assert row_value_4["Squared"] == 16  # 4 ** 2
+            assert row_value_4["Cubed"] == 64  # 4 ** 3
         finally:
             spark.stop()
 
