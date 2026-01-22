@@ -1199,7 +1199,9 @@ class SQLParser:
             raise ParseException("Invalid WITH clause: could not find main query")
 
         # Extract CTE definitions (everything between WITH and main query)
-        cte_section = query[with_match.end() if with_match else 4:main_query_start].strip()
+        cte_section = query[
+            with_match.end() if with_match else 4 : main_query_start
+        ].strip()
         if cte_section.endswith(","):
             cte_section = cte_section[:-1].strip()
 
@@ -1231,12 +1233,14 @@ class SQLParser:
                 raise ParseException(f"Unmatched parentheses in CTE '{cte_name}'")
 
             # Extract CTE subquery (between parens)
-            cte_query = cte_section[paren_start + 1:subquery_end].strip()
+            cte_query = cte_section[paren_start + 1 : subquery_end].strip()
 
-            components["ctes"].append({
-                "name": cte_name,
-                "query": cte_query,
-            })
+            components["ctes"].append(
+                {
+                    "name": cte_name,
+                    "query": cte_query,
+                }
+            )
 
             pos = subquery_end + 1
 
