@@ -2259,11 +2259,124 @@ class PolarsExpressionTranslator:
             elif operation == "rlike":
                 # rlike(col, pattern) - Regular expression pattern matching
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.contains(pattern, literal=False)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def rlike_fallback(val: Any) -> bool:
+                        """Fallback for rlike with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        rlike_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def rlike_fallback(val: Any) -> bool:
+                                """Fallback for rlike with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                rlike_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "regexp":
                 # regexp(col, pattern) - Alias for rlike
+                # Use the same implementation as rlike (handles look-around patterns)
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.contains(pattern, literal=False)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def regexp_fallback(val: Any) -> bool:
+                        """Fallback for regexp with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        regexp_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def regexp_fallback(val: Any) -> bool:
+                                """Fallback for regexp with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                regexp_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "ilike":
                 # ilike(col, pattern) - Case-insensitive LIKE
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
@@ -2273,8 +2386,65 @@ class PolarsExpressionTranslator:
                 )
             elif operation == "regexp_like":
                 # regexp_like(col, pattern) - Alias for rlike
+                # Use the same implementation as rlike (handles look-around patterns)
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.contains(pattern, literal=False)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def regexp_like_fallback(val: Any) -> bool:
+                        """Fallback for regexp_like with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        regexp_like_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def regexp_like_fallback(val: Any) -> bool:
+                                """Fallback for regexp_like with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                regexp_like_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "regexp_count":
                 # regexp_count(col, pattern) - Count regex matches
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
@@ -2514,8 +2684,64 @@ class PolarsExpressionTranslator:
                 return col_expr.str.contains(regex_pattern, literal=False)
             elif operation == "rlike":
                 # Regular expression pattern matching
-                pattern = op.value
-                return col_expr.str.contains(pattern, literal=False)
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def rlike_fallback(val: Any) -> bool:
+                        """Fallback for rlike with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        rlike_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def rlike_fallback(val: Any) -> bool:
+                                """Fallback for rlike with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                rlike_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "round":
                 # round(col, decimals)
                 decimals = op.value if isinstance(op.value, int) else 0
