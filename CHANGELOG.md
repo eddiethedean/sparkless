@@ -33,6 +33,22 @@
   - All tests passing in both Sparkless and PySpark modes, confirming full compatibility
   - Fixes issue where `df.withColumnRenamed("Does-Not-Exist", "New-Name")` would raise an error instead of silently ignoring the operation
 
+- **Issue #296** - Fixed UDF decorator interface support (`@udf(DataType())` pattern)
+  - Fixed `AttributeError: 'function' object has no attribute 'name'` when using `@udf(T.StringType())` decorator pattern
+  - Updated `Functions.udf()` to correctly detect when a DataType instance is passed as the first positional argument (decorator pattern) and treat it as `returnType`
+  - When `@udf(T.StringType())` is used, the DataType instance is now correctly recognized as `returnType` instead of being treated as the function parameter
+  - Maintains backward compatibility with function interface (`F.udf(lambda x: x.upper(), T.StringType())`)
+  - Comprehensive test coverage: 37 tests covering all decorator patterns including:
+    - Decorator with return type: `@udf(T.StringType())`
+    - Decorator without return type: `@udf()` (defaults to StringType)
+    - Different return types (String, Integer, Double, Boolean, Date, Timestamp, Array)
+    - Multiple arguments (2, 3+ parameters)
+    - Various DataFrame operations (withColumn, select, filter, groupBy, join, union, distinct, orderBy, drop)
+    - Edge cases: empty DataFrames, null values, special characters, unicode, very long strings
+    - Complex scenarios: conditional logic, exception handling, nested calls, chained UDFs, idempotent behavior
+  - All tests passing in both Sparkless and PySpark modes, confirming full compatibility
+  - Fixes issue where `@udf(T.StringType())` decorator would raise an error instead of working correctly
+
 - **Issue #286** - Added arithmetic operators to `AggregateFunction` class
   - Added support for arithmetic operations on aggregate functions (e.g., `F.countDistinct("Value") - 1`), matching PySpark behavior
   - Implemented `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__mod__` and their reverse counterparts (`__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rmod__`) on `AggregateFunction` class

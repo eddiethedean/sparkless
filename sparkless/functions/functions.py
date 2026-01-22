@@ -2595,7 +2595,7 @@ class Functions:
         """Create a user-defined function (all PySpark versions).
 
         Args:
-            f: Python function to wrap
+            f: Python function to wrap, or DataType if used as decorator with returnType
             returnType: Return type of the function (defaults to StringType)
 
         Returns:
@@ -2608,8 +2608,22 @@ class Functions:
             >>> square = F.udf(lambda x: x * x, IntegerType())
             >>> df = spark.createDataFrame([{"value": 5}])
             >>> df.select(square("value").alias("squared")).show()
+
+            # Decorator pattern:
+            >>> @F.udf(IntegerType())
+            >>> def square(x):
+            ...     return x * x
+            >>> df.select(square("value")).show()
         """
-        from sparkless.spark_types import StringType
+        from sparkless.spark_types import DataType, StringType
+
+        # Handle decorator pattern: @udf(DataType()) where DataType is passed as first arg
+        # When used as @udf(T.StringType()), the DataType instance is passed as f
+        # Check if f is a DataType instance (not a callable function)
+        if f is not None and isinstance(f, DataType):
+            # f is actually the returnType, not a function
+            returnType = f
+            f = None
 
         if returnType is None:
             returnType = StringType()
