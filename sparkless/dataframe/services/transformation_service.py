@@ -524,16 +524,20 @@ class TransformationService:
         return cast("SupportsDataFrameOps", result_df)
 
     def withColumnRenamed(self, existing: str, new: str) -> "SupportsDataFrameOps":
-        """Rename a column."""
+        """Rename a column.
+
+        If the column does not exist, this is treated as a no-op and the DataFrame
+        is returned unchanged (matching PySpark behavior).
+        """
         # Materialize if lazy to ensure we work with actual data including all columns
         materialized = self._df._materialize_if_lazy()
 
         # Resolve column name case-insensitively
         actual_existing = self._find_column(existing)
         if actual_existing is None:
-            from ...core.exceptions.operation import SparkColumnNotFoundError
-
-            raise SparkColumnNotFoundError(existing, self._df.columns)
+            # PySpark treats renaming a non-existent column as a no-op
+            # Return the DataFrame unchanged
+            return materialized
 
         new_data = []
         for row in materialized.data:
@@ -572,14 +576,12 @@ class TransformationService:
         materialized = self._df._materialize_if_lazy()
 
         # Build case-insensitive mapping from actual column names to new names
+        # Skip non-existent columns (matching PySpark behavior - no-op for missing columns)
         actual_to_new: Dict[str, str] = {}
         for old_name, new_name in colsMap.items():
             actual_old = self._find_column(old_name)
-            if actual_old is None:
-                from ...core.exceptions.operation import SparkColumnNotFoundError
-
-                raise SparkColumnNotFoundError(old_name, self._df.columns)
-            actual_to_new[actual_old] = new_name
+            if actual_old is not None:
+                actual_to_new[actual_old] = new_name
 
         # Apply all renames in a single pass
         new_data = []

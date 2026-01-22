@@ -25,6 +25,14 @@
   - Modified `PolarsMaterializer` to pass original requested column names to `apply_select` for proper resolution and aliasing
   - Fixes `KeyError` when accessing Row objects with the requested column name after a join and select operation
 
+- **Issue #295** - Fixed `withColumnRenamed` to treat non-existent columns as no-op (matching PySpark behavior)
+  - Fixed `SparkColumnNotFoundError` when trying to rename a non-existent column - now treated as a no-op, matching PySpark behavior
+  - Modified `TransformationService.withColumnRenamed()` to return the DataFrame unchanged when the column doesn't exist
+  - Modified `TransformationService.withColumnsRenamed()` to skip non-existent columns instead of raising an error (only renames existing columns)
+  - Comprehensive test coverage: 27 tests covering edge cases including empty DataFrames, null values, different data types, special characters, unicode, very long column names, and integration with all DataFrame operations (joins, groupBy, select, orderBy, union, distinct, withColumn, drop)
+  - All tests passing in both Sparkless and PySpark modes, confirming full compatibility
+  - Fixes issue where `df.withColumnRenamed("Does-Not-Exist", "New-Name")` would raise an error instead of silently ignoring the operation
+
 - **Issue #286** - Added arithmetic operators to `AggregateFunction` class
   - Added support for arithmetic operations on aggregate functions (e.g., `F.countDistinct("Value") - 1`), matching PySpark behavior
   - Implemented `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__mod__` and their reverse counterparts (`__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rmod__`) on `AggregateFunction` class
