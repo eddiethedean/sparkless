@@ -59,7 +59,9 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg((F.count("Value") + 1).alias("count_plus_one"))
+            result = df.groupBy("Name").agg(
+                (F.count("Value") + 1).alias("count_plus_one")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -117,7 +119,9 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg((F.avg("Value") / 2).alias("avg_divided_by_two"))
+            result = df.groupBy("Name").agg(
+                (F.avg("Value") / 2).alias("avg_divided_by_two")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -176,7 +180,9 @@ class TestIssue286AggregateFunctionArithmetic:
             )
 
             # Test reverse subtraction: 10 - countDistinct
-            result = df.groupBy("Name").agg((10 - F.countDistinct("Value")).alias("ten_minus_count"))
+            result = df.groupBy("Name").agg(
+                (10 - F.countDistinct("Value")).alias("ten_minus_count")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -274,7 +280,9 @@ class TestIssue286AggregateFunctionArithmetic:
 
             # Count should work even with nulls
             # Note: count("Value") counts all rows (including nulls) in Sparkless
-            result = df.groupBy("Name").agg((F.count("Value") + 1).alias("count_plus_one"))
+            result = df.groupBy("Name").agg(
+                (F.count("Value") + 1).alias("count_plus_one")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -303,7 +311,9 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg((F.sum("Value") * 1.5).alias("sum_times_one_five"))
+            result = df.groupBy("Name").agg(
+                (F.sum("Value") * 1.5).alias("sum_times_one_five")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -390,7 +400,9 @@ class TestIssue286AggregateFunctionArithmetic:
             )
 
             # Dividing by zero should return None
-            result = df.groupBy("Name").agg((F.sum("Value") / 0).alias("sum_divided_by_zero"))
+            result = df.groupBy("Name").agg(
+                (F.sum("Value") / 0).alias("sum_divided_by_zero")
+            )
 
             rows = result.collect()
             assert len(rows) == 1
@@ -466,7 +478,9 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg((F.stddev("Value") * 2).alias("stddev_times_two"))
+            result = df.groupBy("Name").agg(
+                (F.stddev("Value") * 2).alias("stddev_times_two")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -492,7 +506,9 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg((F.variance("Value") + 1).alias("variance_plus_one"))
+            result = df.groupBy("Name").agg(
+                (F.variance("Value") + 1).alias("variance_plus_one")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -611,7 +627,9 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg((F.count("*") - 1).alias("count_star_minus_one"))
+            result = df.groupBy("Name").agg(
+                (F.count("*") - 1).alias("count_star_minus_one")
+            )
 
             rows = result.collect()
             assert len(rows) == 2
@@ -641,7 +659,9 @@ class TestIssue286AggregateFunctionArithmetic:
 
             # Filter to create an empty group
             filtered_df = df.filter(F.col("Name") == "Charlie")
-            result = filtered_df.groupBy("Name").agg((F.sum("Value") + 1).alias("sum_plus_one"))
+            result = filtered_df.groupBy("Name").agg(
+                (F.sum("Value") + 1).alias("sum_plus_one")
+            )
 
             rows = result.collect()
             # Empty group should return empty result
@@ -716,9 +736,7 @@ class TestIssue286AggregateFunctionArithmetic:
                 ]
             )
 
-            result = df.groupBy("Name").agg(
-                (F.sum("Value") - 1).alias("custom_alias")
-            )
+            result = df.groupBy("Name").agg((F.sum("Value") - 1).alias("custom_alias"))
 
             rows = result.collect()
             assert len(rows) == 1

@@ -299,9 +299,7 @@ class SchemaManager:
                         # Check if there are multiple matches (different cases)
                         column_name_lower = col.lower()
                         matches = [
-                            c
-                            for c in fields_map
-                            if c.lower() == column_name_lower
+                            c for c in fields_map if c.lower() == column_name_lower
                         ]
                         has_multiple_matches = len(matches) > 1
 

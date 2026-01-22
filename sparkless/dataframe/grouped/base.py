@@ -1569,7 +1569,7 @@ class GroupedData:
             # (arithmetic on aggregate functions, e.g., F.countDistinct() - 1)
             agg_func = None
             is_reverse = False  # Track if this is a reverse operation (e.g., 10 - F.countDistinct())
-            
+
             if isinstance(expr.column, AggregateFunction):
                 agg_func = expr.column
             elif (
@@ -1591,7 +1591,13 @@ class GroupedData:
                 # Reverse operation: literal - ColumnOperation wrapping AggregateFunction
                 agg_func = expr.value._aggregate_function
                 is_reverse = True
-            elif isinstance(expr.column, ColumnOperation) and operation in ("+", "-", "*", "/", "%"):
+            elif isinstance(expr.column, ColumnOperation) and operation in (
+                "+",
+                "-",
+                "*",
+                "/",
+                "%",
+            ):
                 # Nested ColumnOperation (e.g., (F.countDistinct() - 1) * 2)
                 # Recursively evaluate the nested expression first
                 nested_key, nested_value = self._evaluate_column_expression(
@@ -1600,9 +1606,8 @@ class GroupedData:
                 if nested_value is not None:
                     # Get the right operand value
                     from ...functions.core.literals import Literal
-                    if isinstance(expr.value, Literal):
-                        right_value = expr.value.value
-                    elif hasattr(expr.value, "value"):
+
+                    if isinstance(expr.value, Literal) or hasattr(expr.value, "value"):
                         right_value = expr.value.value
                     else:
                         right_value = expr.value
@@ -1641,17 +1646,13 @@ class GroupedData:
                 # Get the other operand value (left for reverse, right for forward)
                 if is_reverse:
                     # For reverse operations, the left operand is in expr.column
-                    if isinstance(expr.column, Literal):
-                        left_value = expr.column.value
-                    elif hasattr(expr.column, "value"):
+                    if isinstance(expr.column, Literal) or hasattr(expr.column, "value"):
                         left_value = expr.column.value
                     else:
                         left_value = expr.column
                 else:
                     # For forward operations, the right operand is in expr.value
-                    if isinstance(expr.value, Literal):
-                        right_value = expr.value.value
-                    elif hasattr(expr.value, "value"):
+                    if isinstance(expr.value, Literal) or hasattr(expr.value, "value"):
                         right_value = expr.value.value
                     else:
                         right_value = expr.value
