@@ -1370,10 +1370,10 @@ class PolarsOperationExecutor:
                 # Then explode the DataFrame on this new column
                 # This will create multiple rows, one for each element in the array
                 result = df.with_columns(pl.col(resolved_col_name).alias(column_name))
-                
+
                 # Explode the DataFrame on the new column
                 result = result.explode(column_name)
-                
+
                 # For regular explode, filter out rows where the exploded value is None
                 # (PySpark drops rows with null/empty arrays)
                 # For explode_outer, keep all rows (including those with None)

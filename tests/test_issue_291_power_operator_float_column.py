@@ -920,11 +920,11 @@ class TestIssue291PowerOperatorFloatColumn:
 
             rows = df.collect()
             assert len(rows) == 2
-            
+
             # Find rows by Value to avoid order dependency
             row_value_2 = [r for r in rows if r["Value"] == 2][0]
             row_value_3 = [r for r in rows if r["Value"] == 3][0]
-            
+
             # Row with Value=2
             assert row_value_2["Power2"] == 4
             assert row_value_2["Power3"] == 8

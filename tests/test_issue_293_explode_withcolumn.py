@@ -47,20 +47,20 @@ class TestIssue293ExplodeWithColumn:
             # Check Alice's rows
             alice_rows = [r for r in rows if r["Name"] == "Alice"]
             assert len(alice_rows) == 2
-            assert set(r["ExplodedValue"] for r in alice_rows) == {"1", "2"}
+            assert {r["ExplodedValue"] for r in alice_rows} == {"1", "2"}
             # Original Value column should still contain the array
             assert all(r["Value"] == ["1", "2"] for r in alice_rows)
 
             # Check Bob's rows
             bob_rows = [r for r in rows if r["Name"] == "Bob"]
             assert len(bob_rows) == 2
-            assert set(r["ExplodedValue"] for r in bob_rows) == {"2", "3"}
+            assert {r["ExplodedValue"] for r in bob_rows} == {"2", "3"}
             assert all(r["Value"] == ["2", "3"] for r in bob_rows)
 
             # Check Charlie's rows
             charlie_rows = [r for r in rows if r["Name"] == "Charlie"]
             assert len(charlie_rows) == 2
-            assert set(r["ExplodedValue"] for r in charlie_rows) == {"4", "5"}
+            assert {r["ExplodedValue"] for r in charlie_rows} == {"4", "5"}
             assert all(r["Value"] == ["4", "5"] for r in charlie_rows)
         finally:
             spark.stop()
@@ -82,7 +82,9 @@ class TestIssue293ExplodeWithColumn:
             )
 
             # Explode in select
-            result = df.select("Name", "Value", F.explode("Value").alias("ExplodedValue"))
+            result = df.select(
+                "Name", "Value", F.explode("Value").alias("ExplodedValue")
+            )
 
             rows = result.collect()
             assert len(rows) == 4  # 2 rows per original row
@@ -120,11 +122,11 @@ class TestIssue293ExplodeWithColumn:
 
             alice_rows = [r for r in rows if r["Name"] == "Alice"]
             assert len(alice_rows) == 3
-            assert set(r["ExplodedNumber"] for r in alice_rows) == {1, 2, 3}
+            assert {r["ExplodedNumber"] for r in alice_rows} == {1, 2, 3}
 
             bob_rows = [r for r in rows if r["Name"] == "Bob"]
             assert len(bob_rows) == 2
-            assert set(r["ExplodedNumber"] for r in bob_rows) == {4, 5}
+            assert {r["ExplodedNumber"] for r in bob_rows} == {4, 5}
         finally:
             spark.stop()
 
@@ -294,7 +296,7 @@ class TestIssue293ExplodeWithColumn:
 
             alice_rows = [r for r in rows if r["Name"] == "Alice"]
             assert len(alice_rows) == 3
-            assert set(r["ExplodedValue"] for r in alice_rows) == {1.5, 2.5, 3.5}
+            assert {r["ExplodedValue"] for r in alice_rows} == {1.5, 2.5, 3.5}
         finally:
             spark.stop()
 
@@ -321,7 +323,7 @@ class TestIssue293ExplodeWithColumn:
 
             alice_rows = [r for r in rows if r["Name"] == "Alice"]
             assert len(alice_rows) == 3
-            assert set(r["ExplodedFlag"] for r in alice_rows) == {True, False}
+            assert {r["ExplodedFlag"] for r in alice_rows} == {True, False}
         finally:
             spark.stop()
 
@@ -381,10 +383,10 @@ class TestIssue293ExplodeWithColumn:
             # Check that each row has the correct exploded value
             alice_rows = [r for r in rows if r["Name"] == "Alice"]
             bob_rows = [r for r in rows if r["Name"] == "Bob"]
-            
+
             assert len(alice_rows) == 1
             assert alice_rows[0]["ExplodedValue"] == 1
-            
+
             assert len(bob_rows) == 1
             assert bob_rows[0]["ExplodedValue"] == 42
         finally:
@@ -414,7 +416,7 @@ class TestIssue293ExplodeWithColumn:
 
             alice_rows = [r for r in rows if r["Name"] == "Alice"]
             assert len(alice_rows) == 100
-            assert set(r["ExplodedValue"] for r in alice_rows) == set(range(100))
+            assert {r["ExplodedValue"] for r in alice_rows} == set(range(100))
         finally:
             spark.stop()
 
