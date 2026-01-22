@@ -61,6 +61,15 @@ class TransformationService:
         elif isinstance(col, Column):
             # For simple Column, validate the column name exists
             col_name = col.name if hasattr(col, "name") else str(col)
+            # Skip validation for dummy columns used by special operations
+            # (e.g., create_map, struct, expr use placeholder columns)
+            if col_name in (
+                "__expr__",
+                "__struct_dummy__",
+                "__create_map_base__",
+                "__create_map_dummy__",
+            ):
+                return
             if col_name and col_name != "*":
                 # Handle nested struct field access (e.g., "Person.name")
                 if "." in col_name:
@@ -210,6 +219,15 @@ class TransformationService:
                     else:
                         # Regular Column - validate column name
                         col_name = col.name if hasattr(col, "name") else str(col)
+                        # Skip validation for dummy columns used by special operations
+                        if col_name in (
+                            "__expr__",
+                            "__struct_dummy__",
+                            "__create_map_base__",
+                            "__create_map_dummy__",
+                        ):
+                            resolved_columns.append(col)
+                            continue
                         if col_name and col_name != "*":
                             # Handle nested struct field access (e.g., "Person.name")
                             if "." in col_name:

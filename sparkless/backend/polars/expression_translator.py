@@ -3873,6 +3873,92 @@ class PolarsExpressionTranslator:
                 return col_expr.map_elements(
                     lambda x: x if isinstance(x, dict) else None, return_dtype=pl.Object
                 )
+        elif function_name == "create_map":
+            # create_map(key1, val1, key2, val2, ...) - create a map from key-value pairs
+            # op.value contains all arguments as a tuple (key1, val1, key2, val2, ...)
+            args = op.value if op.value else ()
+            if not args or len(args) < 2 or len(args) % 2 != 0:
+                raise ValueError(
+                    "create_map requires an even number of arguments (key-value pairs)"
+                )
+
+            # Build the map by evaluating key-value pairs
+            # For literal keys, we can build a static dict
+            # For column keys, we need to use map_elements
+            from ...functions.core.literals import Literal
+
+            # Check if all keys are literals
+            all_literal_keys = all(isinstance(args[i], Literal) for i in range(0, len(args), 2))
+
+            if all_literal_keys:
+                # All keys are literals - we can build the map more efficiently
+                # Translate value expressions
+                key_names = [args[i].value for i in range(0, len(args), 2)]
+                value_exprs = []
+                for i in range(1, len(args), 2):
+                    val_arg = args[i]
+                    if isinstance(val_arg, Literal):
+                        value_exprs.append(pl.lit(val_arg.value))
+                    elif isinstance(val_arg, (Column, ColumnOperation)):
+                        value_exprs.append(self.translate(val_arg))
+                    else:
+                        value_exprs.append(pl.lit(val_arg))
+
+                # Create a struct with the keys as field names, then convert to dict
+                struct_fields = {
+                    str(key_names[i]): value_exprs[i] for i in range(len(key_names))
+                }
+                struct_expr = pl.struct(**struct_fields)
+                # Convert struct to dict using map_elements
+                return struct_expr.map_elements(
+                    lambda x: (
+                        dict(x) if hasattr(x, "_asdict") else
+                        {k: getattr(x, k, None) for k in x.__class__._fields} if hasattr(x, "_fields") else
+                        dict(x.items()) if hasattr(x, "items") else
+                        {str(k): v for k, v in zip(key_names, [getattr(x, str(kn), None) for kn in key_names])}
+                        if x is not None else None
+                    ),
+                    return_dtype=pl.Object,
+                )
+            else:
+                # Keys are columns - need to evaluate at runtime using map_elements
+                # This is more complex, fall back to a simpler implementation
+                key_exprs = []
+                value_exprs = []
+                for i in range(0, len(args), 2):
+                    key_arg = args[i]
+                    val_arg = args[i + 1]
+                    if isinstance(key_arg, Literal):
+                        key_exprs.append(pl.lit(key_arg.value))
+                    elif isinstance(key_arg, (Column, ColumnOperation)):
+                        key_exprs.append(self.translate(key_arg))
+                    else:
+                        key_exprs.append(pl.lit(key_arg))
+                    if isinstance(val_arg, Literal):
+                        value_exprs.append(pl.lit(val_arg.value))
+                    elif isinstance(val_arg, (Column, ColumnOperation)):
+                        value_exprs.append(self.translate(val_arg))
+                    else:
+                        value_exprs.append(pl.lit(val_arg))
+
+                # Build struct with indexed keys, then convert
+                all_exprs = []
+                for i, (k, v) in enumerate(zip(key_exprs, value_exprs)):
+                    all_exprs.extend([k.alias(f"_key_{i}"), v.alias(f"_val_{i}")])
+
+                num_pairs = len(key_exprs)
+                struct_expr = pl.struct(*all_exprs)
+                return struct_expr.map_elements(
+                    lambda x: (
+                        {
+                            getattr(x, f"_key_{i}", None): getattr(x, f"_val_{i}", None)
+                            for i in range(num_pairs)
+                        }
+                        if x is not None
+                        else None
+                    ),
+                    return_dtype=pl.Object,
+                )
 
         # Map function names to Polars expressions (unary functions)
         function_map = {
