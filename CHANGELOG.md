@@ -260,6 +260,13 @@
   - Tests for `hour/minute/second` in `select`, `filter`, and `groupBy().agg()` contexts
   - Tests for null timestamp values (verifying `None` return behavior)
   - All tests pass in both Sparkless (mock) and PySpark backends
+- Fixed additional flaky tests in `tests/test_issue_291_power_operator_float_column.py`
+  - Fixed `test_power_in_multiple_withcolumns`: Added materialization between `withColumn` operations
+  - Fixed `test_power_fractional_exponent`: Changed to find rows by `Value` instead of positional indexing, added materialization
+  - Tests now pass consistently in parallel test runs (`-n 10`)
+  - Tests for `hour/minute/second` in `select`, `filter`, and `groupBy().agg()` contexts
+  - Tests for null timestamp values (verifying `None` return behavior)
+  - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
 
