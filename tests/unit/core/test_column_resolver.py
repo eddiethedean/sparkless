@@ -58,14 +58,20 @@ class TestColumnResolver:
         assert result is None
 
     def test_resolve_column_name_ambiguity(self):
-        """Test ambiguity detection when multiple columns differ only by case."""
+        """Test ambiguity handling when multiple columns differ only by case.
+
+        PySpark behavior: when multiple columns match (differ only by case),
+        return the first match instead of raising an exception.
+        This allows selecting columns after joins where both DataFrames
+        have columns with different cases (e.g., "name" and "NAME").
+        """
         available_columns = ["Name", "name", "Age"]
 
-        # Should raise AnalysisException due to ambiguity
-        with pytest.raises(AnalysisException, match="Ambiguous column name"):
-            ColumnResolver.resolve_column_name(
-                "name", available_columns, case_sensitive=False
-            )
+        # PySpark behavior: return first match instead of raising exception
+        result = ColumnResolver.resolve_column_name(
+            "name", available_columns, case_sensitive=False
+        )
+        assert result == "Name"  # First match in the list
 
     def test_resolve_columns_multiple(self):
         """Test resolving multiple column names."""
@@ -76,13 +82,18 @@ class TestColumnResolver:
         assert result == {"name": "Name", "age": "Age"}
 
     def test_resolve_columns_with_ambiguity(self):
-        """Test resolving columns with ambiguity."""
+        """Test resolving columns with ambiguity.
+
+        PySpark behavior: when multiple columns match (differ only by case),
+        return the first match for each column.
+        """
         available_columns = ["Name", "name", "Age"]
 
-        with pytest.raises(AnalysisException, match="Ambiguous column name"):
-            ColumnResolver.resolve_columns(
-                ["name", "age"], available_columns, case_sensitive=False
-            )
+        # PySpark behavior: return first match for each column
+        result = ColumnResolver.resolve_columns(
+            ["name", "age"], available_columns, case_sensitive=False
+        )
+        assert result == {"name": "Name", "age": "Age"}  # First matches
 
     def test_resolve_columns_not_found(self):
         """Test resolving columns when one doesn't exist."""

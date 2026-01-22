@@ -32,22 +32,26 @@ class ColumnResolver:
 
         Returns:
             Actual column name if found, None otherwise.
-
-        Raises:
-            AnalysisException: If multiple columns match (ambiguity) when
-                case_sensitive=False.
+            When multiple columns match (differ only by case) in case-insensitive
+            mode, returns the first match (matching PySpark behavior).
 
         Example:
             >>> ColumnResolver.resolve_column_name("name", ["Name", "Age"], False)
             'Name'
             >>> ColumnResolver.resolve_column_name("name", ["Name", "Age"], True)
             None
+            >>> ColumnResolver.resolve_column_name("NaMe", ["name", "NAME"], False)
+            'name'  # Returns first match when multiple columns differ by case
         """
         if case_sensitive:
             # Case-sensitive: exact match only
             return column_name if column_name in available_columns else None
         else:
-            # Case-insensitive: find first match, but check for ambiguity
+            # Case-insensitive: find first match
+            # PySpark behavior: when multiple columns match (differ only by case),
+            # return the first match instead of raising an exception.
+            # This allows selecting columns after joins where both DataFrames
+            # have columns with different cases (e.g., "name" and "NAME").
             column_name_lower = column_name.lower()
             matches = [
                 col for col in available_columns if col.lower() == column_name_lower
@@ -55,15 +59,9 @@ class ColumnResolver:
 
             if len(matches) == 0:
                 return None
-            elif len(matches) == 1:
-                return matches[0]
             else:
-                # Ambiguity: multiple columns differ only by case
-                raise AnalysisException(
-                    f"Ambiguous column name '{column_name}'. "
-                    f"Found multiple columns matching: {matches}. "
-                    f"Use case-sensitive mode or rename columns to avoid ambiguity."
-                )
+                # Return first match (PySpark behavior for ambiguous columns)
+                return matches[0]
 
     @staticmethod
     def resolve_columns(
@@ -82,8 +80,9 @@ class ColumnResolver:
             Dictionary mapping requested column names to actual column names.
 
         Raises:
-            AnalysisException: If any column cannot be resolved or if there
-                is ambiguity (when case_sensitive=False).
+            AnalysisException: If any column cannot be resolved.
+            Note: When multiple columns match (differ only by case), the first
+            match is used (matching PySpark behavior).
 
         Example:
             >>> ColumnResolver.resolve_columns(

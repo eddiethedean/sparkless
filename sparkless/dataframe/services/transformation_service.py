@@ -165,7 +165,9 @@ class TransformationService:
                         # Use the resolved struct column name + field path
                         resolved_columns.append(f"{actual_struct_col}.{parts[1]}")
                     else:
-                        # Use ColumnResolver to resolve column name and replace with actual name
+                        # Use ColumnResolver to resolve column name for validation
+                        # but keep the original requested column name for output schema
+                        # (PySpark behavior: requested column name is used as output name)
                         actual_col_name = self._find_column(col)
                         if actual_col_name is None:
                             from ...core.exceptions.operation import (
@@ -173,8 +175,9 @@ class TransformationService:
                             )
 
                             raise SparkColumnNotFoundError(col, self._df.columns)
-                        # Use the actual case-sensitive column name
-                        resolved_columns.append(actual_col_name)
+                        # Keep the original requested column name (PySpark preserves requested case)
+                        # The actual column name is resolved during materialization
+                        resolved_columns.append(col)
                 elif isinstance(col, Column):
                     # ColumnOperation represents an expression (like F.size(col), col + 1, etc.)
                     # It should not be validated as a column name - only the underlying column references should be validated
@@ -262,12 +265,15 @@ class TransformationService:
         # If there are pending joins, queue unresolved column names
         # They will be resolved during materialization when the actual schema is known
         if has_pending_joins:
-            # Still try to resolve if possible, but don't fail if not found (might be from join)
+            # Still try to resolve if possible, but preserve requested column name (PySpark behavior)
+            # The actual column lookup happens during materialization, but we keep the requested name
             for col in columns:
                 if isinstance(col, str) and col != "*":
+                    # Validate column exists, but preserve requested column name for output
                     actual_col_name = self._find_column(col)
                     if actual_col_name is not None:
-                        resolved_columns.append(actual_col_name)
+                        # Column exists - keep requested name (will be resolved during materialization)
+                        resolved_columns.append(col)
                     else:
                         # Column not found in current schema - might be from joined DataFrame
                         # Keep original name, will be resolved during materialization

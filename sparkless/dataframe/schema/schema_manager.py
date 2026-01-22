@@ -285,8 +285,39 @@ class SchemaManager:
                     else:
                         # Struct column doesn't exist - infer as String (fallback)
                         new_fields_map[col] = StructField(col, StringType(), True)
-                elif col in fields_map:
-                    new_fields_map[col] = fields_map[col]
+                else:
+                    # Resolve column name to find actual field
+                    # PySpark behavior:
+                    # - If there's only one match: use the original column name
+                    # - If there are multiple matches (different cases): use the requested column name
+                    from ...core.column_resolver import ColumnResolver
+
+                    resolved_col_name = ColumnResolver.resolve_column_name(
+                        col, list(fields_map.keys()), case_sensitive
+                    )
+                    if resolved_col_name:
+                        # Check if there are multiple matches (different cases)
+                        column_name_lower = col.lower()
+                        matches = [
+                            c
+                            for c in fields_map
+                            if c.lower() == column_name_lower
+                        ]
+                        has_multiple_matches = len(matches) > 1
+
+                        resolved_field = fields_map[resolved_col_name]
+                        # Use original column name if single match, requested name if multiple matches
+                        output_col_name = (
+                            col if has_multiple_matches else resolved_col_name
+                        )
+                        new_fields_map[output_col_name] = StructField(
+                            output_col_name,
+                            resolved_field.dataType,
+                            resolved_field.nullable,
+                        )
+                    else:
+                        # Column not found - infer as String (fallback)
+                        new_fields_map[col] = StructField(col, StringType(), True)
             elif hasattr(col, "name"):
                 col_name = col.name
                 if col_name == "*":
