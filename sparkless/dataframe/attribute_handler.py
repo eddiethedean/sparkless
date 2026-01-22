@@ -53,6 +53,46 @@ class NAHandler:
         """
         return self._df.fillna(value, subset)
 
+    def replace(
+        self,
+        to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
+        value: Optional[Union[int, float, str, List[Any]]] = None,
+        subset: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
+    ) -> Any:
+        """Replace values in DataFrame (PySpark-compatible).
+
+        Args:
+            to_replace: Value(s) to replace - can be scalar, list, or dict mapping
+                        old values to new values.
+            value: Replacement value(s) - required if to_replace is not a dict.
+                   If to_replace is a list and value is a list, they must have
+                   the same length.
+            subset: Optional column name(s) to limit replacement to. Can be a
+                    string (single column), list, or tuple of column names.
+
+        Returns:
+            DataFrame with replaced values.
+
+        Example:
+            >>> # Replace with dict mapping
+            >>> df.na.replace({"A": "TypeA", "B": "TypeB"}, subset=["Type"])
+            >>> # Replace list of values with single value
+            >>> df.na.replace([1, 2], 99, subset=["col1"])
+            >>> # Replace single value
+            >>> df.na.replace(1, 99)
+        """
+        # Convert subset to list if it's a string or tuple
+        subset_list: Optional[List[str]] = None
+        if subset is not None:
+            if isinstance(subset, str):
+                subset_list = [subset]
+            elif isinstance(subset, tuple):
+                subset_list = list(subset)
+            else:
+                subset_list = subset
+
+        return self._df.replace(to_replace, value, subset_list)
+
 
 class DataFrameAttributeHandler:
     """Handles attribute access for DataFrame."""
