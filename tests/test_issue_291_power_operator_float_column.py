@@ -920,13 +920,18 @@ class TestIssue291PowerOperatorFloatColumn:
 
             rows = df.collect()
             assert len(rows) == 2
-            # Row 1: Value=2
-            assert rows[0]["Power2"] == 4
-            assert rows[0]["Power3"] == 8
-            assert rows[0]["Power4"] == 16
-            # Row 2: Value=3
-            assert rows[1]["Power2"] == 9
-            assert rows[1]["Power3"] == 27
-            assert rows[1]["Power4"] == 81
+            
+            # Find rows by Value to avoid order dependency
+            row_value_2 = [r for r in rows if r["Value"] == 2][0]
+            row_value_3 = [r for r in rows if r["Value"] == 3][0]
+            
+            # Row with Value=2
+            assert row_value_2["Power2"] == 4
+            assert row_value_2["Power3"] == 8
+            assert row_value_2["Power4"] == 16
+            # Row with Value=3
+            assert row_value_3["Power2"] == 9
+            assert row_value_3["Power3"] == 27
+            assert row_value_3["Power4"] == 81
         finally:
             spark.stop()
