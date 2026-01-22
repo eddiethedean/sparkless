@@ -27,10 +27,10 @@ class TestCreateMap:
                 F.lit("key1"), F.col("val1"), F.lit("key2"), F.col("val2")
             ).alias("map_col")
         )
-        row = result.first()
+        rows = result.collect()
 
-        assert row is not None
-        assert row["map_col"] == {"key1": "a", "key2": 1}
+        assert len(rows) == 1
+        assert rows[0]["map_col"] == {"key1": "a", "key2": 1}
 
     def test_create_map_with_column_values(self, spark):
         """Test create_map with literal keys and column values (common use case)."""
@@ -67,10 +67,10 @@ class TestCreateMap:
                 F.col("c"),
             ).alias("map_col")
         )
-        row = result.first()
+        rows = result.collect()
 
-        assert row is not None
-        assert row["map_col"] == {"x": 1, "y": 2, "z": 3}
+        assert len(rows) == 1
+        assert rows[0]["map_col"] == {"x": 1, "y": 2, "z": 3}
 
     def test_create_map_with_null_values(self, spark):
         """Test create_map handles null values correctly."""
@@ -88,11 +88,11 @@ class TestCreateMap:
                 F.lit("key1"), F.col("val1"), F.lit("key2"), F.col("val2")
             ).alias("map_col")
         )
-        row = result.first()
+        rows = result.collect()
 
-        assert row is not None
-        assert row["map_col"]["key1"] == "a"
-        assert row["map_col"]["key2"] is None
+        assert len(rows) == 1
+        assert rows[0]["map_col"]["key1"] == "a"
+        assert rows[0]["map_col"]["key2"] is None
 
     def test_create_map_validation_odd_args(self, spark):
         """Test create_map rejects odd number of arguments."""
@@ -116,10 +116,10 @@ class TestCreateMap:
                 F.col("age"),
             ),
         )
-        row = result.first()
+        rows = result.collect()
 
-        assert row is not None
-        assert row["info"] == {"name": "Alice", "age": 25}
+        assert len(rows) == 1
+        assert rows[0]["info"] == {"name": "Alice", "age": 25}
 
     def test_create_map_after_filter(self, spark):
         """Test create_map works after filter operation."""
@@ -135,10 +135,10 @@ class TestCreateMap:
                 F.col("val1"),
             ).alias("map_col")
         )
-        row = result.first()
+        rows = result.collect()
 
-        assert row is not None
-        assert row["map_col"] == {"key": "b"}
+        assert len(rows) == 1
+        assert rows[0]["map_col"] == {"key": "b"}
 
     def test_create_map_all_literals(self, spark):
         """Test create_map with all literal values."""
@@ -149,7 +149,7 @@ class TestCreateMap:
                 F.lit("static_value"),
             ).alias("map_col")
         )
-        row = result.first()
+        rows = result.collect()
 
-        assert row is not None
-        assert row["map_col"] == {"static_key": "static_value"}
+        assert len(rows) == 1
+        assert rows[0]["map_col"] == {"static_key": "static_value"}
