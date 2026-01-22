@@ -2305,8 +2305,8 @@ class SQLExecutor:
         target_table = ast.components.get("target_table", "")
         source_table = ast.components.get("source_table", "")
         on_condition = ast.components.get("on_condition", "")
-        target_alias = ast.components.get("target_alias")
-        source_alias = ast.components.get("source_alias")
+        target_alias: str = ast.components.get("target_alias") or ""
+        source_alias: str = ast.components.get("source_alias") or ""
         when_matched = ast.components.get("when_matched", [])
         when_not_matched = ast.components.get("when_not_matched", [])
         when_not_matched_by_source = ast.components.get(
@@ -2640,17 +2640,17 @@ class SQLExecutor:
         """
         try:
             if op == "=":
-                return left == right
+                return bool(left == right)
             elif op in ("!=", "<>"):
-                return left != right
+                return bool(left != right)
             elif op == ">":
-                return left > right
+                return bool(left > right)
             elif op == "<":
-                return left < right
+                return bool(left < right)
             elif op == ">=":
-                return left >= right
+                return bool(left >= right)
             elif op == "<=":
-                return left <= right
+                return bool(left <= right)
         except (TypeError, ValueError):
             pass
         return False
