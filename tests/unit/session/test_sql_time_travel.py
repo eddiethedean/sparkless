@@ -1,12 +1,5 @@
 """Tests for Delta Lake Time Travel support in SQL executor."""
 
-from typing import TYPE_CHECKING, cast
-
-import pytest
-
-if TYPE_CHECKING:
-    from sparkless.dataframe import DataFrame
-
 
 class TestTimeTravelBasic:
     """Test basic Time Travel (VERSION AS OF) functionality."""
