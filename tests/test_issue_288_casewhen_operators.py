@@ -6,7 +6,6 @@ PySpark supports arithmetic and logical operations on CaseWhen expressions
 This test verifies that Sparkless supports the same operations.
 """
 
-import pytest
 from sparkless.sql import SparkSession
 import sparkless.sql.functions as F
 
@@ -233,16 +232,8 @@ class TestIssue288CaseWhenOperators:
         finally:
             spark.stop()
 
-    @pytest.mark.skip(
-        reason="Bitwise NOT (~) not yet supported in Polars backend translation"
-    )
     def test_casewhen_bitwise_not(self):
-        """Test bitwise NOT operation (unary ~) on CaseWhen expression.
-
-        Note: This test is skipped as the Polars backend doesn't yet support
-        the ~ operator translation. The operator is implemented in CaseWhen
-        but requires backend support to execute.
-        """
+        """Test bitwise NOT operation (unary ~) on CaseWhen expression."""
         spark = SparkSession.builder.appName("issue-288").getOrCreate()
         try:
             df = spark.createDataFrame(
