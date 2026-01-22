@@ -2119,7 +2119,7 @@ class SQLExecutor:
                     }
                 ]
 
-                schema = StructType(
+                detail_schema = StructType(
                     [
                         StructField("format", StringType()),
                         StructField("id", StringType()),
@@ -2137,9 +2137,11 @@ class SQLExecutor:
                     ]
                 )
 
+                from typing import cast
+
                 from ...dataframe import DataFrame
 
-                return DataFrame(details, schema, storage)
+                return cast("IDataFrame", DataFrame(details, detail_schema, storage))
 
         if "HISTORY" in query:
             # DESCRIBE HISTORY table_name
@@ -2253,22 +2255,17 @@ class SQLExecutor:
 
             raise AnalysisException(f"Table or view not found: {table_name}")
 
-        schema = table_df.schema
+        table_schema: StructType = table_df.schema  # type: ignore[assignment]
 
         if column_name:
             # DESCRIBE specific column
             field = None
-            for f in schema.fields:
+            for f in table_schema.fields:
                 if f.name.lower() == column_name.lower():
                     field = f
                     break
             if not field:
                 return cast("IDataFrame", DataFrame([], StructType([])))
-
-            # Cast to StructField to access dataType attribute
-            from ...spark_types import StructField as StructFieldType
-
-            field = cast("StructFieldType", field)
 
             comment = ""
             if field.metadata is not None and hasattr(field.metadata, "get"):
@@ -2289,24 +2286,20 @@ class SQLExecutor:
             )
         else:
             # DESCRIBE table (all columns)
-            from ...spark_types import StructField as StructFieldType
-
             data = []
-            for f in schema.fields:
-                # Cast to StructField to access dataType attribute
-                field = cast("StructFieldType", f)
+            for f in table_schema.fields:
                 row = {
-                    "col_name": field.name,
-                    "data_type": str(field.dataType),
+                    "col_name": f.name,
+                    "data_type": str(f.dataType),
                 }
                 if is_extended:
                     # Add extended info
                     comment = ""
-                    if field.metadata is not None and hasattr(field.metadata, "get"):
-                        comment = field.metadata.get("comment", "")
+                    if f.metadata is not None and hasattr(f.metadata, "get"):
+                        comment = f.metadata.get("comment", "")
                     row["comment"] = comment
                     # Add nullable info (basic)
-                    row["nullable"] = "true" if field.nullable else "false"
+                    row["nullable"] = "true" if f.nullable else "false"
                 data.append(row)
 
             if is_extended:
