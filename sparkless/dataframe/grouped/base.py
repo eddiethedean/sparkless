@@ -1565,7 +1565,169 @@ class GroupedData:
         # Check if it's a ColumnOperation with an operation
         if isinstance(expr, ColumnOperation) and hasattr(expr, "operation"):
             operation = expr.operation
-            if operation == "count":
+            # Check if the column is an AggregateFunction or ColumnOperation wrapping one
+            # (arithmetic on aggregate functions, e.g., F.countDistinct() - 1)
+            agg_func = None
+            is_reverse = False  # Track if this is a reverse operation (e.g., 10 - F.countDistinct())
+            
+            if isinstance(expr.column, AggregateFunction):
+                agg_func = expr.column
+            elif (
+                isinstance(expr.column, ColumnOperation)
+                and hasattr(expr.column, "_aggregate_function")
+                and expr.column._aggregate_function is not None
+            ):
+                # ColumnOperation wrapping an AggregateFunction (e.g., F.count())
+                agg_func = expr.column._aggregate_function
+            elif isinstance(expr.value, AggregateFunction):
+                # Reverse operation: literal - aggregate function (e.g., 10 - F.countDistinct())
+                agg_func = expr.value
+                is_reverse = True
+            elif (
+                isinstance(expr.value, ColumnOperation)
+                and hasattr(expr.value, "_aggregate_function")
+                and expr.value._aggregate_function is not None
+            ):
+                # Reverse operation: literal - ColumnOperation wrapping AggregateFunction
+                agg_func = expr.value._aggregate_function
+                is_reverse = True
+            elif isinstance(expr.column, ColumnOperation) and operation in ("+", "-", "*", "/", "%"):
+                # Nested ColumnOperation (e.g., (F.countDistinct() - 1) * 2)
+                # Recursively evaluate the nested expression first
+                nested_key, nested_value = self._evaluate_column_expression(
+                    expr.column, group_rows
+                )
+                if nested_value is not None:
+                    # Get the right operand value
+                    from ...functions.core.literals import Literal
+                    if isinstance(expr.value, Literal):
+                        right_value = expr.value.value
+                    elif hasattr(expr.value, "value"):
+                        right_value = expr.value.value
+                    else:
+                        right_value = expr.value
+
+                    # Apply the operation
+                    if operation == "+":
+                        result_value = nested_value + right_value
+                    elif operation == "-":
+                        result_value = nested_value - right_value
+                    elif operation == "*":
+                        result_value = nested_value * right_value
+                    elif operation == "/":
+                        result_value = (
+                            nested_value / right_value if right_value != 0 else None
+                        )
+                    elif operation == "%":
+                        result_value = (
+                            nested_value % right_value if right_value != 0 else None
+                        )
+                    else:
+                        result_value = None
+
+                    result_key = (
+                        expr.name
+                        if hasattr(expr, "name")
+                        else f"({nested_key} {operation} {right_value})"
+                    )
+                    return result_key, result_value
+
+            if agg_func is not None and operation in ("+", "-", "*", "/", "%"):
+                # Evaluate the aggregate function first
+                _, agg_result = self._evaluate_aggregate_function(agg_func, group_rows)
+                # Then apply the arithmetic operation
+                from ...functions.core.literals import Literal
+
+                # Get the other operand value (left for reverse, right for forward)
+                if is_reverse:
+                    # For reverse operations, the left operand is in expr.column
+                    if isinstance(expr.column, Literal):
+                        left_value = expr.column.value
+                    elif hasattr(expr.column, "value"):
+                        left_value = expr.column.value
+                    else:
+                        left_value = expr.column
+                else:
+                    # For forward operations, the right operand is in expr.value
+                    if isinstance(expr.value, Literal):
+                        right_value = expr.value.value
+                    elif hasattr(expr.value, "value"):
+                        right_value = expr.value.value
+                    else:
+                        right_value = expr.value
+
+                # Apply the operation
+                if operation == "+":
+                    if is_reverse:
+                        result_value = (
+                            left_value + agg_result if agg_result is not None else None
+                        )
+                    else:
+                        result_value = (
+                            agg_result + right_value if agg_result is not None else None
+                        )
+                elif operation == "-":
+                    if is_reverse:
+                        result_value = (
+                            left_value - agg_result if agg_result is not None else None
+                        )
+                    else:
+                        result_value = (
+                            agg_result - right_value if agg_result is not None else None
+                        )
+                elif operation == "*":
+                    if is_reverse:
+                        result_value = (
+                            left_value * agg_result if agg_result is not None else None
+                        )
+                    else:
+                        result_value = (
+                            agg_result * right_value if agg_result is not None else None
+                        )
+                elif operation == "/":
+                    if is_reverse:
+                        result_value = (
+                            left_value / agg_result
+                            if agg_result is not None and agg_result != 0
+                            else None
+                        )
+                    else:
+                        result_value = (
+                            agg_result / right_value
+                            if agg_result is not None and right_value != 0
+                            else None
+                        )
+                elif operation == "%":
+                    if is_reverse:
+                        result_value = (
+                            left_value % agg_result
+                            if agg_result is not None and agg_result != 0
+                            else None
+                        )
+                    else:
+                        result_value = (
+                            agg_result % right_value
+                            if agg_result is not None and right_value != 0
+                            else None
+                        )
+                else:
+                    result_value = None
+
+                # Generate result key name
+                if is_reverse:
+                    result_key = (
+                        expr.name
+                        if hasattr(expr, "name")
+                        else f"({left_value} {operation} {agg_func.name})"
+                    )
+                else:
+                    result_key = (
+                        expr.name
+                        if hasattr(expr, "name")
+                        else f"({agg_func.name} {operation} {right_value})"
+                    )
+                return result_key, result_value
+            elif operation == "count":
                 # Count non-null values in the column
                 col_name = (
                     expr.column.name
