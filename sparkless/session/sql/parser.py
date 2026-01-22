@@ -1212,7 +1212,6 @@ class SQLParser:
         # Pattern: name AS (subquery)
         cte_pattern = re.compile(r"(\w+)\s+AS\s*\(", re.IGNORECASE)
 
-        pos = 0
         for match in cte_pattern.finditer(cte_section):
             cte_name = match.group(1)
             paren_start = match.end() - 1  # Position of opening (
@@ -1241,7 +1240,5 @@ class SQLParser:
                     "query": cte_query,
                 }
             )
-
-            pos = subquery_end + 1
 
         return components

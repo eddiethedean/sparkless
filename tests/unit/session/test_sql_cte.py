@@ -1,12 +1,5 @@
 """Tests for CTE (WITH clause) support in SQL executor."""
 
-from typing import TYPE_CHECKING, cast
-
-import pytest
-
-if TYPE_CHECKING:
-    from sparkless.dataframe import DataFrame
-
 
 class TestCTEBasic:
     """Test basic CTE (WITH clause) functionality."""
