@@ -3,6 +3,17 @@
 ## 3.27.0 — Unreleased
 
 ### Fixed
+- **Window function alias extraction in Python evaluation path**
+  - Fixed issue where Python-evaluated window functions (e.g., `percent_rank()`, `ntile()`) in `apply_select` were using default aliases (e.g., `percent_rank_window`) instead of user-defined aliases (e.g., `percentile`)
+  - Updated alias extraction in Python evaluation path to use `original_col_for_alias` instead of the processed `col`, matching the non-Python path behavior
+  - Fixes `test_window_function_multiply`, `test_window_function_rmul`, `test_window_function_chained_operations`, `test_ntile_with_arithmetic`, and `test_multiple_window_functions_with_arithmetic` tests that were returning `None` values
+  - Ensures user-defined aliases are preserved when window functions fall back to Python evaluation
+
+- **UnboundLocalError in apply_select**
+  - Fixed `UnboundLocalError: cannot access local variable 'had_python_window_functions'` that occurred when `apply_select` was called without Python window functions
+  - Initialized `had_python_window_functions` before the conditional block to ensure it's always defined
+  - Fixes 317 test failures that were caused by this error
+
 - **Issue #297** - Fixed column name resolution after join when columns differ only by case
   - Fixed `AnalysisException: Ambiguous column name` when selecting columns after a join where columns differ only by case (e.g., "name" vs "Name")
   - Updated `ColumnResolver.resolve_column_name()` to return the first matching column in case-insensitive scenarios instead of raising an exception, matching PySpark behavior
@@ -13,6 +24,30 @@
   - Updated `PolarsOperationExecutor.apply_select()` to correctly alias columns when ambiguity exists
   - Modified `PolarsMaterializer` to pass original requested column names to `apply_select` for proper resolution and aliasing
   - Fixes `KeyError` when accessing Row objects with the requested column name after a join and select operation
+
+- **Issue #295** - Fixed `withColumnRenamed` to treat non-existent columns as no-op (matching PySpark behavior)
+  - Fixed `SparkColumnNotFoundError` when trying to rename a non-existent column - now treated as a no-op, matching PySpark behavior
+  - Modified `TransformationService.withColumnRenamed()` to return the DataFrame unchanged when the column doesn't exist
+  - Modified `TransformationService.withColumnsRenamed()` to skip non-existent columns instead of raising an error (only renames existing columns)
+  - Comprehensive test coverage: 27 tests covering edge cases including empty DataFrames, null values, different data types, special characters, unicode, very long column names, and integration with all DataFrame operations (joins, groupBy, select, orderBy, union, distinct, withColumn, drop)
+  - All tests passing in both Sparkless and PySpark modes, confirming full compatibility
+  - Fixes issue where `df.withColumnRenamed("Does-Not-Exist", "New-Name")` would raise an error instead of silently ignoring the operation
+
+- **Issue #296** - Fixed UDF decorator interface support (`@udf(DataType())` pattern)
+  - Fixed `AttributeError: 'function' object has no attribute 'name'` when using `@udf(T.StringType())` decorator pattern
+  - Updated `Functions.udf()` to correctly detect when a DataType instance is passed as the first positional argument (decorator pattern) and treat it as `returnType`
+  - When `@udf(T.StringType())` is used, the DataType instance is now correctly recognized as `returnType` instead of being treated as the function parameter
+  - Maintains backward compatibility with function interface (`F.udf(lambda x: x.upper(), T.StringType())`)
+  - Comprehensive test coverage: 37 tests covering all decorator patterns including:
+    - Decorator with return type: `@udf(T.StringType())`
+    - Decorator without return type: `@udf()` (defaults to StringType)
+    - Different return types (String, Integer, Double, Boolean, Date, Timestamp, Array)
+    - Multiple arguments (2, 3+ parameters)
+    - Various DataFrame operations (withColumn, select, filter, groupBy, join, union, distinct, orderBy, drop)
+    - Edge cases: empty DataFrames, null values, special characters, unicode, very long strings
+    - Complex scenarios: conditional logic, exception handling, nested calls, chained UDFs, idempotent behavior
+  - All tests passing in both Sparkless and PySpark modes, confirming full compatibility
+  - Fixes issue where `@udf(T.StringType())` decorator would raise an error instead of working correctly
 
 - **Issue #286** - Added arithmetic operators to `AggregateFunction` class
   - Added support for arithmetic operations on aggregate functions (e.g., `F.countDistinct("Value") - 1`), matching PySpark behavior
@@ -91,6 +126,42 @@
   - Supports string column coercion to numeric for power operations
   - Works with conditional expressions, multiple columns, and aliases
   - Fixes `TypeError: unsupported operand type(s) for ** or pow(): 'float' and 'Column'` error
+
+- **Issue #292** - Added support for look-around regex patterns in `rlike()` and related functions
+  - Added look-around pattern detection for `rlike`, `regexp`, and `regexp_like` operations
+  - Uses Python `re` module fallback when Polars doesn't support look-ahead/look-behind assertions
+  - Detects patterns containing `(?=...)`, `(?!...)`, `(?<=...)`, `(?<!...)` assertions
+  - Falls back to Python evaluation when Polars raises ComputeError about look-around not being supported
+  - Supports negative lookahead (e.g., `(?!.*(Alice\sCat))`), positive lookahead, lookbehind, and negative lookbehind
+  - Works with case-insensitive flags, multiple lookaheads, and complex nested patterns
+  - Maintains backward compatibility with regular patterns (no look-around)
+  - Works in various contexts: `filter`, `select`, `withColumn`, chained operations
+  - Properly handles null values and empty DataFrames
+  - Fixes `polars.exceptions.ComputeError: regex error: look-around, including look-ahead and look-behind, is not supported` error
+
+- **Issue #293** - Fixed `explode()` and `explode_outer()` functions to properly explode arrays/lists into multiple rows
+  - Fixed `F.explode()` to correctly expand array or map columns into new rows, matching PySpark behavior
+  - Fixed `F.explode_outer()` to expand arrays while preserving rows with null/empty arrays (unlike regular `explode`)
+  - Updated `PolarsOperationExecutor.apply_with_column()` to properly handle `explode` operations in `withColumn` and `select`
+  - For regular `explode`, rows with null/empty arrays are dropped (matching PySpark behavior)
+  - For `explode_outer`, rows with null/empty arrays are preserved with `None` values (matching PySpark behavior)
+  - Properly resolves source column names from `Column` objects and `ColumnOperation` expressions
+  - Works with integer, float, boolean, and string arrays
+  - Supports homogeneous array types (Polars requirement) - mixed types are handled by converting to strings
+  - Works in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`, `orderBy`, `distinct`, `union`, `join`
+  - Supports chained operations, conditional expressions (`F.when().otherwise()`), `cast()`, string operations
+  - Supports multiple `explode` operations on the same DataFrame
+  - Properly handles single-element arrays, large arrays, empty arrays, and null arrays
+  - Fixes issue where `explode` was not exploding lists as expected
+
+- **Issue #294** - Fixed `hour()`, `minute()`, and `second()` functions to correctly extract time components from string columns containing timestamp values
+  - Fixed `F.hour()`, `F.minute()`, and `F.second()` to properly parse string timestamps and extract time components
+  - Enhanced `_extract_datetime_part()` in `PolarsExpressionTranslator` to handle various timestamp string formats
+  - Added support for timezone formats: `+0000` (normalized to `+00:00`), `-0500`, `Z` format, and timezone-less formats
+  - Added support for various timestamp formats: ISO format (`2023-02-07T04:00:01.730+0000`), space-separated, with/without microseconds, date-only
+  - Properly handles null timestamp values (returns `None` for all time components)
+  - Works in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`
+  - Fixes issue where `hour()`, `minute()`, and `second()` returned `None` for string timestamp columns
 
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
@@ -184,6 +255,52 @@
   - Tests for multiple columns, aliases, and multiple withColumn operations
   - Tests for edge cases: one base/exponent, decimal base/exponent, very large exponents
   - Tests for empty DataFrames
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #292 (`tests/test_issue_292_rlike_lookaround.py`)
+  - 36 test cases covering all look-around regex functionality
+  - Tests for negative lookahead (from issue example)
+  - Tests for positive lookahead, lookbehind, and negative lookbehind
+  - Tests for complex look-around patterns and multiple lookaheads
+  - Tests for case-insensitive look-around patterns
+  - Tests for rlike with and without look-around (backward compatibility)
+  - Tests for look-around in filter, select, withColumn, and chained operations
+  - Tests for null handling and empty DataFrames
+  - Tests for anchored lookaheads, nested lookaheads, lookbehind with digits, combined lookahead/lookbehind
+  - Tests for multiple negative lookaheads, lookahead/lookbehind with word boundaries, quantifiers
+  - Tests for alternation, capture groups, unicode, escaped characters, large datasets, and case sensitivity
+  - Tests for fixed-width lookbehind patterns (Python re module limitation)
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #293 (`tests/test_issue_293_explode_withcolumn.py`)
+  - 29 test cases covering all `explode` and `explode_outer` functionality
+  - Tests for basic `explode` in `withColumn` and `select` contexts
+  - Tests for `explode` with integer, float, boolean, and string arrays
+  - Tests for `explode` with empty and null arrays (verifying PySpark's drop behavior for `explode` and retain behavior for `explode_outer`)
+  - Tests for `explode` with single-element and large arrays
+  - Tests for `explode` with `groupBy().agg()`, `orderBy`, `distinct`, `union`, `join`
+  - Tests for `explode` with chained `withColumn` operations, `F.when().otherwise()`, `cast()`, string operations
+  - Tests for multiple `explode` operations on the same DataFrame
+  - Tests for `explode_outer` with empty arrays
+  - Tests for `explode` with aliases and filter operations before/after
+  - Tests for homogeneous array types (Polars requirement) and mixed-type handling
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Fixed flaky test `test_column_power_number` in `tests/test_issue_291_power_operator_float_column.py`
+  - Changed test to find rows by `Value` column instead of relying on row order
+  - Added materialization between `withColumn` operations to prevent race conditions in parallel test execution
+  - Test now passes consistently in parallel test runs (`-n 10`)
+- Added comprehensive test suite for issue #294 (`tests/test_issue_294_hour_minute_second_string_timestamps.py`)
+  - 7 test cases covering all `hour()`, `minute()`, and `second()` functionality with string timestamps
+  - Tests for exact issue example format (`2023-02-07T04:00:01.730+0000`)
+  - Tests for various timezone formats (`+0000`, `-0500`, `Z`, no timezone)
+  - Tests for different timestamp formats (ISO, space-separated, with/without microseconds, date-only)
+  - Tests for `hour/minute/second` in `select`, `filter`, and `groupBy().agg()` contexts
+  - Tests for null timestamp values (verifying `None` return behavior)
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Fixed additional flaky tests in `tests/test_issue_291_power_operator_float_column.py`
+  - Fixed `test_power_in_multiple_withcolumns`: Added materialization between `withColumn` operations
+  - Fixed `test_power_fractional_exponent`: Changed to find rows by `Value` instead of positional indexing, added materialization
+  - Tests now pass consistently in parallel test runs (`-n 10`)
+  - Tests for `hour/minute/second` in `select`, `filter`, and `groupBy().agg()` contexts
+  - Tests for null timestamp values (verifying `None` return behavior)
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased

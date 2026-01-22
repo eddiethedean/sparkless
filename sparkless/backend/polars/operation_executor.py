@@ -5,7 +5,7 @@ from __future__ import annotations
 # using the Polars DataFrame API.
 
 import json
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 import polars as pl
 from .window_handler import PolarsWindowHandler
 from sparkless import config
@@ -37,6 +37,94 @@ class PolarsOperationExecutor:
             "enable_polars_vectorized_shortcuts"
         )
         self._struct_field_cache: Dict[Tuple[str, str], List[str]] = {}
+
+    def _extract_window_function_with_arithmetic(
+        self, col: Any
+    ) -> Tuple[Optional[WindowFunction], List[Tuple[str, Any, bool]]]:
+        """Recursively extract WindowFunction and all arithmetic operations applied to it.
+
+        Args:
+            col: Column, WindowFunction, or ColumnOperation
+
+        Returns:
+            Tuple of (WindowFunction or None, list of (operation, value, is_reverse) tuples)
+            Operations are in order from innermost to outermost.
+        """
+        from sparkless.functions.core.literals import Literal
+
+        if isinstance(col, WindowFunction):
+            return (col, [])
+        elif isinstance(col, ColumnOperation):
+            # Skip alias-only wrappers. .alias() sets _alias_name on the same op;
+            # it does not create operation="alias". Callers use getattr(col, "_alias_name", None).
+            if col.operation == "alias":
+                return self._extract_window_function_with_arithmetic(col.column)
+            # Check if this is a reverse operation (Literal - WindowFunction or Literal / WindowFunction)
+            if isinstance(col.column, Literal) and isinstance(
+                col.value, WindowFunction
+            ):
+                # Reverse operation: Literal op WindowFunction
+                window_func, inner_ops = self._extract_window_function_with_arithmetic(
+                    col.value
+                )
+                if window_func:
+                    # Add reverse operation at the end
+                    inner_ops.append(
+                        (cast("str", col.operation), col.column.value, True)
+                    )
+                    return (window_func, inner_ops)
+            # Check if column is WindowFunction or contains one
+            elif isinstance(col.column, WindowFunction):
+                # Direct: WindowFunction op value
+                window_func, inner_ops = self._extract_window_function_with_arithmetic(
+                    col.column
+                )
+                if window_func:
+                    inner_ops.append((cast("str", col.operation), col.value, False))
+                    return (window_func, inner_ops)
+            # Recursively check nested ColumnOperation
+            elif isinstance(col.column, ColumnOperation):
+                window_func, inner_ops = self._extract_window_function_with_arithmetic(
+                    col.column
+                )
+                if window_func:
+                    # Add this operation to the list (operations are in order from innermost to outermost)
+                    inner_ops.append((cast("str", col.operation), col.value, False))
+                    return (window_func, inner_ops)
+            # Also check if value is a ColumnOperation (for cases like (A * B) where both are operations)
+            elif isinstance(col.value, ColumnOperation):
+                # This handles cases where both operands are ColumnOperations
+                # For now, we only handle WindowFunction on the left side
+                pass
+            # Handle Column op WindowFunction (e.g., F.col("value") - F.lag("value", 1).over(window))
+            elif isinstance(col.value, WindowFunction):
+                # Left-side operation: Column op WindowFunction
+                window_func, inner_ops = self._extract_window_function_with_arithmetic(
+                    col.value
+                )
+                if window_func:
+                    # Record operation with is_reverse=False (it's left op window, not reverse)
+                    # For subtraction, we'll need special handling in arithmetic application
+                    inner_ops.append((cast("str", col.operation), col.column, False))
+                    return (window_func, inner_ops)
+        return (None, [])
+
+    def _arith_operand_to_polars(self, val: Any, df: pl.DataFrame) -> Any:
+        """Convert an arithmetic operand to a form Polars accepts (scalar or pl.Expr).
+
+        Scalars are returned as-is (Polars accepts them in binary ops). Column/ColumnOperation
+        are translated to pl.Expr for e.g. window_expr - pl.col("x").
+        """
+        if isinstance(val, (int, float, bool, str, type(None))):
+            return val
+        if isinstance(val, (Column, ColumnOperation)):
+            case_sensitive = self._get_case_sensitive()
+            return self.translator.translate(
+                val,
+                available_columns=list(df.columns),
+                case_sensitive=case_sensitive,
+            )
+        return val
 
     def _get_case_sensitive(self) -> bool:
         """Get case sensitivity setting from active session.
@@ -77,6 +165,13 @@ class PolarsOperationExecutor:
             column_name, available_columns, case_sensitive
         )
         return str(result) if result else None
+
+    def _resolve_window_col_name(
+        self, df: pl.DataFrame, col_name: str, case_sensitive: bool
+    ) -> str:
+        """Resolve window partition/order column name against DataFrame schema."""
+        resolved = self._find_column(df, col_name, case_sensitive)
+        return resolved if resolved is not None else col_name
 
     @profiled("polars.apply_filter", category="polars")
     def apply_filter(self, df: pl.DataFrame, condition: Any) -> pl.DataFrame:
@@ -438,162 +533,688 @@ class PolarsOperationExecutor:
                     select_names.append(name)
             elif isinstance(col, WindowFunction) or (
                 isinstance(col, ColumnOperation)
-                and col.operation == "cast"
-                and isinstance(col.column, WindowFunction)
+                and (
+                    col.operation == "cast"
+                    or col.operation == "alias"
+                    or col.operation in ["*", "+", "-", "/", "**"]
+                )
             ):
-                # Handle window functions or ColumnOperation wrapping WindowFunction (e.g., WindowFunction.cast())
-                # Extract WindowFunction and cast type
-                window_func = col if isinstance(col, WindowFunction) else col.column
-                cast_type = (
-                    col.value
-                    if isinstance(col, ColumnOperation) and col.operation == "cast"
-                    else None
+                # Handle window functions or ColumnOperation wrapping WindowFunction
+                # Use helper to recursively extract WindowFunction and all arithmetic operations
+                window_func, arithmetic_ops = (
+                    self._extract_window_function_with_arithmetic(col)
                 )
 
-                # Ensure function_name is set correctly
-                if (
-                    not hasattr(window_func, "function_name")
-                    or not window_func.function_name
-                    or window_func.function_name == "window_function"
-                ) and hasattr(window_func, "function"):
-                    function_name_from_func = getattr(
-                        window_func.function, "function_name", None
+                # Also check for cast operation
+                cast_type = None
+                if isinstance(col, ColumnOperation) and col.operation == "cast":
+                    if isinstance(col.column, WindowFunction):
+                        cast_type = col.value
+                    elif isinstance(col.column, ColumnOperation):
+                        # Cast might be applied to arithmetic result
+                        # Extract window function from nested operation
+                        nested_window_func, _ = (
+                            self._extract_window_function_with_arithmetic(col.column)
+                        )
+                        if nested_window_func:
+                            window_func = nested_window_func
+                            cast_type = col.value
+                            # Re-extract arithmetic ops from the nested operation
+                            _, nested_ops = (
+                                self._extract_window_function_with_arithmetic(
+                                    col.column
+                                )
+                            )
+                            arithmetic_ops = nested_ops
+
+                if window_func is None:
+                    # Not a window function (e.g. 2 * F.col("x")) - use regular handling
+                    alias_name = getattr(col, "name", None) or getattr(
+                        col, "_alias_name", None
                     )
-                    if function_name_from_func:
-                        window_func.function_name = function_name_from_func
+                    if hasattr(col, "name") and "." in col.name:
+                        parts = col.name.split(".", 1)
+                        struct_col, field_name = parts[0], parts[1]
+                        from ...core.column_resolver import ColumnResolver
 
-                try:
-                    window_expr = self.window_handler.translate_window_function(
-                        window_func, df
-                    )
-
-                    # Apply cast if this is a cast operation
-                    if cast_type is not None:
-                        from .type_mapper import mock_type_to_polars_dtype
-                        from sparkless.spark_types import (
-                            StringType,
-                            IntegerType,
-                            LongType,
-                            DoubleType,
-                            FloatType,
-                            BooleanType,
-                            DateType,
-                            TimestampType,
-                            ShortType,
-                            ByteType,
+                        case_sensitive = self._get_case_sensitive()
+                        resolved_struct_col = ColumnResolver.resolve_column_name(
+                            struct_col, list(df.columns), case_sensitive
                         )
-
-                        # Handle string type names
-                        if isinstance(cast_type, str):
-                            type_name_map = {
-                                "string": StringType(),
-                                "str": StringType(),
-                                "int": IntegerType(),
-                                "integer": IntegerType(),
-                                "long": LongType(),
-                                "bigint": LongType(),
-                                "double": DoubleType(),
-                                "float": FloatType(),
-                                "boolean": BooleanType(),
-                                "bool": BooleanType(),
-                                "date": DateType(),
-                                "timestamp": TimestampType(),
-                                "short": ShortType(),
-                                "byte": ByteType(),
-                            }
-                            cast_type = type_name_map.get(cast_type.lower())
-
-                        if cast_type is not None:
-                            polars_dtype = mock_type_to_polars_dtype(cast_type)
-                            window_expr = window_expr.cast(polars_dtype, strict=False)
-
-                    alias_name = (
-                        getattr(col, "name", None)
-                        or getattr(col, "_alias_name", None)
-                        or (
-                            f"{window_func.function_name.lower()}_window"
-                            if hasattr(window_func, "function_name")
-                            else "window_result"
+                        if resolved_struct_col and resolved_struct_col in df.columns:
+                            struct_dtype = df[resolved_struct_col].dtype
+                            if hasattr(struct_dtype, "fields") and struct_dtype.fields:
+                                field_names = [f.name for f in struct_dtype.fields]
+                                resolved_field = ColumnResolver.resolve_column_name(
+                                    field_name,
+                                    field_names,
+                                    case_sensitive,
+                                )
+                                if resolved_field:
+                                    expr = pl.col(resolved_struct_col).struct.field(
+                                        resolved_field
+                                    )
+                                    if alias_name:
+                                        expr = expr.alias(alias_name)
+                                    select_exprs.append(expr)
+                                    select_names.append(alias_name or col.name)
+                                    continue
+                    try:
+                        case_sensitive = self._get_case_sensitive()
+                        expr = self.translator.translate(
+                            col,
+                            available_columns=list(df.columns),
+                            case_sensitive=case_sensitive,
                         )
-                    )
-                    select_exprs.append(window_expr.alias(alias_name))
-                    select_names.append(alias_name)
-                except ValueError:
-                    # Fallback to Python evaluation for unsupported window functions
-                    # (e.g., rowsBetween frames that require reverse cumulative operations)
-                    # Window functions need to be evaluated across all rows, not row-by-row
-                    # So we'll collect them and evaluate them together later
-                    if rows_cache is None:
-                        rows_cache = df.to_dicts()
-                    # Store window function for batch evaluation
-                    if not hasattr(self, "_python_window_functions"):
-                        self._python_window_functions: List[Any] = []
-                    # Get alias name - check both name and _alias_name attributes
-                    alias_name = (
-                        getattr(col, "name", None)
-                        or getattr(col, "_alias_name", None)
-                        or (
-                            f"{window_func.function_name.lower()}_window"
-                            if hasattr(window_func, "function_name")
-                            else "window_result"
-                        )
-                    )
+                        if alias_name:
+                            expr = expr.alias(alias_name)
+                            select_exprs.append(expr)
+                            select_names.append(alias_name)
+                        else:
+                            select_exprs.append(expr)
+                            col_name = getattr(col, "name", None)
+                            select_names.append(
+                                col_name
+                                if col_name is not None
+                                else f"col_{len(select_exprs)}"
+                            )
+                    except ValueError:
+                        if rows_cache is None:
+                            rows_cache = df.to_dicts()
+                        if evaluator is None:
+                            from sparkless.dataframe.evaluation.expression_evaluator import (
+                                ExpressionEvaluator,
+                            )
 
-                    # Evaluate window function and apply cast if needed
-                    if rows_cache is None:
-                        rows_cache = df.to_dicts()
-                    results = window_func.evaluate(rows_cache)
-
-                    # Apply cast if this is a cast operation
-                    if cast_type is not None:
-                        from sparkless.dataframe.casting.type_converter import (
-                            TypeConverter,
-                        )
-                        from sparkless.spark_types import (
-                            StringType,
-                            IntegerType,
-                            LongType,
-                            DoubleType,
-                            FloatType,
-                            BooleanType,
-                            DateType,
-                            TimestampType,
-                            ShortType,
-                            ByteType,
-                        )
-
-                        # Handle string type names
-                        if isinstance(cast_type, str):
-                            type_name_map = {
-                                "string": StringType(),
-                                "str": StringType(),
-                                "int": IntegerType(),
-                                "integer": IntegerType(),
-                                "long": LongType(),
-                                "bigint": LongType(),
-                                "double": DoubleType(),
-                                "float": FloatType(),
-                                "boolean": BooleanType(),
-                                "bool": BooleanType(),
-                                "date": DateType(),
-                                "timestamp": TimestampType(),
-                                "short": ShortType(),
-                                "byte": ByteType(),
-                            }
-                            cast_type = type_name_map.get(cast_type.lower())
-
-                        if cast_type is not None:
-                            results = [
-                                TypeConverter.cast_to_type(r, cast_type)
-                                if r is not None
-                                else None
-                                for r in results
-                            ]
-
-                    # Add as Python column for later processing
-                    python_columns.append((alias_name, results))
-                    select_names.append(alias_name)
+                            evaluator = ExpressionEvaluator()
+                        values = [
+                            self._evaluate_python_expression(row, col, evaluator)
+                            for row in rows_cache
+                        ]
+                        column_name_candidate = alias_name or getattr(col, "name", None)
+                        if not column_name_candidate:
+                            column_name_candidate = (
+                                f"col_{len(select_exprs) + len(python_columns) + 1}"
+                            )
+                        column_name = str(column_name_candidate)
+                        if isinstance(col, ColumnOperation) and col.operation in {
+                            "to_json",
+                            "to_csv",
+                        }:
+                            struct_alias = self._format_struct_alias(col.column)
+                            column_name = f"{col.operation}({struct_alias})"
+                        python_columns.append((column_name, values))
+                        select_names.append(column_name)
                     continue
+                else:
+                    # We found a WindowFunction - process it
+                    # Save the original col for alias extraction later
+                    original_col_for_alias = col
+                    # Ensure function_name is set correctly
+                    if (
+                        not hasattr(window_func, "function_name")
+                        or not window_func.function_name
+                        or window_func.function_name == "window_function"
+                    ) and hasattr(window_func, "function"):
+                        function_name_from_func = getattr(
+                            window_func.function, "function_name", None
+                        )
+                        if function_name_from_func:
+                            window_func.function_name = function_name_from_func
+
+                    window_spec = window_func.window_spec
+                    function_name = getattr(window_func, "function_name", "").upper()
+                    case_sensitive = self._get_case_sensitive()
+
+                    # Build sort columns from partition_by and order_by
+                    # Window functions need the DataFrame sorted before evaluation
+                    sort_cols = []
+                    has_order_by = bool(
+                        hasattr(window_spec, "_order_by") and window_spec._order_by
+                    )
+                    has_partition_by = bool(
+                        hasattr(window_spec, "_partition_by")
+                        and window_spec._partition_by
+                    )
+
+                    # Sort DataFrame for this window function before building expression
+                    if has_order_by:
+                        # Add partition_by columns first
+                        if has_partition_by:
+                            for col in window_spec._partition_by:
+                                if isinstance(col, str):
+                                    name = col
+                                elif hasattr(col, "name"):
+                                    name = col.name
+                                else:
+                                    name = None
+                                if name:
+                                    resolved = self._resolve_window_col_name(
+                                        df, name, case_sensitive
+                                    )
+                                    sort_cols.append(resolved)
+                        # Add order_by columns
+                        # Build sort parameters for window functions
+                        window_sort_cols = []
+                        window_desc_flags = []
+                        window_nulls_last_flags = []
+                        for col in window_spec._order_by:
+                            col_name = None
+                            is_desc = False
+                            nulls_last = None  # None means default
+                            if isinstance(col, str):
+                                col_name = col
+                                is_desc = False  # Default ascending
+                                nulls_last = None
+                            elif hasattr(col, "operation"):
+                                operation = col.operation
+                                if hasattr(col, "column") and hasattr(
+                                    col.column, "name"
+                                ):
+                                    col_name = col.column.name
+                                elif hasattr(col, "name"):
+                                    col_name = col.name
+                                # Handle nulls variant operations
+                                if operation == "desc_nulls_last":
+                                    is_desc = True
+                                    nulls_last = True
+                                elif operation == "desc_nulls_first":
+                                    is_desc = True
+                                    nulls_last = False
+                                elif operation == "asc_nulls_last":
+                                    is_desc = False
+                                    nulls_last = True
+                                elif operation == "asc_nulls_first":
+                                    is_desc = False
+                                    nulls_last = False
+                                elif operation == "desc":
+                                    is_desc = True
+                                    nulls_last = (
+                                        True  # PySpark default: nulls last for desc()
+                                    )
+                                elif operation == "asc":
+                                    is_desc = False
+                                    nulls_last = (
+                                        True  # PySpark default: nulls last for asc()
+                                    )
+                            elif hasattr(col, "name"):
+                                col_name = col.name
+                                is_desc = False
+                                nulls_last = True  # PySpark default: nulls last
+
+                            if col_name:
+                                resolved_name = self._resolve_window_col_name(
+                                    df, col_name, case_sensitive
+                                )
+                                window_sort_cols.append(resolved_name)
+                                window_desc_flags.append(is_desc)
+                                window_nulls_last_flags.append(nulls_last)
+                                # Also add to sort_cols for compatibility with existing code
+                                sort_cols.append(resolved_name)
+
+                        # Sort window function data with proper nulls handling
+                        if window_sort_cols:
+                            has_nulls_spec = any(
+                                n is not None for n in window_nulls_last_flags
+                            )
+                            # Polars sort: for single column, descending should be bool, not list
+                            if len(window_sort_cols) == 1:
+                                descending_single: bool = (
+                                    window_desc_flags[0] if window_desc_flags else False
+                                )
+                                nulls_last_single: Optional[bool] = (
+                                    window_nulls_last_flags[0]
+                                    if window_nulls_last_flags
+                                    and window_nulls_last_flags[0] is not None
+                                    else None
+                                )
+                                if has_nulls_spec and nulls_last_single is not None:
+                                    df = df.sort(
+                                        window_sort_cols[0],
+                                        descending=descending_single,
+                                        nulls_last=nulls_last_single,
+                                    )
+                                else:
+                                    df = df.sort(
+                                        window_sort_cols[0],
+                                        descending=descending_single,
+                                    )
+                            else:
+                                descending_list: List[bool] = window_desc_flags
+                                nulls_last_list: Optional[List[Optional[bool]]] = (
+                                    window_nulls_last_flags if has_nulls_spec else None
+                                )
+                                if has_nulls_spec and nulls_last_list is not None:
+                                    df = df.sort(
+                                        window_sort_cols,
+                                        descending=descending_list,
+                                        nulls_last=nulls_last_list,
+                                    )
+                                else:
+                                    df = df.sort(
+                                        window_sort_cols, descending=descending_list
+                                    )
+
+                    # Sort if we have string column names (and haven't already sorted with expressions)
+                    # CRITICAL: For lag/lead functions, we MUST sort before applying the window function
+                    if function_name in ("LAG", "LEAD") and has_order_by:
+                        # Rebuild sort_cols if needed to ensure we sort
+                        if not sort_cols or not all(
+                            isinstance(c, str) for c in sort_cols
+                        ):
+                            sort_cols = []
+                            if has_partition_by:
+                                for col in window_spec._partition_by:
+                                    if isinstance(col, str):
+                                        name = col
+                                    elif hasattr(col, "name"):
+                                        name = col.name
+                                    else:
+                                        name = None
+                                    if name:
+                                        sort_cols.append(
+                                            self._resolve_window_col_name(
+                                                df, name, case_sensitive
+                                            )
+                                        )
+                            for col in window_spec._order_by:
+                                if isinstance(col, str):
+                                    name = col
+                                elif hasattr(col, "name"):
+                                    name = col.name
+                                else:
+                                    name = None
+                                if name:
+                                    sort_cols.append(
+                                        self._resolve_window_col_name(
+                                            df, name, case_sensitive
+                                        )
+                                    )
+                        if sort_cols and all(isinstance(c, str) for c in sort_cols):
+                            # Use the same descending flags as window_sort_cols
+                            if len(sort_cols) == len(window_desc_flags):
+                                if len(sort_cols) == 1:
+                                    df = df.sort(
+                                        sort_cols[0], descending=window_desc_flags[0]
+                                    )
+                                else:
+                                    df = df.sort(
+                                        sort_cols, descending=window_desc_flags
+                                    )
+                            else:
+                                df = df.sort(sort_cols)
+                    elif sort_cols and all(isinstance(c, str) for c in sort_cols):
+                        # Use the same descending flags as window_sort_cols if available
+                        if window_sort_cols and len(sort_cols) == len(
+                            window_desc_flags
+                        ):
+                            if len(sort_cols) == 1:
+                                df = df.sort(
+                                    sort_cols[0], descending=window_desc_flags[0]
+                                )
+                            else:
+                                df = df.sort(sort_cols, descending=window_desc_flags)
+                        else:
+                            df = df.sort(sort_cols)
+
+                    # Special handling for rank()/dense_rank() without column_expr
+                    # Polars ranks by value, but PySpark ranks by position in ordered window
+                    # Solution: use row_number() to get position, then min(row_number) over value
+                    # Check if column_expr would be None (no column argument to rank/dense_rank)
+                    column_expr_would_be_none = (
+                        not hasattr(window_func, "column_name")
+                        or window_func.column_name is None
+                        or (
+                            hasattr(window_func, "column_name")
+                            and window_func.column_name
+                            in {
+                                "__rank__",
+                                "__dense_rank__",
+                                "__row_number__",
+                                "__cume_dist__",
+                                "__percent_rank__",
+                                "__ntile__",
+                            }
+                        )
+                    )
+                    # For rank()/dense_rank() without a column, PySpark ranks by position
+                    # Polars ranks by value, so we need position-based ranking
+                    needs_position_based_rank = (
+                        function_name in ("RANK", "DENSE_RANK")
+                        and column_expr_would_be_none
+                        and has_order_by
+                    )
+
+                    try:
+                        if needs_position_based_rank:
+                            # Add row_number column to DataFrame (since it's already sorted)
+                            # IMPORTANT: The DataFrame should already be sorted by the window's orderBy
+                            # at this point, so row_numbers reflect the position in the ordered window
+                            row_num_col = "__row_number_for_rank__"
+                            row_num_expr = pl.int_range(pl.len()) + 1
+                            df = df.with_columns(row_num_expr.alias(row_num_col))
+                            # Debug: verify row_num_col is in df
+                            if row_num_col not in df.columns:
+                                import warnings
+
+                                warnings.warn(
+                                    f"row_num_col {row_num_col} not in df.columns: {df.columns}"
+                                )
+
+                            # Get the order column name for grouping
+                            order_col_name = None
+                            if window_spec._order_by:
+                                first_order_col = window_spec._order_by[0]
+                                if isinstance(first_order_col, str):
+                                    order_col_name = self._resolve_window_col_name(
+                                        df, first_order_col, case_sensitive
+                                    )
+                                elif hasattr(first_order_col, "column") and hasattr(
+                                    first_order_col.column, "name"
+                                ):
+                                    order_col_name = self._resolve_window_col_name(
+                                        df, first_order_col.column.name, case_sensitive
+                                    )
+                                elif hasattr(first_order_col, "name"):
+                                    order_col_name = self._resolve_window_col_name(
+                                        df, first_order_col.name, case_sensitive
+                                    )
+
+                            if order_col_name:
+                                # Use min(row_number) over order column to get position-based rank
+                                # For dense_rank, use rank(method="dense") on row_numbers
+                                # Debug: verify order_col_name is in df
+                                if order_col_name not in df.columns:
+                                    import warnings
+
+                                    warnings.warn(
+                                        f"order_col_name {order_col_name} not in df.columns: {df.columns}"
+                                    )
+                                if function_name == "DENSE_RANK":
+                                    # For dense_rank: use min(row_number) over order to get position,
+                                    # then add as a column and rank(method='dense') on that
+                                    # We can't nest window expressions, so we need to do it in two steps
+                                    if has_partition_by:
+                                        partition_cols = []
+                                        for p_col in window_spec._partition_by:
+                                            if isinstance(p_col, str):
+                                                p_name = self._resolve_window_col_name(
+                                                    df, p_col, case_sensitive
+                                                )
+                                            elif hasattr(p_col, "name"):
+                                                p_name = self._resolve_window_col_name(
+                                                    df, p_col.name, case_sensitive
+                                                )
+                                            else:
+                                                continue
+                                            if p_name:
+                                                partition_cols.append(p_name)
+                                        # Compute min(row_number) over partition+order
+                                        min_rn_col = f"__min_rn_for_dense_rank_{len(select_exprs)}__"
+                                        min_expr = (
+                                            pl.col(row_num_col)
+                                            .min()
+                                            .over(partition_cols + [order_col_name])
+                                        )
+                                        df = df.with_columns(min_expr.alias(min_rn_col))
+                                        # Then rank(method='dense') on that column
+                                        window_expr = pl.col(min_rn_col).rank(
+                                            method="dense"
+                                        )
+                                    else:
+                                        # Compute min(row_number) over order
+                                        min_rn_col = f"__min_rn_for_dense_rank_{len(select_exprs)}__"
+                                        min_expr = (
+                                            pl.col(row_num_col)
+                                            .min()
+                                            .over([order_col_name])
+                                        )
+                                        df = df.with_columns(min_expr.alias(min_rn_col))
+                                        # Then rank(method='dense') on that column
+                                        # Note: rank(method='dense') ranks globally, which is what we want
+                                        # because min_rn already groups by order_col_name
+                                        window_expr = pl.col(min_rn_col).rank(
+                                            method="dense"
+                                        )
+                                else:
+                                    # For RANK, use min(row_number) over order column
+                                    if has_partition_by:
+                                        partition_cols = []
+                                        for p_col in window_spec._partition_by:
+                                            if isinstance(p_col, str):
+                                                p_name = self._resolve_window_col_name(
+                                                    df, p_col, case_sensitive
+                                                )
+                                            elif hasattr(p_col, "name"):
+                                                p_name = self._resolve_window_col_name(
+                                                    df, p_col.name, case_sensitive
+                                                )
+                                            else:
+                                                continue
+                                            if p_name:
+                                                partition_cols.append(p_name)
+                                        window_expr = (
+                                            pl.col(row_num_col)
+                                            .min()
+                                            .over(partition_cols + [order_col_name])
+                                        )
+                                    else:
+                                        window_expr = (
+                                            pl.col(row_num_col)
+                                            .min()
+                                            .over([order_col_name])
+                                        )
+                            else:
+                                # Fallback to regular rank if we can't extract order column
+                                window_expr = (
+                                    self.window_handler.translate_window_function(
+                                        window_func, df, case_sensitive=case_sensitive
+                                    )
+                                )
+                        else:
+                            window_expr = self.window_handler.translate_window_function(
+                                window_func, df, case_sensitive=case_sensitive
+                            )
+
+                        # Apply all arithmetic operations in order (innermost to outermost)
+                        # (applies to both position-based and regular window functions)
+                        for op, val, is_reverse in arithmetic_ops:
+                            right = self._arith_operand_to_polars(val, df)
+                            if op == "*":
+                                window_expr = window_expr * right
+                            elif op == "+":
+                                window_expr = window_expr + right
+                            elif op == "-":
+                                if is_reverse:
+                                    # Literal - WindowFunction
+                                    window_expr = pl.lit(val) - window_expr
+                                elif isinstance(val, (Column, ColumnOperation)):
+                                    # Column - WindowFunction (left - window)
+                                    window_expr = right - window_expr
+                                else:
+                                    # WindowFunction - value
+                                    window_expr = window_expr - right
+                            elif op == "/":
+                                if is_reverse:
+                                    window_expr = pl.lit(val) / window_expr
+                                else:
+                                    window_expr = window_expr / right
+                            elif op == "**":
+                                window_expr = window_expr.pow(
+                                    val if isinstance(val, (int, float)) else right
+                                )
+
+                        # Apply cast if this is a cast operation
+                        if cast_type is not None:
+                            from .type_mapper import mock_type_to_polars_dtype
+                            from sparkless.spark_types import (
+                                StringType,
+                                IntegerType,
+                                LongType,
+                                DoubleType,
+                                FloatType,
+                                BooleanType,
+                                DateType,
+                                TimestampType,
+                                ShortType,
+                                ByteType,
+                            )
+
+                            # Handle string type names
+                            if isinstance(cast_type, str):
+                                type_name_map = {
+                                    "string": StringType(),
+                                    "str": StringType(),
+                                    "int": IntegerType(),
+                                    "integer": IntegerType(),
+                                    "long": LongType(),
+                                    "bigint": LongType(),
+                                    "double": DoubleType(),
+                                    "float": FloatType(),
+                                    "boolean": BooleanType(),
+                                    "bool": BooleanType(),
+                                    "date": DateType(),
+                                    "timestamp": TimestampType(),
+                                    "short": ShortType(),
+                                    "byte": ByteType(),
+                                }
+                                cast_type = type_name_map.get(cast_type.lower())
+
+                            if cast_type is not None:
+                                polars_dtype = mock_type_to_polars_dtype(cast_type)
+                                window_expr = window_expr.cast(
+                                    polars_dtype, strict=False
+                                )
+
+                        # Extract alias from the original col (before any processing)
+                        # Check _alias_name first (from .alias() call), then name, then fallback to default
+                        alias_name = (
+                            getattr(original_col_for_alias, "_alias_name", None)
+                            or getattr(original_col_for_alias, "name", None)
+                            or (
+                                f"{window_func.function_name.lower()}_window"
+                                if hasattr(window_func, "function_name")
+                                else "window_result"
+                            )
+                        )
+                        select_exprs.append(window_expr.alias(alias_name))
+                        select_names.append(alias_name)
+                    except ValueError:
+                        # Fallback to Python evaluation for unsupported window functions
+                        # This path needs to handle arithmetic operations too
+                        # IMPORTANT: rows_cache must be built from the sorted DataFrame
+                        # Rebuild rows_cache from the current (sorted) df to ensure correct order
+                        rows_cache = df.to_dicts()
+                        if not hasattr(self, "_python_window_functions"):
+                            self._python_window_functions: List[Any] = []
+
+                        # Evaluate window function first
+                        # rows_cache should be built from sorted DataFrame (done above)
+                        results = window_func.evaluate(rows_cache)
+
+                        # Apply arithmetic operations
+                        for op, val, is_reverse in arithmetic_ops:
+                            if op == "*":
+                                results = [
+                                    r * val if r is not None else None for r in results
+                                ]
+                            elif op == "+":
+                                results = [
+                                    r + val if r is not None else None for r in results
+                                ]
+                            elif op == "-":
+                                if is_reverse:
+                                    results = [
+                                        val - r if r is not None else None
+                                        for r in results
+                                    ]
+                                else:
+                                    results = [
+                                        r - val if r is not None else None
+                                        for r in results
+                                    ]
+                            elif op == "/":
+                                if is_reverse:
+                                    results = [
+                                        val / r if r is not None and r != 0 else None
+                                        for r in results
+                                    ]
+                                else:
+                                    results = [
+                                        r / val if r is not None else None
+                                        for r in results
+                                    ]
+                            elif op == "**":
+                                results = [
+                                    r**val if r is not None else None for r in results
+                                ]
+
+                        # Apply cast if needed
+                        if cast_type is not None:
+                            from sparkless.dataframe.casting.type_converter import (
+                                TypeConverter,
+                            )
+                            from sparkless.spark_types import (
+                                StringType,
+                                IntegerType,
+                                LongType,
+                                DoubleType,
+                                FloatType,
+                                BooleanType,
+                                DateType,
+                                TimestampType,
+                                ShortType,
+                                ByteType,
+                            )
+
+                            # Handle string type names
+                            if isinstance(cast_type, str):
+                                type_name_map = {
+                                    "string": StringType(),
+                                    "str": StringType(),
+                                    "int": IntegerType(),
+                                    "integer": IntegerType(),
+                                    "long": LongType(),
+                                    "bigint": LongType(),
+                                    "double": DoubleType(),
+                                    "float": FloatType(),
+                                    "boolean": BooleanType(),
+                                    "bool": BooleanType(),
+                                    "date": DateType(),
+                                    "timestamp": TimestampType(),
+                                    "short": ShortType(),
+                                    "byte": ByteType(),
+                                }
+                                cast_type = type_name_map.get(cast_type.lower())
+
+                            if cast_type is not None:
+                                results = [
+                                    TypeConverter.cast_to_type(r, cast_type)
+                                    if r is not None
+                                    else None
+                                    for r in results
+                                ]
+
+                        # Extract alias from the original col (before any processing)
+                        # Check _alias_name first (from .alias() call), then name, then fallback to default
+                        alias_name = (
+                            getattr(original_col_for_alias, "_alias_name", None)
+                            or getattr(original_col_for_alias, "name", None)
+                            or (
+                                f"{window_func.function_name.lower()}_window"
+                                if hasattr(window_func, "function_name")
+                                else "window_result"
+                            )
+                        )
+                        # Store for later addition to result (will be added after select_exprs are processed)
+                        # Format: (alias_name, results_list, arithmetic_ops, cast_type)
+                        if not hasattr(self, "_python_window_functions"):
+                            self._python_window_functions = []
+                        self._python_window_functions.append(
+                            (alias_name, results, arithmetic_ops, cast_type)
+                        )
+                        select_names.append(alias_name)
+                        continue
             else:
                 alias_name = getattr(col, "name", None) or getattr(
                     col, "_alias_name", None
@@ -823,47 +1444,101 @@ class PolarsOperationExecutor:
 
         # Evaluate window functions that require Python evaluation
         # These need to be evaluated across all rows, not row-by-row
+        # Initialize had_python_window_functions before the if block to avoid UnboundLocalError
+        had_python_window_functions = hasattr(
+            self, "_python_window_functions"
+        ) and bool(getattr(self, "_python_window_functions", None))
         if hasattr(self, "_python_window_functions") and self._python_window_functions:
-            from sparkless.dataframe.window_handler import WindowFunctionHandler
-            from sparkless.dataframe import DataFrame
+            # Check if we have pre-computed results (with arithmetic) or need to evaluate
+            first_item = self._python_window_functions[0]
+            if len(first_item) == 4:
+                # New format: (alias_name, results, arithmetic_ops, cast_type)
+                # Results are already computed with arithmetic applied
+                for (
+                    alias_name,
+                    results,
+                    arithmetic_ops,
+                    cast_type,
+                ) in self._python_window_functions:
+                    # Apply cast if needed
+                    if cast_type is not None:
+                        from sparkless.dataframe.casting.type_converter import (
+                            TypeConverter,
+                        )
+                        from sparkless.spark_types import (
+                            StringType,
+                            IntegerType,
+                            LongType,
+                            DoubleType,
+                            FloatType,
+                            BooleanType,
+                            DateType,
+                            TimestampType,
+                            ShortType,
+                            ByteType,
+                        )
 
-            # Use the cached rows for window function evaluation
-            data_rows = rows_cache if rows_cache else result.to_dicts()
+                        # Handle string type names
+                        if isinstance(cast_type, str):
+                            type_name_map = {
+                                "string": StringType(),
+                                "str": StringType(),
+                                "int": IntegerType(),
+                                "integer": IntegerType(),
+                                "long": LongType(),
+                                "bigint": LongType(),
+                                "double": DoubleType(),
+                                "float": FloatType(),
+                                "boolean": BooleanType(),
+                                "bool": BooleanType(),
+                                "date": DateType(),
+                                "timestamp": TimestampType(),
+                                "short": ShortType(),
+                                "byte": ByteType(),
+                            }
+                            cast_type = type_name_map.get(cast_type.lower())
 
-            # Create a temporary DataFrame for window function evaluation
-            # We need the original data to evaluate window functions correctly
-            # Create an empty schema since we're only using this for window function evaluation
-            from sparkless.spark_types import StructType
+                        if cast_type is not None:
+                            results = [
+                                TypeConverter.cast_to_type(r, cast_type)
+                                if r is not None
+                                else None
+                                for r in results
+                            ]
+                    result = result.with_columns(pl.Series(alias_name, results))
+            else:
+                # Old format: (alias_name, window_func, _)
+                from sparkless.dataframe.window_handler import WindowFunctionHandler
+                from sparkless.dataframe import DataFrame
 
-            temp_df = DataFrame(data_rows, StructType([]), None)
-            window_handler = WindowFunctionHandler(temp_df)
+                # Use the cached rows for window function evaluation
+                data_rows = rows_cache if rows_cache else result.to_dicts()
 
-            # Evaluate all window functions
-            for alias_name, window_func, _ in self._python_window_functions:
-                # Evaluate window function across all rows
-                # Pass the alias name so the window handler uses it instead of window_func.name
-                # The window handler modifies data_rows in place
-                window_handler.evaluate_window_functions(
-                    data_rows, [(alias_name, window_func)]
-                )
-                # Extract values from evaluated data
-                values = [row.get(alias_name) for row in data_rows]
-                result = result.with_columns(pl.Series(alias_name, values))
+                # Create a temporary DataFrame for window function evaluation
+                from sparkless.spark_types import StructType
+
+                temp_df = DataFrame(data_rows, StructType([]), None)
+                window_handler = WindowFunctionHandler(temp_df)
+
+                # Evaluate all window functions
+                for alias_name, window_func, _ in self._python_window_functions:
+                    # Evaluate window function across all rows
+                    window_handler.evaluate_window_functions(
+                        data_rows, [(alias_name, window_func)]
+                    )
+                    # Extract values from evaluated data
+                    values = [row.get(alias_name) for row in data_rows]
+                    result = result.with_columns(pl.Series(alias_name, values))
 
             # Clean up
-            delattr(self, "_python_window_functions")
+            if had_python_window_functions:
+                delattr(self, "_python_window_functions")
 
         # Only reorder if we have python_columns AND the order doesn't match
         # This ensures we preserve all columns while matching the requested order
         # Note: When aliases are applied, result.columns should already match select_names,
         # so reordering should preserve the aliased column names
-        if select_names and (
-            python_columns
-            or (
-                hasattr(self, "_python_window_functions")
-                and getattr(self, "_python_window_functions", None)
-            )
-        ):
+        if select_names and (python_columns or had_python_window_functions):
             existing_cols = list(result.columns)
             # Check if reordering is needed and safe
             # select_names contains the requested column names (with aliases applied)
@@ -1054,6 +1729,27 @@ class PolarsOperationExecutor:
         Returns:
             DataFrame with new column
         """
+        # Check if expression is a ColumnOperation containing window function arithmetic
+        # This must be checked before the simple window function check
+        window_func, arithmetic_ops = self._extract_window_function_with_arithmetic(
+            expression
+        )
+        cast_type = None
+
+        # Check for cast operation on window function arithmetic
+        if isinstance(expression, ColumnOperation) and expression.operation == "cast":
+            if window_func:
+                cast_type = expression.value
+            elif isinstance(expression.column, ColumnOperation):
+                # Cast might be applied to arithmetic result
+                nested_window_func, nested_ops = (
+                    self._extract_window_function_with_arithmetic(expression.column)
+                )
+                if nested_window_func:
+                    window_func = nested_window_func
+                    arithmetic_ops = nested_ops
+                    cast_type = expression.value
+
         # Check if expression is a WindowFunction or a ColumnOperation wrapping a WindowFunction (e.g., WindowFunction.cast())
         is_window_function = isinstance(expression, WindowFunction)
         is_window_function_cast = (
@@ -1062,18 +1758,21 @@ class PolarsOperationExecutor:
             and isinstance(expression.column, WindowFunction)
         )
 
-        if is_window_function or is_window_function_cast:
+        if window_func is not None or is_window_function or is_window_function_cast:
             # Window functions need special handling
             # For window functions with order_by, we need to sort the DataFrame first
             # to ensure correct window function evaluation
 
             # Extract the WindowFunction if it's wrapped in a ColumnOperation
-            window_func = (
-                expression
-                if isinstance(expression, WindowFunction)
-                else expression.column
-            )
-            cast_type = expression.value if is_window_function_cast else None
+            # Use extracted window_func if available, otherwise use existing logic
+            if window_func is None:
+                window_func = (
+                    expression
+                    if isinstance(expression, WindowFunction)
+                    else expression.column
+                )
+                cast_type = expression.value if is_window_function_cast else None
+            # If window_func was extracted from arithmetic, arithmetic_ops and cast_type are already set
 
             # Ensure function_name is set correctly - extract from function if needed
             if (
@@ -1089,6 +1788,7 @@ class PolarsOperationExecutor:
 
             window_spec = window_func.window_spec
             function_name = getattr(window_func, "function_name", "").upper()
+            case_sensitive = self._get_case_sensitive()
 
             # Build sort columns from partition_by and order_by
             sort_cols = []
@@ -1102,9 +1802,16 @@ class PolarsOperationExecutor:
                 if has_partition_by:
                     for col in window_spec._partition_by:
                         if isinstance(col, str):
-                            sort_cols.append(col)
+                            name = col
                         elif hasattr(col, "name"):
-                            sort_cols.append(col.name)
+                            name = col.name
+                        else:
+                            name = None
+                        if name:
+                            resolved = self._resolve_window_col_name(
+                                df, name, case_sensitive
+                            )
+                            sort_cols.append(resolved)
                 # Add order_by columns
                 # Build sort parameters for window functions
                 window_sort_cols = []
@@ -1149,11 +1856,14 @@ class PolarsOperationExecutor:
                         nulls_last = True  # PySpark default: nulls last
 
                     if col_name:
-                        window_sort_cols.append(col_name)
+                        resolved_name = self._resolve_window_col_name(
+                            df, col_name, case_sensitive
+                        )
+                        window_sort_cols.append(resolved_name)
                         window_desc_flags.append(is_desc)
                         window_nulls_last_flags.append(nulls_last)
                         # Also add to sort_cols for compatibility with existing code
-                        sort_cols.append(col_name)
+                        sort_cols.append(resolved_name)
 
                 # Sort window function data with proper nulls handling
                 if window_sort_cols:
@@ -1176,14 +1886,28 @@ class PolarsOperationExecutor:
                     if has_partition_by:
                         for col in window_spec._partition_by:
                             if isinstance(col, str):
-                                sort_cols.append(col)
+                                name = col
                             elif hasattr(col, "name"):
-                                sort_cols.append(col.name)
+                                name = col.name
+                            else:
+                                name = None
+                            if name:
+                                sort_cols.append(
+                                    self._resolve_window_col_name(
+                                        df, name, case_sensitive
+                                    )
+                                )
                     for col in window_spec._order_by:
                         if isinstance(col, str):
-                            sort_cols.append(col)
+                            name = col
                         elif hasattr(col, "name"):
-                            sort_cols.append(col.name)
+                            name = col.name
+                        else:
+                            name = None
+                        if name:
+                            sort_cols.append(
+                                self._resolve_window_col_name(df, name, case_sensitive)
+                            )
                 if sort_cols and all(isinstance(c, str) for c in sort_cols):
                     df = df.sort(sort_cols)
             elif sort_cols and all(isinstance(c, str) for c in sort_cols):
@@ -1191,11 +1915,43 @@ class PolarsOperationExecutor:
 
             try:
                 window_expr = self.window_handler.translate_window_function(
-                    window_func, df
+                    window_func, df, case_sensitive=case_sensitive
                 )
 
+                # Apply all arithmetic operations in order (innermost to outermost)
+                for op, val, is_reverse in arithmetic_ops:
+                    right = self._arith_operand_to_polars(val, df)
+                    if op == "*":
+                        window_expr = window_expr * right
+                    elif op == "+":
+                        window_expr = window_expr + right
+                    elif op == "-":
+                        if is_reverse:
+                            # Literal - WindowFunction
+                            window_expr = pl.lit(val) - window_expr
+                        elif isinstance(val, ColumnOperation) or (
+                            hasattr(val, "name") and hasattr(val, "column_type")
+                        ):
+                            # Column - WindowFunction (left - window)
+                            # Check for Column by checking for Column-like attributes
+                            window_expr = right - window_expr
+                        else:
+                            # WindowFunction - value
+                            window_expr = window_expr - right
+                    elif op == "/":
+                        if is_reverse:
+                            window_expr = pl.lit(val) / window_expr
+                        else:
+                            window_expr = window_expr / right
+                    elif op == "**":
+                        window_expr = window_expr.pow(
+                            val if isinstance(val, (int, float)) else right
+                        )
+
                 # Apply cast if this is a cast operation
-                if is_window_function_cast and cast_type is not None:
+                if (
+                    is_window_function_cast or cast_type is not None
+                ) and cast_type is not None:
                     from .type_mapper import mock_type_to_polars_dtype
                     from sparkless.spark_types import (
                         StringType,
@@ -1246,8 +2002,38 @@ class PolarsOperationExecutor:
                 # WindowFunction.evaluate() expects sorted data for correct results
                 results = window_func.evaluate(data)
 
+                # Apply arithmetic operations
+                for op, val, is_reverse in arithmetic_ops:
+                    if op == "*":
+                        results = [r * val if r is not None else None for r in results]
+                    elif op == "+":
+                        results = [r + val if r is not None else None for r in results]
+                    elif op == "-":
+                        if is_reverse:
+                            results = [
+                                val - r if r is not None else None for r in results
+                            ]
+                        else:
+                            results = [
+                                r - val if r is not None else None for r in results
+                            ]
+                    elif op == "/":
+                        if is_reverse:
+                            results = [
+                                val / r if r is not None and r != 0 else None
+                                for r in results
+                            ]
+                        else:
+                            results = [
+                                r / val if r is not None else None for r in results
+                            ]
+                    elif op == "**":
+                        results = [r**val if r is not None else None for r in results]
+
                 # Apply cast if this is a cast operation
-                if is_window_function_cast and cast_type is not None:
+                if (
+                    is_window_function_cast or cast_type is not None
+                ) and cast_type is not None:
                     from sparkless.dataframe.casting.type_converter import TypeConverter
                     from sparkless.spark_types import (
                         StringType,
@@ -1316,6 +2102,74 @@ class PolarsOperationExecutor:
 
             return result
         else:
+            # Check if this is an explode or explode_outer operation
+            # These operations need special handling: they explode arrays into multiple rows
+            is_explode = (
+                isinstance(expression, ColumnOperation)
+                and expression.operation == "explode"
+            )
+            is_explode_outer = (
+                isinstance(expression, ColumnOperation)
+                and expression.operation == "explode_outer"
+            )
+
+            if is_explode or is_explode_outer:
+                # For explode operations, we need to:
+                # 1. Get the source column (the array column to explode)
+                # 2. Add it as a new column with the array values
+                # 3. Explode the DataFrame on that new column (this creates multiple rows)
+                from sparkless.functions import Column as ColumnType
+
+                # Get the source column name
+                source_col = expression.column
+                if isinstance(source_col, ColumnType):
+                    source_col_name = source_col.name
+                elif isinstance(source_col, str):
+                    source_col_name = source_col
+                else:
+                    # Fallback: try to get name from column attribute
+                    source_col_name_attr = getattr(source_col, "name", None)
+                    if source_col_name_attr is None:
+                        raise ValueError(
+                            f"Cannot determine source column for explode operation: {expression}"
+                        )
+                    source_col_name = str(source_col_name_attr)
+
+                # Resolve column name (case-insensitive)
+                from ...core.column_resolver import ColumnResolver
+
+                case_sensitive = self._get_case_sensitive()
+                resolved_col_name = ColumnResolver.resolve_column_name(
+                    source_col_name, list(df.columns), case_sensitive
+                )
+                if resolved_col_name is None:
+                    raise ValueError(
+                        f"Column '{source_col_name}' not found in DataFrame for explode operation"
+                    )
+
+                # Check if the column exists
+                if resolved_col_name not in df.columns:
+                    raise ValueError(
+                        f"Column '{resolved_col_name}' not found in DataFrame"
+                    )
+
+                # Add the new column with array values from the source column
+                # Then explode the DataFrame on this new column
+                # This will create multiple rows, one for each element in the array
+                result = df.with_columns(pl.col(resolved_col_name).alias(column_name))
+
+                # Explode the DataFrame on the new column
+                result = result.explode(column_name)
+
+                # For regular explode, filter out rows where the exploded value is None
+                # (PySpark drops rows with null/empty arrays)
+                # For explode_outer, keep all rows (including those with None)
+                if not is_explode_outer:
+                    # Filter out rows where ExplodedValue is None
+                    result = result.filter(pl.col(column_name).is_not_null())
+
+                return result
+
             # Check if this is a to_timestamp operation and if the input column is a string
             # This helps us choose the right method (str.strptime vs map_elements)
             input_col_dtype = None

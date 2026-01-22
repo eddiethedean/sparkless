@@ -2259,11 +2259,124 @@ class PolarsExpressionTranslator:
             elif operation == "rlike":
                 # rlike(col, pattern) - Regular expression pattern matching
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.contains(pattern, literal=False)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def rlike_fallback(val: Any) -> bool:
+                        """Fallback for rlike with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        rlike_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def rlike_fallback(val: Any) -> bool:
+                                """Fallback for rlike with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                rlike_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "regexp":
                 # regexp(col, pattern) - Alias for rlike
+                # Use the same implementation as rlike (handles look-around patterns)
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.contains(pattern, literal=False)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def regexp_fallback(val: Any) -> bool:
+                        """Fallback for regexp with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        regexp_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def regexp_fallback(val: Any) -> bool:
+                                """Fallback for regexp with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                regexp_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "ilike":
                 # ilike(col, pattern) - Case-insensitive LIKE
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
@@ -2273,8 +2386,65 @@ class PolarsExpressionTranslator:
                 )
             elif operation == "regexp_like":
                 # regexp_like(col, pattern) - Alias for rlike
+                # Use the same implementation as rlike (handles look-around patterns)
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.contains(pattern, literal=False)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def regexp_like_fallback(val: Any) -> bool:
+                        """Fallback for regexp_like with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        regexp_like_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def regexp_like_fallback(val: Any) -> bool:
+                                """Fallback for regexp_like with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                regexp_like_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "regexp_count":
                 # regexp_count(col, pattern) - Count regex matches
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
@@ -2514,8 +2684,64 @@ class PolarsExpressionTranslator:
                 return col_expr.str.contains(regex_pattern, literal=False)
             elif operation == "rlike":
                 # Regular expression pattern matching
-                pattern = op.value
-                return col_expr.str.contains(pattern, literal=False)
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+
+                # Check if pattern contains lookahead/lookbehind assertions
+                # Polars doesn't support these, so we need to use Python fallback
+                import re as re_module
+
+                has_lookaround = False
+                try:
+                    # Check if pattern contains lookaround assertions
+                    if re_module.search(r"\(\?[<>=!]", pattern):
+                        has_lookaround = True
+                except Exception:
+                    # If pattern check fails, try Polars anyway
+                    has_lookaround = False
+
+                if has_lookaround:
+                    # Use Python re module fallback for lookahead/lookbehind patterns
+                    def rlike_fallback(val: Any) -> bool:
+                        """Fallback for rlike with lookahead/lookbehind."""
+                        if val is None or not isinstance(val, str):
+                            return False
+                        try:
+                            return bool(re_module.search(pattern, val))
+                        except Exception:
+                            return False
+
+                    # Use map_elements for Python fallback
+                    return col_expr.map_elements(
+                        rlike_fallback, return_dtype=pl.Boolean
+                    )
+                else:
+                    # Try Polars native contains first, fallback to Python if it fails
+                    try:
+                        return col_expr.str.contains(pattern, literal=False)
+                    except pl.exceptions.ComputeError as e:
+                        error_msg = str(e).lower()
+                        # Check if error is about look-around not being supported
+                        if (
+                            "look-around" in error_msg
+                            or "look-ahead" in error_msg
+                            or "look-behind" in error_msg
+                        ):
+                            # Fallback to Python re module
+                            def rlike_fallback(val: Any) -> bool:
+                                """Fallback for rlike with lookahead/lookbehind."""
+                                if val is None or not isinstance(val, str):
+                                    return False
+                                try:
+                                    return bool(re_module.search(pattern, val))
+                                except Exception:
+                                    return False
+
+                            return col_expr.map_elements(
+                                rlike_fallback, return_dtype=pl.Boolean
+                            )
+                        else:
+                            # Re-raise other ComputeErrors
+                            raise
             elif operation == "round":
                 # round(col, decimals)
                 decimals = op.value if isinstance(op.value, int) else 0
@@ -3369,6 +3595,122 @@ class PolarsExpressionTranslator:
                     )
             else:
                 raise ValueError("F.expr() requires a SQL string")
+        elif function_name == "create_map":
+            # create_map(key1, val1, key2, val2, ...) - create a map from key-value pairs
+            # op.value contains all arguments as a tuple (key1, val1, key2, val2, ...)
+            args = op.value if op.value else ()
+            if not args or len(args) < 2 or len(args) % 2 != 0:
+                raise ValueError(
+                    "create_map requires an even number of arguments (key-value pairs)"
+                )
+
+            # Build the map by evaluating key-value pairs
+            # For literal keys, we can build a static dict
+            # For column keys, we need to use map_elements
+            from ...functions.core.literals import Literal
+
+            # Check if all keys are literals
+            all_literal_keys = all(
+                isinstance(args[i], Literal) for i in range(0, len(args), 2)
+            )
+
+            if all_literal_keys:
+                # All keys are literals - we can build the map more efficiently
+                # Translate value expressions
+                key_names = [args[i].value for i in range(0, len(args), 2)]
+                value_exprs = []
+                for i in range(1, len(args), 2):
+                    val_arg = args[i]
+                    if isinstance(val_arg, Literal):
+                        value_exprs.append(pl.lit(val_arg.value))
+                    elif isinstance(val_arg, (Column, ColumnOperation)):
+                        value_exprs.append(
+                            self.translate(
+                                val_arg,
+                                available_columns=available_columns,
+                                case_sensitive=case_sensitive,
+                            )
+                        )
+                    else:
+                        value_exprs.append(pl.lit(val_arg))
+
+                # Create a struct with the keys as field names, then convert to dict
+                struct_fields = {
+                    str(key_names[i]): value_exprs[i] for i in range(len(key_names))
+                }
+                struct_expr = pl.struct(**struct_fields)
+                # Convert struct to dict using map_elements
+                return struct_expr.map_elements(
+                    lambda x: (
+                        dict(x)
+                        if hasattr(x, "_asdict")
+                        else {k: getattr(x, k, None) for k in x.__class__._fields}
+                        if hasattr(x, "_fields")
+                        else dict(x.items())
+                        if hasattr(x, "items")
+                        else {
+                            str(k): v
+                            for k, v in zip(
+                                key_names,
+                                [getattr(x, str(kn), None) for kn in key_names],
+                            )
+                        }
+                        if x is not None
+                        else None
+                    ),
+                    return_dtype=pl.Object,
+                )
+            else:
+                # Keys are columns - need to evaluate at runtime using map_elements
+                # This is more complex, fall back to a simpler implementation
+                key_exprs = []
+                value_exprs = []
+                for i in range(0, len(args), 2):
+                    key_arg = args[i]
+                    val_arg = args[i + 1]
+                    if isinstance(key_arg, Literal):
+                        key_exprs.append(pl.lit(key_arg.value))
+                    elif isinstance(key_arg, (Column, ColumnOperation)):
+                        key_exprs.append(
+                            self.translate(
+                                key_arg,
+                                available_columns=available_columns,
+                                case_sensitive=case_sensitive,
+                            )
+                        )
+                    else:
+                        key_exprs.append(pl.lit(key_arg))
+                    if isinstance(val_arg, Literal):
+                        value_exprs.append(pl.lit(val_arg.value))
+                    elif isinstance(val_arg, (Column, ColumnOperation)):
+                        value_exprs.append(
+                            self.translate(
+                                val_arg,
+                                available_columns=available_columns,
+                                case_sensitive=case_sensitive,
+                            )
+                        )
+                    else:
+                        value_exprs.append(pl.lit(val_arg))
+
+                # Build struct with indexed keys, then convert
+                all_exprs = []
+                for i, (k, v) in enumerate(zip(key_exprs, value_exprs)):
+                    all_exprs.extend([k.alias(f"_key_{i}"), v.alias(f"_val_{i}")])
+
+                num_pairs = len(key_exprs)
+                struct_expr = pl.struct(*all_exprs)
+                return struct_expr.map_elements(
+                    lambda x: (
+                        {
+                            getattr(x, f"_key_{i}", None): getattr(x, f"_val_{i}", None)
+                            for i in range(num_pairs)
+                        }
+                        if x is not None
+                        else None
+                    ),
+                    return_dtype=pl.Object,
+                )
         if function_name == "coalesce":
             # coalesce(*cols) - op.value should be list of columns
             if op.value is not None and isinstance(op.value, (list, tuple)):
@@ -4434,19 +4776,71 @@ class PolarsExpressionTranslator:
             # If it's a string, try to parse it
             elif isinstance(value, str):
                 try:
+                    # Normalize the string: replace space with T, handle timezone formats
+                    normalized = value.replace(" ", "T")
+                    # Handle timezone format +0000 -> +00:00 (fromisoformat requires colon)
+                    import re
+
+                    # Pattern: +HHMM or -HHMM at the end (e.g., +0000, -0500)
+                    normalized = re.sub(
+                        r"([+-])(\d{2})(\d{2})(?=Z|$)", r"\1\2:\3", normalized
+                    )
+                    # Also handle Z timezone indicator
+                    if normalized.endswith("Z"):
+                        normalized = normalized[:-1] + "+00:00"
                     # Try parsing as datetime (most common format)
-                    parsed = dt_module.datetime.fromisoformat(value.replace(" ", "T"))
+                    parsed = dt_module.datetime.fromisoformat(normalized)
                 except Exception:
                     logger.debug("fromisoformat failed, trying strptime", exc_info=True)
                     try:
-                        # Try parsing as date
-                        parsed = dt_module.datetime.strptime(value, "%Y-%m-%d")
+                        # Try common timestamp formats
+                        # Format: yyyy-MM-ddTHH:mm:ss.SSS+HHMM
+                        import re
+
+                        # Try to parse with strptime for various formats
+                        formats = [
+                            "%Y-%m-%dT%H:%M:%S.%f%z",  # With microseconds and timezone
+                            "%Y-%m-%dT%H:%M:%S%z",  # Without microseconds, with timezone
+                            "%Y-%m-%d %H:%M:%S.%f",  # With microseconds, no timezone
+                            "%Y-%m-%d %H:%M:%S",  # Without microseconds, no timezone
+                            "%Y-%m-%dT%H:%M:%S",  # ISO format without timezone
+                            "%Y-%m-%d",  # Date only
+                        ]
+                        parsed = None
+                        for fmt in formats:
+                            try:
+                                # For timezone formats, we need to handle +0000 -> +00:00
+                                if "%z" in fmt:
+                                    # Normalize timezone format
+                                    test_value = value.replace(" ", "T")
+                                    test_value = re.sub(
+                                        r"([+-])(\d{2})(\d{2})(?=Z|$)",
+                                        r"\1\2:\3",
+                                        test_value,
+                                    )
+                                    if test_value.endswith("Z"):
+                                        test_value = test_value[:-1] + "+00:00"
+                                    parsed = dt_module.datetime.strptime(
+                                        test_value, fmt
+                                    )
+                                    break
+                                else:
+                                    parsed = dt_module.datetime.strptime(value, fmt)
+                                    break
+                            except Exception:
+                                continue
+                        if parsed is None:
+                            raise ValueError("Could not parse datetime string")
                     except Exception:
                         logger.debug(
                             "All datetime parsing methods failed", exc_info=True
                         )
                         return None
             else:
+                return None
+
+            # Ensure parsed is not None (mypy type narrowing)
+            if parsed is None:
                 return None
 
             # Extract the requested part (return as int to ensure Int32 type)

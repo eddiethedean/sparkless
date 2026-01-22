@@ -523,6 +523,25 @@ class DataFrame:
         # Wrap single Row in list (shouldn't happen, but defensive)
         return [cast("Row", result)]  # type: ignore[unreachable]
 
+    def first(self) -> Union["Row", None]:
+        """Return the first row, or None if the DataFrame is empty.
+
+        This method matches PySpark's DataFrame.first() behavior:
+        - Returns a single Row object (not a list like head())
+        - Returns None if the DataFrame is empty
+
+        Returns:
+            First Row, or None if DataFrame is empty.
+
+        Example:
+            >>> df = spark.createDataFrame([{"name": "Alice"}, {"name": "Bob"}])
+            >>> df.first()
+            Row(name='Alice')
+            >>> empty_df.first()
+            None
+        """
+        return self._display.first()
+
     def tail(self, n: int = 1) -> List["Row"]:
         """Return last n rows. Always returns a list, matching PySpark behavior."""
         result = self._display.tail(n)

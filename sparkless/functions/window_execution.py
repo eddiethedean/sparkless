@@ -112,6 +112,146 @@ class WindowFunction:
         """
         return ColumnOperation(self, "cast", data_type)
 
+    def __mul__(self, other: Any) -> ColumnOperation:
+        """Multiply window function result by a value.
+
+        Args:
+            other: The value to multiply by.
+
+        Returns:
+            ColumnOperation representing the multiplication.
+
+        Example:
+            >>> F.percent_rank().over(window) * 100
+        """
+        return ColumnOperation(self, "*", other, name=f"({self.name} * {other})")
+
+    def __rmul__(self, other: Any) -> ColumnOperation:
+        """Reverse multiply (e.g., 100 * window_func).
+
+        Args:
+            other: The value to multiply.
+
+        Returns:
+            ColumnOperation representing the multiplication.
+
+        Example:
+            >>> 100 * F.percent_rank().over(window)
+        """
+        return ColumnOperation(self, "*", other, name=f"({other} * {self.name})")
+
+    def __add__(self, other: Any) -> ColumnOperation:
+        """Add a value to window function result.
+
+        Args:
+            other: The value to add.
+
+        Returns:
+            ColumnOperation representing the addition.
+
+        Example:
+            >>> F.row_number().over(window) + 1
+        """
+        return ColumnOperation(self, "+", other, name=f"({self.name} + {other})")
+
+    def __radd__(self, other: Any) -> ColumnOperation:
+        """Reverse add (e.g., 1 + window_func).
+
+        Args:
+            other: The value to add.
+
+        Returns:
+            ColumnOperation representing the addition.
+
+        Example:
+            >>> 1 + F.row_number().over(window)
+        """
+        return ColumnOperation(self, "+", other, name=f"({other} + {self.name})")
+
+    def __sub__(self, other: Any) -> ColumnOperation:
+        """Subtract a value from window function result.
+
+        Args:
+            other: The value to subtract.
+
+        Returns:
+            ColumnOperation representing the subtraction.
+
+        Example:
+            >>> F.row_number().over(window) - 1
+        """
+        return ColumnOperation(self, "-", other, name=f"({self.name} - {other})")
+
+    def __rsub__(self, other: Any) -> ColumnOperation:
+        """Reverse subtract (e.g., 10 - window_func).
+
+        Args:
+            other: The value to subtract from.
+
+        Returns:
+            ColumnOperation representing the subtraction.
+
+        Example:
+            >>> 10 - F.row_number().over(window)
+        """
+        # For reverse subtract, we create: Literal(other) - self
+        # This ensures the correct operand order in the expression translator
+        from .core.literals import Literal
+
+        return ColumnOperation(
+            Literal(other), "-", self, name=f"({other} - {self.name})"
+        )
+
+    def __truediv__(self, other: Any) -> ColumnOperation:
+        """Divide window function result by a value.
+
+        Args:
+            other: The value to divide by.
+
+        Returns:
+            ColumnOperation representing the division.
+
+        Example:
+            >>> F.row_number().over(window) / 10
+        """
+        return ColumnOperation(self, "/", other, name=f"({self.name} / {other})")
+
+    def __rtruediv__(self, other: Any) -> ColumnOperation:
+        """Reverse divide (e.g., 100 / window_func).
+
+        Args:
+            other: The value to divide.
+
+        Returns:
+            ColumnOperation representing the division.
+
+        Example:
+            >>> 100 / F.row_number().over(window)
+        """
+        # For reverse divide, we create: Literal(other) / self
+        # This ensures the correct operand order in the expression translator
+        from .core.literals import Literal
+
+        return ColumnOperation(
+            Literal(other), "/", self, name=f"({other} / {self.name})"
+        )
+
+    def __neg__(self) -> ColumnOperation:
+        """Negate window function result.
+
+        Returns:
+            ColumnOperation representing the negation.
+
+        Example:
+            >>> -F.row_number().over(window)
+        """
+        # For negation, we create: Literal(0) - self
+        # which is equivalent to -self. This ensures the WindowFunction
+        # is on the right side where it can be properly handled.
+        from .core.literals import Literal
+
+        return ColumnOperation(Literal(0), "-", self, name=f"(-{self.name})")
+
     def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate the window function over the data.
 
