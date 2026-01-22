@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sparkless"
-version = "3.26.1"
+version = "3.27.0"
 description = "Lightning-fast PySpark testing without JVM - 10x faster with 100% API compatibility"
 readme = "README.md"
 license = {text = "MIT"}
