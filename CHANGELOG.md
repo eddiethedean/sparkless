@@ -36,6 +36,20 @@
   - Validates list length matching and raises errors for mismatched lengths
   - Handles edge cases: None values, booleans, empty dicts/lists, special characters, unicode
 
+- **Issue #288** - Added arithmetic and logical operators to `CaseWhen` class
+  - Added support for arithmetic operations on `CaseWhen` expressions (e.g., `F.when(...).otherwise(...) - F.when(...).otherwise(...)`), matching PySpark behavior
+  - Implemented arithmetic operators: `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__mod__` and their reverse counterparts (`__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rmod__`)
+  - Implemented logical operators: `__or__` (bitwise OR), `__and__` (bitwise AND), `__invert__` (bitwise NOT)
+  - Fixed bitwise NOT (`~`) operator support in Polars backend expression translator
+  - Supports forward operations (e.g., `case_when1 - case_when2`)
+  - Supports reverse operations (e.g., `100 - case_when`)
+  - Supports chained arithmetic operations (e.g., `(case_when1 - case_when2) * 2`)
+  - Properly handles division and modulo by zero (returns `None`, matching PySpark behavior)
+  - Works with multiple WHEN conditions and nested CaseWhen expressions
+  - Supports operations in groupBy aggregation contexts
+  - Works with floating point numbers, zero, negative numbers, and large numbers
+  - Properly handles null values in operations
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -69,6 +83,20 @@
   - Tests for error handling (invalid columns, mismatched list lengths, None value errors)
   - Tests for chained operations, large DataFrames, and column preservation
   - Tests for case-insensitive column name resolution
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #288 (`tests/test_issue_288_casewhen_operators.py`)
+  - 27 test cases covering all arithmetic and logical operators on `CaseWhen` expressions
+  - Tests for all arithmetic operations (+, -, *, /, %)
+  - Tests for bitwise operations (|, &, ~)
+  - Tests for forward and reverse operations
+  - Tests for chained arithmetic operations
+  - Tests for multiple WHEN conditions and nested CaseWhen expressions
+  - Tests for division/modulo by zero (returns None)
+  - Tests for floating point, zero, negative numbers, and large numbers
+  - Tests for null value handling
+  - Tests for groupBy aggregation contexts
+  - Tests for operator precedence
+  - Tests for empty DataFrames, aliases, and mixed operations with regular columns
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
