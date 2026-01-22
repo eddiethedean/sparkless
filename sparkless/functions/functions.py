@@ -2617,12 +2617,35 @@ class Functions:
         def udf_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             """Wrap function to create ColumnOperation."""
 
-            def apply_udf(col: Union[Column, str]) -> ColumnOperation:
-                column = Column(col) if isinstance(col, str) else col
+            def apply_udf(*cols: Union[Column, str]) -> ColumnOperation:
+                # Convert string column names to Column objects
+                column_objs = []
+                for col in cols:
+                    if isinstance(col, str):
+                        column_objs.append(Column(col))
+                    else:
+                        column_objs.append(col)
+
+                # Create the first column operation
+                if not column_objs:
+                    raise ValueError("UDF requires at least one column argument")
+
+                first_col = column_objs[0]
+                # Get column name safely
+                col_name = getattr(first_col, "name", str(first_col))
+
+                # Generate name with all column names
+                if len(column_objs) == 1:
+                    udf_name = f"udf({col_name})"
+                else:
+                    all_names = [getattr(c, "name", str(c)) for c in column_objs]
+                    udf_name = f"udf({', '.join(all_names)})"
+
                 # Create a UDF operation that stores the function
-                op = ColumnOperation(column, "udf", name=f"udf({column.name})")
+                op = ColumnOperation(first_col, "udf", name=udf_name)
                 op._udf_func = func
                 op._udf_return_type = returnType
+                op._udf_cols = column_objs
                 return op
 
             return apply_udf
