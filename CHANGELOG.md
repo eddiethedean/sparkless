@@ -77,6 +77,21 @@
   - Properly handles null values, empty DataFrames, and mixed string/Column object inputs
   - Fixes `TypeError: apply_udf() takes 1 positional argument but 2 were given` error
 
+- **Issue #291** - Added support for power operator (**) between floats and Column/ColumnOperation
+  - Added `__pow__` method to `ColumnOperatorMixin` for forward power operation (e.g., `col ** 2`)
+  - Added `__rpow__` method to `ColumnOperatorMixin` for reverse power operation (e.g., `3.0 ** col` or `2 ** col`)
+  - Added "**" to binary operators list in `PolarsExpressionTranslator` to route it correctly
+  - Added "**" to arithmetic operations handling in `_coerce_for_arithmetic()`
+  - Uses Polars `pow()` function for power operations with proper null/infinity handling
+  - Supports power operations with integers, floats, Column objects, and ColumnOperations
+  - Works in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`, `orderBy`, union
+  - Supports nested expressions, chained operations, and mixed numeric types
+  - Properly handles null values, zero base/exponent, and negative exponents
+  - Supports fractional exponents (square root, cube root, etc.)
+  - Supports string column coercion to numeric for power operations
+  - Works with conditional expressions, multiple columns, and aliases
+  - Fixes `TypeError: unsupported operand type(s) for ** or pow(): 'float' and 'Column'` error
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -154,13 +169,20 @@
   - Tests for edge cases: all null arguments, large number of columns, mixed types
   - All tests pass in both Sparkless (mock) and PySpark backends
 - Added comprehensive test suite for issue #291 (`tests/test_issue_291_power_operator_float_column.py`)
-  - 16 test cases covering all power operator (**) functionality
+  - 33 test cases covering all power operator (**) functionality
   - Tests for float ** Column and float ** ColumnOperation (from issue examples)
   - Tests for Column ** number (forward power operation)
   - Tests for integer ** Column, Column ** Column
   - Tests for nested expressions, chained operations, and mixed types
   - Tests for null handling, zero base/exponent, negative exponents
-  - Tests for power in select, filter, and groupBy contexts
+  - Tests for power in select, filter, orderBy, groupBy, and union contexts
+  - Tests for fractional exponents (square root, cube root, etc.)
+  - Tests for large and small numbers
+  - Tests for string column coercion to numeric
+  - Tests for complex nested expressions and arithmetic combinations
+  - Tests for conditional expressions (when/otherwise)
+  - Tests for multiple columns, aliases, and multiple withColumn operations
+  - Tests for edge cases: one base/exponent, decimal base/exponent, very large exponents
   - Tests for empty DataFrames
   - All tests pass in both Sparkless (mock) and PySpark backends
 
