@@ -1433,10 +1433,8 @@ class PolarsMaterializer:
             # Payload is a list of column expressions
             if isinstance(op_payload, (list, tuple)):
                 for col in op_payload:
-                    # Check for window functions
-                    if self._has_window_function(col):
-                        return False
-                    # Check for unsupported operations
+                    # Window functions (incl. arithmetic) handled by operation_executor.apply_select
+                    # Check for unsupported operations only
                     if self._has_unsupported_operation(col):
                         return False
             return op_name in self.SUPPORTED_OPERATIONS
@@ -1445,10 +1443,7 @@ class PolarsMaterializer:
             # Payload is (col_name, expression)
             if isinstance(op_payload, (list, tuple)) and len(op_payload) == 2:
                 _, expression = op_payload
-                # Check for window functions
-                if self._has_window_function(expression):
-                    return False
-                # Check for unsupported operations
+                # Window functions handled by operation_executor.apply_withColumn
                 if self._has_unsupported_operation(expression):
                     return False
             return op_name in self.SUPPORTED_OPERATIONS
