@@ -4660,19 +4660,71 @@ class PolarsExpressionTranslator:
             # If it's a string, try to parse it
             elif isinstance(value, str):
                 try:
+                    # Normalize the string: replace space with T, handle timezone formats
+                    normalized = value.replace(" ", "T")
+                    # Handle timezone format +0000 -> +00:00 (fromisoformat requires colon)
+                    import re
+
+                    # Pattern: +HHMM or -HHMM at the end (e.g., +0000, -0500)
+                    normalized = re.sub(
+                        r"([+-])(\d{2})(\d{2})(?=Z|$)", r"\1\2:\3", normalized
+                    )
+                    # Also handle Z timezone indicator
+                    if normalized.endswith("Z"):
+                        normalized = normalized[:-1] + "+00:00"
                     # Try parsing as datetime (most common format)
-                    parsed = dt_module.datetime.fromisoformat(value.replace(" ", "T"))
+                    parsed = dt_module.datetime.fromisoformat(normalized)
                 except Exception:
                     logger.debug("fromisoformat failed, trying strptime", exc_info=True)
                     try:
-                        # Try parsing as date
-                        parsed = dt_module.datetime.strptime(value, "%Y-%m-%d")
+                        # Try common timestamp formats
+                        # Format: yyyy-MM-ddTHH:mm:ss.SSS+HHMM
+                        import re
+
+                        # Try to parse with strptime for various formats
+                        formats = [
+                            "%Y-%m-%dT%H:%M:%S.%f%z",  # With microseconds and timezone
+                            "%Y-%m-%dT%H:%M:%S%z",  # Without microseconds, with timezone
+                            "%Y-%m-%d %H:%M:%S.%f",  # With microseconds, no timezone
+                            "%Y-%m-%d %H:%M:%S",  # Without microseconds, no timezone
+                            "%Y-%m-%dT%H:%M:%S",  # ISO format without timezone
+                            "%Y-%m-%d",  # Date only
+                        ]
+                        parsed = None
+                        for fmt in formats:
+                            try:
+                                # For timezone formats, we need to handle +0000 -> +00:00
+                                if "%z" in fmt:
+                                    # Normalize timezone format
+                                    test_value = value.replace(" ", "T")
+                                    test_value = re.sub(
+                                        r"([+-])(\d{2})(\d{2})(?=Z|$)",
+                                        r"\1\2:\3",
+                                        test_value,
+                                    )
+                                    if test_value.endswith("Z"):
+                                        test_value = test_value[:-1] + "+00:00"
+                                    parsed = dt_module.datetime.strptime(
+                                        test_value, fmt
+                                    )
+                                    break
+                                else:
+                                    parsed = dt_module.datetime.strptime(value, fmt)
+                                    break
+                            except Exception:
+                                continue
+                        if parsed is None:
+                            raise ValueError("Could not parse datetime string")
                     except Exception:
                         logger.debug(
                             "All datetime parsing methods failed", exc_info=True
                         )
                         return None
             else:
+                return None
+
+            # Ensure parsed is not None (mypy type narrowing)
+            if parsed is None:
                 return None
 
             # Extract the requested part (return as int to ensure Int32 type)

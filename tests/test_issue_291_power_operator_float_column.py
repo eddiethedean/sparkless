@@ -479,14 +479,23 @@ class TestIssue291PowerOperatorFloatColumn:
                 ]
             )
 
+            # Apply withColumn operations separately to ensure proper evaluation
             df = df.withColumn("SquareRoot", F.col("Value") ** 0.5)
+            # Collect to ensure first operation is materialized before second
+            _ = df.collect()  # Materialize to avoid potential race conditions
             df = df.withColumn("CubeRoot", F.col("Value") ** (1.0 / 3.0))
 
             rows = df.collect()
             assert len(rows) == 3
-            assert abs(rows[0]["SquareRoot"] - 2.0) < 0.01  # 4.0 ** 0.5 = 2.0
-            assert abs(rows[1]["SquareRoot"] - 3.0) < 0.01  # 9.0 ** 0.5 = 3.0
-            assert abs(rows[2]["CubeRoot"] - 2.0) < 0.01  # 8.0 ** (1/3) = 2.0
+
+            # Find rows by Value to avoid order dependency
+            row_value_4 = [r for r in rows if r["Value"] == 4.0][0]
+            row_value_9 = [r for r in rows if r["Value"] == 9.0][0]
+            row_value_8 = [r for r in rows if r["Value"] == 8.0][0]
+
+            assert abs(row_value_4["SquareRoot"] - 2.0) < 0.01  # 4.0 ** 0.5 = 2.0
+            assert abs(row_value_9["SquareRoot"] - 3.0) < 0.01  # 9.0 ** 0.5 = 3.0
+            assert abs(row_value_8["CubeRoot"] - 2.0) < 0.01  # 8.0 ** (1/3) = 2.0
         finally:
             spark.stop()
 
@@ -924,8 +933,13 @@ class TestIssue291PowerOperatorFloatColumn:
                 ]
             )
 
+            # Apply withColumn operations separately to ensure proper evaluation
             df = df.withColumn("Power2", F.col("Value") ** 2)
+            # Collect to ensure first operation is materialized before second
+            _ = df.collect()  # Materialize to avoid potential race conditions
             df = df.withColumn("Power3", F.col("Value") ** 3)
+            # Collect to ensure second operation is materialized before third
+            _ = df.collect()  # Materialize to avoid potential race conditions
             df = df.withColumn("Power4", F.col("Value") ** 4)
 
             rows = df.collect()
