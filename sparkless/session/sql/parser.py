@@ -356,6 +356,8 @@ class SQLParser:
             components.update(self._parse_merge_query(query))
         elif query_type == "REFRESH":
             components.update(self._parse_refresh_query(query))
+        elif query_type == "ALTER":
+            components.update(self._parse_alter_query(query))
 
         return components
 
@@ -1087,6 +1089,156 @@ class SQLParser:
             )
 
         components["when_not_matched"] = not_matched_clauses
+
+        return components
+
+    def _parse_alter_query(self, query: str) -> Dict[str, Any]:
+        """Parse ALTER TABLE query components.
+
+        Supports:
+        - ALTER TABLE table CLUSTER BY (col1, col2)
+        - ALTER TABLE table CLUSTER BY NONE
+        - ALTER TABLE table ADD COLUMN col_def
+        - ALTER TABLE table ALTER COLUMN col TYPE new_type
+        - ALTER TABLE table ALTER COLUMN col SET NOT NULL
+        - ALTER TABLE table ALTER COLUMN col DROP NOT NULL
+        - ALTER TABLE table DROP COLUMN col
+        - ALTER TABLE table SET TBLPROPERTIES (...)
+
+        Args:
+            query: ALTER query string.
+
+        Returns:
+            Dictionary of ALTER components.
+        """
+        import re
+
+        components: Dict[str, Any] = {
+            "alter_type": "UNKNOWN",
+            "table_name": None,
+            "schema_name": None,
+        }
+
+        # Extract table name: ALTER TABLE [schema.]table_name
+        table_match = re.match(
+            r"ALTER\s+TABLE\s+([`\w.]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if not table_match:
+            return components
+
+        full_table_name = table_match.group(1).strip("`")
+
+        # Parse schema.table or just table
+        if "." in full_table_name:
+            parts = full_table_name.split(".")
+            # Handle catalog.schema.table or schema.table
+            if len(parts) == 3:
+                components["catalog_name"] = parts[0]
+                components["schema_name"] = parts[1]
+                components["table_name"] = parts[2]
+            elif len(parts) == 2:
+                components["schema_name"] = parts[0]
+                components["table_name"] = parts[1]
+            else:
+                components["table_name"] = full_table_name
+        else:
+            components["table_name"] = full_table_name
+
+        # Check for CLUSTER BY
+        cluster_by_match = re.search(
+            r"CLUSTER\s+BY\s+(?:NONE|\(([^)]+)\)|(\w+))",
+            query,
+            re.IGNORECASE,
+        )
+        if cluster_by_match:
+            components["alter_type"] = "CLUSTER_BY"
+            if "CLUSTER BY NONE" in query.upper():
+                components["cluster_columns"] = None  # Disable clustering
+            else:
+                cols = cluster_by_match.group(1) or cluster_by_match.group(2)
+                if cols:
+                    components["cluster_columns"] = [
+                        c.strip().strip("`") for c in cols.split(",")
+                    ]
+            return components
+
+        # Check for ADD COLUMN
+        add_column_match = re.search(
+            r"ADD\s+COLUMN\s+(.+?)(?:;|$)",
+            query,
+            re.IGNORECASE,
+        )
+        if add_column_match:
+            components["alter_type"] = "ADD_COLUMN"
+            components["column_definition"] = add_column_match.group(1).strip()
+            return components
+
+        # Check for DROP COLUMN
+        drop_column_match = re.search(
+            r"DROP\s+COLUMN\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if drop_column_match:
+            components["alter_type"] = "DROP_COLUMN"
+            components["column_name"] = drop_column_match.group(1).strip("`")
+            return components
+
+        # Check for ALTER COLUMN ... TYPE
+        alter_type_match = re.search(
+            r"ALTER\s+COLUMN\s+([`\w]+)\s+TYPE\s+(\w+)",
+            query,
+            re.IGNORECASE,
+        )
+        if alter_type_match:
+            components["alter_type"] = "ALTER_COLUMN_TYPE"
+            components["column_name"] = alter_type_match.group(1).strip("`")
+            components["new_type"] = alter_type_match.group(2)
+            return components
+
+        # Check for ALTER COLUMN ... SET NOT NULL
+        set_not_null_match = re.search(
+            r"ALTER\s+COLUMN\s+([`\w]+)\s+SET\s+NOT\s+NULL",
+            query,
+            re.IGNORECASE,
+        )
+        if set_not_null_match:
+            components["alter_type"] = "SET_NOT_NULL"
+            components["column_name"] = set_not_null_match.group(1).strip("`")
+            return components
+
+        # Check for ALTER COLUMN ... DROP NOT NULL
+        drop_not_null_match = re.search(
+            r"ALTER\s+COLUMN\s+([`\w]+)\s+DROP\s+NOT\s+NULL",
+            query,
+            re.IGNORECASE,
+        )
+        if drop_not_null_match:
+            components["alter_type"] = "DROP_NOT_NULL"
+            components["column_name"] = drop_not_null_match.group(1).strip("`")
+            return components
+
+        # Check for SET TBLPROPERTIES
+        set_props_match = re.search(
+            r"SET\s+TBLPROPERTIES\s*\(([^)]+)\)",
+            query,
+            re.IGNORECASE,
+        )
+        if set_props_match:
+            components["alter_type"] = "SET_TBLPROPERTIES"
+            props_str = set_props_match.group(1)
+            # Parse properties: 'key1' = 'value1', 'key2' = 'value2'
+            properties = {}
+            for prop in props_str.split(","):
+                if "=" in prop:
+                    key, value = prop.split("=", 1)
+                    key = key.strip().strip("'\"")
+                    value = value.strip().strip("'\"")
+                    properties[key] = value
+            components["properties"] = properties
+            return components
 
         return components
 
