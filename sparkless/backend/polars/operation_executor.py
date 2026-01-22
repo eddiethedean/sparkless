@@ -1342,11 +1342,12 @@ class PolarsOperationExecutor:
                     source_col_name = source_col
                 else:
                     # Fallback: try to get name from column attribute
-                    source_col_name = getattr(source_col, "name", None)
-                    if source_col_name is None:
+                    source_col_name_attr = getattr(source_col, "name", None)
+                    if source_col_name_attr is None:
                         raise ValueError(
                             f"Cannot determine source column for explode operation: {expression}"
                         )
+                    source_col_name = str(source_col_name_attr)
 
                 # Resolve column name (case-insensitive)
                 from ...core.column_resolver import ColumnResolver
