@@ -105,6 +105,8 @@ class SQLExecutor:
                 return self._execute_describe(ast)
             elif ast.query_type == "REFRESH":
                 return self._execute_refresh(ast)
+            elif ast.query_type == "RESTORE":
+                return self._execute_restore(ast)
             else:
                 raise QueryExecutionException(
                     f"Unsupported query type: {ast.query_type}"
@@ -2426,3 +2428,111 @@ class SQLExecutor:
 
         # MERGE returns empty DataFrame
         return cast("IDataFrame", DataFrame([], StructType([])))
+
+    def _execute_restore(self, ast: SQLAST) -> IDataFrame:
+        """Execute RESTORE TABLE query for Delta tables.
+
+        Syntax:
+            RESTORE TABLE table_name TO VERSION AS OF version_number
+            RESTORE TABLE table_name TO TIMESTAMP AS OF 'timestamp_string'
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            DataFrame with restore operation details.
+
+        Raises:
+            AnalysisException: If table doesn't exist or is not a Delta table.
+        """
+        from typing import cast
+
+        from ...dataframe import DataFrame
+        from ...errors import AnalysisException
+        from ...spark_types import LongType, StructField, StructType
+
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog.get_storage_backend()
+
+        query = ast.query
+        original_query = query
+        query_upper = query.upper()
+
+        # Parse table name
+        # RESTORE TABLE table_name TO VERSION AS OF ...
+        # RESTORE TABLE table_name TO TIMESTAMP AS OF ...
+        match = re.search(
+            r"RESTORE\s+TABLE\s+(\w+(?:\.\w+)?)\s+TO", original_query, re.IGNORECASE
+        )
+        if not match:
+            raise AnalysisException(
+                "Invalid RESTORE syntax. Expected: "
+                "RESTORE TABLE table_name TO VERSION AS OF n "
+                "or RESTORE TABLE table_name TO TIMESTAMP AS OF 'timestamp'"
+            )
+
+        table_name = match.group(1)
+
+        # Parse schema.table or just table
+        if "." in table_name:
+            schema, name = table_name.split(".", 1)
+        else:
+            schema = "default"
+            name = table_name
+
+        # Check if table exists
+        tables = storage.list_tables(schema)
+        if name not in tables:
+            raise AnalysisException(
+                f"Table or view '{table_name}' not found in schema '{schema}'."
+            )
+
+        # Get table metadata to verify it's Delta
+        meta = storage.get_table_metadata(schema, name)
+        if not meta or meta.get("format") != "delta":
+            raise AnalysisException(
+                f"RESTORE is only supported for Delta tables. "
+                f"Table '{table_name}' is not a Delta table."
+            )
+
+        # Parse VERSION AS OF or TIMESTAMP AS OF
+        version_match = re.search(r"TO\s+VERSION\s+AS\s+OF\s+(\d+)", query_upper)
+        timestamp_match = re.search(
+            r"TO\s+TIMESTAMP\s+AS\s+OF\s+['\"]?([^'\"]+)['\"]?",
+            original_query,
+            re.IGNORECASE,
+        )
+
+        if not version_match and not timestamp_match:
+            raise AnalysisException(
+                "Invalid RESTORE syntax. Must specify either "
+                "VERSION AS OF or TIMESTAMP AS OF."
+            )
+
+        # Mock implementation: return operation details
+        # In a real implementation, this would restore the table state
+        restore_schema = StructType(
+            [
+                StructField("table_size_after_restore", LongType(), True),
+                StructField("num_of_files_after_restore", LongType(), True),
+                StructField("num_removed_files", LongType(), True),
+                StructField("num_restored_files", LongType(), True),
+                StructField("removed_files_size", LongType(), True),
+                StructField("restored_files_size", LongType(), True),
+            ]
+        )
+
+        # Return mock restore result
+        mock_result = [
+            {
+                "table_size_after_restore": 1024000,
+                "num_of_files_after_restore": 5,
+                "num_removed_files": 2,
+                "num_restored_files": 3,
+                "removed_files_size": 512000,
+                "restored_files_size": 768000,
+            }
+        ]
+
+        return cast("IDataFrame", DataFrame(mock_result, restore_schema, storage))

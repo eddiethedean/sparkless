@@ -91,6 +91,9 @@ class SQLValidator:
             "CAST",
             "COALESCE",
             "NULLIF",
+            "RESTORE",
+            "VERSION",
+            "TIMESTAMP",
         }
 
     def validate(self, query: str) -> Tuple[bool, List[str]]:
@@ -159,6 +162,7 @@ class SQLValidator:
                 "SHOW",
                 "DESCRIBE",
                 "EXPLAIN",
+                "RESTORE",
             ]
         ):
             errors.append("Query must start with a valid SQL keyword")

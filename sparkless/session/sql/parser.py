@@ -91,6 +91,9 @@ class SQLParser:
             "DESCRIBE",
             "EXPLAIN",
             "REFRESH",
+            "RESTORE",
+            "VERSION",
+            "TIMESTAMP",
             "WITH",
             "UNION",
             "INTERSECT",
@@ -311,6 +314,8 @@ class SQLParser:
             return "EXPLAIN"
         elif query_upper.startswith("REFRESH"):
             return "REFRESH"
+        elif query_upper.startswith("RESTORE"):
+            return "RESTORE"
         else:
             return "UNKNOWN"
 
