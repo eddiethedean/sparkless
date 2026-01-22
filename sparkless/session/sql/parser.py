@@ -20,7 +20,7 @@ Example:
     'SELECT'
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 import re
 from ...core.exceptions.analysis import ParseException
 
@@ -1191,7 +1191,9 @@ class SQLParser:
 
         return components
 
-    def _extract_time_travel(self, table_ref: str) -> tuple[str, dict[str, Any] | None]:
+    def _extract_time_travel(
+        self, table_ref: str
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
         """Extract time travel syntax from a table reference.
 
         Delta Lake Time Travel allows querying historical versions of a table:
