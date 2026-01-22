@@ -63,6 +63,20 @@
   - Properly handles null values and empty DataFrames
   - Fixes `ValueError: Unsupported function: struct` error
 
+- **Issue #290** - Added support for UDFs with multiple arguments
+  - Added support for UDFs (User Defined Functions) with multiple positional arguments, matching PySpark behavior
+  - Modified `Functions.udf()` wrapper to accept `*cols` instead of single `col` parameter
+  - Store all column arguments in `op._udf_cols` for backend processing
+  - Generate proper UDF name with all column names (e.g., `udf(col1, col2)`)
+  - Backend already supported multiple UDF columns via `_udf_cols` - no backend changes needed
+  - Maintains backward compatibility with single-argument UDFs
+  - Supports UDFs with 2, 3, 4, 5, 6, and 10+ arguments
+  - Works with different data types (integers, floats, booleans, strings, dates)
+  - Works in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`, `orderBy`, joins
+  - Supports computed column expressions, conditional logic, and chained operations
+  - Properly handles null values, empty DataFrames, and mixed string/Column object inputs
+  - Fixes `TypeError: apply_udf() takes 1 positional argument but 2 were given` error
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -126,6 +140,18 @@
   - Tests for struct with string functions and math operations
   - Tests for large number of fields (8+ columns)
   - Tests for multiple chained operations
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #290 (`tests/test_issue_290_udf_multiple_arguments.py`)
+  - 29 test cases covering all UDF multiple arguments functionality
+  - Tests for 2, 3, 4, 5, 6, and 10+ argument UDFs
+  - Tests for different data types (integers, floats, booleans, strings, dates)
+  - Tests for string names, Column objects, and mixed inputs
+  - Tests for null value handling and empty DataFrames
+  - Tests for UDF in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`, `orderBy`, joins
+  - Tests for computed column expressions and nested arithmetic
+  - Tests for conditional logic, string functions, and chained operations
+  - Tests for decorator pattern and backward compatibility with single-argument UDFs
+  - Tests for edge cases: all null arguments, large number of columns, mixed types
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
