@@ -1668,7 +1668,7 @@ class PolarsExpressionTranslator:
         # Handle struct function - creates a struct from multiple columns
         if operation == "struct":
             # Collect all columns for the struct
-            struct_cols = []
+            struct_cols: List[Any] = []
 
             # Check if first column is a literal (all columns stored in value)
             if (
@@ -1678,15 +1678,16 @@ class PolarsExpressionTranslator:
             ):
                 # All columns are in op.value
                 if op.value:
-                    struct_cols = (
-                        op.value if isinstance(op.value, (list, tuple)) else [op.value]
-                    )
+                    if isinstance(op.value, (list, tuple)):
+                        struct_cols = list(op.value)
+                    else:
+                        struct_cols = [op.value]
             else:
                 # First column is in op.column, remaining in op.value
                 struct_cols = [op.column] if op.column else []
                 if op.value:
                     if isinstance(op.value, (list, tuple)):
-                        struct_cols.extend(op.value)
+                        struct_cols.extend(list(op.value))
                     else:
                         struct_cols.append(op.value)
 
