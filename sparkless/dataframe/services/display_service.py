@@ -294,6 +294,4 @@ class DisplayService:
             return self._df._get_collection_handler().first(
                 materialized.data, materialized.schema
             )
-        return self._df._get_collection_handler().first(
-            self._df.data, self._df.schema
-        )
+        return self._df._get_collection_handler().first(self._df.data, self._df.schema)

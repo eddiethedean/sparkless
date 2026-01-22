@@ -52,9 +52,7 @@ class CollectionHandler:
         rows = [Row(data[i], schema) for i in range(max(0, len(data) - n), len(data))]
         return rows
 
-    def first(
-        self, data: List[Dict[str, Any]], schema: StructType
-    ) -> Union[Row, None]:
+    def first(self, data: List[Dict[str, Any]], schema: StructType) -> Union[Row, None]:
         """Get first row.
 
         Returns the first row of the DataFrame, or None if empty.

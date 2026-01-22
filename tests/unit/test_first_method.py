@@ -6,7 +6,7 @@ This module tests the first() method which returns the first row of a DataFrame.
 import pytest
 
 from sparkless import SparkSession
-from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+from sparkless.spark_types import StructType, StructField, StringType
 
 
 @pytest.fixture
