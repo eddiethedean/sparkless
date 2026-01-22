@@ -45,7 +45,7 @@ class TestBackendCapabilityModel:
         assert materializer.can_handle_operation("e", None) is False
 
     def test_window_function_detection_in_select(self):
-        """Test that window functions in select operations are detected."""
+        """Test that window functions in select operations are supported."""
         materializer = PolarsMaterializer()
         spark = SparkSession.builder.appName("test").getOrCreate()
 
@@ -54,13 +54,13 @@ class TestBackendCapabilityModel:
             window_spec = Window.partitionBy("category").orderBy("value")
             lag_col = F.lag("value", 1).over(window_spec)
 
-            # Window function in select should be unsupported
-            assert materializer.can_handle_operation("select", [lag_col]) is False
+            # Window function in select is supported
+            assert materializer.can_handle_operation("select", [lag_col]) is True
         finally:
             spark.stop()
 
     def test_window_function_detection_in_withcolumn(self):
-        """Test that window functions in withColumn operations are detected."""
+        """Test that window functions in withColumn operations are supported."""
         materializer = PolarsMaterializer()
         spark = SparkSession.builder.appName("test").getOrCreate()
 
@@ -69,10 +69,10 @@ class TestBackendCapabilityModel:
             window_spec = Window.partitionBy("category").orderBy("value")
             lag_col = F.lag("value", 1).over(window_spec)
 
-            # Window function in withColumn should be unsupported
+            # Window function in withColumn is supported
             assert (
                 materializer.can_handle_operation("withColumn", ("lagged", lag_col))
-                is False
+                is True
             )
         finally:
             spark.stop()
@@ -94,32 +94,23 @@ class TestBackendCapabilityModel:
     def test_can_handle_operations_with_unsupported(self):
         """Test can_handle_operations() with unsupported operations."""
         materializer = PolarsMaterializer()
-        spark = SparkSession.builder.appName("test").getOrCreate()
 
-        try:
-            # Create a window function
-            window_spec = Window.partitionBy("category").orderBy("value")
-            lag_col = F.lag("value", 1).over(window_spec)
+        operations = [
+            ("select", [F.col("a")]),
+            ("months_between", None),  # Unsupported
+            ("filter", F.col("a") == 1),
+        ]
 
-            operations = [
-                ("select", [F.col("a")]),
-                ("withColumn", ("lagged", lag_col)),  # Unsupported
-                ("filter", F.col("a") == 1),
-            ]
-
-            can_handle_all, unsupported = materializer.can_handle_operations(operations)
-            assert can_handle_all is False
-            assert "withColumn" in unsupported
-        finally:
-            spark.stop()
+        can_handle_all, unsupported = materializer.can_handle_operations(operations)
+        assert can_handle_all is False
+        assert "months_between" in unsupported
 
     def test_materialization_fails_fast_on_unsupported_operations(self):
-        """Test that materialization fails fast with clear error for unsupported operations.
+        """Test that materialization succeeds with window functions.
 
-        Note: Currently, _requires_manual_materialization() may catch window functions
-        before the capability check runs. This test verifies that capability checks
-        work when they are reached. The capability check provides a safety net even
-        if _requires_manual_materialization() is removed in the future.
+        Window functions are supported by the Polars backend. This test verifies
+        that df.withColumn(..., window_func).collect() works and returns the
+        expected rows.
         """
         spark = SparkSession.builder.appName("test").getOrCreate()
 
@@ -127,28 +118,13 @@ class TestBackendCapabilityModel:
             data = [{"category": "A", "value": 10}, {"category": "B", "value": 20}]
             df = spark.createDataFrame(data)
 
-            # Create a window function (unsupported)
             window_spec = Window.partitionBy("category").orderBy("value")
             lag_col = F.lag("value", 1).over(window_spec)
 
-            # This should either raise SparkUnsupportedOperationError OR use manual materialization
             transformed_df = df.withColumn("lagged", lag_col)
-
-            # Trigger materialization
-            # Note: Currently window functions are caught by _requires_manual_materialization()
-            # and use _materialize_manual(), but capability checks provide a safety net
             result = transformed_df.collect()
-            # If we get here, manual materialization was used (which is acceptable)
-            assert len(result) == 2
 
-            # Verify that capability check correctly identifies this as unsupported
-            materializer = PolarsMaterializer()
-            can_handle = materializer.can_handle_operation(
-                "withColumn", ("lagged", lag_col)
-            )
-            assert can_handle is False, (
-                "Window functions should be detected as unsupported"
-            )
+            assert len(result) == 2
         finally:
             spark.stop()
 

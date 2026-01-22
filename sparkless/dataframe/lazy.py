@@ -770,10 +770,8 @@ class LazyEvaluationEngine:
             if op_name == "select":
                 # Check if select contains operations that require manual materialization
                 for col in op_val:
-                    # Check for WindowFunction objects (window functions like lag, lead, etc.)
-                    # Polars backend cannot handle these, so they need manual materialization
-                    if LazyEvaluationEngine._has_window_function(col):
-                        return True
+                    # Window functions (incl. arithmetic) are handled by Polars backend
+                    # via operation_executor.apply_select; do not force manual materialization
                     # Check for CaseWhen (when/otherwise expressions)
                     # CaseWhen can be translated by Polars, so don't force manual materialization
                     if hasattr(col, "conditions"):
@@ -792,30 +790,9 @@ class LazyEvaluationEngine:
                     ]:
                         return True
             elif op_name == "withColumn":
-                # Check if withColumn contains WindowFunction objects
-                col_name, expression = op_val
-                if LazyEvaluationEngine._has_window_function(expression):
-                    return True
-                    # Check for comparison operations
-                    # Note: Polars can handle comparison operations, so removed
-                    # if col.operation in ["==", "!=", "<", ">", "<=", ">="]:
-                    #     return True
-                    # Check for arithmetic operations with cast
-                    # Note: Polars can handle cast operations, so removed this check
-                    # if col.operation in ["+", "-", "*", "/", "%"]:
-                    #     # Check if operands contain cast operations
-                    #     if (
-                    #         hasattr(col, "column")
-                    #         and hasattr(col.column, "operation")
-                    #         and col.column.operation == "cast"
-                    #     ):
-                    #         return True
-                    #     if (
-                    #         hasattr(col, "value")
-                    #         and hasattr(col.value, "operation")
-                    #         and col.value.operation == "cast"
-                    #     ):
-                    #         return True
+                # Window functions in withColumn are handled by Polars backend
+                # via operation_executor.apply_withColumn; do not force manual materialization
+                pass
             elif op_name == "filter":
                 # Check if filter contains F.expr() expressions or complex operations
                 # that the backend might not handle correctly

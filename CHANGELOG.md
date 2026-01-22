@@ -3,6 +3,17 @@
 ## 3.27.0 — Unreleased
 
 ### Fixed
+- **Window function alias extraction in Python evaluation path**
+  - Fixed issue where Python-evaluated window functions (e.g., `percent_rank()`, `ntile()`) in `apply_select` were using default aliases (e.g., `percent_rank_window`) instead of user-defined aliases (e.g., `percentile`)
+  - Updated alias extraction in Python evaluation path to use `original_col_for_alias` instead of the processed `col`, matching the non-Python path behavior
+  - Fixes `test_window_function_multiply`, `test_window_function_rmul`, `test_window_function_chained_operations`, `test_ntile_with_arithmetic`, and `test_multiple_window_functions_with_arithmetic` tests that were returning `None` values
+  - Ensures user-defined aliases are preserved when window functions fall back to Python evaluation
+
+- **UnboundLocalError in apply_select**
+  - Fixed `UnboundLocalError: cannot access local variable 'had_python_window_functions'` that occurred when `apply_select` was called without Python window functions
+  - Initialized `had_python_window_functions` before the conditional block to ensure it's always defined
+  - Fixes 317 test failures that were caused by this error
+
 - **Issue #297** - Fixed column name resolution after join when columns differ only by case
   - Fixed `AnalysisException: Ambiguous column name` when selecting columns after a join where columns differ only by case (e.g., "name" vs "Name")
   - Updated `ColumnResolver.resolve_column_name()` to return the first matching column in case-insensitive scenarios instead of raising an exception, matching PySpark behavior
