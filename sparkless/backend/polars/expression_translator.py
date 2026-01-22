@@ -675,7 +675,7 @@ class PolarsExpressionTranslator:
             # String operations, isin, and between should NOT be routed to function calls - handle as binary operation below
             pass
         # Check if this is a unary operator (must be handled as unary operation, not function)
-        elif value is None and operation in ["!", "-"]:
+        elif value is None and operation in ["!", "~", "-"]:
             # Unary operators should NOT be routed to function calls - handle as unary operation below
             pass
         # Check if this is a function call (not a binary or unary operation)
@@ -723,7 +723,7 @@ class PolarsExpressionTranslator:
         # Handle unary operations
         if value is None:
             # Handle operators first (before function calls)
-            if operation == "!":
+            if operation in ["!", "~"]:
                 return ~left
             elif operation == "-":
                 return -left
