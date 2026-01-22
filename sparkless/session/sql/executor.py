@@ -2284,7 +2284,12 @@ class SQLExecutor:
         return cast("IDataFrame", DataFrame(data, result_schema))
 
     def _execute_merge(self, ast: SQLAST) -> IDataFrame:
-        """Execute MERGE INTO query.
+        """Execute MERGE INTO query with complex pattern support.
+
+        Supports:
+        - Multiple WHEN MATCHED clauses with conditions (first match wins)
+        - WHEN NOT MATCHED BY SOURCE clause
+        - Complex expressions in SET clauses
 
         Args:
             ast: Parsed SQL AST.
@@ -2294,16 +2299,19 @@ class SQLExecutor:
         """
         from ...dataframe import DataFrame
         from ...spark_types import StructType
-        from typing import cast
+        from typing import cast, Set
 
         # Extract components
         target_table = ast.components.get("target_table", "")
         source_table = ast.components.get("source_table", "")
         on_condition = ast.components.get("on_condition", "")
-        ast.components.get("target_alias")
-        ast.components.get("source_alias")
+        target_alias = ast.components.get("target_alias")
+        source_alias = ast.components.get("source_alias")
         when_matched = ast.components.get("when_matched", [])
         when_not_matched = ast.components.get("when_not_matched", [])
+        when_not_matched_by_source = ast.components.get(
+            "when_not_matched_by_source", []
+        )
 
         # Parse table names (schema.table)
         if "." in target_table:
@@ -2314,7 +2322,6 @@ class SQLExecutor:
         # Get target and source data
         target_df = self.session.table(target_table)
         target_data = target_df.collect()
-        {id(row): row.asDict() for row in target_data}
 
         source_df = self.session.table(source_table)
         source_data = source_df.collect()
@@ -2336,17 +2343,23 @@ class SQLExecutor:
                     }
                 )
 
-        # Track which target rows were matched
-        matched_target_ids = set()
-        updated_rows = []
+        # Track which rows were processed
+        matched_target_ids: Set[int] = set()
+        deleted_target_ids: Set[int] = set()
+        matched_source_indices: Set[int] = set()
+        updated_rows: List[Dict[str, Any]] = []
 
-        # Process WHEN MATCHED clauses
+        # Process WHEN MATCHED clauses (first matching clause wins)
         if when_matched:
             for target_row in target_data:
                 target_dict = target_row.asDict()
+                row_processed = False
 
                 # Check if this target row matches any source row
-                for source_dict in source_data_list:
+                for source_idx, source_dict in enumerate(source_data_list):
+                    if row_processed:
+                        break
+
                     matches = all(
                         target_dict.get(cond["left_col"])
                         == source_dict.get(cond["right_col"])
@@ -2355,41 +2368,111 @@ class SQLExecutor:
 
                     if matches:
                         matched_target_ids.add(id(target_row))
+                        matched_source_indices.add(source_idx)
 
-                        # Execute WHEN MATCHED action
+                        # Find first matching WHEN MATCHED clause (first match wins)
                         for clause in when_matched:
+                            clause_condition = clause.get("condition")
+
+                            # Check if this clause's condition matches
+                            if clause_condition:
+                                condition_matches = self._evaluate_merge_condition(
+                                    clause_condition,
+                                    target_dict,
+                                    source_dict,
+                                    target_alias,
+                                    source_alias,
+                                )
+                                if not condition_matches:
+                                    continue
+
+                            # This clause matches - execute its action
                             if clause["action"] == "UPDATE":
-                                # Parse SET clause: "t.name = s.name, t.score = s.score"
-                                set_clause = clause["set_clause"]
-                                updated_row = target_dict.copy()
-
-                                for assignment in set_clause.split(","):
-                                    assignment = assignment.strip()
-                                    # Match: t.column = s.column or t.column = value
-                                    match = re.match(
-                                        r"(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", assignment
-                                    )
-                                    if match:
-                                        target_col = match.group(2)
-                                        source_col = match.group(4)
-                                        updated_row[target_col] = source_dict.get(
-                                            source_col
-                                        )
-
+                                updated_row = self._apply_merge_update(
+                                    clause,
+                                    target_dict,
+                                    source_dict,
+                                    target_alias,
+                                    source_alias,
+                                )
                                 updated_rows.append(updated_row)
+                                row_processed = True
+                                break
                             elif clause["action"] == "DELETE":
-                                # Don't add to updated_rows (effectively deletes)
-                                pass
-                        break  # Only match first source row
+                                deleted_target_ids.add(id(target_row))
+                                row_processed = True
+                                break
 
-        # Add unmatched target rows (unchanged)
+                        # If no clause matched, row is unchanged
+                        if not row_processed:
+                            updated_rows.append(target_dict.copy())
+                            row_processed = True
+
+                        break  # Only match first source row for WHEN MATCHED
+
+        # Process WHEN NOT MATCHED BY SOURCE clauses (rows in target not in source)
+        if when_not_matched_by_source:
+            for target_row in target_data:
+                if id(target_row) in matched_target_ids:
+                    continue  # Skip already matched rows
+
+                target_dict = target_row.asDict()
+                row_processed = False
+
+                # Find first matching clause
+                for clause in when_not_matched_by_source:
+                    clause_condition = clause.get("condition")
+
+                    # Check if this clause's condition matches
+                    if clause_condition:
+                        condition_matches = self._evaluate_merge_condition(
+                            clause_condition,
+                            target_dict,
+                            {},  # No source row
+                            target_alias,
+                            source_alias,
+                        )
+                        if not condition_matches:
+                            continue
+
+                    # This clause matches - execute its action
+                    if clause["action"] == "DELETE":
+                        deleted_target_ids.add(id(target_row))
+                        row_processed = True
+                        break
+                    elif clause["action"] == "UPDATE":
+                        updated_row = self._apply_merge_update(
+                            clause,
+                            target_dict,
+                            {},  # No source row
+                            target_alias,
+                            source_alias,
+                        )
+                        updated_rows.append(updated_row)
+                        row_processed = True
+                        break
+
+                # If no clause matched, add unchanged row
+                # Only add if not already in updated_rows from WHEN MATCHED
+                if not row_processed and id(target_row) not in matched_target_ids:
+                    updated_rows.append(target_dict.copy())
+
+        # Add unmatched target rows (unchanged) if not processed by NOT MATCHED BY SOURCE
         for target_row in target_data:
-            if id(target_row) not in matched_target_ids:
+            row_id = id(target_row)
+            if (
+                row_id not in matched_target_ids
+                and row_id not in deleted_target_ids
+                and not when_not_matched_by_source
+            ):
                 updated_rows.append(target_row.asDict())
 
-        # Process WHEN NOT MATCHED clauses (inserts)
+        # Process WHEN NOT MATCHED clauses (inserts for source rows not in target)
         if when_not_matched:
-            for source_dict in source_data_list:
+            for source_idx, source_dict in enumerate(source_data_list):
+                if source_idx in matched_source_indices:
+                    continue  # Skip already matched source rows
+
                 # Check if this source row matches any target row
                 matched = False
                 for target_row in target_data:
@@ -2404,18 +2487,28 @@ class SQLExecutor:
                         break
 
                 if not matched:
-                    # Execute WHEN NOT MATCHED action
+                    # Find first matching WHEN NOT MATCHED clause
                     for clause in when_not_matched:
-                        if clause["action"] == "INSERT":
-                            # Parse: (id, name, score) VALUES (s.id, s.name, s.score)
-                            clause["insert_clause"]
+                        clause_condition = clause.get("condition")
 
+                        # Check if this clause's condition matches
+                        if clause_condition:
+                            condition_matches = self._evaluate_merge_condition(
+                                clause_condition,
+                                {},  # No target row
+                                source_dict,
+                                target_alias,
+                                source_alias,
+                            )
+                            if not condition_matches:
+                                continue
+
+                        if clause["action"] == "INSERT":
                             # Simple parsing: just insert all source columns
-                            # In production, would parse the column list and values
                             updated_rows.append(source_dict.copy())
+                            break
 
         # Write merged data back to target table
-        # Access storage through catalog (ISession protocol doesn't expose _storage)
         storage = getattr(self.session, "_storage", None)
         if storage is None:
             storage = self.session.catalog._storage  # type: ignore[attr-defined]
@@ -2426,3 +2519,360 @@ class SQLExecutor:
 
         # MERGE returns empty DataFrame
         return cast("IDataFrame", DataFrame([], StructType([])))
+
+    def _evaluate_merge_condition(
+        self,
+        condition: str,
+        target_dict: Dict[str, Any],
+        source_dict: Dict[str, Any],
+        target_alias: str,
+        source_alias: str,
+    ) -> bool:
+        """Evaluate a MERGE clause condition.
+
+        Args:
+            condition: The condition string (e.g., "s.updated_at > t.updated_at").
+            target_dict: Target row as dictionary.
+            source_dict: Source row as dictionary.
+            target_alias: Alias for target table (e.g., 't').
+            source_alias: Alias for source table (e.g., 's').
+
+        Returns:
+            True if condition matches, False otherwise.
+        """
+        # Build context for evaluation
+        context: Dict[str, Any] = {}
+
+        # Add target columns with alias prefix
+        if target_alias:
+            for col, val in target_dict.items():
+                context[f"{target_alias}_{col}"] = val
+                context[f"{target_alias}.{col}"] = val
+        context.update(target_dict)
+
+        # Add source columns with alias prefix
+        if source_alias:
+            for col, val in source_dict.items():
+                context[f"{source_alias}_{col}"] = val
+                context[f"{source_alias}.{col}"] = val
+        context.update(source_dict)
+
+        # Replace alias.column with actual values for comparison
+        # Handle patterns like s.updated_at > t.updated_at or s.status = 'deleted'
+
+        # Simple comparison patterns
+        # Pattern 1: alias.col op alias.col (e.g., s.updated_at > t.updated_at)
+        compare_match = re.match(
+            r"(\w+)\.(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(\w+)\.(\w+)",
+            condition.strip(),
+            re.IGNORECASE,
+        )
+        if compare_match:
+            left_alias, left_col, op, right_alias, right_col = compare_match.groups()
+            left_val = None
+            right_val = None
+
+            # Get left value
+            if left_alias == target_alias:
+                left_val = target_dict.get(left_col)
+            elif left_alias == source_alias:
+                left_val = source_dict.get(left_col)
+
+            # Get right value
+            if right_alias == target_alias:
+                right_val = target_dict.get(right_col)
+            elif right_alias == source_alias:
+                right_val = source_dict.get(right_col)
+
+            if left_val is None or right_val is None:
+                return False
+
+            return self._compare_values(left_val, op, right_val)
+
+        # Pattern 2: alias.col op 'string' (e.g., s.status = 'deleted')
+        string_match = re.match(
+            r"(\w+)\.(\w+)\s*(=|!=|<>)\s*['\"]([^'\"]*)['\"]",
+            condition.strip(),
+            re.IGNORECASE,
+        )
+        if string_match:
+            alias, col, op, value = string_match.groups()
+            col_val = None
+
+            if alias == target_alias:
+                col_val = target_dict.get(col)
+            elif alias == source_alias:
+                col_val = source_dict.get(col)
+
+            if col_val is None:
+                return False
+
+            return self._compare_values(str(col_val), op, value)
+
+        # Pattern 3: col = 'string' (without alias, for NOT MATCHED BY SOURCE)
+        simple_string_match = re.match(
+            r"(\w+)\s*(=|!=|<>)\s*['\"]([^'\"]*)['\"]",
+            condition.strip(),
+            re.IGNORECASE,
+        )
+        if simple_string_match:
+            col, op, value = simple_string_match.groups()
+            col_val = target_dict.get(col) or source_dict.get(col)
+
+            if col_val is None:
+                return False
+
+            return self._compare_values(str(col_val), op, value)
+
+        # Default: try basic evaluation (fallback)
+        return True
+
+    def _compare_values(self, left: Any, op: str, right: Any) -> bool:
+        """Compare two values with the given operator.
+
+        Args:
+            left: Left value.
+            op: Comparison operator.
+            right: Right value.
+
+        Returns:
+            Comparison result.
+        """
+        try:
+            if op == "=":
+                return left == right
+            elif op in ("!=", "<>"):
+                return left != right
+            elif op == ">":
+                return left > right
+            elif op == "<":
+                return left < right
+            elif op == ">=":
+                return left >= right
+            elif op == "<=":
+                return left <= right
+        except (TypeError, ValueError):
+            pass
+        return False
+
+    def _apply_merge_update(
+        self,
+        clause: Dict[str, Any],
+        target_dict: Dict[str, Any],
+        source_dict: Dict[str, Any],
+        target_alias: str,
+        source_alias: str,
+    ) -> Dict[str, Any]:
+        """Apply UPDATE SET clause to a target row.
+
+        Handles:
+        - Simple column assignment: t.col = s.col
+        - Expressions: t.version = t.version + 1
+        - Function calls: t.updated_at = current_timestamp()
+
+        Args:
+            clause: The WHEN MATCHED UPDATE clause.
+            target_dict: Target row as dictionary.
+            source_dict: Source row as dictionary.
+            target_alias: Alias for target table.
+            source_alias: Alias for source table.
+
+        Returns:
+            Updated row dictionary.
+        """
+        updated_row = target_dict.copy()
+
+        # Get assignments from parsed clause
+        assignments = clause.get("assignments", [])
+
+        if not assignments:
+            # Fallback: parse set_clause directly
+            set_clause = clause.get("set_clause", "")
+            for assignment in set_clause.split(","):
+                assignment = assignment.strip()
+                self._apply_single_assignment(
+                    assignment,
+                    updated_row,
+                    target_dict,
+                    source_dict,
+                    target_alias,
+                    source_alias,
+                )
+        else:
+            for assignment in assignments:
+                target_col = assignment.get("target", "")
+                value_expr = assignment.get("value", "")
+                self._apply_assignment_value(
+                    target_col,
+                    value_expr,
+                    updated_row,
+                    target_dict,
+                    source_dict,
+                    target_alias,
+                    source_alias,
+                )
+
+        return updated_row
+
+    def _apply_single_assignment(
+        self,
+        assignment: str,
+        updated_row: Dict[str, Any],
+        target_dict: Dict[str, Any],
+        source_dict: Dict[str, Any],
+        target_alias: str,
+        source_alias: str,
+    ) -> None:
+        """Apply a single SET assignment.
+
+        Args:
+            assignment: Assignment string like 't.col = s.col'.
+            updated_row: Row to update (modified in place).
+            target_dict: Original target row.
+            source_dict: Source row.
+            target_alias: Target alias.
+            source_alias: Source alias.
+        """
+        # Parse assignment
+        parts = assignment.split("=", 1)
+        if len(parts) != 2:
+            return
+
+        target_col_expr = parts[0].strip()
+        value_expr = parts[1].strip()
+
+        self._apply_assignment_value(
+            target_col_expr,
+            value_expr,
+            updated_row,
+            target_dict,
+            source_dict,
+            target_alias,
+            source_alias,
+        )
+
+    def _apply_assignment_value(
+        self,
+        target_col_expr: str,
+        value_expr: str,
+        updated_row: Dict[str, Any],
+        target_dict: Dict[str, Any],
+        source_dict: Dict[str, Any],
+        target_alias: str,
+        source_alias: str,
+    ) -> None:
+        """Apply an assignment value to the updated row.
+
+        Args:
+            target_col_expr: Target column expression (e.g., 't.col').
+            value_expr: Value expression (e.g., 's.col', 't.col + 1').
+            updated_row: Row to update (modified in place).
+            target_dict: Original target row.
+            source_dict: Source row.
+            target_alias: Target alias.
+            source_alias: Source alias.
+        """
+        # Extract target column name
+        target_col = target_col_expr
+        if "." in target_col_expr:
+            target_col = target_col_expr.split(".", 1)[1]
+
+        # Evaluate value expression
+        value = self._evaluate_merge_expression(
+            value_expr, target_dict, source_dict, target_alias, source_alias
+        )
+
+        updated_row[target_col] = value
+
+    def _evaluate_merge_expression(
+        self,
+        expr: str,
+        target_dict: Dict[str, Any],
+        source_dict: Dict[str, Any],
+        target_alias: str,
+        source_alias: str,
+    ) -> Any:
+        """Evaluate a MERGE expression.
+
+        Handles:
+        - Simple column reference: s.col, t.col
+        - Arithmetic expressions: t.version + 1
+        - Function calls: current_timestamp()
+
+        Args:
+            expr: Expression string.
+            target_dict: Target row.
+            source_dict: Source row.
+            target_alias: Target alias.
+            source_alias: Source alias.
+
+        Returns:
+            Evaluated value.
+        """
+        expr = expr.strip()
+
+        # Pattern 1: Simple column reference (alias.col)
+        col_match = re.match(r"(\w+)\.(\w+)$", expr)
+        if col_match:
+            alias, col = col_match.groups()
+            if alias == source_alias:
+                return source_dict.get(col)
+            elif alias == target_alias:
+                return target_dict.get(col)
+            return None
+
+        # Pattern 2: Arithmetic expression (alias.col + number or alias.col - number)
+        arith_match = re.match(r"(\w+)\.(\w+)\s*([+\-*/])\s*(\d+)$", expr)
+        if arith_match:
+            alias, col, op, num_str = arith_match.groups()
+            num = int(num_str)
+
+            val = None
+            if alias == source_alias:
+                val = source_dict.get(col)
+            elif alias == target_alias:
+                val = target_dict.get(col)
+
+            if val is not None:
+                try:
+                    if op == "+":
+                        return val + num
+                    elif op == "-":
+                        return val - num
+                    elif op == "*":
+                        return val * num
+                    elif op == "/":
+                        return val / num if num != 0 else val
+                except (TypeError, ValueError):
+                    pass
+            return val
+
+        # Pattern 3: Function call (e.g., current_timestamp())
+        func_match = re.match(r"(\w+)\(\)$", expr, re.IGNORECASE)
+        if func_match:
+            func_name = func_match.group(1).lower()
+            if func_name == "current_timestamp":
+                from datetime import datetime
+
+                return datetime.now().isoformat()
+            elif func_name == "current_date":
+                from datetime import date
+
+                return date.today().isoformat()
+            return None
+
+        # Pattern 4: Literal string
+        string_match = re.match(r"['\"]([^'\"]*)['\"]$", expr)
+        if string_match:
+            return string_match.group(1)
+
+        # Pattern 5: Literal number
+        try:
+            if "." in expr:
+                return float(expr)
+            return int(expr)
+        except ValueError:
+            pass
+
+        # Fallback: return the expression as-is
+        return expr

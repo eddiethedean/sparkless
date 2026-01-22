@@ -1004,6 +1004,11 @@ class SQLParser:
     def _parse_merge_query(self, query: str) -> Dict[str, Any]:
         """Parse MERGE INTO query components.
 
+        Supports complex MERGE patterns including:
+        - Multiple WHEN MATCHED clauses with conditions
+        - WHEN NOT MATCHED BY SOURCE clause
+        - Complex expressions in SET clauses
+
         Args:
             query: MERGE query string.
 
@@ -1012,9 +1017,9 @@ class SQLParser:
         """
         import re
 
-        components = {}
+        components: Dict[str, Any] = {}
 
-        # Extract: MERGE INTO target_table
+        # Extract: MERGE INTO target_table [alias]
         target_match = re.search(
             r"MERGE\s+INTO\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE
         )
@@ -1030,7 +1035,7 @@ class SQLParser:
                 if potential_alias.upper() not in ["USING"]:
                     components["target_alias"] = potential_alias
 
-        # Extract: USING source_table
+        # Extract: USING source_table [alias]
         using_match = re.search(r"USING\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
         if using_match:
             components["source_table"] = using_match.group(1)
@@ -1049,46 +1054,146 @@ class SQLParser:
         if on_match:
             components["on_condition"] = on_match.group(1).strip()
 
-        # Extract: WHEN MATCHED clauses
-        matched_clauses = []
-        for match in re.finditer(
-            r"WHEN\s+MATCHED\s+THEN\s+(UPDATE|DELETE)(.*?)(?=WHEN|$)",
-            query,
-            re.IGNORECASE | re.DOTALL,
-        ):
-            action = match.group(1).upper()
-            details = match.group(2).strip()
+        # Parse all WHEN clauses in order
+        # We need to handle:
+        # - WHEN MATCHED [AND condition] THEN UPDATE SET ... | DELETE
+        # - WHEN NOT MATCHED [AND condition] THEN INSERT ...
+        # - WHEN NOT MATCHED BY SOURCE [AND condition] THEN UPDATE SET ... | DELETE
+        components["when_matched"] = []
+        components["when_not_matched"] = []
+        components["when_not_matched_by_source"] = []
 
-            if action == "UPDATE":
-                # Parse SET clause
+        # Find all WHEN clause positions and types
+        when_pattern = re.compile(
+            r"WHEN\s+(NOT\s+MATCHED\s+BY\s+SOURCE|NOT\s+MATCHED|MATCHED)"
+            r"(?:\s+AND\s+(.*?))?\s+THEN\s+(UPDATE|DELETE|INSERT)",
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        # Find the position after ON condition to start searching for WHEN clauses
+        on_match_for_pos = re.search(
+            r"ON\s+.*?\s+(?=WHEN)", query, re.IGNORECASE | re.DOTALL
+        )
+        search_start = on_match_for_pos.end() if on_match_for_pos else 0
+
+        # Find all WHEN clauses
+        when_positions: List[Dict[str, Any]] = []
+        for match in when_pattern.finditer(query, search_start):
+            clause_type = match.group(1).upper().replace(" ", "_")
+            condition = match.group(2).strip() if match.group(2) else None
+            action = match.group(3).upper()
+            when_positions.append(
+                {
+                    "type": clause_type,
+                    "condition": condition,
+                    "action": action,
+                    "start": match.start(),
+                    "end": match.end(),
+                }
+            )
+
+        # Extract details for each WHEN clause
+        for i, when_info in enumerate(when_positions):
+            # Find the end of this clause (start of next WHEN or end of query)
+            clause_end = (
+                when_positions[i + 1]["start"]
+                if i + 1 < len(when_positions)
+                else len(query)
+            )
+            clause_content = query[when_info["end"] : clause_end].strip()
+
+            clause_data: Dict[str, Any] = {
+                "action": when_info["action"],
+                "condition": when_info["condition"],
+            }
+
+            if when_info["action"] == "UPDATE":
+                # Parse SET clause - handle complex expressions
                 set_match = re.search(
-                    r"SET\s+(.*?)(?=WHEN|$)", details, re.IGNORECASE | re.DOTALL
+                    r"SET\s+(.*?)(?=\s*$)", clause_content, re.IGNORECASE | re.DOTALL
                 )
                 if set_match:
                     set_clause = set_match.group(1).strip()
-                    matched_clauses.append(
-                        {"action": "UPDATE", "set_clause": set_clause}
-                    )
-            elif action == "DELETE":
-                matched_clauses.append({"action": "DELETE"})
+                    clause_data["set_clause"] = set_clause
+                    # Parse individual assignments
+                    clause_data["assignments"] = self._parse_set_assignments(set_clause)
 
-        components["when_matched"] = matched_clauses
+            elif when_info["action"] == "INSERT":
+                # Parse INSERT clause
+                clause_data["insert_clause"] = clause_content
 
-        # Extract: WHEN NOT MATCHED clauses
-        not_matched_clauses = []
-        for match in re.finditer(
-            r"WHEN\s+NOT\s+MATCHED\s+THEN\s+INSERT\s+(.*?)(?=WHEN|$)",
-            query,
-            re.IGNORECASE | re.DOTALL,
-        ):
-            insert_clause = match.group(1).strip()
-            not_matched_clauses.append(
-                {"action": "INSERT", "insert_clause": insert_clause}
-            )
-
-        components["when_not_matched"] = not_matched_clauses
+            # Add to appropriate list based on clause type
+            if when_info["type"] == "MATCHED":
+                components["when_matched"].append(clause_data)
+            elif when_info["type"] == "NOT_MATCHED":
+                components["when_not_matched"].append(clause_data)
+            elif when_info["type"] == "NOT_MATCHED_BY_SOURCE":
+                components["when_not_matched_by_source"].append(clause_data)
 
         return components
+
+    def _parse_set_assignments(self, set_clause: str) -> List[Dict[str, str]]:
+        """Parse SET clause assignments, handling complex expressions.
+
+        Handles:
+        - Simple assignments: t.col = s.col
+        - Expressions: t.version = t.version + 1
+        - Function calls: t.updated_at = current_timestamp()
+
+        Args:
+            set_clause: The SET clause content (without 'SET' keyword).
+
+        Returns:
+            List of assignment dictionaries with 'target' and 'value' keys.
+        """
+        assignments: List[Dict[str, str]] = []
+        current_assignment = ""
+        paren_depth = 0
+        in_quotes = False
+        quote_char = None
+
+        for char in set_clause:
+            if char in ("'", '"') and (not in_quotes or char == quote_char):
+                in_quotes = not in_quotes
+                quote_char = char if in_quotes else None
+                current_assignment += char
+            elif char == "(" and not in_quotes:
+                paren_depth += 1
+                current_assignment += char
+            elif char == ")" and not in_quotes:
+                paren_depth -= 1
+                current_assignment += char
+            elif char == "," and paren_depth == 0 and not in_quotes:
+                if current_assignment.strip():
+                    assignments.append(
+                        self._parse_single_assignment(current_assignment.strip())
+                    )
+                current_assignment = ""
+            else:
+                current_assignment += char
+
+        # Add the last assignment
+        if current_assignment.strip():
+            assignments.append(
+                self._parse_single_assignment(current_assignment.strip())
+            )
+
+        return assignments
+
+    def _parse_single_assignment(self, assignment: str) -> Dict[str, str]:
+        """Parse a single SET assignment.
+
+        Args:
+            assignment: Single assignment string like 't.col = s.col + 1'.
+
+        Returns:
+            Dictionary with 'target' and 'value' keys.
+        """
+        # Split on first '=' only
+        parts = assignment.split("=", 1)
+        if len(parts) == 2:
+            return {"target": parts[0].strip(), "value": parts[1].strip()}
+        return {"target": assignment, "value": ""}
 
     def _parse_union_query(self, query: str) -> Dict[str, Any]:
         """Parse UNION query.
