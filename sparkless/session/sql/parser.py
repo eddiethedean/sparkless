@@ -311,6 +311,8 @@ class SQLParser:
             return "EXPLAIN"
         elif query_upper.startswith("REFRESH"):
             return "REFRESH"
+        elif query_upper.startswith("USE"):
+            return "USE"
         else:
             return "UNKNOWN"
 
@@ -356,6 +358,8 @@ class SQLParser:
             components.update(self._parse_merge_query(query))
         elif query_type == "REFRESH":
             components.update(self._parse_refresh_query(query))
+        elif query_type == "USE":
+            components.update(self._parse_use_query(query))
 
         return components
 
@@ -1000,6 +1004,77 @@ class SQLParser:
             "table_name": table,
             "schema_name": schema,
         }
+
+    def _parse_use_query(self, query: str) -> Dict[str, Any]:
+        """Parse USE query components.
+
+        Supports:
+        - USE CATALOG catalog_name
+        - USE DATABASE database_name
+        - USE SCHEMA schema_name
+        - USE database_name (shorthand for USE DATABASE)
+
+        Args:
+            query: USE query string.
+
+        Returns:
+            Dictionary of USE components.
+        """
+        import re
+
+        # Parse USE CATALOG catalog_name
+        use_catalog_match = re.match(
+            r"USE\s+CATALOG\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if use_catalog_match:
+            catalog_name = use_catalog_match.group(1).strip("`")
+            return {
+                "use_type": "CATALOG",
+                "catalog_name": catalog_name,
+            }
+
+        # Parse USE DATABASE database_name
+        use_database_match = re.match(
+            r"USE\s+DATABASE\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if use_database_match:
+            database_name = use_database_match.group(1).strip("`")
+            return {
+                "use_type": "DATABASE",
+                "database_name": database_name,
+            }
+
+        # Parse USE SCHEMA schema_name
+        use_schema_match = re.match(
+            r"USE\s+SCHEMA\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if use_schema_match:
+            schema_name = use_schema_match.group(1).strip("`")
+            return {
+                "use_type": "SCHEMA",
+                "schema_name": schema_name,
+            }
+
+        # Parse USE database_name (shorthand for USE DATABASE)
+        use_shorthand_match = re.match(
+            r"USE\s+([`\w]+)$",
+            query.strip(),
+            re.IGNORECASE,
+        )
+        if use_shorthand_match:
+            database_name = use_shorthand_match.group(1).strip("`")
+            return {
+                "use_type": "DATABASE",
+                "database_name": database_name,
+            }
+
+        return {"use_type": "UNKNOWN"}
 
     def _parse_merge_query(self, query: str) -> Dict[str, Any]:
         """Parse MERGE INTO query components.

@@ -171,6 +171,21 @@ class ICatalog(ABC):
         pass
 
     @abstractmethod
+    def setCurrentDatabase(self, db_name: str) -> None:
+        """Set current database name."""
+        pass
+
+    @abstractmethod
+    def currentCatalog(self) -> str:
+        """Get current catalog name."""
+        pass
+
+    @abstractmethod
+    def setCurrentCatalog(self, catalog_name: str) -> None:
+        """Set current catalog name."""
+        pass
+
+    @abstractmethod
     def get_storage_backend(self) -> Any:
         """Get the storage backend instance."""
         pass
