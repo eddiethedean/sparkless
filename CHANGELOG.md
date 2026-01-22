@@ -104,6 +104,21 @@
   - Properly handles null values and empty DataFrames
   - Fixes `polars.exceptions.ComputeError: regex error: look-around, including look-ahead and look-behind, is not supported` error
 
+- **Issue #293** - Fixed `explode()` and `explode_outer()` functions to properly explode arrays/lists into multiple rows
+  - Fixed `F.explode()` to correctly expand array or map columns into new rows, matching PySpark behavior
+  - Fixed `F.explode_outer()` to expand arrays while preserving rows with null/empty arrays (unlike regular `explode`)
+  - Updated `PolarsOperationExecutor.apply_with_column()` to properly handle `explode` operations in `withColumn` and `select`
+  - For regular `explode`, rows with null/empty arrays are dropped (matching PySpark behavior)
+  - For `explode_outer`, rows with null/empty arrays are preserved with `None` values (matching PySpark behavior)
+  - Properly resolves source column names from `Column` objects and `ColumnOperation` expressions
+  - Works with integer, float, boolean, and string arrays
+  - Supports homogeneous array types (Polars requirement) - mixed types are handled by converting to strings
+  - Works in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`, `orderBy`, `distinct`, `union`, `join`
+  - Supports chained operations, conditional expressions (`F.when().otherwise()`), `cast()`, string operations
+  - Supports multiple `explode` operations on the same DataFrame
+  - Properly handles single-element arrays, large arrays, empty arrays, and null arrays
+  - Fixes issue where `explode` was not exploding lists as expected
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -211,6 +226,23 @@
   - Tests for alternation, capture groups, unicode, escaped characters, large datasets, and case sensitivity
   - Tests for fixed-width lookbehind patterns (Python re module limitation)
   - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #293 (`tests/test_issue_293_explode_withcolumn.py`)
+  - 29 test cases covering all `explode` and `explode_outer` functionality
+  - Tests for basic `explode` in `withColumn` and `select` contexts
+  - Tests for `explode` with integer, float, boolean, and string arrays
+  - Tests for `explode` with empty and null arrays (verifying PySpark's drop behavior for `explode` and retain behavior for `explode_outer`)
+  - Tests for `explode` with single-element and large arrays
+  - Tests for `explode` with `groupBy().agg()`, `orderBy`, `distinct`, `union`, `join`
+  - Tests for `explode` with chained `withColumn` operations, `F.when().otherwise()`, `cast()`, string operations
+  - Tests for multiple `explode` operations on the same DataFrame
+  - Tests for `explode_outer` with empty arrays
+  - Tests for `explode` with aliases and filter operations before/after
+  - Tests for homogeneous array types (Polars requirement) and mixed-type handling
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Fixed flaky test `test_column_power_number` in `tests/test_issue_291_power_operator_float_column.py`
+  - Changed test to find rows by `Value` column instead of relying on row order
+  - Added materialization between `withColumn` operations to prevent race conditions in parallel test execution
+  - Test now passes consistently in parallel test runs (`-n 10`)
 
 ## 3.31.0 — Unreleased
 

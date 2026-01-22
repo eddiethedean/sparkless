@@ -1316,6 +1316,74 @@ class PolarsOperationExecutor:
 
             return result
         else:
+            # Check if this is an explode or explode_outer operation
+            # These operations need special handling: they explode arrays into multiple rows
+            is_explode = (
+                isinstance(expression, ColumnOperation)
+                and expression.operation == "explode"
+            )
+            is_explode_outer = (
+                isinstance(expression, ColumnOperation)
+                and expression.operation == "explode_outer"
+            )
+
+            if is_explode or is_explode_outer:
+                # For explode operations, we need to:
+                # 1. Get the source column (the array column to explode)
+                # 2. Add it as a new column with the array values
+                # 3. Explode the DataFrame on that new column (this creates multiple rows)
+                from sparkless.functions import Column as ColumnType
+
+                # Get the source column name
+                source_col = expression.column
+                if isinstance(source_col, ColumnType):
+                    source_col_name = source_col.name
+                elif isinstance(source_col, str):
+                    source_col_name = source_col
+                else:
+                    # Fallback: try to get name from column attribute
+                    source_col_name_attr = getattr(source_col, "name", None)
+                    if source_col_name_attr is None:
+                        raise ValueError(
+                            f"Cannot determine source column for explode operation: {expression}"
+                        )
+                    source_col_name = str(source_col_name_attr)
+
+                # Resolve column name (case-insensitive)
+                from ...core.column_resolver import ColumnResolver
+
+                case_sensitive = self._get_case_sensitive()
+                resolved_col_name = ColumnResolver.resolve_column_name(
+                    source_col_name, list(df.columns), case_sensitive
+                )
+                if resolved_col_name is None:
+                    raise ValueError(
+                        f"Column '{source_col_name}' not found in DataFrame for explode operation"
+                    )
+
+                # Check if the column exists
+                if resolved_col_name not in df.columns:
+                    raise ValueError(
+                        f"Column '{resolved_col_name}' not found in DataFrame"
+                    )
+
+                # Add the new column with array values from the source column
+                # Then explode the DataFrame on this new column
+                # This will create multiple rows, one for each element in the array
+                result = df.with_columns(pl.col(resolved_col_name).alias(column_name))
+
+                # Explode the DataFrame on the new column
+                result = result.explode(column_name)
+
+                # For regular explode, filter out rows where the exploded value is None
+                # (PySpark drops rows with null/empty arrays)
+                # For explode_outer, keep all rows (including those with None)
+                if not is_explode_outer:
+                    # Filter out rows where ExplodedValue is None
+                    result = result.filter(pl.col(column_name).is_not_null())
+
+                return result
+
             # Check if this is a to_timestamp operation and if the input column is a string
             # This helps us choose the right method (str.strptime vs map_elements)
             input_col_dtype = None
