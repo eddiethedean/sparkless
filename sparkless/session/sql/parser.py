@@ -409,22 +409,34 @@ class SQLParser:
             # VERSION AS OF <number>
             (
                 r"(FROM\s+)([`\w.]+)\s+VERSION\s+AS\s+OF\s+(\d+)",
-                lambda m: (m.group(2).strip("`"), {"type": "version", "value": int(m.group(3))}),
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "version", "value": int(m.group(3))},
+                ),
             ),
             # TIMESTAMP AS OF '<timestamp>'
             (
                 r"(FROM\s+)([`\w.]+)\s+TIMESTAMP\s+AS\s+OF\s+['\"]([^'\"]+)['\"]",
-                lambda m: (m.group(2).strip("`"), {"type": "timestamp", "value": m.group(3)}),
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "timestamp", "value": m.group(3)},
+                ),
             ),
             # table@v<version>
             (
                 r"(FROM\s+)([`\w.]+)@v(\d+)",
-                lambda m: (m.group(2).strip("`"), {"type": "version", "value": int(m.group(3))}),
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "version", "value": int(m.group(3))},
+                ),
             ),
             # table@<yyyyMMdd> or table@<yyyyMMddHHmmss>
             (
                 r"(FROM\s+)([`\w.]+)@(\d{8,14})",
-                lambda m: (m.group(2).strip("`"), {"type": "timestamp_compact", "value": m.group(3)}),
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "timestamp_compact", "value": m.group(3)},
+                ),
             ),
         ]
 
@@ -1179,9 +1191,7 @@ class SQLParser:
 
         return components
 
-    def _extract_time_travel(
-        self, table_ref: str
-    ) -> tuple[str, dict[str, Any] | None]:
+    def _extract_time_travel(self, table_ref: str) -> tuple[str, dict[str, Any] | None]:
         """Extract time travel syntax from a table reference.
 
         Delta Lake Time Travel allows querying historical versions of a table:
