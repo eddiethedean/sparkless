@@ -258,7 +258,7 @@ class TestIssue289StructFunction:
             rows = result.collect()
             assert len(rows) == 2
             assert "person" in rows[0]
-            
+
             # Verify struct contains the expected fields
             person = rows[0]["person"]
             # Struct should be accessible as dict-like or have attributes
@@ -397,7 +397,12 @@ class TestIssue289StructFunction:
         """Test struct function with empty DataFrame."""
         spark = SparkSession.builder.appName("issue-289").getOrCreate()
         try:
-            from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+            from sparkless.spark_types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
 
             schema = StructType(
                 [
