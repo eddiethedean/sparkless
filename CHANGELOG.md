@@ -24,6 +24,18 @@
   - Properly handles division and modulo by zero (returns `None`, matching PySpark behavior)
   - Works with all aggregate functions: `count`, `sum`, `avg`, `max`, `min`, `countDistinct`, `stddev`, `variance`, etc.
 
+- **Issue #287** - Added `replace` method to `NAHandler` class
+  - Added `df.na.replace()` method to match PySpark's `NAHandler.replace()` API
+  - Supports dict mapping for value replacements (e.g., `{"A": "TypeA", "B": "TypeB"}`)
+  - Supports single value replacement (e.g., `df.na.replace(1, 99)`)
+  - Supports list replacements (e.g., `df.na.replace([1, 2], 99)` or `df.na.replace([1, 2], [10, 20])`)
+  - Supports `subset` parameter as string, tuple, or list to limit replacement to specific columns
+  - Properly handles case-insensitive column name resolution
+  - Preserves columns not in the subset during replacement
+  - Validates column existence and raises appropriate errors for invalid columns
+  - Validates list length matching and raises errors for mismatched lengths
+  - Handles edge cases: None values, booleans, empty dicts/lists, special characters, unicode
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -44,6 +56,19 @@
   - Tests for count(*), empty groups, large numbers
   - Tests for mixed aggregate functions
   - Tests for aliases and operator precedence
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #287 (`tests/test_issue_287_na_replace.py`)
+  - 31 test cases covering all `df.na.replace()` functionality
+  - Tests for dict mapping with and without subset
+  - Tests for single value and list replacements
+  - Tests for different subset formats (string, tuple, list)
+  - Tests for multiple columns, numeric values, and edge cases
+  - Tests for None/null value handling (replacing None and replacing with None)
+  - Tests for boolean values, type coercion, special characters, and unicode
+  - Tests for zero and negative numbers, empty dicts/lists
+  - Tests for error handling (invalid columns, mismatched list lengths, None value errors)
+  - Tests for chained operations, large DataFrames, and column preservation
+  - Tests for case-insensitive column name resolution
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased

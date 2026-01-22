@@ -1646,7 +1646,9 @@ class GroupedData:
                 # Get the other operand value (left for reverse, right for forward)
                 if is_reverse:
                     # For reverse operations, the left operand is in expr.column
-                    if isinstance(expr.column, Literal) or hasattr(expr.column, "value"):
+                    if isinstance(expr.column, Literal) or hasattr(
+                        expr.column, "value"
+                    ):
                         left_value = expr.column.value
                     else:
                         left_value = expr.column
