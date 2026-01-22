@@ -367,9 +367,41 @@ class PolarsOperationExecutor:
                         f"Cannot access nested field '{col}' - struct column '{struct_col}' or field '{field_name}' not found"
                     )
                 else:
-                    # Use column name as-is (case-insensitive matching handled earlier)
-                    select_exprs.append(pl.col(col))
-                    select_names.append(col)
+                    # Resolve column name to find actual column (case-insensitive matching)
+                    # PySpark behavior:
+                    # - If there's only one match: use the original column name
+                    # - If there are multiple matches (different cases): use the requested column name
+                    from ...core.column_resolver import ColumnResolver
+
+                    case_sensitive = self._get_case_sensitive()
+                    resolved_col_name = ColumnResolver.resolve_column_name(
+                        col, list(df.columns), case_sensitive
+                    )
+                    if resolved_col_name is None:
+                        raise ValueError(f"Column '{col}' not found in DataFrame")
+                    
+                    # Check if there are multiple matches (different cases)
+                    column_name_lower = col.lower()
+                    matches = [
+                        c for c in df.columns if c.lower() == column_name_lower
+                    ]
+                    has_multiple_matches = len(matches) > 1
+                    
+                    # Use resolved column name for lookup
+                    # If multiple matches exist, alias with requested name (PySpark behavior for issue #297)
+                    # If single match, use original column name (PySpark default behavior)
+                    if has_multiple_matches:
+                        # Multiple matches: use requested name as output (issue #297)
+                        select_exprs.append(pl.col(resolved_col_name).alias(col))
+                        select_names.append(col)
+                    elif resolved_col_name == col:
+                        # Exact match: no alias needed
+                        select_exprs.append(pl.col(col))
+                        select_names.append(col)
+                    else:
+                        # Case-insensitive match but single match: use original column name
+                        select_exprs.append(pl.col(resolved_col_name))
+                        select_names.append(resolved_col_name)
             elif isinstance(col, ColumnOperation) and col.operation == "json_tuple":
                 # json_tuple(col, *fields) expands to multiple output columns (c0, c1, ...)
                 fields = list(col.value) if isinstance(col.value, (list, tuple)) else []
@@ -825,6 +857,8 @@ class PolarsOperationExecutor:
 
         # Only reorder if we have python_columns AND the order doesn't match
         # This ensures we preserve all columns while matching the requested order
+        # Note: When aliases are applied, result.columns should already match select_names,
+        # so reordering should preserve the aliased column names
         if select_names and (
             python_columns
             or (
@@ -834,9 +868,12 @@ class PolarsOperationExecutor:
         ):
             existing_cols = list(result.columns)
             # Check if reordering is needed and safe
+            # select_names contains the requested column names (with aliases applied)
+            # existing_cols should match select_names if aliases were applied correctly
             if existing_cols != select_names and all(
                 name in existing_cols for name in select_names
             ):
+                # Reorder using select_names - these should already be in the DataFrame from aliases
                 result = result.select(select_names)
 
         return result
