@@ -11,13 +11,14 @@ from tests.fixtures.spark_backend import BackendType, get_backend_type
 def _is_pyspark_mode() -> bool:
     """Check if running in PySpark mode."""
     backend: BackendType = get_backend_type()
-    return backend == BackendType.PYSPARK
+    result: bool = backend == BackendType.PYSPARK
+    return result
 
 
 class TestDropTempView:
     """Tests for catalog.dropTempView()."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="dropTempView behavior differs in PySpark",
     )
@@ -32,7 +33,7 @@ class TestDropTempView:
         result = spark.catalog.dropTempView("test_view")
         assert result is True
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="dropTempView behavior differs in PySpark",
     )
@@ -41,7 +42,7 @@ class TestDropTempView:
         result = spark.catalog.dropTempView("nonexistent_view")
         assert result is False
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="dropTempView behavior differs in PySpark",
     )
@@ -63,7 +64,7 @@ class TestDropTempView:
         views_after = spark.catalog.listLocalTempViews()
         assert "view_to_check" not in views_after
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="dropTempView behavior differs in PySpark",
     )
@@ -79,7 +80,7 @@ class TestDropTempView:
 class TestCreateOrReplaceTempView:
     """Tests for DataFrame.createOrReplaceTempView()."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="createOrReplaceTempView behavior differs in PySpark",
     )
@@ -93,7 +94,7 @@ class TestCreateOrReplaceTempView:
         result = spark.sql("SELECT * FROM users")
         assert result.count() == 2
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="createOrReplaceTempView behavior differs in PySpark",
     )
@@ -117,7 +118,7 @@ class TestCreateOrReplaceTempView:
 class TestListLocalTempViews:
     """Tests for catalog.listLocalTempViews()."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="listLocalTempViews behavior differs in PySpark",
     )
@@ -128,7 +129,7 @@ class TestListLocalTempViews:
         views = spark.catalog.listLocalTempViews()
         assert isinstance(views, list)
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="listLocalTempViews behavior differs in PySpark",
     )
@@ -152,7 +153,7 @@ class TestListLocalTempViews:
 class TestTempViewIntegration:
     """Integration tests for temp view operations."""
 
-    @pytest.mark.skipif(
+    @pytest.mark.skipif(  # type: ignore[untyped-decorator]
         _is_pyspark_mode(),
         reason="Temp view behavior differs in PySpark",
     )
