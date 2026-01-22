@@ -68,9 +68,9 @@ class TestTimeTravelTimestamp:
         df = spark.createDataFrame(rows)
         df.write.mode("overwrite").saveAsTable("timestamp_table2")
 
-        result = spark.sql('''
+        result = spark.sql("""
             SELECT * FROM timestamp_table2 TIMESTAMP AS OF "2024-06-15 12:30:00"
-        ''')
+        """)
 
         collected = result.collect()
         assert len(collected) == 1
