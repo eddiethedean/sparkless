@@ -418,9 +418,7 @@ class PolarsMaterializer:
                                     struct_col, available_cols
                                 )
                             # Keep original nested column name for output (apply_select will handle resolution)
-                            # Use the resolved struct column name + field path for validation
-                            nested_resolved_col = f"{resolved_struct_col}.{parts[1]}"
-                            # But preserve the original requested name for output
+                            # Validation is done above, now preserve the original requested name for output
                             # apply_select will resolve and alias correctly
                         else:
                             # Validate column exists, but preserve requested name
@@ -441,9 +439,7 @@ class PolarsMaterializer:
                 # Apply select with original column names (not resolved)
                 # apply_select will handle resolution and aliasing to preserve requested names
                 # This ensures the output column names match the requested names (PySpark behavior)
-                result_df = self.operation_executor.apply_select(
-                    df_collected, payload
-                )
+                result_df = self.operation_executor.apply_select(df_collected, payload)
 
                 # If we started with df_materialized, keep the result materialized
                 # to preserve computed values (e.g., from to_timestamp operations)

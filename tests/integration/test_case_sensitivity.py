@@ -7,7 +7,6 @@ across all DataFrame operations.
 
 import pytest
 from sparkless.sql import SparkSession, functions as F
-from sparkless.core.exceptions.analysis import AnalysisException
 
 
 class TestCaseSensitivityConfiguration:
@@ -398,11 +397,15 @@ class TestCaseSensitivityConfiguration:
         result = df.select("name").collect()
         assert len(result) == 1
         # The output column should be "name" (requested name), and value should be from "Name" (first match)
-        assert result[0]["name"] == "Alice"  # First match is "Name" which has value "Alice"
-        
+        assert (
+            result[0]["name"] == "Alice"
+        )  # First match is "Name" which has value "Alice"
+
         # Verify that selecting with different case also works
         result2 = df.select("NaMe").collect()
         assert len(result2) == 1
-        assert result2[0]["NaMe"] == "Alice"  # Still uses first match "Name", but output is "NaMe"
+        assert (
+            result2[0]["NaMe"] == "Alice"
+        )  # Still uses first match "Name", but output is "NaMe"
 
         spark.stop()

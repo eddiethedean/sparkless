@@ -379,14 +379,12 @@ class PolarsOperationExecutor:
                     )
                     if resolved_col_name is None:
                         raise ValueError(f"Column '{col}' not found in DataFrame")
-                    
+
                     # Check if there are multiple matches (different cases)
                     column_name_lower = col.lower()
-                    matches = [
-                        c for c in df.columns if c.lower() == column_name_lower
-                    ]
+                    matches = [c for c in df.columns if c.lower() == column_name_lower]
                     has_multiple_matches = len(matches) > 1
-                    
+
                     # Use resolved column name for lookup
                     # If multiple matches exist, alias with requested name (PySpark behavior for issue #297)
                     # If single match, use original column name (PySpark default behavior)

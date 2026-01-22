@@ -299,15 +299,21 @@ class SchemaManager:
                         # Check if there are multiple matches (different cases)
                         column_name_lower = col.lower()
                         matches = [
-                            c for c in fields_map.keys() if c.lower() == column_name_lower
+                            c
+                            for c in fields_map
+                            if c.lower() == column_name_lower
                         ]
                         has_multiple_matches = len(matches) > 1
-                        
+
                         resolved_field = fields_map[resolved_col_name]
                         # Use original column name if single match, requested name if multiple matches
-                        output_col_name = col if has_multiple_matches else resolved_col_name
+                        output_col_name = (
+                            col if has_multiple_matches else resolved_col_name
+                        )
                         new_fields_map[output_col_name] = StructField(
-                            output_col_name, resolved_field.dataType, resolved_field.nullable
+                            output_col_name,
+                            resolved_field.dataType,
+                            resolved_field.nullable,
                         )
                     else:
                         # Column not found - infer as String (fallback)

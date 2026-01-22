@@ -77,7 +77,9 @@ class TestIssue297JoinDifferentCaseSelect:
         spark = SparkSession.builder.appName("issue-297").getOrCreate()
         try:
             df1 = spark.createDataFrame([{"name": "Alice", "value1": 1}])
-            df2 = spark.createDataFrame([{"name": "Alice", "value2": 2}])  # Same name to match
+            df2 = spark.createDataFrame(
+                [{"name": "Alice", "value2": 2}]
+            )  # Same name to match
 
             df = df1.join(df2, on="name", how="left")
             result = df.select("name", "value1", "value2").collect()
@@ -109,7 +111,9 @@ class TestIssue297JoinDifferentCaseSelect:
             )
 
             # Test inner join
-            inner_df = df1.join(df2, on="Name", how="inner").select("NaMe", "id", "score")
+            inner_df = df1.join(df2, on="Name", how="inner").select(
+                "NaMe", "id", "score"
+            )
             inner_result = inner_df.collect()
             assert len(inner_result) == 2  # Only matching rows
             assert inner_result[0]["NaMe"] == "Alice"
@@ -122,18 +126,24 @@ class TestIssue297JoinDifferentCaseSelect:
             assert left_result[2]["score"] is None
 
             # Test right join
-            right_df = df1.join(df2, on="Name", how="right").select("NaMe", "id", "score")
+            right_df = df1.join(df2, on="Name", how="right").select(
+                "NaMe", "id", "score"
+            )
             right_result = right_df.collect()
             assert len(right_result) == 3  # All right rows
             # "NaMe" picks first match case-insensitively, which is "name" from left DataFrame
             # For "David" row, there's no match in left, so "name" is None, thus "NaMe" is None
             david_row = next((r for r in right_result if r["score"] == 300), None)
             assert david_row is not None
-            assert david_row["NaMe"] is None  # Picks "name" from left, which is None for David
+            assert (
+                david_row["NaMe"] is None
+            )  # Picks "name" from left, which is None for David
             assert david_row["id"] is None  # No match in left
 
             # Test outer join
-            outer_df = df1.join(df2, on="Name", how="outer").select("NaMe", "id", "score")
+            outer_df = df1.join(df2, on="Name", how="outer").select(
+                "NaMe", "id", "score"
+            )
             outer_result = outer_df.collect()
             assert len(outer_result) == 4  # All rows from both sides
         finally:
@@ -165,7 +175,9 @@ class TestIssue297JoinDifferentCaseSelect:
             assert len(result) == 2
             assert result[0]["NaMe"] == "Alice"
             assert result[0]["AgE"] == 25  # Should pick first match (from left: "age")
-            assert result[0]["CiTy"] == "NYC"  # Should pick first match (from left: "city")
+            assert (
+                result[0]["CiTy"] == "NYC"
+            )  # Should pick first match (from left: "city")
             # Verify original columns still work
             assert result[0]["age"] == 25
             assert result[0]["city"] == "NYC"
@@ -238,7 +250,10 @@ class TestIssue297JoinDifferentCaseSelect:
                 df1.join(df2, on="Name", how="left")
                 .select("NaMe", "dept", "salary", "bonus")
                 .groupBy("dept")
-                .agg(F.sum("salary").alias("total_salary"), F.sum("bonus").alias("total_bonus"))
+                .agg(
+                    F.sum("salary").alias("total_salary"),
+                    F.sum("bonus").alias("total_bonus"),
+                )
             )
 
             result = df.collect()
@@ -262,7 +277,10 @@ class TestIssue297JoinDifferentCaseSelect:
 
             assert len(result) == 1
             # When there's only one match, original column name is preserved
-            assert "Name" in df.select("name").columns or "name" in df.select("name").columns
+            assert (
+                "Name" in df.select("name").columns
+                or "name" in df.select("name").columns
+            )
             # The value should be correct
             row = result[0]
             # Check that we can access the data (column name might be Name or name depending on implementation)
@@ -295,7 +313,12 @@ class TestIssue297JoinDifferentCaseSelect:
         """Test that the fix works with empty DataFrames."""
         spark = SparkSession.builder.appName("issue-297").getOrCreate()
         try:
-            from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+            from sparkless.spark_types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
 
             schema1 = StructType(
                 [
@@ -375,7 +398,9 @@ class TestIssue297JoinDifferentCaseSelect:
         spark = SparkSession.builder.appName("issue-297").getOrCreate()
         try:
             df1 = spark.createDataFrame([{"name": "Alice", "value": 10}])
-            df2 = spark.createDataFrame([{"NAME": "Alice", "score": 20}])  # Match on Alice
+            df2 = spark.createDataFrame(
+                [{"NAME": "Alice", "score": 20}]
+            )  # Match on Alice
 
             # Join, select with different case, then add column
             df = (

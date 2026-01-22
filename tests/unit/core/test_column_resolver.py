@@ -59,7 +59,7 @@ class TestColumnResolver:
 
     def test_resolve_column_name_ambiguity(self):
         """Test ambiguity handling when multiple columns differ only by case.
-        
+
         PySpark behavior: when multiple columns match (differ only by case),
         return the first match instead of raising an exception.
         This allows selecting columns after joins where both DataFrames
@@ -83,7 +83,7 @@ class TestColumnResolver:
 
     def test_resolve_columns_with_ambiguity(self):
         """Test resolving columns with ambiguity.
-        
+
         PySpark behavior: when multiple columns match (differ only by case),
         return the first match for each column.
         """
