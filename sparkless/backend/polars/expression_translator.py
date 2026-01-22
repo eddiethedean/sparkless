@@ -656,6 +656,7 @@ class PolarsExpressionTranslator:
             "*",
             "/",
             "%",
+            "**",
             "&",
             "|",
         ]
@@ -854,7 +855,7 @@ class PolarsExpressionTranslator:
             raise ValueError(
                 "+ operation requires Python evaluation to handle string/numeric mix"
             )
-        elif operation in ["-", "*", "/", "%"]:
+        elif operation in ["-", "*", "/", "%", "**"]:
             # Arithmetic operations with automatic string-to-numeric coercion
             # PySpark automatically casts string columns to Double for arithmetic
             return self._coerce_for_arithmetic(left, right, str(operation))
@@ -1060,7 +1061,7 @@ class PolarsExpressionTranslator:
         Args:
             left_expr: Left Polars expression
             right_expr: Right Polars expression
-            op: Operation string (+, -, *, /, %)
+            op: Operation string (+, -, *, /, %, **)
 
         Returns:
             Polars expression with appropriate arithmetic operation and type coercion
@@ -1130,6 +1131,16 @@ class PolarsExpressionTranslator:
             elif op == "%":
                 # Handle modulo by zero - PySpark returns None
                 result = left_coerced % right_coerced
+                # Convert inf/-inf to None to match PySpark behavior
+                result = (
+                    pl.when(result.is_infinite() | result.is_nan())
+                    .then(None)
+                    .otherwise(result)
+                )
+            elif op == "**":
+                # Power operation: left ** right
+                # Use Polars pow function for power operation
+                result = left_coerced.pow(right_coerced)
                 # Convert inf/-inf to None to match PySpark behavior
                 result = (
                     pl.when(result.is_infinite() | result.is_nan())
