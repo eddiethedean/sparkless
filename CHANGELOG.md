@@ -119,6 +119,15 @@
   - Properly handles single-element arrays, large arrays, empty arrays, and null arrays
   - Fixes issue where `explode` was not exploding lists as expected
 
+- **Issue #294** - Fixed `hour()`, `minute()`, and `second()` functions to correctly extract time components from string columns containing timestamp values
+  - Fixed `F.hour()`, `F.minute()`, and `F.second()` to properly parse string timestamps and extract time components
+  - Enhanced `_extract_datetime_part()` in `PolarsExpressionTranslator` to handle various timestamp string formats
+  - Added support for timezone formats: `+0000` (normalized to `+00:00`), `-0500`, `Z` format, and timezone-less formats
+  - Added support for various timestamp formats: ISO format (`2023-02-07T04:00:01.730+0000`), space-separated, with/without microseconds, date-only
+  - Properly handles null timestamp values (returns `None` for all time components)
+  - Works in various contexts: `withColumn`, `select`, `filter`, `groupBy().agg()`
+  - Fixes issue where `hour()`, `minute()`, and `second()` returned `None` for string timestamp columns
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -243,6 +252,14 @@
   - Changed test to find rows by `Value` column instead of relying on row order
   - Added materialization between `withColumn` operations to prevent race conditions in parallel test execution
   - Test now passes consistently in parallel test runs (`-n 10`)
+- Added comprehensive test suite for issue #294 (`tests/test_issue_294_hour_minute_second_string_timestamps.py`)
+  - 7 test cases covering all `hour()`, `minute()`, and `second()` functionality with string timestamps
+  - Tests for exact issue example format (`2023-02-07T04:00:01.730+0000`)
+  - Tests for various timezone formats (`+0000`, `-0500`, `Z`, no timezone)
+  - Tests for different timestamp formats (ISO, space-separated, with/without microseconds, date-only)
+  - Tests for `hour/minute/second` in `select`, `filter`, and `groupBy().agg()` contexts
+  - Tests for null timestamp values (verifying `None` return behavior)
+  - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
 
