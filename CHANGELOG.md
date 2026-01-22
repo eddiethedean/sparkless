@@ -50,6 +50,19 @@
   - Works with floating point numbers, zero, negative numbers, and large numbers
   - Properly handles null values in operations
 
+- **Issue #289** - Added `struct` function support in Polars backend
+  - Added support for `F.struct()` function to create struct-type columns from multiple columns, matching PySpark behavior
+  - Implemented struct function translation in `PolarsExpressionTranslator._translate_function_call()`
+  - Handles multiple columns (string names and Column objects)
+  - Supports case-insensitive column name resolution
+  - Creates Polars struct with proper field names using `pl.struct()`
+  - Supports struct creation with computed expressions, literals, and aliased columns
+  - Works in various contexts: `withColumn`, `select`, `groupBy().agg()`, joins
+  - Supports nested structs (struct within struct)
+  - Works with arrays, conditional expressions, string functions, and math operations
+  - Properly handles null values and empty DataFrames
+  - Fixes `ValueError: Unsupported function: struct` error
+
 ### Testing
 - Added comprehensive test suite for issue #297 (`tests/test_issue_297_join_different_case_select.py`)
   - Tests for different join types (inner, left, right, outer)
@@ -97,6 +110,22 @@
   - Tests for groupBy aggregation contexts
   - Tests for operator precedence
   - Tests for empty DataFrames, aliases, and mixed operations with regular columns
+  - All tests pass in both Sparkless (mock) and PySpark backends
+- Added comprehensive test suite for issue #289 (`tests/test_issue_289_struct_function.py`)
+  - 20 test cases covering all `F.struct()` functionality
+  - Tests for basic struct creation with string column names and `F.col()`
+  - Tests for single column, multiple columns, and different data types
+  - Tests for null value handling and empty DataFrames
+  - Tests for struct with computed expressions, literals, and aliased columns
+  - Tests for struct in groupBy aggregation contexts
+  - Tests for struct field access verification
+  - Tests for nested structs (struct within struct)
+  - Tests for struct with arrays
+  - Tests for struct in join operations
+  - Tests for struct with conditional expressions (when/otherwise)
+  - Tests for struct with string functions and math operations
+  - Tests for large number of fields (8+ columns)
+  - Tests for multiple chained operations
   - All tests pass in both Sparkless (mock) and PySpark backends
 
 ## 3.31.0 — Unreleased
