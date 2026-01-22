@@ -98,6 +98,8 @@ class Catalog:
         self._storage = storage
         self.spark = spark
         self._cached_tables: Set[str] = set()  # Track cached tables
+        self._current_catalog: str = "spark_catalog"  # Default catalog
+        self._temp_views: dict[str, Any] = {}  # Track temporary views
 
     def get_storage_backend(self) -> IStorageManager:
         """Get the storage backend instance.
@@ -145,9 +147,31 @@ class Catalog:
         """Get current catalog name (Spark SQL compatibility).
 
         Returns:
-            Catalog identifier. Sparkless exposes a single catalog.
+            Current catalog identifier.
         """
-        return "spark_catalog"
+        return self._current_catalog
+
+    def setCurrentCatalog(self, catalogName: str) -> None:
+        """Set the current catalog.
+
+        In sparkless, this is a no-op that validates the catalog name but
+        doesn't actually switch catalogs since sparkless uses a single catalog.
+        This is useful for testing code that uses USE CATALOG statements.
+
+        Args:
+            catalogName: Catalog name to set as current.
+
+        Note:
+            This method accepts any catalog name for testing purposes.
+            In production Spark, only valid catalog names would be accepted.
+        """
+        if not isinstance(catalogName, str):
+            raise IllegalArgumentException("Catalog name must be a string")
+
+        if not catalogName:
+            raise IllegalArgumentException("Catalog name cannot be empty")
+
+        self._current_catalog = catalogName
 
     def createDatabase(self, name: str, ignoreIfExists: bool = True) -> None:
         """Create a database.

@@ -105,6 +105,8 @@ class SQLExecutor:
                 return self._execute_describe(ast)
             elif ast.query_type == "REFRESH":
                 return self._execute_refresh(ast)
+            elif ast.query_type == "USE":
+                return self._execute_use(ast)
             else:
                 raise QueryExecutionException(
                     f"Unsupported query type: {ast.query_type}"
@@ -2425,4 +2427,61 @@ class SQLExecutor:
             storage.insert_data(target_schema, target_name, updated_rows)
 
         # MERGE returns empty DataFrame
+        return cast("IDataFrame", DataFrame([], StructType([])))
+
+    def _execute_use(self, ast: SQLAST) -> IDataFrame:
+        """Execute USE query.
+
+        Supports:
+        - USE CATALOG catalog_name: Sets the current catalog
+        - USE DATABASE database_name: Sets the current database
+        - USE SCHEMA schema_name: Sets the current schema
+        - USE database_name: Shorthand for USE DATABASE
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            Empty DataFrame to indicate success.
+
+        Raises:
+            QueryExecutionException: If the operation fails.
+        """
+        from ...errors import AnalysisException
+
+        components = ast.components
+        use_type = components.get("use_type", "UNKNOWN")
+
+        if use_type == "CATALOG":
+            catalog_name = components.get("catalog_name")
+            if not catalog_name:
+                raise QueryExecutionException("Catalog name is required")
+
+            # Set current catalog via catalog API
+            try:
+                self.session.catalog.setCurrentCatalog(catalog_name)
+            except Exception as e:
+                raise QueryExecutionException(
+                    f"Failed to set catalog '{catalog_name}': {str(e)}"
+                )
+
+        elif use_type in ("DATABASE", "SCHEMA"):
+            db_name = components.get("database_name") or components.get("schema_name")
+            if not db_name:
+                raise QueryExecutionException("Database/Schema name is required")
+
+            # Set current database via catalog API
+            try:
+                self.session.catalog.setCurrentDatabase(db_name)
+            except AnalysisException as e:
+                raise QueryExecutionException(str(e))
+            except Exception as e:
+                raise QueryExecutionException(
+                    f"Failed to set database '{db_name}': {str(e)}"
+                )
+
+        else:
+            raise QueryExecutionException(f"Unknown USE type: {use_type}")
+
+        # USE returns empty DataFrame
         return cast("IDataFrame", DataFrame([], StructType([])))
