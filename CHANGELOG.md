@@ -3,6 +3,19 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #337** - Added `mean()` method to `GroupedData` class
+  - `GroupedData.mean()` is now available as an alias for `GroupedData.avg()`
+  - Enables expressions like `df.groupBy("Name").mean("Value")`
+  - Matches PySpark behavior where `mean()` is an alias for `avg()`
+  - Supports single column, multiple columns, Column objects, and no columns (same as `avg()`)
+  - Comprehensive test coverage: 42 unit tests + 3 PySpark parity tests
+  - Edge cases covered: null values, all null values in group, large datasets (20+ rows), duplicate values, very large numbers (1,000,000+), very small numbers (0.0001), mixed integer and float values, float values, negative values, zero values, single row per group, empty DataFrames, multiple group columns, many groups (10+)
+  - Integration scenarios: with select, filter, orderBy, groupBy, join, union, distinct, limit, withColumn, drop, alias, case/when, coalesce, cast, window functions, multiple aggregations, complex chained operations, nested select
+  - Data type variations: integers, floats, mixed int/float, very large/small numbers
+  - Complex operations: orderBy (ascending and descending), schema verification, computed columns, column alias in groupBy, string column error handling
+  - All tests pass in both sparkless and PySpark modes (45 tests, 100% PySpark parity)
+  - Fixed mypy errors by replacing `type: ignore` comments with `hasattr()` checks for better type safety
+  - Fixes `AttributeError: 'GroupedData' object has no attribute 'mean'` error
 - **Issue #336** - Added support for comparison operators on `WindowFunction` objects
   - `WindowFunction` now supports comparison operations: `>`, `<`, `>=`, `<=`, `==`, `!=`, `eqNullSafe`
   - `WindowFunction` now supports null checks: `isnull()`, `isnotnull()`
