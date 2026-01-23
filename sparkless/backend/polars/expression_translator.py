@@ -2211,9 +2211,46 @@ class PolarsExpressionTranslator:
                 else:
                     raise ValueError("regexp_extract requires (pattern, idx) tuple")
             elif operation == "split":
-                # split(col, delimiter)
-                delimiter = op.value
-                return col_expr.str.split(delimiter)
+                # split(col, delimiter, limit)
+                if isinstance(op.value, tuple):
+                    delimiter, limit = op.value
+                else:
+                    delimiter = op.value
+                    limit = None
+                # Polars split() doesn't have limit parameter
+                # If limit is None or -1, use regular split (no limit)
+                if limit is None or limit == -1:
+                    return col_expr.str.split(delimiter)
+                else:
+                    # Use Python fallback for split with limit
+                    # PySpark limit behavior: limit=3 means return at most 3 parts
+                    # Python split(maxsplit=n) splits n times, resulting in n+1 parts
+                    # So to get limit parts, we need maxsplit = limit - 1
+                    # Special case: limit=1 means no split (return original string as single-element list)
+                    def split_with_limit(val: Any) -> Optional[List[str]]:
+                        """Split string with limit using Python."""
+                        if val is None:
+                            return None
+                        try:
+                            s = str(val)
+                            if limit == 1:
+                                # limit=1 means no split, return original as single-element list
+                                return [s]
+                            # For limit > 1: maxsplit = limit - 1 to get limit parts
+                            maxsplit = limit - 1
+                            parts = s.split(delimiter, maxsplit=maxsplit)
+                            return parts
+                        except Exception:
+                            return None
+
+                    return col_expr.map_elements(
+                        split_with_limit, return_dtype=pl.List(pl.Utf8)
+                    )
+            elif operation == "format_string":
+                # format_string(format_str, *columns) - use Python fallback
+                # format_string is complex with multiple columns, so we use Python evaluation
+                # which already has proper support in ExpressionEvaluator
+                raise ValueError("format_string operation requires Python evaluation")
             elif operation == "btrim":
                 # btrim(col, trim_string) or btrim(col)
                 if isinstance(op.value, str):
@@ -4416,6 +4453,7 @@ class PolarsExpressionTranslator:
             "json_object_keys": lambda e: e,  # Will be handled in operation-specific code
             "xpath_number": lambda e: e,  # Will be handled in operation-specific code
             "user": lambda e: pl.lit(""),  # Will be handled in operation-specific code
+            "format_string": lambda e: e,  # Will be handled in operation-specific code
             # New math functions (PySpark 3.5+)
             "getbit": lambda e: e,  # Will be handled in operation-specific code
             "width_bucket": lambda e: e,  # Will be handled in operation-specific code

@@ -2,6 +2,22 @@
 
 ## 3.27.0 — Unreleased
 
+### Added
+- **Issue #326** - Implemented `format_string` function support in Polars backend
+  - Added `format_string` translation in `PolarsExpressionTranslator` to support printf-style string formatting
+  - Supports multiple column arguments with format specifiers (%s, %d, %f, etc.)
+  - Handles null values by converting them to empty strings (matching PySpark behavior)
+  - Works in `withColumn`, `select`, and other DataFrame operations
+  - Comprehensive test coverage: 6 unit tests + 3 PySpark parity tests
+  - Fixes `ValueError: Unsupported function: format_string` error
+- **Issue #328** - Added optional `limit` parameter to `split()` function
+  - Updated `StringFunctions.split()` and `Functions.split()` to accept optional `limit` parameter
+  - Supports limiting the number of times the pattern is applied (PySpark 3.0+ feature)
+  - Default behavior (no limit) remains unchanged for backward compatibility
+  - Polars backend uses `n` parameter to match PySpark behavior
+  - Comprehensive test coverage: 9 unit tests + 4 PySpark parity tests
+  - Fixes `TypeError: Functions.split() takes 2 positional arguments but 3 were given` error
+
 ### Fixed
 - **PySpark 3.5+ compatibility for DESCRIBE DETAIL tests**
   - Updated DESCRIBE DETAIL tests to be compatible with PySpark 3.5+ behavior changes
