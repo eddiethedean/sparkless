@@ -616,6 +616,11 @@ class TransformationService:
 
     def distinct(self) -> "SupportsDataFrameOps":
         """Return distinct rows."""
+        # Queue distinct when there are pending operations so it runs after
+        # withColumn/select during materialization (fixes all-None for computed columns)
+        if self._df._operations_queue:
+            return self._df._queue_op("distinct", ())
+
         seen = set()
         distinct_data = []
 

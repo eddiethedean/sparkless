@@ -62,9 +62,8 @@ class TestIssue339ColumnSubscript:
                 ]
             )
 
-            result = (
-                df.withColumn("Extract-E1", F.col("StructVal")["E1"])
-                .withColumn("Extract-E2", F.col("StructVal")["E2"])
+            result = df.withColumn("Extract-E1", F.col("StructVal")["E1"]).withColumn(
+                "Extract-E2", F.col("StructVal")["E2"]
             )
             rows = result.collect()
 
@@ -186,9 +185,7 @@ class TestIssue339ColumnSubscript:
             )
 
             # Alias the struct column, then access field
-            result = df.withColumn(
-                "Extract-E1", F.col("StructVal").alias("SV")["E1"]
-            )
+            result = df.withColumn("Extract-E1", F.col("StructVal").alias("SV")["E1"])
             rows = result.collect()
 
             assert len(rows) == 2
@@ -256,9 +253,8 @@ class TestIssue339ColumnSubscript:
                 ]
             )
 
-            result = (
-                df.withColumn("Extract-E1", F.col("StructVal")["E1"])
-                .orderBy(F.col("Extract-E1"))
+            result = df.withColumn("Extract-E1", F.col("StructVal")["E1"]).orderBy(
+                F.col("Extract-E1")
             )
             rows = result.collect()
 
@@ -319,7 +315,9 @@ class TestIssue339ColumnSubscript:
 
             # Extract the struct field first, then join on the extracted column
             df1_with_extract = df1.withColumn("Extract-E1", F.col("StructVal")["E1"])
-            result = df1_with_extract.join(df2, df1_with_extract["Extract-E1"] == df2["E1"], how="left")
+            result = df1_with_extract.join(
+                df2, df1_with_extract["Extract-E1"] == df2["E1"], how="left"
+            )
             rows = result.collect()
 
             assert len(rows) == 2
@@ -366,9 +364,7 @@ class TestIssue339ColumnSubscript:
                 ]
             )
 
-            result = df.withColumn(
-                "IsHigh", F.col("StructVal")["E1"] > 2
-            )
+            result = df.withColumn("IsHigh", F.col("StructVal")["E1"] > 2)
             rows = result.collect()
 
             assert len(rows) == 2
@@ -480,9 +476,8 @@ class TestIssue339ColumnSubscript:
                 ]
             )
 
-            result = (
-                df.withColumn("Extract-E1", F.col("Struct1")["E1"])
-                .withColumn("Extract-E2", F.col("Struct2")["E2"])
+            result = df.withColumn("Extract-E1", F.col("Struct1")["E1"]).withColumn(
+                "Extract-E2", F.col("Struct2")["E2"]
             )
             rows = result.collect()
 
@@ -506,10 +501,9 @@ class TestIssue339ColumnSubscript:
             )
 
             # Create a computed struct column, then access field
-            result = (
-                df.withColumn("NewStruct", F.struct(F.col("Name"), F.lit("X")))
-                .withColumn("Extract", F.col("NewStruct")["Name"])
-            )
+            result = df.withColumn(
+                "NewStruct", F.struct(F.col("Name"), F.lit("X"))
+            ).withColumn("Extract", F.col("NewStruct")["Name"])
             rows = result.collect()
 
             assert len(rows) == 2
@@ -604,7 +598,9 @@ class TestIssue339ColumnSubscript:
 
             assert len(rows) == 2
             # Should have distinct combinations
-            extract_values = {row["Extract-E1"] for row in rows if row["Extract-E1"] is not None}
+            extract_values = {
+                row["Extract-E1"] for row in rows if row["Extract-E1"] is not None
+            }
             assert extract_values == {1, 3}
         finally:
             spark.stop()
@@ -652,9 +648,11 @@ class TestIssue339ColumnSubscript:
             )
 
             w = Window.partitionBy("Type").orderBy("Name")
-            result = df.withColumn(
-                "Rank", F.row_number().over(w)
-            ).withColumn("Extract-E1", F.col("StructVal")["E1"]).orderBy("Type", "Name")
+            result = (
+                df.withColumn("Rank", F.row_number().over(w))
+                .withColumn("Extract-E1", F.col("StructVal")["E1"])
+                .orderBy("Type", "Name")
+            )
             rows = result.collect()
 
             assert len(rows) == 3
@@ -712,7 +710,9 @@ class TestIssue339ColumnSubscript:
             result = (
                 df.withColumn("Extract-E1", F.col("StructVal")["E1"])
                 .withColumn("Extract-E2", F.col("StructVal")["E2"])
-                .withColumn("Coalesced", F.coalesce(F.col("Extract-E1"), F.col("Extract-E2")))
+                .withColumn(
+                    "Coalesced", F.coalesce(F.col("Extract-E1"), F.col("Extract-E2"))
+                )
             )
             rows = result.collect()
 

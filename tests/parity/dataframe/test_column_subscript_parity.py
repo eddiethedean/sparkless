@@ -68,9 +68,8 @@ class TestColumnSubscriptParity:
                 ]
             )
 
-            result = (
-                df.withColumn("Extract-E1", F.col("StructVal")["E1"])
-                .withColumn("Extract-E2", F.col("StructVal")["E2"])
+            result = df.withColumn("Extract-E1", F.col("StructVal")["E1"]).withColumn(
+                "Extract-E2", F.col("StructVal")["E2"]
             )
             rows = result.collect()
 

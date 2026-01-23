@@ -179,13 +179,18 @@ class PolarsMaterializer:
                 data_keys = set(getattr(first_row, "keys", lambda: [])())
 
             schema_keys = {field.name for field in schema.fields}
-            # If schema doesn't match data, infer from data (only for dict format)
-            # BUT: Skip inference if we have operations, as the schema already includes
-            # computed columns from operations. Inference should only happen when creating
-            # a new DataFrame (no operations).
-            if is_dict_format and data_keys != schema_keys and not operations:
-                # Use SchemaInferenceEngine for PySpark-compatible type inference
-                # instead of Polars' automatic inference
+            # If we have operations, use base schema from data for the op loop
+            # (e.g. union compares current_schema vs other; current_schema must be base, not projected).
+            if data and operations and is_dict_format:
+                from ...core.schema_inference import SchemaInferenceEngine
+
+                try:
+                    inferred_schema, _ = SchemaInferenceEngine.infer_from_data(data)
+                    original_schema = inferred_schema
+                except (ValueError, Exception):
+                    pass
+            elif is_dict_format and data_keys != schema_keys and not operations:
+                # No ops: infer when schema doesn't match data
                 from ...core.schema_inference import SchemaInferenceEngine
 
                 inferred_schema, _ = SchemaInferenceEngine.infer_from_data(data)
@@ -285,9 +290,15 @@ class PolarsMaterializer:
                 # This must be checked BEFORE translation to avoid ColumnNotFoundError
                 is_struct_field_path = False
                 if isinstance(optimized_condition, ColumnOperation):
-                    if isinstance(optimized_condition.column, Column) and "." in optimized_condition.column.name:
+                    if (
+                        isinstance(optimized_condition.column, Column)
+                        and "." in optimized_condition.column.name
+                    ):
                         is_struct_field_path = True
-                elif isinstance(optimized_condition, Column) and "." in optimized_condition.name:
+                elif (
+                    isinstance(optimized_condition, Column)
+                    and "." in optimized_condition.name
+                ):
                     is_struct_field_path = True
 
                 if is_struct_field_path:
@@ -347,9 +358,15 @@ class PolarsMaterializer:
                     # Note: Column is already imported at the top of the file
                     is_struct_field_path = False
                     if isinstance(optimized_condition, ColumnOperation):
-                        if isinstance(optimized_condition.column, Column) and "." in optimized_condition.column.name:
+                        if (
+                            isinstance(optimized_condition.column, Column)
+                            and "." in optimized_condition.column.name
+                        ):
                             is_struct_field_path = True
-                    elif isinstance(optimized_condition, Column) and "." in optimized_condition.name:
+                    elif (
+                        isinstance(optimized_condition, Column)
+                        and "." in optimized_condition.name
+                    ):
                         is_struct_field_path = True
 
                     if is_struct_field_path:
@@ -418,9 +435,15 @@ class PolarsMaterializer:
                             # Check if the condition contains this struct field path
                             is_struct_field_path = False
                             if isinstance(optimized_condition, ColumnOperation):
-                                if isinstance(optimized_condition.column, Column) and "." in optimized_condition.column.name:
+                                if (
+                                    isinstance(optimized_condition.column, Column)
+                                    and "." in optimized_condition.column.name
+                                ):
                                     is_struct_field_path = True
-                            elif isinstance(optimized_condition, Column) and "." in optimized_condition.name:
+                            elif (
+                                isinstance(optimized_condition, Column)
+                                and "." in optimized_condition.name
+                            ):
                                 is_struct_field_path = True
 
                             if is_struct_field_path:
@@ -549,10 +572,10 @@ class PolarsMaterializer:
                     elif hasattr(col, "_alias") and col._alias:
                         # Column with alias - use alias name
                         selected_columns.add(col._alias)
-                
+
                 # Check if any selected column is a computed column (not in original schema)
                 has_computed_columns = bool(selected_columns - original_column_names)
-                
+
                 # If we had materialized data before OR if we're selecting computed columns,
                 # keep it materialized after select to preserve computed values
                 # This is especially important when distinct follows select, as distinct
@@ -655,7 +678,11 @@ class PolarsMaterializer:
                         # don't create lazy_df. The materialized DataFrame will be used directly.
                         lazy_df = (
                             None
-                            if (is_timestamp_column or had_materialized_before or next_op_name == "select")
+                            if (
+                                is_timestamp_column
+                                or had_materialized_before
+                                or next_op_name == "select"
+                            )
                             else result_df.lazy()
                         )  # Don't create lazy frame for to_timestamp, when preserving materialized, or when next is select
                     else:
@@ -674,12 +701,14 @@ class PolarsMaterializer:
                         # For computed columns (like struct field paths), keep materialized to preserve values
                         # Check if this column was created from a struct field path by checking the expression
                         # Column is already imported at module level
-                        is_computed_column = False
-                        if isinstance(expression, Column) and "." in expression.name:
-                            is_computed_column = True
-                        elif hasattr(expression, "column") and isinstance(expression.column, Column) and "." in expression.column.name:
-                            is_computed_column = True
-                        
+                        is_computed_column = (
+                            isinstance(expression, Column) and "." in expression.name
+                        ) or (
+                            hasattr(expression, "column")
+                            and isinstance(expression.column, Column)
+                            and "." in expression.column.name
+                        )
+
                         if is_computed_column:
                             df_materialized = result_df
                             lazy_df = None
@@ -829,15 +858,25 @@ class PolarsMaterializer:
                                 other_df = pl.DataFrame()
                         else:
                             other_df = pl.DataFrame(other_data)
-                # Collect lazy_df before joining
-                df_collected = lazy_df.collect()
+                # Collect before joining - use df_materialized when available
+                # (e.g. after select with computed columns like struct field + alias)
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None
+                else:
+                    df_collected = lazy_df.collect()
                 result_df = self.operation_executor.apply_join(
                     df_collected, other_df, on=on, how=how
                 )
                 lazy_df = result_df.lazy()
             elif op_name == "union":
                 # Union operation - need to collect first
-                df_collected = lazy_df.collect()
+                # Use df_materialized when available (e.g. after select with computed columns)
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None
+                else:
+                    df_collected = lazy_df.collect()
                 other_df_payload = payload
 
                 # Validate schema compatibility before union (PySpark compatibility)
@@ -885,10 +924,16 @@ class PolarsMaterializer:
                 if not isinstance(other_df_payload, pl.DataFrame):
                     # Check if other_df_payload has lazy operations that need materialization
                     # (e.g., withColumn operations that create computed columns like struct field paths)
-                    if hasattr(other_df_payload, "_operations_queue") and other_df_payload._operations_queue:
+                    if (
+                        hasattr(other_df_payload, "_operations_queue")
+                        and other_df_payload._operations_queue
+                    ):
                         # Materialize the other DataFrame to ensure computed columns are available
                         from ...dataframe.lazy import LazyEvaluationEngine
-                        materialized_other = LazyEvaluationEngine.materialize(other_df_payload)
+
+                        materialized_other = LazyEvaluationEngine.materialize(
+                            other_df_payload
+                        )
                         other_rows = materialized_other.collect()
                         other_schema = getattr(materialized_other, "schema", None)
 
@@ -900,7 +945,9 @@ class PolarsMaterializer:
                             if isinstance(row, dict):
                                 return cast("Dict[str, Any]", row)
                             # Sequence-like rows (e.g. tuple/list) with a known schema
-                            if other_schema is not None and hasattr(other_schema, "fields"):
+                            if other_schema is not None and hasattr(
+                                other_schema, "fields"
+                            ):
                                 try:
                                     values = list(row)
                                     return {
@@ -989,6 +1036,10 @@ class PolarsMaterializer:
                 lazy_df = result_df.lazy()
             elif op_name == "orderBy":
                 # OrderBy operation - can be done lazily
+                # Use df_materialized when available (e.g. after select with computed columns)
+                if df_materialized is not None:
+                    lazy_df = df_materialized.lazy()
+                    df_materialized = None
                 # Payload can be (columns, ascending) tuple or just columns (for backward compatibility)
                 if isinstance(payload, tuple) and len(payload) == 2:
                     # New format: (columns, ascending)

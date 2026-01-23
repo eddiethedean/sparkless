@@ -272,7 +272,10 @@ class PolarsOperationExecutor:
             struct_field_col = None
             if isinstance(condition, ColumnOperation):
                 # Check if the column part is a Column with struct field path
-                if isinstance(condition.column, Column) and "." in condition.column.name:
+                if (
+                    isinstance(condition.column, Column)
+                    and "." in condition.column.name
+                ):
                     needs_struct_handling = True
                     struct_field_col = condition.column
             elif isinstance(condition, Column) and "." in condition.name:
@@ -2655,7 +2658,9 @@ class PolarsOperationExecutor:
                         )
                         if resolved_field:
                             # Use Polars struct.field() syntax for nested access
-                            expr = pl.col(resolved_struct_col).struct.field(resolved_field)
+                            expr = pl.col(resolved_struct_col).struct.field(
+                                resolved_field
+                            )
                             return df.with_columns(expr.alias(column_name))
 
             try:

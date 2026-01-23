@@ -461,7 +461,6 @@ class LazyEvaluationEngine:
         # Check if operations require manual materialization
         if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
             return LazyEvaluationEngine._materialize_manual(df)
-
         # Use backend factory to get materializer
         try:
             from sparkless.backend.factory import BackendFactory
@@ -1773,6 +1772,22 @@ class LazyEvaluationEngine:
                     current = DataFrame(new_data, new_schema, current.storage)
                     current._is_cached = getattr(current, "_is_cached", False)
                     # Update schema tracking for next operation
+                    operations_applied_so_far.append((op_name, op_val))
+                    schema_at_operation = SchemaManager.project_schema_with_operations(
+                        base_schema, operations_applied_so_far
+                    )
+                elif op_name == "distinct":
+                    # Deduplicate current.data by schema order (matches eager distinct)
+                    field_names = [f.name for f in current.schema.fields]
+                    seen: Set[Tuple[Any, ...]] = set()
+                    distinct_data: List[Dict[str, Any]] = []
+                    for row in current.data:
+                        row_tuple = tuple(row.get(name) for name in field_names)
+                        if row_tuple not in seen:
+                            seen.add(row_tuple)
+                            distinct_data.append(row)
+                    current = DataFrame(distinct_data, current.schema, current.storage)
+                    current._is_cached = getattr(current, "_is_cached", False)
                     operations_applied_so_far.append((op_name, op_val))
                     schema_at_operation = SchemaManager.project_schema_with_operations(
                         base_schema, operations_applied_so_far

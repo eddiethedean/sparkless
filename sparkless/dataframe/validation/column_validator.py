@@ -94,23 +94,24 @@ class ColumnValidator:
         from ...core.column_resolver import ColumnResolver
 
         # Find the struct column
-        struct_col = ColumnValidator._find_column(schema, struct_col_name, case_sensitive)
+        struct_col = ColumnValidator._find_column(
+            schema, struct_col_name, case_sensitive
+        )
         if struct_col is None:
             return None
 
         # Find the struct field in the schema
         for field in schema.fields:
-            if (case_sensitive and field.name == struct_col) or (
-                not case_sensitive and field.name.lower() == struct_col.lower()
-            ):
-                # Check if this field is a struct type
-                if hasattr(field.dataType, "fields"):
-                    # Get field names from the struct
-                    struct_field_names = [f.name for f in field.dataType.fields]
-                    # Resolve the field name
-                    return ColumnResolver.resolve_column_name(
-                        field_name, struct_field_names, case_sensitive
-                    )
+            if (
+                (case_sensitive and field.name == struct_col)
+                or (not case_sensitive and field.name.lower() == struct_col.lower())
+            ) and hasattr(field.dataType, "fields"):
+                # Get field names from the struct
+                struct_field_names = [f.name for f in field.dataType.fields]
+                # Resolve the field name
+                return ColumnResolver.resolve_column_name(
+                    field_name, struct_field_names, case_sensitive
+                )
         return None
 
     @staticmethod
@@ -142,7 +143,9 @@ class ColumnValidator:
             field_name = parts[1]
 
             # Validate that the struct column exists
-            struct_col = ColumnValidator._find_column(schema, struct_col_name, case_sensitive)
+            struct_col = ColumnValidator._find_column(
+                schema, struct_col_name, case_sensitive
+            )
             if struct_col is None:
                 column_names = [field.name for field in schema.fields]
                 raise SparkColumnNotFoundError(struct_col_name, column_names)

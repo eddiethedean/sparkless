@@ -97,6 +97,25 @@
   - Fixes `AttributeError: 'float' object has no attribute 'name'` error
 
 ### Fixed
+- **Issue #330** - Join / union / orderBy after select with computed columns
+  - Fixed `AttributeError: 'NoneType' object has no attribute 'collect'` when join, union, or orderBy followed a select that used computed columns (e.g. struct field alias)
+  - When select includes computed columns, the Polars materializer keeps the result in `df_materialized` and sets `lazy_df = None`
+  - The join, union, and orderBy branches previously always called `lazy_df.collect()` and never checked `df_materialized`
+  - Updated `PolarsMaterializer` to use the same pattern as groupBy, distinct, and drop: if `df_materialized` is not None, use it (then clear it); else use `lazy_df.collect()`
+  - Fixes `test_struct_field_with_alias_with_join`, `test_struct_field_with_alias_with_union`, and `test_chained_operations_after_select` (Issue #297)
+
+- **Issue #339** - Column subscript with distinct and lazy evaluation
+  - Fixed `test_column_subscript_with_distinct` where `extract_values` was `set()` (expected `{1, 3}`) when using `F.col("StructVal")["E1"]` with `select(...).distinct().collect()`
+  - `distinct()` was executed eagerly on the base DataFrame, bypassing queued lazy operations (withColumn, select), so the computed `Extract-E1` column was missing
+  - Updated `distinct()` in `TransformationService` and `TransformationOperations` to queue a `"distinct"` operation when there are pending lazy operations instead of executing eagerly
+  - Added `"distinct"` handling in `_materialize_manual` (Python fallback path) in `lazy.py` to deduplicate by schema field names
+  - Fixed `original_schema` initialization in `PolarsMaterializer` when operations are present: use base schema inferred from data rather than projected schema, so union validation uses the correct column count (fixes `test_distinct_with_case_variations` regression)
+
+- **Documentation example tests (timeout)**
+  - Fixed subprocess example tests (`test_basic_usage_runs`, `test_comprehensive_usage_runs`) timing out when run with pytest-xdist (parallel)
+  - Skip these tests when `PYTEST_XDIST_WORKER` is set to avoid subprocess interference in parallel execution (same rationale as PySpark-mode skip)
+  - Force fast mode for `basic_usage` via `MOCK_SPARK_EXAMPLES_FULL=0` in test env; increased subprocess timeout from 30s to 60s when tests run sequentially
+
 - **PySpark 3.5+ compatibility for DESCRIBE DETAIL tests**
   - Updated DESCRIBE DETAIL tests to be compatible with PySpark 3.5+ behavior changes
   - Fixed table overwrite operations: Replaced `mode("overwrite")` with `saveAsTable()` and explicit `DROP TABLE IF EXISTS` statements, as PySpark 3.5+ doesn't support `mode("overwrite")` with Delta tables
