@@ -2441,7 +2441,8 @@ class PolarsOperationExecutor:
                     if (
                         isinstance(condition, ColumnOperation)
                         and isinstance(condition.column, WindowFunction)
-                        and condition.operation in [
+                        and condition.operation
+                        in [
                             ">",
                             "<",
                             ">=",
