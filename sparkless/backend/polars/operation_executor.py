@@ -2389,6 +2389,7 @@ class PolarsOperationExecutor:
                         and expression.operation == "withField"
                     )
                     or "+ operation requires Python evaluation" in error_msg
+                    or "format_string operation requires Python evaluation" in error_msg
                 ):
                     # Convert Polars DataFrame to list of dicts for Python evaluation
                     data = df.to_dicts()

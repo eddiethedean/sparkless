@@ -561,12 +561,16 @@ class StringFunctions:
         return operation
 
     @staticmethod
-    def split(column: Union[Column, str], delimiter: str) -> ColumnOperation:
+    def split(
+        column: Union[Column, str], delimiter: str, limit: Optional[int] = None
+    ) -> ColumnOperation:
         """Split string by delimiter.
 
         Args:
             column: The column to split.
             delimiter: The delimiter to split on.
+            limit: Optional limit on the number of times the pattern is applied.
+                   If None or -1, no limit (default PySpark behavior).
 
         Returns:
             ColumnOperation representing the split function.
@@ -574,8 +578,14 @@ class StringFunctions:
         if isinstance(column, str):
             column = Column(column)
 
+        # PySpark default is -1 (no limit), but we use None internally for "no limit"
+        # When limit is None, we'll use -1 in the name to match PySpark
+        limit_value = limit if limit is not None else -1
         operation = ColumnOperation(
-            column, "split", delimiter, name=f"split({column.name}, {delimiter}, -1)"
+            column,
+            "split",
+            (delimiter, limit),
+            name=f"split({column.name}, {delimiter}, {limit_value})",
         )
         return operation
 

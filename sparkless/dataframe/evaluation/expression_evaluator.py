@@ -1309,7 +1309,16 @@ class ExpressionEvaluator:
                     rem = val[1]
                     rest = list(rem) if isinstance(rem, (list, tuple)) else [rem]
                 args = []
-                # Evaluate remaining args (don't add the left value as it's already in the format)
+                # First, evaluate the base column (operation.column) - this is the first argument
+                if hasattr(operation, "column") and operation.column is not None:
+                    base_col = operation.column
+                    if hasattr(base_col, "name"):
+                        args.append(row.get(base_col.name))
+                    elif hasattr(base_col, "operation") and hasattr(base_col, "column"):
+                        args.append(self.evaluate_expression(row, base_col))
+                    else:
+                        args.append(None)
+                # Then evaluate remaining args
                 for a in rest:
                     if hasattr(a, "operation") and hasattr(a, "column"):
                         args.append(self.evaluate_expression(row, a))
@@ -1322,10 +1331,8 @@ class ExpressionEvaluator:
         try:
             if fmt is None:
                 return None
-            # Convert None to empty string to mimic Spark's tolerant formatting
-            fmt_args = tuple("")
-            if args:
-                fmt_args = tuple("" if v is None else v for v in args)
+            # PySpark converts None to "null" string in format_string
+            fmt_args = tuple("null" if v is None else v for v in args)
             return fmt % fmt_args
         except Exception:
             return None

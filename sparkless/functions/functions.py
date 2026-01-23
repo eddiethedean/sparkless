@@ -286,9 +286,18 @@ class Functions:
         return StringFunctions.regexp_replace(column, pattern, replacement)
 
     @staticmethod
-    def split(column: Union[Column, str], delimiter: str) -> ColumnOperation:
-        """Split string by delimiter."""
-        return StringFunctions.split(column, delimiter)
+    def split(
+        column: Union[Column, str], delimiter: str, limit: Optional[int] = None
+    ) -> ColumnOperation:
+        """Split string by delimiter.
+
+        Args:
+            column: The column to split.
+            delimiter: The delimiter to split on.
+            limit: Optional limit on the number of times the pattern is applied.
+                   If None or -1, no limit (default PySpark behavior).
+        """
+        return StringFunctions.split(column, delimiter, limit)
 
     @staticmethod
     def substring(
