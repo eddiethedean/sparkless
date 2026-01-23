@@ -280,7 +280,10 @@ class GroupedData:
                                 )
                                 # If name is different from column name and doesn't start with "CAST(",
                                 # it's likely an alias
-                                if expr_name != column_name and not expr_name.startswith("CAST("):
+                                if (
+                                    expr_name != column_name
+                                    and not expr_name.startswith("CAST(")
+                                ):
                                     result_key = expr_name
                                 else:
                                     # Generate proper column name for cast operation (PySpark format)
@@ -293,7 +296,9 @@ class GroupedData:
                                         type_name = str(expr.value).upper()
                                     else:
                                         type_name = "STRING"
-                                    result_key = f"CAST({cast_agg_func.name} AS {type_name})"
+                                    result_key = (
+                                        f"CAST({cast_agg_func.name} AS {type_name})"
+                                    )
                             else:
                                 # Generate proper column name for cast operation (PySpark format)
                                 # Format: CAST(avg(value) AS STRING)
@@ -305,7 +310,9 @@ class GroupedData:
                                     type_name = str(expr.value).upper()
                                 else:
                                     type_name = "STRING"
-                                result_key = f"CAST({cast_agg_func.name} AS {type_name})"
+                                result_key = (
+                                    f"CAST({cast_agg_func.name} AS {type_name})"
+                                )
                             result_value = cast_result
                         else:
                             # Regular cast operation (not on aggregate)

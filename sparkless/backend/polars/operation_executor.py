@@ -1249,12 +1249,13 @@ class PolarsOperationExecutor:
                 struct_field_path = None
                 if hasattr(col, "name") and "." in col.name:
                     struct_field_path = col.name
-                elif hasattr(col, "_original_column") and hasattr(
-                    col._original_column, "_name"
+                elif (
+                    hasattr(col, "_original_column")
+                    and hasattr(col._original_column, "_name")
+                    and "." in col._original_column._name
                 ):
                     # Check original column name for struct field path (for aliased columns)
-                    if "." in col._original_column._name:
-                        struct_field_path = col._original_column._name
+                    struct_field_path = col._original_column._name
 
                 if struct_field_path:
                     # Split into struct column and field name

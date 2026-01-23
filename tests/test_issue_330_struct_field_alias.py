@@ -67,7 +67,9 @@ class TestIssue330StructFieldAlias:
                 ]
             )
 
-            result = df.withColumn("ExtractedE1", F.col("StructValue.E1").alias("E1-Extract"))
+            result = df.withColumn(
+                "ExtractedE1", F.col("StructValue.E1").alias("E1-Extract")
+            )
             rows = result.collect()
 
             assert len(rows) == 2
@@ -204,7 +206,12 @@ class TestIssue330StructFieldAlias:
         """Test struct field extraction with alias on empty DataFrame."""
         spark = SparkSession.builder.appName("issue-330").getOrCreate()
         try:
-            from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+            from sparkless.spark_types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
 
             schema = StructType(
                 [
@@ -235,7 +242,12 @@ class TestIssue330StructFieldAlias:
         """Test struct field extraction with alias when all structs are null."""
         spark = SparkSession.builder.appName("issue-330").getOrCreate()
         try:
-            from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+            from sparkless.spark_types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
 
             schema = StructType(
                 [
@@ -443,8 +455,12 @@ class TestIssue330StructFieldAlias:
             assert len(rows) == 2
             # Union may reorder rows, so check both values are present
             # Filter out None values in case of union issues
-            values = {row["E1-Extract"] for row in rows if row["E1-Extract"] is not None}
-            assert values == {1, 2} or len(values) >= 1  # At least one value should be present
+            values = {
+                row["E1-Extract"] for row in rows if row["E1-Extract"] is not None
+            }
+            assert (
+                values == {1, 2} or len(values) >= 1
+            )  # At least one value should be present
         finally:
             spark.stop()
 
@@ -485,7 +501,11 @@ class TestIssue330StructFieldAlias:
                 [
                     {"Name": "Alice", "Value": 1, "StructValue": {"E1": 10, "E2": "A"}},
                     {"Name": "Bob", "Value": 2, "StructValue": {"E1": 20, "E2": "B"}},
-                    {"Name": "Charlie", "Value": 3, "StructValue": {"E1": 30, "E2": "C"}},
+                    {
+                        "Name": "Charlie",
+                        "Value": 3,
+                        "StructValue": {"E1": 30, "E2": "C"},
+                    },
                 ]
             )
 

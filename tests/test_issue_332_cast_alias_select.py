@@ -115,10 +115,9 @@ class TestIssue332CastAliasSelect:
             )
 
             # withColumn uses the first argument as column name, alias is ignored
-            result = (
-                df.withColumn("ValueDouble", F.col("Value").cast(T.DoubleType()))
-                .select("Name", "ValueDouble")
-            )
+            result = df.withColumn(
+                "ValueDouble", F.col("Value").cast(T.DoubleType())
+            ).select("Name", "ValueDouble")
 
             rows = result.collect()
             assert len(rows) == 2
@@ -237,7 +236,12 @@ class TestIssue332CastAliasSelect:
         """Test cast+alias+select on empty DataFrame."""
         spark = SparkSession.builder.appName("issue-332").getOrCreate()
         try:
-            from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+            from sparkless.spark_types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
 
             schema = StructType(
                 [
@@ -263,7 +267,12 @@ class TestIssue332CastAliasSelect:
         """Test cast+alias+select when all values are null."""
         spark = SparkSession.builder.appName("issue-332").getOrCreate()
         try:
-            from sparkless.spark_types import StructType, StructField, StringType, IntegerType
+            from sparkless.spark_types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
 
             schema = StructType(
                 [
@@ -540,6 +549,7 @@ class TestIssue332CastAliasSelect:
             field = next(f for f in result.schema.fields if f.name == "AvgValue")
             assert field is not None
             from sparkless.spark_types import DoubleType
+
             assert isinstance(field.dataType, DoubleType)
         finally:
             spark.stop()
