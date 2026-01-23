@@ -257,6 +257,24 @@ class DeltaTable:
             ]
         )
 
+        # Handle PySpark sessions (which don't have _storage)
+        # Check if this is a real PySpark session by checking the module name
+        is_pyspark = (
+            not hasattr(self._spark, "_storage")
+            and hasattr(self._spark, "__class__")
+            and "pyspark" in str(self._spark.__class__.__module__)
+        )
+
+        if is_pyspark:
+            # This is a real PySpark session
+            # Note: In PySpark mode, users should use delta.tables.DeltaTable directly
+            # For our mock DeltaTable, we'll return a PySpark DataFrame with mock data
+            # to avoid recursion issues and maintain compatibility
+            from typing import cast
+
+            return cast("DataFrame", self._spark.createDataFrame(details, schema))
+
+        # Mock SparkSession - use our storage
         return DataFrame(details, schema, self._spark._storage)
 
     def history(self, limit: Union[int, None] = None) -> DataFrame:
