@@ -210,7 +210,7 @@ class PolarsOperationExecutor:
             )
 
             # Now create the operation expression: temp_col_name op value (or isnull/isnotnull)
-            from sparkless.functions.core.column import Column
+            # Note: Column is already imported at the top of the file
 
             temp_col = Column(temp_col_name)
             if operation == ">":
@@ -266,6 +266,63 @@ class PolarsOperationExecutor:
 
         case_sensitive = self._get_case_sensitive()
         try:
+            # Check if condition contains struct field paths that need special handling
+            # (e.g., F.col("StructVal")["E1"] creates Column("StructVal.E1"))
+            needs_struct_handling = False
+            struct_field_col = None
+            if isinstance(condition, ColumnOperation):
+                # Check if the column part is a Column with struct field path
+                if isinstance(condition.column, Column) and "." in condition.column.name:
+                    needs_struct_handling = True
+                    struct_field_col = condition.column
+            elif isinstance(condition, Column) and "." in condition.name:
+                needs_struct_handling = True
+                struct_field_col = condition
+
+            if needs_struct_handling and struct_field_col:
+                # Handle struct field access in filter by creating temporary column
+                # Extract the struct field path and apply it as a withColumn first
+                temp_col_name = f"__struct_field_temp_{id(condition)}"
+                df_with_temp = self.apply_with_column(
+                    df, temp_col_name, struct_field_col, expected_field=None
+                )
+                # Now create the filter condition using the temp column
+                if isinstance(condition, ColumnOperation):
+                    # Recreate the operation with the temp column
+                    # Note: Column is already imported at the top of the file
+                    from sparkless.functions.core.column import Column as Col
+
+                    temp_col = Col(temp_col_name)
+                    if condition.operation == ">":
+                        filter_condition = temp_col > condition.value
+                    elif condition.operation == "<":
+                        filter_condition = temp_col < condition.value
+                    elif condition.operation == ">=":
+                        filter_condition = temp_col >= condition.value
+                    elif condition.operation == "<=":
+                        filter_condition = temp_col <= condition.value
+                    elif condition.operation == "==":
+                        filter_condition = temp_col == condition.value
+                    elif condition.operation == "!=":
+                        filter_condition = temp_col != condition.value
+                    else:
+                        # For other operations, use the temp column directly
+                        filter_condition = temp_col
+                else:
+                    # Simple Column - just use the temp column
+                    # Note: Column is already imported at the top of the file
+                    from sparkless.functions.core.column import Column as Col
+
+                    filter_condition = Col(temp_col_name)
+
+                filter_expr = self.translator.translate(
+                    filter_condition,
+                    available_columns=list(df_with_temp.columns),
+                    case_sensitive=case_sensitive,
+                )
+                result_df = df_with_temp.filter(filter_expr).drop(temp_col_name)
+                return result_df
+
             filter_expr = self.translator.translate(
                 condition,
                 input_col_dtype=input_col_dtype,
@@ -2568,6 +2625,38 @@ class PolarsOperationExecutor:
                     if temp_cols:
                         result_df = result_df.drop(list(temp_cols.values()))
                     return result_df
+
+            # Check if expression is a Column with struct field path (e.g., "StructVal.E1")
+            # This needs special handling to use Polars struct.field() syntax
+            from sparkless.functions.core.column import Column
+
+            if isinstance(expression, Column) and "." in expression.name:
+                # Handle struct field access
+                struct_field_path = expression.name
+                parts = struct_field_path.split(".", 1)
+                struct_col = parts[0]
+                field_name = parts[1]
+
+                # Resolve struct column name case-insensitively
+                from ...core.column_resolver import ColumnResolver
+
+                case_sensitive = self._get_case_sensitive()
+                resolved_struct_col = ColumnResolver.resolve_column_name(
+                    struct_col, list(df.columns), case_sensitive
+                )
+                if resolved_struct_col and resolved_struct_col in df.columns:
+                    # Get struct dtype
+                    struct_dtype = df[resolved_struct_col].dtype
+                    if hasattr(struct_dtype, "fields") and struct_dtype.fields:
+                        # Resolve field name case-insensitively within struct
+                        field_names = [f.name for f in struct_dtype.fields]
+                        resolved_field = ColumnResolver.resolve_column_name(
+                            field_name, field_names, case_sensitive
+                        )
+                        if resolved_field:
+                            # Use Polars struct.field() syntax for nested access
+                            expr = pl.col(resolved_struct_col).struct.field(resolved_field)
+                            return df.with_columns(expr.alias(column_name))
 
             try:
                 # Pass case sensitivity for column resolution

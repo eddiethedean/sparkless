@@ -395,6 +395,41 @@ class Column(ColumnOperatorMixin, IColumn):
         """Hash method to make Column hashable."""
         return hash((self.name, self.column_type))
 
+    def __getitem__(self, key: Any) -> "Column":
+        """Support subscript notation for struct field access.
+
+        Args:
+            key: Field name (string) for struct field access.
+
+        Returns:
+            New Column with the struct field path (e.g., "StructVal.E1").
+
+        Example:
+            >>> F.col("StructVal")["E1"]  # Returns Column("StructVal.E1")
+            >>> df.select(F.col("Person")["name"])
+
+        Note:
+            This enables PySpark-compatible subscript notation for accessing
+            struct fields, matching the behavior of F.col("StructVal.E1").
+        """
+        if not isinstance(key, str):
+            raise TypeError(
+                f"Column subscript access only supports string keys for struct fields, got {type(key).__name__}"
+            )
+
+        # If this column has an alias (via _original_column), use the original column name
+        # for the struct field path, not the alias name
+        # e.g., F.col("StructVal").alias("SV")["E1"] -> Column("StructVal.E1"), not "SV.E1"
+        base_column_name = self.name
+        if hasattr(self, "_original_column") and self._original_column is not None:
+            # Use the original column's name for the struct path
+            base_column_name = self._original_column.name
+
+        # Create a new Column with the struct field path
+        # e.g., F.col("StructVal")["E1"] -> Column("StructVal.E1")
+        field_path = f"{base_column_name}.{key}"
+        return Column(field_path, self.column_type)
+
     def __str__(self) -> str:
         """Return string representation of column for SQL generation."""
         return self.name
