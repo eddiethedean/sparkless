@@ -582,18 +582,26 @@ class PolarsOperationExecutor:
                         col._original_column, "_name"
                     ):
                         # Check original column name for struct field path
-                        if "." in col._original_column._name:
-                            struct_field_path = col._original_column._name
+                        original_col = col._original_column
+                        if (
+                            original_col is not None
+                            and hasattr(original_col, "_name")
+                            and "." in original_col._name
+                        ):
+                            struct_field_path = original_col._name
                     elif hasattr(col, "column") and hasattr(col.column, "name"):
                         # For ColumnOperation, check the column attribute
-                        if "." in col.column.name:
-                            struct_field_path = col.column.name
+                        col_attr = col.column
+                        if col_attr is not None and hasattr(col_attr, "name") and "." in col_attr.name:
+                            struct_field_path = col_attr.name
                     elif isinstance(col, ColumnOperation) and hasattr(col, "column"):
                         # For ColumnOperation, check if column is a Column with struct field
-                        if hasattr(col.column, "_name") and "." in col.column._name:
-                            struct_field_path = col.column._name
-                        elif hasattr(col.column, "name") and "." in col.column.name:
-                            struct_field_path = col.column.name
+                        col_attr = col.column
+                        if col_attr is not None:
+                            if hasattr(col_attr, "_name") and "." in col_attr._name:
+                                struct_field_path = col_attr._name
+                            elif hasattr(col_attr, "name") and "." in col_attr.name:
+                                struct_field_path = col_attr.name
 
                     if struct_field_path:
                         parts = struct_field_path.split(".", 1)
