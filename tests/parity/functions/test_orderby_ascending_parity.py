@@ -4,7 +4,6 @@ PySpark parity tests for Issue #327: orderBy() with ascending parameter.
 These tests verify that Sparkless behavior matches PySpark behavior.
 """
 
-import pytest
 from tests.fixtures.spark_imports import get_spark_imports
 
 

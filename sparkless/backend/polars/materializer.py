@@ -848,9 +848,7 @@ class PolarsMaterializer:
                     ascending = True
                 elif isinstance(payload, (tuple, list)):
                     # Old format: just columns tuple/list
-                    columns = (
-                        tuple(payload) if isinstance(payload, list) else payload
-                    )
+                    columns = tuple(payload) if isinstance(payload, list) else payload
                     ascending = True
                 else:
                     # Old format: single column

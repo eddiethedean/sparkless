@@ -453,7 +453,8 @@ class TransformationOperations(Generic[SupportsDF]):
             columns = tuple(columns[0])  # type: ignore[unreachable]
         # Pass columns and ascending as a tuple: (columns, ascending)
         return cast(
-            "SupportsDF", self._queue_op("orderBy", (columns, ascending))  # type: ignore[redundant-cast,unused-ignore]
+            "SupportsDF",
+            self._queue_op("orderBy", (columns, ascending)),  # type: ignore[redundant-cast,unused-ignore]
         )
 
     def sort(

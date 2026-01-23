@@ -710,6 +710,12 @@ class TransformationService:
         Returns:
             Sorted DataFrame
         """
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.sort(["col1", "col2"]) to work like df.sort("col1", "col2")
+        # Also supports df.sort(df.columns)
+        if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])  # type: ignore[unreachable]
         ascending = kwargs.get("ascending", True)
         return self.orderBy(*columns, ascending=ascending)
 
