@@ -3,19 +3,22 @@
 ## 3.27.0 — Unreleased
 
 ### Added
-- **Issue #326** - Implemented `format_string` function support in Polars backend
+- **Issue #326** (PR #333) - Implemented `format_string` function support in Polars backend
   - Added `format_string` translation in `PolarsExpressionTranslator` to support printf-style string formatting
   - Supports multiple column arguments with format specifiers (%s, %d, %f, etc.)
-  - Handles null values by converting them to empty strings (matching PySpark behavior)
+  - Handles null values by converting them to "null" string (matching PySpark behavior)
+  - Uses Python evaluation fallback via `ExpressionEvaluator` for complex multi-column formatting
   - Works in `withColumn`, `select`, and other DataFrame operations
-  - Comprehensive test coverage: 6 unit tests + 3 PySpark parity tests
+  - Comprehensive test coverage: 15 unit tests + 3 PySpark parity tests
   - Fixes `ValueError: Unsupported function: format_string` error
-- **Issue #328** - Added optional `limit` parameter to `split()` function
+- **Issue #328** (PR #333) - Added optional `limit` parameter to `split()` function
   - Updated `StringFunctions.split()` and `Functions.split()` to accept optional `limit` parameter
-  - Supports limiting the number of times the pattern is applied (PySpark 3.0+ feature)
+  - Supports limiting the maximum number of parts in the result (PySpark 3.0+ feature)
+  - `limit=N` means maximum N parts (e.g., `limit=2` produces 2 parts: `["A", "B,C"]`)
+  - Special cases: `limit=1` returns unsplit string, `limit=0` or `limit=-1` means no limit
   - Default behavior (no limit) remains unchanged for backward compatibility
-  - Polars backend uses `n` parameter to match PySpark behavior
-  - Comprehensive test coverage: 9 unit tests + 4 PySpark parity tests
+  - Uses Python fallback with `str.split(maxsplit=limit-1)` for Polars backend
+  - Comprehensive test coverage: 21 unit tests + 4 PySpark parity tests
   - Fixes `TypeError: Functions.split() takes 2 positional arguments but 3 were given` error
 - **Issue #329** - Fixed `log()` function to support float constants as base argument
   - Updated `log()` function signature to match PySpark: `log(base, column)` or `log(column)` for natural log
