@@ -592,7 +592,11 @@ class PolarsOperationExecutor:
                     elif hasattr(col, "column") and hasattr(col.column, "name"):
                         # For ColumnOperation, check the column attribute
                         col_attr = col.column
-                        if col_attr is not None and hasattr(col_attr, "name") and "." in col_attr.name:
+                        if (
+                            col_attr is not None
+                            and hasattr(col_attr, "name")
+                            and "." in col_attr.name
+                        ):
                             struct_field_path = col_attr.name
                     elif isinstance(col, ColumnOperation) and hasattr(col, "column"):
                         # For ColumnOperation, check if column is a Column with struct field
@@ -2841,9 +2845,15 @@ class PolarsOperationExecutor:
             if operation in ("==", "eqNullSafe"):
                 # Equality-based join - extract column names
                 if not hasattr(on, "column") or not hasattr(on, "value"):
-                    raise ValueError("Join condition must have column and value attributes")
-                left_col = on.column.name if hasattr(on.column, "name") else str(on.column)
-                right_col = on.value.name if hasattr(on.value, "name") else str(on.value)
+                    raise ValueError(
+                        "Join condition must have column and value attributes"
+                    )
+                left_col = (
+                    on.column.name if hasattr(on.column, "name") else str(on.column)
+                )
+                right_col = (
+                    on.value.name if hasattr(on.value, "name") else str(on.value)
+                )
                 left_col_str = str(left_col)
                 right_col_str = str(right_col)
 
@@ -3161,23 +3171,29 @@ class PolarsOperationExecutor:
                     and isinstance(original_value.column, Column)
                 ):
                     # Nested ColumnOperation - check if column needs prefixing
-                    col_name = original_value.column.name
-                    if col_name in df2.columns:
-                        prefixed_name = f"_right_{col_name}"
-                        # Create new ColumnOperation with prefixed column
-                        modified_value = ColumnOperation(
-                            Column(prefixed_name),
-                            original_value.operation,
-                            original_value.value,
-                        )
+                    # operation is always a string for ColumnOperation instances
+                    op = getattr(original_value, "operation", None)
+                    if op is not None:
+                        col_name = original_value.column.name
+                        if col_name in df2.columns:
+                            prefixed_name = f"_right_{col_name}"
+                            # Create new ColumnOperation with prefixed column
+                            modified_value = ColumnOperation(
+                                Column(prefixed_name),
+                                op,
+                                original_value.value,
+                            )
 
                 if modified_value != original_value:
                     # Create new condition with modified value
-                    condition_to_translate = ColumnOperation(
-                        original_column,
-                        condition.operation,
-                        modified_value,
-                    )
+                    # condition.operation is always a string for ColumnOperation instances
+                    op = getattr(condition, "operation", None)
+                    if op is not None:
+                        condition_to_translate = ColumnOperation(
+                            original_column,
+                            op,
+                            modified_value,
+                        )
 
         try:
             # Try to translate the condition
@@ -3196,16 +3212,13 @@ class PolarsOperationExecutor:
                     # No matches - return all left rows with null right columns
                     result_df = df1
                     for col in df2.columns:
-                        if has_conflicts:
-                            prefixed_col = f"_right_{col}"
-                        else:
-                            prefixed_col = col
-                        result_df = result_df.with_columns(pl.lit(None).alias(prefixed_col))
+                        prefixed_col = f"_right_{col}" if has_conflicts else col
+                        result_df = result_df.with_columns(
+                            pl.lit(None).alias(prefixed_col)
+                        )
                     # Remove prefix if needed
                     if has_conflicts:
-                        rename_dict = {
-                            f"_right_{col}": col for col in df2.columns
-                        }
+                        rename_dict = {f"_right_{col}": col for col in df2.columns}
                         result_df = result_df.rename(rename_dict)
                     return result_df
                 elif len(df1.columns) > 0:
@@ -3223,10 +3236,7 @@ class PolarsOperationExecutor:
                         # Add unmatched left rows with null right columns
                         unmatched_with_nulls = unmatched_left
                         for col in df2.columns:
-                            if has_conflicts:
-                                prefixed_col = f"_right_{col}"
-                            else:
-                                prefixed_col = col
+                            prefixed_col = f"_right_{col}" if has_conflicts else col
                             unmatched_with_nulls = unmatched_with_nulls.with_columns(
                                 pl.lit(None).alias(prefixed_col)
                             )
@@ -3236,7 +3246,7 @@ class PolarsOperationExecutor:
                     # For outer joins, also include unmatched right rows
                     # This is more complex and may not be needed for basic cases
                     pass
-        except (ValueError, AttributeError, TypeError) as e:
+        except (ValueError, AttributeError, TypeError):
             # If direct translation fails, use Python fallback
             from sparkless.dataframe.evaluation.expression_evaluator import (
                 ExpressionEvaluator,
@@ -3294,11 +3304,10 @@ class PolarsOperationExecutor:
             rename_dict = {}
             for col in df2.columns:
                 prefixed_col = f"_right_{col}"
-                if prefixed_col in filtered.columns:
-                    # Only rename if the original name doesn't exist (to avoid duplicates)
-                    # If it exists, keep the prefixed name (PySpark keeps both with same name)
-                    if col not in filtered.columns:
-                        rename_dict[prefixed_col] = col
+                # Only rename if the original name doesn't exist (to avoid duplicates)
+                # If it exists, keep the prefixed name (PySpark keeps both with same name)
+                if prefixed_col in filtered.columns and col not in filtered.columns:
+                    rename_dict[prefixed_col] = col
             if rename_dict:
                 filtered = filtered.rename(rename_dict)
 

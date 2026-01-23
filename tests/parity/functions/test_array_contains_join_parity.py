@@ -32,9 +32,7 @@ class TestArrayContainsJoinParity:
                 ]
             )
 
-            result = df1.join(
-                df2, on=F.array_contains(df1.IDs, df2.ID), how="left"
-            )
+            result = df1.join(df2, on=F.array_contains(df1.IDs, df2.ID), how="left")
             rows = result.collect()
 
             assert len(rows) == 2
@@ -71,9 +69,7 @@ class TestArrayContainsJoinParity:
                 ]
             )
 
-            result = df1.join(
-                df2, on=F.array_contains(df1.IDs, df2.ID), how="inner"
-            )
+            result = df1.join(df2, on=F.array_contains(df1.IDs, df2.ID), how="inner")
             rows = result.collect()
 
             assert len(rows) == 3
@@ -110,9 +106,7 @@ class TestArrayContainsJoinParity:
                 ]
             )
 
-            result = df1.join(
-                df2, on=F.array_contains(df1.IDs, df2.ID), how="left"
-            )
+            result = df1.join(df2, on=F.array_contains(df1.IDs, df2.ID), how="left")
             rows = result.collect()
 
             assert len(rows) == 3
