@@ -828,30 +828,31 @@ class PolarsMaterializer:
                 lazy_df = result_df.lazy()
             elif op_name == "orderBy":
                 # OrderBy operation - can be done lazily
-                # Payload can be just columns (tuple) or (columns, ascending)
-                if (
-                    isinstance(payload, tuple)
-                    and len(payload) == 2
-                    and isinstance(payload[1], bool)
-                ):
-                    columns, ascending = payload
-                else:
-                    # Payload is just columns, default to ascending=True
-                    # Handle case where payload is a tuple containing a single list/tuple
-                    # (e.g., when df.sort(["col1", "col2"]) is called)
-                    if (
-                        isinstance(payload, tuple)
-                        and len(payload) == 1
-                        and isinstance(payload[0], (list, tuple))
-                    ):
-                        # Unpack the nested list/tuple
-                        columns = tuple(payload[0])
-                    elif isinstance(payload, (tuple, list)):
-                        columns = (
-                            tuple(payload) if isinstance(payload, list) else payload
-                        )
+                # Payload can be (columns, ascending) tuple or just columns (for backward compatibility)
+                if isinstance(payload, tuple) and len(payload) == 2:
+                    # New format: (columns, ascending)
+                    columns_raw, ascending = payload
+                    # Handle case where columns is a single list/tuple
+                    if isinstance(columns_raw, (list, tuple)):
+                        columns = tuple(columns_raw)
                     else:
-                        columns = (payload,)
+                        columns = (columns_raw,)
+                elif (
+                    isinstance(payload, tuple)
+                    and len(payload) == 1
+                    and isinstance(payload[0], (list, tuple))
+                ):
+                    # Old format: tuple containing a single list/tuple
+                    # (e.g., when df.sort(["col1", "col2"]) is called)
+                    columns = tuple(payload[0])
+                    ascending = True
+                elif isinstance(payload, (tuple, list)):
+                    # Old format: just columns tuple/list
+                    columns = tuple(payload) if isinstance(payload, list) else payload
+                    ascending = True
+                else:
+                    # Old format: single column
+                    columns = (payload,)
                     ascending = True
 
                 # Optimize orderBy columns to use computed columns if available

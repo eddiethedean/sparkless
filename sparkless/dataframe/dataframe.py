@@ -346,9 +346,19 @@ class DataFrame:
         """Alias for dropDuplicates()."""
         return self._transformations.drop_duplicates(subset)
 
-    def orderBy(self, *columns: Union[str, Column]) -> "SupportsDataFrameOps":
-        """Order by columns."""
-        return self._transformations.orderBy(*columns)
+    def orderBy(
+        self, *columns: Union[str, Column], ascending: bool = True
+    ) -> "SupportsDataFrameOps":
+        """Order by columns.
+
+        Args:
+            *columns: Column names or Column objects to order by
+            ascending: Whether to sort in ascending order (default: True)
+
+        Returns:
+            DataFrame sorted by the specified columns
+        """
+        return self._transformations.orderBy(*columns, ascending=ascending)
 
     def sort(
         self, *columns: Union[str, Column], **kwargs: Any

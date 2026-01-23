@@ -683,9 +683,20 @@ class TransformationService:
         """
         return self.dropDuplicates(subset)
 
-    def orderBy(self, *columns: Union[str, Column]) -> "SupportsDataFrameOps":
-        """Order by columns."""
-        return self._df._queue_op("orderBy", columns)
+    def orderBy(
+        self, *columns: Union[str, Column], ascending: bool = True
+    ) -> "SupportsDataFrameOps":
+        """Order by columns.
+
+        Args:
+            *columns: Column names or Column objects to order by
+            ascending: Whether to sort in ascending order (default: True)
+
+        Returns:
+            DataFrame sorted by the specified columns
+        """
+        # Pass columns and ascending as a tuple: (columns, ascending)
+        return self._df._queue_op("orderBy", (columns, ascending))
 
     def sort(
         self, *columns: Union[str, Column], **kwargs: Any
@@ -699,7 +710,14 @@ class TransformationService:
         Returns:
             Sorted DataFrame
         """
-        return self.orderBy(*columns)
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # This allows df.sort(["col1", "col2"]) to work like df.sort("col1", "col2")
+        # Also supports df.sort(df.columns)
+        if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
+            # Unpack list/tuple of columns
+            columns = tuple(columns[0])  # type: ignore[unreachable]
+        ascending = kwargs.get("ascending", True)
+        return self.orderBy(*columns, ascending=ascending)
 
     def limit(self, n: int) -> "SupportsDataFrameOps":
         """Limit number of rows."""

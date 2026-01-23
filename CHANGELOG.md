@@ -3,6 +3,14 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #327** - Added `ascending` parameter support to `orderBy()` method
+  - Updated `orderBy()` method signature to accept optional `ascending` parameter (default: `True`)
+  - Supports `df.orderBy("col", ascending=True)` and `df.orderBy("col", ascending=False)`
+  - Updated `sort()` alias to also support `ascending` parameter via `**kwargs`
+  - Maintains backward compatibility: `orderBy("col")` defaults to ascending order
+  - Updated Polars materializer to handle `ascending` parameter in sort operations
+  - Comprehensive test coverage: 11 unit tests + 3 PySpark parity tests
+  - Fixes `TypeError: DataFrame.orderBy() got an unexpected keyword argument 'ascending'` error
 - **Issue #326** (PR #333) - Implemented `format_string` function support in Polars backend
   - Added `format_string` translation in `PolarsExpressionTranslator` to support printf-style string formatting
   - Supports multiple column arguments with format specifiers (%s, %d, %f, etc.)

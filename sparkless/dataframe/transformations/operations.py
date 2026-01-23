@@ -433,15 +433,29 @@ class TransformationOperations(Generic[SupportsDF]):
         """
         return cast("SupportsDF", self.dropDuplicates(subset))  # type: ignore[redundant-cast,unused-ignore]
 
-    def orderBy(self: SupportsDF, *columns: Union[str, Column]) -> SupportsDF:
-        """Order by columns."""
+    def orderBy(
+        self: SupportsDF, *columns: Union[str, Column], ascending: bool = True
+    ) -> SupportsDF:
+        """Order by columns.
+
+        Args:
+            *columns: Column names or Column objects to order by
+            ascending: Whether to sort in ascending order (default: True)
+
+        Returns:
+            DataFrame sorted by the specified columns
+        """
         # PySpark compatibility: if a single list/tuple is passed, unpack it
         # This allows df.orderBy(["col1", "col2"]) to work like df.orderBy("col1", "col2")
         # Also supports df.orderBy(df.columns)
         if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
             # Unpack list/tuple of columns
             columns = tuple(columns[0])  # type: ignore[unreachable]
-        return cast("SupportsDF", self._queue_op("orderBy", columns))  # type: ignore[redundant-cast,unused-ignore]
+        # Pass columns and ascending as a tuple: (columns, ascending)
+        return cast(
+            "SupportsDF",
+            self._queue_op("orderBy", (columns, ascending)),  # type: ignore[redundant-cast,unused-ignore]
+        )
 
     def sort(
         self: SupportsDF, *columns: Union[str, Column], **kwargs: Any
@@ -461,7 +475,8 @@ class TransformationOperations(Generic[SupportsDF]):
         if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
             # Unpack list/tuple of columns
             columns = tuple(columns[0])  # type: ignore[unreachable]
-        return cast("SupportsDF", self.orderBy(*columns))  # type: ignore[redundant-cast,unused-ignore]
+        ascending = kwargs.get("ascending", True)
+        return cast("SupportsDF", self.orderBy(*columns, ascending=ascending))  # type: ignore[redundant-cast,unused-ignore]
 
     def limit(self: SupportsDF, n: int) -> SupportsDF:
         """Limit number of rows."""
