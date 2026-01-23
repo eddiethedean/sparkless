@@ -5,7 +5,6 @@ These tests verify that Sparkless behavior matches PySpark behavior.
 """
 
 from tests.fixtures.spark_imports import get_spark_imports
-from pyspark.sql import types as T
 
 
 class TestCastAliasSelectParity:
@@ -16,6 +15,7 @@ class TestCastAliasSelectParity:
         spark_imports = get_spark_imports()
         SparkSession = spark_imports.SparkSession
         F = spark_imports.F
+        DoubleType = spark_imports.DoubleType
 
         spark = SparkSession.builder.appName("cast-alias-select-parity").getOrCreate()
         try:
@@ -30,7 +30,7 @@ class TestCastAliasSelectParity:
 
             result = (
                 df.groupBy("Name")
-                .agg(F.mean("Value").cast(T.DoubleType()).alias("AvgValue"))
+                .agg(F.mean("Value").cast(DoubleType()).alias("AvgValue"))
                 .select("Name", "AvgValue")
             )
 
@@ -59,6 +59,8 @@ class TestCastAliasSelectParity:
         spark_imports = get_spark_imports()
         SparkSession = spark_imports.SparkSession
         F = spark_imports.F
+        DoubleType = spark_imports.DoubleType
+        IntegerType = spark_imports.IntegerType
 
         spark = SparkSession.builder.appName("cast-alias-select-parity").getOrCreate()
         try:
@@ -74,8 +76,8 @@ class TestCastAliasSelectParity:
             result = (
                 df.groupBy("Name")
                 .agg(
-                    F.mean("Value").cast(T.DoubleType()).alias("AvgValue"),
-                    F.sum("Score").cast(T.IntegerType()).alias("TotalScore"),
+                    F.mean("Value").cast(DoubleType()).alias("AvgValue"),
+                    F.sum("Score").cast(IntegerType()).alias("TotalScore"),
                 )
                 .select("Name", "AvgValue", "TotalScore")
             )
@@ -104,6 +106,7 @@ class TestCastAliasSelectParity:
         spark_imports = get_spark_imports()
         SparkSession = spark_imports.SparkSession
         F = spark_imports.F
+        DoubleType = spark_imports.DoubleType
 
         spark = SparkSession.builder.appName("cast-alias-select-parity").getOrCreate()
         try:
@@ -118,7 +121,7 @@ class TestCastAliasSelectParity:
 
             result = (
                 df.groupBy("Name")
-                .agg(F.mean("Value").cast(T.DoubleType()).alias("AvgValue"))
+                .agg(F.mean("Value").cast(DoubleType()).alias("AvgValue"))
                 .filter(F.col("AvgValue") > 2.0)
                 .select("Name", "AvgValue")
             )
