@@ -93,7 +93,9 @@ class TestWindowOrderByListParity:
 
             assert len(rows) == 3
             # Each partition should have rank starting at 1
-            type_a_rows = [row for row in rows if row["Type"] == "A" and row["Category"] == "X"]
+            type_a_rows = [
+                row for row in rows if row["Type"] == "A" and row["Category"] == "X"
+            ]
             assert len(type_a_rows) == 2
             assert type_a_rows[0]["Rank"] == 1
             assert type_a_rows[1]["Rank"] == 2

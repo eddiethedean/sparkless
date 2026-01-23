@@ -59,7 +59,9 @@ class WindowSpec:
         self._rows_between: Optional[Tuple[int, int]] = None
         self._range_between: Optional[Tuple[int, int]] = None
 
-    def partitionBy(self, *cols: Union[str, "Column", List[Union[str, "Column"]]]) -> "WindowSpec":
+    def partitionBy(
+        self, *cols: Union[str, "Column", List[Union[str, "Column"]]]
+    ) -> "WindowSpec":
         """Add partition by columns.
 
         Args:
@@ -77,19 +79,25 @@ class WindowSpec:
 
         # Handle case where a single list is passed: partitionBy(["col1", "col2"])
         if len(cols) == 1 and isinstance(cols[0], list):
-            cols = tuple(cols[0])
+            # Unpack the list
+            cols_list: List[Union[str, Column]] = cols[0]
+        else:
+            # Convert tuple to list, filtering out any nested lists (shouldn't happen)
+            cols_list = [col for col in cols if not isinstance(col, list)]
 
-        for col in cols:
+        for col in cols_list:
             # Check if it's a string or has the name attribute (Column-like)
             if not isinstance(col, str) and not hasattr(col, "name"):
                 raise ValueError(
                     f"Invalid column type: {type(col)}. Must be str or Column"
                 )
 
-        self._partition_by = list(cols)
+        self._partition_by = cols_list
         return self
 
-    def orderBy(self, *cols: Union[str, "Column", List[Union[str, "Column"]]]) -> "WindowSpec":
+    def orderBy(
+        self, *cols: Union[str, "Column", List[Union[str, "Column"]]]
+    ) -> "WindowSpec":
         """Add order by columns.
 
         Args:
@@ -107,16 +115,20 @@ class WindowSpec:
 
         # Handle case where a single list is passed: orderBy(["col1", "col2"])
         if len(cols) == 1 and isinstance(cols[0], list):
-            cols = tuple(cols[0])
+            # Unpack the list
+            cols_list: List[Union[str, Column]] = cols[0]
+        else:
+            # Convert tuple to list, filtering out any nested lists (shouldn't happen)
+            cols_list = [col for col in cols if not isinstance(col, list)]
 
-        for col in cols:
+        for col in cols_list:
             # Check if it's a string or has the name attribute (Column-like)
             if not isinstance(col, str) and not hasattr(col, "name"):
                 raise ValueError(
                     f"Invalid column type: {type(col)}. Must be str or Column"
                 )
 
-        self._order_by = list(cols)
+        self._order_by = cols_list
         return self
 
     def rowsBetween(self, start: int, end: int) -> "WindowSpec":
@@ -195,9 +207,11 @@ class Window:
     unboundedFollowing = sys.maxsize
 
     @staticmethod
-    def partitionBy(*cols: Union[str, "Column", List[Union[str, "Column"]]]) -> WindowSpec:
+    def partitionBy(
+        *cols: Union[str, "Column", List[Union[str, "Column"]]],
+    ) -> WindowSpec:
         """Create a window spec with partition by columns.
-        
+
         Args:
             *cols: Column names, "Column" objects, or a list of columns to partition by.
                    If a single list is provided, it will be unpacked.
@@ -207,7 +221,7 @@ class Window:
     @staticmethod
     def orderBy(*cols: Union[str, "Column", List[Union[str, "Column"]]]) -> WindowSpec:
         """Create a window spec with order by columns.
-        
+
         Args:
             *cols: Column names, "Column" objects, or a list of columns to order by.
                    If a single list is provided, it will be unpacked.

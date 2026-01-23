@@ -102,7 +102,9 @@ class TestIssue335WindowOrderByList:
 
             assert len(rows) == 3
             # Each partition should have rank starting at 1
-            type_a_rows = [row for row in rows if row["Type"] == "A" and row["Category"] == "X"]
+            type_a_rows = [
+                row for row in rows if row["Type"] == "A" and row["Category"] == "X"
+            ]
             assert len(type_a_rows) == 2
             assert type_a_rows[0]["Rank"] == 1
             assert type_a_rows[1]["Rank"] == 2
@@ -262,8 +264,7 @@ class TestIssue335WindowOrderByList:
             try:
                 w = Window().orderBy([])
                 result = df.withColumn("Rank", F.row_number().over(w))
-                rows = result.collect()
-                # Should raise error, but if it doesn't, that's also acceptable
+                result.collect()  # Should raise error, but if it doesn't, that's also acceptable
                 # (PySpark might handle empty lists differently)
             except ValueError as e:
                 assert "At least one column" in str(e) or "must be specified" in str(e)
