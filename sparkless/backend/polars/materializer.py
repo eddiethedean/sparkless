@@ -300,8 +300,27 @@ class PolarsMaterializer:
                         available_columns=available_columns,
                     )
                 except ValueError as e:
-                    # Fallback to Python evaluation for unsupported operations (e.g., + with strings)
+                    # Check if this is a WindowFunction comparison that should be handled
                     error_msg = str(e)
+                    from sparkless.functions.window_execution import WindowFunction
+
+                    is_window_function_comparison = (
+                        "WindowFunction comparison" in error_msg
+                        and isinstance(optimized_condition, ColumnOperation)
+                        and isinstance(optimized_condition.column, WindowFunction)
+                    )
+
+                    if is_window_function_comparison:
+                        # Handle WindowFunction comparison in filter
+                        # Use apply_filter which has the WindowFunction comparison handling
+                        df_collected = lazy_df.collect()
+                        filtered_df = self.operation_executor.apply_filter(
+                            df_collected, optimized_condition
+                        )
+                        lazy_df = filtered_df.lazy()
+                        continue
+
+                    # Fallback to Python evaluation for unsupported operations (e.g., + with strings)
                     if "+ operation requires Python evaluation" in error_msg:
                         # Convert to eager DataFrame for Python evaluation
                         df_collected = lazy_df.collect()

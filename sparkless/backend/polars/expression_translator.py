@@ -371,14 +371,21 @@ class PolarsExpressionTranslator:
 
         # Translate left side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
-        # Special case: WindowFunction wrapped in ColumnOperation (e.g., WindowFunction.cast())
-        # should be handled by OperationExecutor.apply_with_column, not here
+        # Special case: WindowFunction wrapped in ColumnOperation
+        # For comparison operations (>, <, ==, etc.), we need to handle them specially
+        # because we need access to the DataFrame to translate the window function
         if isinstance(column, WindowFunction):
-            # WindowFunction can't be translated directly - it raises ValueError
-            # This will be caught and handled in operation_executor.py
-            raise ValueError(
-                "WindowFunction expressions should be handled by OperationExecutor.apply_with_column"
-            )
+            # For comparison operations, we need to raise an error that will be caught
+            # in apply_with_column which has access to the DataFrame
+            if operation in [">", "<", ">=", "<=", "==", "!=", "eqNullSafe"]:
+                raise ValueError(
+                    "WindowFunction comparison expressions should be handled by OperationExecutor.apply_with_column"
+                )
+            else:
+                # For non-comparison operations, raise error
+                raise ValueError(
+                    "WindowFunction expressions should be handled by OperationExecutor.apply_with_column"
+                )
         elif isinstance(column, ColumnOperation):
             left = self._translate_operation(
                 column,

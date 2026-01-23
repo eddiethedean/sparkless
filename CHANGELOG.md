@@ -3,6 +3,20 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #336** - Added support for comparison operators on `WindowFunction` objects
+  - `WindowFunction` now supports comparison operations: `>`, `<`, `>=`, `<=`, `==`, `!=`, `eqNullSafe`
+  - `WindowFunction` now supports null checks: `isnull()`, `isnotnull()`
+  - Enables expressions like `F.row_number().over(w) > 0` and `F.lag("value", 1).over(w).isnull()`
+  - Works in `when()` conditions, `filter()` operations, and direct comparisons
+  - Updated `WindowFunction` class to implement `__gt__`, `__lt__`, `__ge__`, `__le__`, `__eq__`, `__ne__`, `isnull()`, and `isnotnull()` methods
+  - Updated `PolarsOperationExecutor.apply_with_column()` to handle WindowFunction comparisons in `CaseWhen` expressions
+  - Updated `PolarsOperationExecutor.apply_filter()` to handle WindowFunction comparisons in filter conditions
+  - Updated `PolarsMaterializer` to handle WindowFunction comparisons in filter operations
+  - Comprehensive test coverage: 15 unit tests + 3 PySpark parity tests
+  - Edge cases covered: all comparison operators, isnull/isnotnull, multiple when conditions, filter operations, various window functions (row_number, rank, dense_rank, percent_rank, lag, lead, sum)
+  - Integration scenarios: with when/otherwise, filter, select, various window functions
+  - Fixes `TypeError: '>' not supported between instances of 'WindowFunction' and 'int'` error
+  - Matches PySpark behavior for WindowFunction comparison operations
 - **Issue #335** - Added support for list arguments in `Window().orderBy()` and `Window().partitionBy()`
   - `Window().orderBy(["col1", "col2"])` now works, matching PySpark behavior
   - `Window().partitionBy(["col1", "col2"])` now works, matching PySpark behavior

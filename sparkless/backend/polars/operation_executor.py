@@ -184,6 +184,68 @@ class PolarsOperationExecutor:
         Returns:
             Filtered Polars DataFrame
         """
+        # Check if condition is a WindowFunction comparison or isnull/isnotnull
+        is_window_function_comparison = (
+            isinstance(condition, ColumnOperation)
+            and condition.operation in [">", "<", ">=", "<=", "==", "!=", "eqNullSafe"]
+            and isinstance(condition.column, WindowFunction)
+        )
+        is_window_function_isnull = (
+            isinstance(condition, ColumnOperation)
+            and condition.operation in ["isnull", "isnotnull"]
+            and isinstance(condition.column, WindowFunction)
+        )
+
+        if is_window_function_comparison or is_window_function_isnull:
+            # Handle comparison operations or isnull/isnotnull operations with WindowFunction
+            # First, apply the window function to get a temporary column
+            window_func = condition.column
+            operation = condition.operation
+            operation_value = condition.value
+
+            # Apply window function to get a temporary column
+            temp_col_name = "__window_func_temp_filter"
+            df_with_window = self.apply_with_column(
+                df, temp_col_name, window_func, expected_field=None
+            )
+
+            # Now create the operation expression: temp_col_name op value (or isnull/isnotnull)
+            from sparkless.functions.core.column import Column
+
+            temp_col = Column(temp_col_name)
+            if operation == ">":
+                operation_expr = temp_col > operation_value
+            elif operation == "<":
+                operation_expr = temp_col < operation_value
+            elif operation == ">=":
+                operation_expr = temp_col >= operation_value
+            elif operation == "<=":
+                operation_expr = temp_col <= operation_value
+            elif operation == "==":
+                operation_expr = temp_col == operation_value
+            elif operation == "!=":
+                operation_expr = temp_col != operation_value
+            elif operation == "eqNullSafe":
+                operation_expr = temp_col.eqNullSafe(operation_value)
+            elif operation == "isnull":
+                operation_expr = temp_col.isnull()
+            elif operation == "isnotnull":
+                operation_expr = temp_col.isnotnull()
+            else:
+                operation_expr = ColumnOperation(temp_col, operation, operation_value)
+
+            # Translate and apply the filter
+            case_sensitive = self._get_case_sensitive()
+            filter_expr = self.translator.translate(
+                operation_expr,
+                available_columns=list(df_with_window.columns),
+                case_sensitive=case_sensitive,
+            )
+
+            # Apply filter and drop temporary column
+            result_df = df_with_window.filter(filter_expr).drop(temp_col_name)
+            return result_df
+
         # Extract column dtype if condition is a ColumnOperation with isin
         # This enables type coercion for mixed types
         input_col_dtype = None
@@ -203,12 +265,22 @@ class PolarsOperationExecutor:
                 input_col_dtype = df[actual_col_name].dtype
 
         case_sensitive = self._get_case_sensitive()
-        filter_expr = self.translator.translate(
-            condition,
-            input_col_dtype=input_col_dtype,
-            available_columns=list(df.columns),
-            case_sensitive=case_sensitive,
-        )
+        try:
+            filter_expr = self.translator.translate(
+                condition,
+                input_col_dtype=input_col_dtype,
+                available_columns=list(df.columns),
+                case_sensitive=case_sensitive,
+            )
+        except ValueError as e:
+            # Check if this is a WindowFunction comparison that should be handled
+            error_msg = str(e)
+            if "WindowFunction comparison" in error_msg and isinstance(
+                condition, ColumnOperation
+            ):
+                # Recursively handle it (should have been caught above, but handle as fallback)
+                return self.apply_filter(df, condition)
+            raise
         return df.filter(filter_expr)
 
     @profiled("polars.apply_select", category="polars")
@@ -2285,6 +2357,217 @@ class PolarsOperationExecutor:
                         ]:
                             input_col_dtype = pl.Utf8
 
+            # Check if expression is a comparison operation with WindowFunction
+            # (e.g., F.row_number().over(w) > 0)
+            # Also check for isnull/isnotnull operations on WindowFunction
+            is_window_function_comparison = (
+                isinstance(expression, ColumnOperation)
+                and expression.operation
+                in [">", "<", ">=", "<=", "==", "!=", "eqNullSafe"]
+                and isinstance(expression.column, WindowFunction)
+            )
+            is_window_function_isnull = (
+                isinstance(expression, ColumnOperation)
+                and expression.operation in ["isnull", "isnotnull"]
+                and isinstance(expression.column, WindowFunction)
+            )
+
+            if is_window_function_comparison or is_window_function_isnull:
+                # Handle comparison operations or isnull/isnotnull operations with WindowFunction
+                # First, apply the window function to get a temporary column
+                window_func = expression.column
+                operation = expression.operation
+                operation_value = expression.value
+
+                # Apply window function to get a temporary column
+                temp_col_name = f"__window_func_temp_{column_name}"
+                df_with_window = self.apply_with_column(
+                    df, temp_col_name, window_func, expected_field=None
+                )
+
+                # Now create the operation expression: temp_col_name op value (or isnull/isnotnull)
+                from sparkless.functions.core.column import Column
+
+                temp_col = Column(temp_col_name)
+                if operation == ">":
+                    operation_expr = temp_col > operation_value
+                elif operation == "<":
+                    operation_expr = temp_col < operation_value
+                elif operation == ">=":
+                    operation_expr = temp_col >= operation_value
+                elif operation == "<=":
+                    operation_expr = temp_col <= operation_value
+                elif operation == "==":
+                    operation_expr = temp_col == operation_value
+                elif operation == "!=":
+                    operation_expr = temp_col != operation_value
+                elif operation == "eqNullSafe":
+                    operation_expr = temp_col.eqNullSafe(operation_value)
+                elif operation == "isnull":
+                    operation_expr = temp_col.isnull()
+                elif operation == "isnotnull":
+                    operation_expr = temp_col.isnotnull()
+                else:
+                    operation_expr = ColumnOperation(
+                        temp_col, operation, operation_value
+                    )
+
+                # Translate and apply the operation
+                case_sensitive = self._get_case_sensitive()
+                operation_pl_expr = self.translator.translate(
+                    operation_expr,
+                    available_columns=list(df_with_window.columns),
+                    case_sensitive=case_sensitive,
+                )
+
+                # Apply the operation and drop the temporary column
+                result_df = (
+                    df_with_window.with_columns(
+                        pl.col(temp_col_name).alias(column_name)
+                    )
+                    .with_columns(operation_pl_expr.alias(column_name))
+                    .drop(temp_col_name)
+                )
+
+                return result_df
+
+            # Check if expression is a CaseWhen that contains WindowFunction comparisons
+            from sparkless.functions.conditional import CaseWhen
+
+            if isinstance(expression, CaseWhen):
+                # Check if any condition contains a WindowFunction comparison or isnull/isnotnull
+                has_window_function_comparison = False
+                for condition, _ in expression.conditions:
+                    if (
+                        isinstance(condition, ColumnOperation)
+                        and isinstance(condition.column, WindowFunction)
+                        and condition.operation in [
+                            ">",
+                            "<",
+                            ">=",
+                            "<=",
+                            "==",
+                            "!=",
+                            "eqNullSafe",
+                            "isnull",
+                            "isnotnull",
+                        ]
+                    ):
+                        has_window_function_comparison = True
+                        break
+
+                if has_window_function_comparison:
+                    # Handle CaseWhen with WindowFunction comparisons
+                    # First, apply all window functions to get temporary columns
+                    temp_cols: Dict[int, str] = {}
+                    current_df = df
+                    for condition, _ in expression.conditions:
+                        if isinstance(condition, ColumnOperation) and isinstance(
+                            condition.column, WindowFunction
+                        ):
+                            operation = condition.operation
+                            if operation in [
+                                ">",
+                                "<",
+                                ">=",
+                                "<=",
+                                "==",
+                                "!=",
+                                "eqNullSafe",
+                                "isnull",
+                                "isnotnull",
+                            ]:
+                                window_func = condition.column
+                                # Create a unique temp column name
+                                temp_col_name = f"__window_func_temp_{len(temp_cols)}"
+                                temp_cols[id(window_func)] = temp_col_name
+                                # Apply window function
+                                current_df = self.apply_with_column(
+                                    current_df,
+                                    temp_col_name,
+                                    window_func,
+                                    expected_field=None,
+                                )
+
+                    # Now replace WindowFunction comparisons with column comparisons
+                    from sparkless.functions.core.column import Column
+
+                    new_conditions = []
+                    for condition, value in expression.conditions:
+                        if isinstance(condition, ColumnOperation) and isinstance(
+                            condition.column, WindowFunction
+                        ):
+                            operation = condition.operation
+                            if operation in [
+                                ">",
+                                "<",
+                                ">=",
+                                "<=",
+                                "==",
+                                "!=",
+                                "eqNullSafe",
+                                "isnull",
+                                "isnotnull",
+                            ]:
+                                window_func = condition.column
+                                temp_col_name = temp_cols[id(window_func)]
+                                temp_col = Column(temp_col_name)
+                                operation_value = condition.value
+
+                                # Create new operation expression
+                                if operation == ">":
+                                    new_condition = temp_col > operation_value
+                                elif operation == "<":
+                                    new_condition = temp_col < operation_value
+                                elif operation == ">=":
+                                    new_condition = temp_col >= operation_value
+                                elif operation == "<=":
+                                    new_condition = temp_col <= operation_value
+                                elif operation == "==":
+                                    new_condition = temp_col == operation_value
+                                elif operation == "!=":
+                                    new_condition = temp_col != operation_value
+                                elif operation == "eqNullSafe":
+                                    new_condition = temp_col.eqNullSafe(operation_value)
+                                elif operation == "isnull":
+                                    new_condition = temp_col.isnull()
+                                elif operation == "isnotnull":
+                                    new_condition = temp_col.isnotnull()
+                                else:
+                                    # This branch should never be reached due to the if check above
+                                    # But include it for completeness
+                                    # For other operations, create ColumnOperation
+                                    # operation_value can be None for unary operations
+                                    # ColumnOperation accepts Any for value parameter (including None)
+                                    op_str: str = operation  # type: ignore[assignment]
+                                    new_condition = ColumnOperation(
+                                        temp_col, op_str, None, name=None
+                                    )
+                                new_conditions.append((new_condition, value))
+                            else:
+                                new_conditions.append((condition, value))
+                        else:
+                            new_conditions.append((condition, value))
+
+                    # Create new CaseWhen with replaced conditions
+                    new_case_when = CaseWhen()
+                    new_case_when.conditions = new_conditions
+                    new_case_when.default_value = expression.default_value
+
+                    # Translate the new CaseWhen
+                    case_sensitive = self._get_case_sensitive()
+                    expr = self.translator.translate(
+                        new_case_when,
+                        available_columns=list(current_df.columns),
+                        case_sensitive=case_sensitive,
+                    )
+
+                    # Apply the expression and drop temporary columns
+                    result_df = current_df.with_columns(expr.alias(column_name))
+                    if temp_cols:
+                        result_df = result_df.drop(list(temp_cols.values()))
+                    return result_df
+
             try:
                 # Pass case sensitivity for column resolution
                 case_sensitive = self._get_case_sensitive()
@@ -2297,6 +2580,74 @@ class PolarsOperationExecutor:
             except ValueError as e:
                 # Fallback to Python evaluation for unsupported operations (e.g., withField, + with strings, WindowFunction)
                 error_msg = str(e)
+                # Check if this is a WindowFunction comparison that should be handled
+                is_window_function_comparison_fallback = (
+                    isinstance(expression, ColumnOperation)
+                    and expression.operation
+                    in [">", "<", ">=", "<=", "==", "!=", "eqNullSafe"]
+                    and isinstance(expression.column, WindowFunction)
+                ) or (
+                    "WindowFunction comparison" in error_msg
+                    and isinstance(expression, ColumnOperation)
+                    and expression.operation
+                    in [">", "<", ">=", "<=", "==", "!=", "eqNullSafe"]
+                )
+
+                if is_window_function_comparison_fallback:
+                    # Handle comparison operations with WindowFunction
+                    # First, apply the window function to get a temporary column
+                    window_func = expression.column
+                    comparison_op = expression.operation
+                    comparison_value = expression.value
+
+                    # Apply window function to get a temporary column
+                    temp_col_name = f"__window_func_temp_{column_name}"
+                    df_with_window = self.apply_with_column(
+                        df, temp_col_name, window_func, expected_field=None
+                    )
+
+                    # Now create a comparison expression: temp_col_name op value
+                    from sparkless.functions.core.column import Column
+
+                    temp_col = Column(temp_col_name)
+                    if comparison_op == ">":
+                        comparison_expr = temp_col > comparison_value
+                    elif comparison_op == "<":
+                        comparison_expr = temp_col < comparison_value
+                    elif comparison_op == ">=":
+                        comparison_expr = temp_col >= comparison_value
+                    elif comparison_op == "<=":
+                        comparison_expr = temp_col <= comparison_value
+                    elif comparison_op == "==":
+                        comparison_expr = temp_col == comparison_value
+                    elif comparison_op == "!=":
+                        comparison_expr = temp_col != comparison_value
+                    elif comparison_op == "eqNullSafe":
+                        comparison_expr = temp_col.eqNullSafe(comparison_value)
+                    else:
+                        comparison_expr = ColumnOperation(
+                            temp_col, comparison_op, comparison_value
+                        )
+
+                    # Translate and apply the comparison
+                    case_sensitive = self._get_case_sensitive()
+                    comparison_pl_expr = self.translator.translate(
+                        comparison_expr,
+                        available_columns=list(df_with_window.columns),
+                        case_sensitive=case_sensitive,
+                    )
+
+                    # Apply the comparison and drop the temporary column
+                    result_df = (
+                        df_with_window.with_columns(
+                            pl.col(temp_col_name).alias(column_name)
+                        )
+                        .with_columns(comparison_pl_expr.alias(column_name))
+                        .drop(temp_col_name)
+                    )
+
+                    return result_df
+
                 # Check if this is a WindowFunction cast that should be handled above
                 # Check both the expression structure and the error message
                 is_window_function_cast_fallback = (
