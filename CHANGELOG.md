@@ -3,6 +3,16 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #331** - Added support for `array_contains()` as join condition
+  - Join operations now support expression-based conditions like `F.array_contains(df1.IDs, df2.ID)`
+  - Updated `apply_join()` to accept ColumnOperation with any operation (not just equality)
+  - Implemented `_apply_expression_join()` method that performs cross join + filter for expression-based joins
+  - Handles column name conflicts by prefixing right DataFrame columns when needed
+  - Supports all join types (inner, left, right, outer) with expression conditions
+  - Comprehensive test coverage: 14 unit tests + 3 PySpark parity tests
+  - Edge cases covered: no matches, multiple matches, null arrays, null IDs, column name conflicts, empty DataFrames
+  - Integration scenarios: with select, filter, orderBy, groupBy, chained joins
+  - Fixes `ValueError: Join keys must be column name(s) or a ColumnOperation` error
 - **Issue #330** (PR #340) - Fixed struct field selection with alias
   - Struct field extraction now works correctly when combined with alias (e.g., `F.col("StructValue.E1").alias("E1-Extract")`)
   - Updated `PolarsOperationExecutor.apply_select()` to check original column name (`_original_column._name`) for struct field paths when column is aliased
