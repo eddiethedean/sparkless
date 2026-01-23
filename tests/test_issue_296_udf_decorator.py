@@ -282,10 +282,56 @@ class TestIssue296UdfDecorator:
                 .withColumn("is_even", is_even(F.col("value")))
             )
 
+            # Verify column names are correct
+            assert "square" in result.columns
+            assert "half" in result.columns
+            assert "is_even" in result.columns
+            assert "value" in result.columns
+
             rows = result.collect()
-            assert rows[0]["square"] == 25
-            assert rows[0]["half"] == 2.5
-            assert rows[0]["is_even"] is False
+            assert len(rows) == 1
+
+            # Use explicit column selection to avoid ordering issues
+            row = rows[0]
+
+            # Verify row structure first
+            row_dict = row.asDict() if hasattr(row, "asDict") else dict(row)
+            assert "square" in row_dict, (
+                f"Missing 'square' column. Available: {list(row_dict.keys())}"
+            )
+            assert "half" in row_dict, (
+                f"Missing 'half' column. Available: {list(row_dict.keys())}"
+            )
+            assert "is_even" in row_dict, (
+                f"Missing 'is_even' column. Available: {list(row_dict.keys())}"
+            )
+
+            # Extract values with explicit type checking
+            square_val = row_dict["square"]
+            half_val = row_dict["half"]
+            is_even_val = row_dict["is_even"]
+
+            # Verify types match expectations
+            assert isinstance(square_val, (int, type(None))), (
+                f"square should be int, got {type(square_val)}: {square_val}"
+            )
+            assert isinstance(half_val, (float, type(None))), (
+                f"half should be float, got {type(half_val)}: {half_val}"
+            )
+            assert isinstance(is_even_val, (bool, type(None))), (
+                f"is_even should be bool, got {type(is_even_val)}: {is_even_val}"
+            )
+
+            # Verify each value with clear error messages
+            assert square_val == 25, (
+                f"Expected square=25, got {square_val} (type: {type(square_val)})"
+            )
+            assert half_val == 2.5, (
+                f"Expected half=2.5, got {half_val} (type: {type(half_val)})"
+            )
+            assert is_even_val is False, (
+                f"Expected is_even=False, got {is_even_val} (type: {type(is_even_val)})"
+            )
         finally:
             spark.stop()
 

@@ -2057,6 +2057,92 @@ class SQLExecutor:
 
         query = original_query.upper() if original_query else ""
 
+        if "DETAIL" in query:
+            # DESCRIBE DETAIL table_name
+            match = re.search(
+                r"DESCRIBE\s+DETAIL\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE
+            )
+            if match:
+                table_name = match.group(1)
+
+                # Parse schema and table
+                if "." in table_name:
+                    schema_name, table_only = table_name.split(".", 1)
+                else:
+                    schema_name, table_only = "default", table_name
+
+                # Get table metadata
+                storage = getattr(self.session, "_storage", None)
+                if storage is None:
+                    storage = self.session.catalog.get_storage_backend()
+                meta = storage.get_table_metadata(schema_name, table_only)
+
+                if not meta or meta.get("format") != "delta":
+                    from ...errors import AnalysisException
+
+                    raise AnalysisException(
+                        f"Table {table_name} is not a Delta table. "
+                        "DESCRIBE DETAIL can only be used with Delta format tables."
+                    )
+
+                # Create mock table details matching Delta Lake schema
+                from ...spark_types import (
+                    StructType,
+                    StructField,
+                    StringType,
+                    LongType,
+                    ArrayType,
+                    MapType,
+                )
+
+                details = [
+                    {
+                        "format": "delta",
+                        "id": f"mock-table-{hash(table_name)}",
+                        "name": table_name,
+                        "description": meta.get("description"),
+                        "location": meta.get(
+                            "location", f"/mock/delta/{table_name.replace('.', '/')}"
+                        ),
+                        "createdAt": meta.get(
+                            "created_at", "2024-01-01T00:00:00.000+0000"
+                        ),
+                        "lastModified": meta.get(
+                            "last_modified", "2024-01-01T00:00:00.000+0000"
+                        ),
+                        "partitionColumns": meta.get("partition_columns", []),
+                        "numFiles": meta.get("num_files", 1),
+                        "sizeInBytes": meta.get("size_in_bytes", 1024),
+                        "properties": meta.get("properties", {}),
+                        "minReaderVersion": meta.get("min_reader_version", 1),
+                        "minWriterVersion": meta.get("min_writer_version", 2),
+                    }
+                ]
+
+                detail_schema = StructType(
+                    [
+                        StructField("format", StringType()),
+                        StructField("id", StringType()),
+                        StructField("name", StringType()),
+                        StructField("description", StringType()),
+                        StructField("location", StringType()),
+                        StructField("createdAt", StringType()),
+                        StructField("lastModified", StringType()),
+                        StructField("partitionColumns", ArrayType(StringType())),
+                        StructField("numFiles", LongType()),
+                        StructField("sizeInBytes", LongType()),
+                        StructField("properties", MapType(StringType(), StringType())),
+                        StructField("minReaderVersion", LongType()),
+                        StructField("minWriterVersion", LongType()),
+                    ]
+                )
+
+                from typing import cast
+
+                from ...dataframe import DataFrame
+
+                return cast("IDataFrame", DataFrame(details, detail_schema, storage))
+
         if "HISTORY" in query:
             # DESCRIBE HISTORY table_name
             match = re.search(
@@ -2169,22 +2255,17 @@ class SQLExecutor:
 
             raise AnalysisException(f"Table or view not found: {table_name}")
 
-        schema = table_df.schema
+        table_schema: StructType = table_df.schema  # type: ignore[assignment]
 
         if column_name:
             # DESCRIBE specific column
             field = None
-            for f in schema.fields:
+            for f in table_schema.fields:
                 if f.name.lower() == column_name.lower():
                     field = f
                     break
             if not field:
                 return cast("IDataFrame", DataFrame([], StructType([])))
-
-            # Cast to StructField to access dataType attribute
-            from ...spark_types import StructField as StructFieldType
-
-            field = cast("StructFieldType", field)
 
             comment = ""
             if field.metadata is not None and hasattr(field.metadata, "get"):
@@ -2205,24 +2286,20 @@ class SQLExecutor:
             )
         else:
             # DESCRIBE table (all columns)
-            from ...spark_types import StructField as StructFieldType
-
             data = []
-            for f in schema.fields:
-                # Cast to StructField to access dataType attribute
-                field = cast("StructFieldType", f)
+            for f in table_schema.fields:
                 row = {
-                    "col_name": field.name,
-                    "data_type": str(field.dataType),
+                    "col_name": f.name,
+                    "data_type": str(f.dataType),
                 }
                 if is_extended:
                     # Add extended info
                     comment = ""
-                    if field.metadata is not None and hasattr(field.metadata, "get"):
-                        comment = field.metadata.get("comment", "")
+                    if f.metadata is not None and hasattr(f.metadata, "get"):
+                        comment = f.metadata.get("comment", "")
                     row["comment"] = comment
                     # Add nullable info (basic)
-                    row["nullable"] = "true" if field.nullable else "false"
+                    row["nullable"] = "true" if f.nullable else "false"
                 data.append(row)
 
             if is_extended:

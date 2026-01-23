@@ -3,6 +3,28 @@
 ## 3.27.0 — Unreleased
 
 ### Fixed
+- **PySpark 3.5+ compatibility for DESCRIBE DETAIL tests**
+  - Updated DESCRIBE DETAIL tests to be compatible with PySpark 3.5+ behavior changes
+  - Fixed table overwrite operations: Replaced `mode("overwrite")` with `saveAsTable()` and explicit `DROP TABLE IF EXISTS` statements, as PySpark 3.5+ doesn't support `mode("overwrite")` with Delta tables
+  - Enhanced `DeltaTable.detail()` method to handle PySpark sessions by detecting PySpark sessions and returning appropriate DataFrame types
+  - Updated `test_describe_detail_non_delta_table_raises` to handle PySpark 3.5+ behavior where DESCRIBE DETAIL on non-Delta tables may not raise immediately but returns invalid results
+  - Updated `test_describe_detail_matches_delta_table_detail` to work in both PySpark and mock-spark modes:
+    - In PySpark mode: Uses real DeltaTable API from delta-spark and compares to SQL results
+    - In mock-spark mode: Uses mock DeltaTable API and compares to SQL results
+  - Added 11 new robust test cases covering:
+    - Empty Delta tables
+    - Non-existent table error handling
+    - Multiple writes/append operations
+    - Complex schemas (arrays, maps)
+    - All required DESCRIBE DETAIL columns
+    - Multiple partition columns
+    - Table properties
+    - Overwrite operations
+    - Special characters in table names
+    - Large datasets
+    - Various data types (Integer, String, Double, Boolean)
+  - All 16 tests now pass in both PySpark 3.5+ and mock-spark modes
+  - Tests use appropriate schema types (PySpark types in PySpark mode, mock types in mock-spark mode) for cross-mode compatibility
 - **Window function alias extraction in Python evaluation path**
   - Fixed issue where Python-evaluated window functions (e.g., `percent_rank()`, `ntile()`) in `apply_select` were using default aliases (e.g., `percent_rank_window`) instead of user-defined aliases (e.g., `percentile`)
   - Updated alias extraction in Python evaluation path to use `original_col_for_alias` instead of the processed `col`, matching the non-Python path behavior
