@@ -3,6 +3,16 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #335** - Added support for list arguments in `Window().orderBy()` and `Window().partitionBy()`
+  - `Window().orderBy(["col1", "col2"])` now works, matching PySpark behavior
+  - `Window().partitionBy(["col1", "col2"])` now works, matching PySpark behavior
+  - Updated `WindowSpec.orderBy()` and `WindowSpec.partitionBy()` to unpack single list arguments
+  - Updated `Window.orderBy()` and `Window.partitionBy()` static methods to support lists
+  - Supports lists containing strings, Column objects, or mixed types
+  - Maintains backward compatibility: individual arguments still work (e.g., `orderBy("col1", "col2")`)
+  - Comprehensive test coverage: 14 unit tests + 3 PySpark parity tests
+  - Edge cases covered: single column lists, multiple columns, Column objects, mixed types, with window functions, with rowsBetween
+  - Fixes `ValueError: Invalid column type: <class 'list'>. Must be str or Column` error
 - **Issue #331** (PR #341) - Added support for `array_contains()` as join condition
   - Join operations now support expression-based conditions like `F.array_contains(df1.IDs, df2.ID)`
   - Updated `apply_join()` to accept ColumnOperation with any operation (not just equality)
