@@ -3,6 +3,15 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #337** - Added `mean()` method to `GroupedData` class
+  - `GroupedData.mean()` is now available as an alias for `GroupedData.avg()`
+  - Enables expressions like `df.groupBy("Name").mean("Value")`
+  - Matches PySpark behavior where `mean()` is an alias for `avg()`
+  - Supports single column, multiple columns, Column objects, and no columns (same as `avg()`)
+  - Comprehensive test coverage: 15 unit tests + 3 PySpark parity tests
+  - Edge cases covered: null values, float values, negative values, zero values, single row per group, empty DataFrames, multiple group columns
+  - Integration scenarios: with select, filter, orderBy, chained operations
+  - Fixes `AttributeError: 'GroupedData' object has no attribute 'mean'` error
 - **Issue #336** - Added support for comparison operators on `WindowFunction` objects
   - `WindowFunction` now supports comparison operations: `>`, `<`, `>=`, `<=`, `==`, `!=`, `eqNullSafe`
   - `WindowFunction` now supports null checks: `isnull()`, `isnotnull()`

@@ -1904,6 +1904,21 @@ class GroupedData:
         ]
         return self.agg(*exprs)
 
+    def mean(self, *columns: Union[str, Column]) -> "DataFrame":
+        """Mean grouped data (alias for avg).
+
+        Args:
+            *columns: Columns to get mean of.
+
+        Returns:
+            DataFrame with mean aggregations.
+
+        Example:
+            >>> df.groupBy("Name").mean("Value")
+        """
+        # mean() is an alias for avg() in PySpark
+        return self.avg(*columns)
+
     def count(self, *columns: Union[str, Column]) -> "DataFrame":
         """Count grouped data.
 
