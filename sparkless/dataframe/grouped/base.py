@@ -263,17 +263,56 @@ class GroupedData:
                                     str(agg_result) if agg_result is not None else None
                                 )
 
-                            # Generate proper column name for cast operation (PySpark format)
-                            # Format: CAST(avg(value) AS STRING)
-                            if cast_type is not None:
-                                type_name = str(cast_type).upper()
-                            elif isinstance(expr, ColumnOperation) and hasattr(
-                                expr, "value"
-                            ):
-                                type_name = str(expr.value).upper()
+                            # Check for alias first - if alias is set, use it instead of CAST expression
+                            # This fixes issue #332: cast+alias+select should use alias name
+                            if hasattr(expr, "_alias_name") and expr._alias_name:
+                                result_key = expr._alias_name
+                            elif hasattr(expr, "name") and expr.name:
+                                # Check if expr.name is an alias (not the column name and not a CAST expression)
+                                # For cast operations without alias, expr.name returns the column name
+                                # For cast operations with alias, expr.name returns the alias
+                                # We need to distinguish between these cases
+                                expr_name = expr.name
+                                column_name = (
+                                    cast_agg_func.name
+                                    if hasattr(cast_agg_func, "name")
+                                    else str(cast_agg_func)
+                                )
+                                # If name is different from column name and doesn't start with "CAST(",
+                                # it's likely an alias
+                                if (
+                                    expr_name != column_name
+                                    and not expr_name.startswith("CAST(")
+                                ):
+                                    result_key = expr_name
+                                else:
+                                    # Generate proper column name for cast operation (PySpark format)
+                                    # Format: CAST(avg(value) AS STRING)
+                                    if cast_type is not None:
+                                        type_name = str(cast_type).upper()
+                                    elif isinstance(expr, ColumnOperation) and hasattr(
+                                        expr, "value"
+                                    ):
+                                        type_name = str(expr.value).upper()
+                                    else:
+                                        type_name = "STRING"
+                                    result_key = (
+                                        f"CAST({cast_agg_func.name} AS {type_name})"
+                                    )
                             else:
-                                type_name = "STRING"
-                            result_key = f"CAST({cast_agg_func.name} AS {type_name})"
+                                # Generate proper column name for cast operation (PySpark format)
+                                # Format: CAST(avg(value) AS STRING)
+                                if cast_type is not None:
+                                    type_name = str(cast_type).upper()
+                                elif isinstance(expr, ColumnOperation) and hasattr(
+                                    expr, "value"
+                                ):
+                                    type_name = str(expr.value).upper()
+                                else:
+                                    type_name = "STRING"
+                                result_key = (
+                                    f"CAST({cast_agg_func.name} AS {type_name})"
+                                )
                             result_value = cast_result
                         else:
                             # Regular cast operation (not on aggregate)

@@ -572,8 +572,39 @@ class PolarsOperationExecutor:
                     alias_name = getattr(col, "name", None) or getattr(
                         col, "_alias_name", None
                     )
+                    # Check for struct field access - need to check original column name if aliased
+                    # When F.col("StructValue.E1").alias("E1-Extract") is used, col.name is the alias,
+                    # but we need to check col._original_column._name or col.column.name for the struct path
+                    struct_field_path = None
                     if hasattr(col, "name") and "." in col.name:
-                        parts = col.name.split(".", 1)
+                        struct_field_path = col.name
+                    elif hasattr(col, "_original_column") and hasattr(
+                        col._original_column, "_name"
+                    ):
+                        # Check original column name for struct field path
+                        original_col = col._original_column
+                        if (
+                            original_col is not None
+                            and hasattr(original_col, "_name")
+                            and "." in original_col._name
+                        ):
+                            struct_field_path = original_col._name
+                    elif hasattr(col, "column") and hasattr(col.column, "name"):
+                        # For ColumnOperation, check the column attribute
+                        col_attr = col.column
+                        if col_attr is not None and hasattr(col_attr, "name") and "." in col_attr.name:
+                            struct_field_path = col_attr.name
+                    elif isinstance(col, ColumnOperation) and hasattr(col, "column"):
+                        # For ColumnOperation, check if column is a Column with struct field
+                        col_attr = col.column
+                        if col_attr is not None:
+                            if hasattr(col_attr, "_name") and "." in col_attr._name:
+                                struct_field_path = col_attr._name
+                            elif hasattr(col_attr, "name") and "." in col_attr.name:
+                                struct_field_path = col_attr.name
+
+                    if struct_field_path:
+                        parts = struct_field_path.split(".", 1)
                         struct_col, field_name = parts[0], parts[1]
                         from ...core.column_resolver import ColumnResolver
 
@@ -597,7 +628,7 @@ class PolarsOperationExecutor:
                                     if alias_name:
                                         expr = expr.alias(alias_name)
                                     select_exprs.append(expr)
-                                    select_names.append(alias_name or col.name)
+                                    select_names.append(alias_name or struct_field_path)
                                     continue
                     try:
                         case_sensitive = self._get_case_sensitive()
@@ -1221,9 +1252,22 @@ class PolarsOperationExecutor:
                 )
 
                 # Handle nested struct field access for Column objects (e.g., F.col("Person.name"))
+                # When F.col("StructValue.E1").alias("E1-Extract") is used, col.name is the alias,
+                # but we need to check col._original_column._name for the struct field path
+                struct_field_path = None
                 if hasattr(col, "name") and "." in col.name:
+                    struct_field_path = col.name
+                elif (
+                    hasattr(col, "_original_column")
+                    and hasattr(col._original_column, "_name")
+                    and "." in col._original_column._name
+                ):
+                    # Check original column name for struct field path (for aliased columns)
+                    struct_field_path = col._original_column._name
+
+                if struct_field_path:
                     # Split into struct column and field name
-                    parts = col.name.split(".", 1)
+                    parts = struct_field_path.split(".", 1)
                     struct_col = parts[0]
                     field_name = parts[1]
 
@@ -1251,7 +1295,7 @@ class PolarsOperationExecutor:
                                 if alias_name:
                                     expr = expr.alias(alias_name)
                                 select_exprs.append(expr)
-                                select_names.append(alias_name or col.name)
+                                select_names.append(alias_name or struct_field_path)
                                 continue
 
                 try:
