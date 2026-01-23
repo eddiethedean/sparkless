@@ -3,17 +3,23 @@
 ## 3.27.0 — Unreleased
 
 ### Added
-- **Issue #330** - Fixed struct field selection with alias
+- **Issue #330** (PR #340) - Fixed struct field selection with alias
   - Struct field extraction now works correctly when combined with alias (e.g., `F.col("StructValue.E1").alias("E1-Extract")`)
-  - Updated `apply_select()` to check original column name (`_original_column._name`) for struct field paths when column is aliased
+  - Updated `PolarsOperationExecutor.apply_select()` to check original column name (`_original_column._name`) for struct field paths when column is aliased
   - Handles both Column and ColumnOperation objects with aliases
-  - Comprehensive test coverage: 8 unit tests + 3 PySpark parity tests
+  - Supports struct field extraction in `select()`, `withColumn()`, joins, unions, groupBy, and window functions
+  - Comprehensive test coverage: 20 unit tests + 3 PySpark parity tests
+  - Edge cases covered: empty DataFrames, all null structs, mixed nulls, different data types, case sensitivity, special characters
   - Fixes `polars.exceptions.ColumnNotFoundError: unable to find column "StructValue.E1"` error
-- **Issue #332** - Fixed column resolution for cast+alias+select operations
+- **Issue #332** (PR #340) - Fixed column resolution for cast+alias+select operations
   - Column names are now correctly resolved when combining aggregation, cast, alias, and select operations
   - Updated `GroupedData.agg()` to check for alias name (`_alias_name` or `expr.name`) before generating CAST expression name
   - Schema now correctly uses alias name (e.g., "AvgValue") instead of CAST expression (e.g., "CAST(avg(Value) AS DOUBLETYPE(...))")
-  - Comprehensive test coverage: 8 unit tests + 3 PySpark parity tests
+  - Maintains backward compatibility: cast operations without alias still generate CAST expression format
+  - Supports all aggregation functions (count, sum, avg, min, max) with cast+alias+select
+  - Works with joins, unions, window functions, filters, orderBy, limit, and distinct operations
+  - Comprehensive test coverage: 20 unit tests + 3 PySpark parity tests
+  - Edge cases covered: empty DataFrames, all null values, mixed nulls, multiple casts on same column, schema verification
   - Fixes `SparkColumnNotFoundError: cannot resolve 'AvgValue'` error
 - **Issue #327** - Added `ascending` parameter support to `orderBy()` method
   - Updated `orderBy()` method signature to accept optional `ascending` parameter (default: `True`)
