@@ -182,24 +182,50 @@ class MathFunctions:
 
     @staticmethod
     def log(
-        column: Union[Column, str], base: Optional[float] = None
+        base: Union[Column, str, float, int, None],
+        column: Optional[Union[Column, str]] = None,
     ) -> ColumnOperation:
         """Get logarithm.
 
+        PySpark signature: log(base, column) or log(column) for natural log.
+
         Args:
-            column: The column to get logarithm of.
-            base: Optional base for logarithm (default: natural log).
+            base: Base for logarithm. Can be a float/int constant or Column.
+                  If column is None, base is treated as the column (natural log).
+            column: The column to get logarithm of. If None, base is the column (natural log).
 
         Returns:
             ColumnOperation representing the log function.
         """
-        if isinstance(column, str):
-            column = Column(column)
+        # Handle PySpark's two signatures:
+        # 1. log(column) - natural log
+        # 2. log(base, column) - log with base
+        if column is None:
+            # log(column) - natural log, base is actually the column
+            if isinstance(base, str):
+                column = Column(base)
+            elif isinstance(base, Column):
+                column = base
+            else:
+                raise TypeError("log() requires a column when called with one argument")
+            base = None
+        else:
+            # log(base, column) - log with base
+            if isinstance(column, str):
+                column = Column(column)
+            # base can be float, int, or Column
+            if isinstance(base, str):
+                base = Column(base)
 
         # PySpark's log() uses natural logarithm and names the column with 'ln'
-        name = (
-            f"log({base}, {column.name})" if base is not None else f"ln({column.name})"
-        )
+        if base is None:
+            name = f"ln({column.name})"
+        elif isinstance(base, (int, float)):
+            name = f"log({base}, {column.name})"
+        else:
+            # base is a Column
+            name = f"log({base.name}, {column.name})"
+
         operation = ColumnOperation(column, "log", base, name=name)
         return operation
 

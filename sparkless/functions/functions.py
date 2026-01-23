@@ -711,10 +711,14 @@ class Functions:
 
     @staticmethod
     def log(
-        column: Union[Column, str], base: Optional[float] = None
+        base: Union[Column, str, float, int, None],
+        column: Optional[Union[Column, str]] = None,
     ) -> ColumnOperation:
-        """Logarithm."""
-        return MathFunctions.log(column, base)
+        """Logarithm.
+
+        PySpark signature: log(base, column) or log(column) for natural log.
+        """
+        return MathFunctions.log(base, column)
 
     @staticmethod
     def log10(column: Union[Column, str]) -> ColumnOperation:

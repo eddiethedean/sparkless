@@ -17,6 +17,13 @@
   - Polars backend uses `n` parameter to match PySpark behavior
   - Comprehensive test coverage: 9 unit tests + 4 PySpark parity tests
   - Fixes `TypeError: Functions.split() takes 2 positional arguments but 3 were given` error
+- **Issue #329** - Fixed `log()` function to support float constants as base argument
+  - Updated `log()` function signature to match PySpark: `log(base, column)` or `log(column)` for natural log
+  - Supports both float/int constants and Column objects as base argument
+  - Fixed Polars translation to compute log_base(value) = log(value) / log(base) for constant bases
+  - Maintains backward compatibility: `log(column)` still works for natural logarithm
+  - Comprehensive test coverage: 8 unit tests + 3 PySpark parity tests
+  - Fixes `AttributeError: 'float' object has no attribute 'name'` error
 
 ### Fixed
 - **PySpark 3.5+ compatibility for DESCRIBE DETAIL tests**

@@ -4292,7 +4292,7 @@ class PolarsExpressionTranslator:
             "floor": lambda e: e.floor(),
             "sqrt": lambda e: e.sqrt(),
             "exp": lambda e: e.exp(),
-            "log": lambda e: e.log(),
+            "log": lambda e: self._log_expr(e, op),
             "log10": lambda e: e.log10(),
             "sin": lambda e: e.sin(),
             "cos": lambda e: e.cos(),
@@ -4483,6 +4483,35 @@ class PolarsExpressionTranslator:
                         return func(self.translate(op.value))
                     return func()
             raise ValueError(f"Unsupported function: {function_name}")
+
+    def _log_expr(self, expr: pl.Expr, op: ColumnOperation) -> pl.Expr:
+        """Get logarithm expression, handling base parameter.
+
+        Args:
+            expr: Polars expression (the column value)
+            op: ColumnOperation with base in op.value
+
+        Returns:
+            Polars expression for logarithm
+        """
+        base = op.value
+        if base is None:
+            # Natural logarithm: log(x)
+            return expr.log()
+        else:
+            # Logarithm with base: log_base(x) = log(x) / log(base)
+            # Handle both constant and Column bases
+            if isinstance(base, (int, float)):
+                # Constant base: use pl.lit
+                base_expr = pl.lit(float(base))
+            elif isinstance(base, (Column, ColumnOperation)):
+                # Column base: translate it
+                base_expr = self.translate(base)
+            else:
+                # Fallback: try to convert to float
+                base_expr = pl.lit(float(base))
+            # Compute log_base(value) = log(value) / log(base)
+            return expr.log() / base_expr.log()
 
     def _last_day_expr(self, expr: pl.Expr) -> pl.Expr:
         """Get last day of month for a date column.
