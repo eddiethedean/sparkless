@@ -8,13 +8,18 @@
   - `WindowFunction` now supports null checks: `isnull()`, `isnotnull()`
   - Enables expressions like `F.row_number().over(w) > 0` and `F.lag("value", 1).over(w).isnull()`
   - Works in `when()` conditions, `filter()` operations, and direct comparisons
-  - Updated `WindowFunction` class to implement `__gt__`, `__lt__`, `__ge__`, `__le__`, `__eq__`, `__ne__`, `isnull()`, and `isnotnull()` methods
+  - Updated `WindowFunction` class to implement `__gt__`, `__lt__`, `__ge__`, `__le__`, `__eq__`, `__ne__`, `isnull()`, `isnotnull()`, and `eqNullSafe()` methods
   - Updated `PolarsOperationExecutor.apply_with_column()` to handle WindowFunction comparisons in `CaseWhen` expressions
   - Updated `PolarsOperationExecutor.apply_filter()` to handle WindowFunction comparisons in filter conditions
   - Updated `PolarsMaterializer` to handle WindowFunction comparisons in filter operations
-  - Comprehensive test coverage: 15 unit tests + 3 PySpark parity tests
-  - Edge cases covered: all comparison operators, isnull/isnotnull, multiple when conditions, filter operations, various window functions (row_number, rank, dense_rank, percent_rank, lag, lead, sum)
-  - Integration scenarios: with when/otherwise, filter, select, various window functions
+  - Updated `PolarsExpressionTranslator` to delegate WindowFunction comparison handling to OperationExecutor
+  - Comprehensive test coverage: 62 unit tests covering all comparison operators, null checks, and extensive edge cases
+  - Edge cases covered: all comparison operators, isnull/isnotnull, eqNullSafe, null values, empty DataFrames, single row, large datasets, multiple window functions, arithmetic operations, select, orderBy, groupBy, join, union, distinct, limit, chained operations, nested select, complex case/when chains, coalesce, cast
+  - Window function variations: row_number, rank, dense_rank, percent_rank, lag, lead, sum, avg, max, min, count, ntile, cume_dist, first_value, last_value, countDistinct
+  - Data type variations: strings, floats, negative values, zero values, duplicate scores, all null partitions, mixed types
+  - Window specifications: multiple partitions, no partition, rowsBetween, rangeBetween, multiple orderBy columns, desc/asc ordering
+  - Integration scenarios: with when/otherwise, filter, select, orderBy, groupBy, join, union, distinct, limit, chained operations, nested selects, case/when chains, coalesce, cast, complex filters, schema verification
+  - All tests pass in both sparkless and PySpark modes (62 tests, 100% PySpark parity)
   - Fixes `TypeError: '>' not supported between instances of 'WindowFunction' and 'int'` error
   - Matches PySpark behavior for WindowFunction comparison operations
 - **Issue #335** - Added support for list arguments in `Window().orderBy()` and `Window().partitionBy()`
