@@ -621,14 +621,11 @@ class TestIssue336WindowFunctionComparison:
 
             w = Window().partitionBy("Type").orderBy(F.col("Score").desc())
             # First compute the arithmetic operation as a column
-            result = (
-                df.withColumn("RankPlusOne", (F.row_number().over(w) + 1))
-                .withColumn(
-                    "GT-Two",
-                    F.when(F.col("RankPlusOne") > 2, F.lit(True)).otherwise(
-                        F.lit(False)
-                    ),
-                )
+            result = df.withColumn(
+                "RankPlusOne", (F.row_number().over(w) + 1)
+            ).withColumn(
+                "GT-Two",
+                F.when(F.col("RankPlusOne") > 2, F.lit(True)).otherwise(F.lit(False)),
             )
             rows = result.collect()
 
@@ -949,7 +946,9 @@ class TestIssue336WindowFunctionComparison:
                 F.when(F.row_number().over(w) == 1, F.lit(1)).otherwise(F.lit(None)),
             )
             # Then apply coalesce on the computed column (not nested)
-            result = result.withColumn("RankOrOne", F.coalesce(F.col("IsFirst"), F.lit(0)))
+            result = result.withColumn(
+                "RankOrOne", F.coalesce(F.col("IsFirst"), F.lit(0))
+            )
             rows = result.collect()
 
             assert len(rows) == 2
