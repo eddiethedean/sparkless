@@ -360,6 +360,22 @@ class WindowFunction:
             self, "isnotnull", None, name=f"({self.name} IS NOT NULL)"
         )
 
+    def eqNullSafe(self, other: Any) -> ColumnOperation:
+        """Null-safe equality comparison (PySpark eqNullSafe).
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the null-safe equality comparison.
+
+        Example:
+            >>> F.row_number().over(window).eqNullSafe(1)
+        """
+        return ColumnOperation(
+            self, "eqNullSafe", other, name=f"({self.name} <=> {other})"
+        )
+
     def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate the window function over the data.
 
