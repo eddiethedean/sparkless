@@ -252,7 +252,7 @@ class WindowFunction:
 
         return ColumnOperation(Literal(0), "-", self, name=f"(-{self.name})")
 
-    def __eq__(self, other: Any) -> ColumnOperation:
+    def __eq__(self, other: Any) -> ColumnOperation:  # type: ignore[override]
         """Equality comparison.
 
         Args:
@@ -266,7 +266,7 @@ class WindowFunction:
         """
         return ColumnOperation(self, "==", other, name=f"({self.name} == {other})")
 
-    def __ne__(self, other: Any) -> ColumnOperation:
+    def __ne__(self, other: Any) -> ColumnOperation:  # type: ignore[override]
         """Inequality comparison.
 
         Args:
