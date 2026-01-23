@@ -813,7 +813,11 @@ class GroupedData:
                 from ..validation.column_validator import ColumnValidator
 
                 # Resolve column name using ColumnResolver
-                case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+                case_sensitive = (
+                    self.df._is_case_sensitive()
+                    if hasattr(self.df, "_is_case_sensitive")
+                    else True
+                )
                 actual_col_name = ColumnValidator._find_column(
                     self.df.schema, col_name, case_sensitive
                 )
@@ -883,7 +887,11 @@ class GroupedData:
                 from ..validation.column_validator import ColumnValidator
 
                 # Resolve column name using ColumnResolver
-                case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+                case_sensitive = (
+                    self.df._is_case_sensitive()
+                    if hasattr(self.df, "_is_case_sensitive")
+                    else True
+                )
                 actual_col_name = ColumnValidator._find_column(
                     self.df.schema, col_name, case_sensitive
                 )
@@ -2119,7 +2127,11 @@ class GroupedData:
         from ...core.column_resolver import ColumnResolver
 
         available_cols = [field.name for field in self.df.schema.fields]
-        case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+        case_sensitive = (
+            self.df._is_case_sensitive()
+            if hasattr(self.df, "_is_case_sensitive")
+            else True
+        )
         resolved_col_names = []
         for col_name in col_names:
             resolved_col = ColumnResolver.resolve_column_name(
@@ -2153,7 +2165,11 @@ class GroupedData:
         from ...core.column_resolver import ColumnResolver
 
         available_cols = [field.name for field in self.df.schema.fields]
-        case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+        case_sensitive = (
+            self.df._is_case_sensitive()
+            if hasattr(self.df, "_is_case_sensitive")
+            else True
+        )
         resolved_col_names = []
         for col_name in col_names:
             resolved_col = ColumnResolver.resolve_column_name(
@@ -2183,7 +2199,11 @@ class GroupedData:
         from ...core.column_resolver import ColumnResolver
 
         available_cols = [field.name for field in self.df.schema.fields]
-        case_sensitive = self.df._is_case_sensitive()  # type: ignore[attr-defined]
+        case_sensitive = (
+            self.df._is_case_sensitive()
+            if hasattr(self.df, "_is_case_sensitive")
+            else True
+        )
         resolved_pivot_col = ColumnResolver.resolve_column_name(
             pivot_col, available_cols, case_sensitive
         )
