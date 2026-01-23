@@ -59,11 +59,12 @@ class WindowSpec:
         self._rows_between: Optional[Tuple[int, int]] = None
         self._range_between: Optional[Tuple[int, int]] = None
 
-    def partitionBy(self, *cols: Union[str, "Column"]) -> "WindowSpec":
+    def partitionBy(self, *cols: Union[str, "Column", List[Union[str, "Column"]]]) -> "WindowSpec":
         """Add partition by columns.
 
         Args:
-            *cols: Column names or "Column" objects to partition by.
+            *cols: Column names, "Column" objects, or a list of columns to partition by.
+                   If a single list is provided, it will be unpacked.
 
         Returns:
             Self for method chaining.
@@ -73,6 +74,10 @@ class WindowSpec:
         """
         if not cols:
             raise ValueError("At least one column must be specified for partitionBy")
+
+        # Handle case where a single list is passed: partitionBy(["col1", "col2"])
+        if len(cols) == 1 and isinstance(cols[0], list):
+            cols = tuple(cols[0])
 
         for col in cols:
             # Check if it's a string or has the name attribute (Column-like)
@@ -84,11 +89,12 @@ class WindowSpec:
         self._partition_by = list(cols)
         return self
 
-    def orderBy(self, *cols: Union[str, "Column"]) -> "WindowSpec":
+    def orderBy(self, *cols: Union[str, "Column", List[Union[str, "Column"]]]) -> "WindowSpec":
         """Add order by columns.
 
         Args:
-            *cols: Column names or "Column" objects to order by.
+            *cols: Column names, "Column" objects, or a list of columns to order by.
+                   If a single list is provided, it will be unpacked.
 
         Returns:
             Self for method chaining.
@@ -98,6 +104,10 @@ class WindowSpec:
         """
         if not cols:
             raise ValueError("At least one column must be specified for orderBy")
+
+        # Handle case where a single list is passed: orderBy(["col1", "col2"])
+        if len(cols) == 1 and isinstance(cols[0], list):
+            cols = tuple(cols[0])
 
         for col in cols:
             # Check if it's a string or has the name attribute (Column-like)
@@ -185,13 +195,23 @@ class Window:
     unboundedFollowing = sys.maxsize
 
     @staticmethod
-    def partitionBy(*cols: Union[str, "Column"]) -> WindowSpec:
-        """Create a window spec with partition by columns."""
+    def partitionBy(*cols: Union[str, "Column", List[Union[str, "Column"]]]) -> WindowSpec:
+        """Create a window spec with partition by columns.
+        
+        Args:
+            *cols: Column names, "Column" objects, or a list of columns to partition by.
+                   If a single list is provided, it will be unpacked.
+        """
         return WindowSpec().partitionBy(*cols)
 
     @staticmethod
-    def orderBy(*cols: Union[str, "Column"]) -> WindowSpec:
-        """Create a window spec with order by columns."""
+    def orderBy(*cols: Union[str, "Column", List[Union[str, "Column"]]]) -> WindowSpec:
+        """Create a window spec with order by columns.
+        
+        Args:
+            *cols: Column names, "Column" objects, or a list of columns to order by.
+                   If a single list is provided, it will be unpacked.
+        """
         return WindowSpec().orderBy(*cols)
 
     @staticmethod
