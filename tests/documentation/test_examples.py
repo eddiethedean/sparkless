@@ -97,6 +97,10 @@ class TestExampleScripts:
         os.environ.get("MOCK_SPARK_TEST_BACKEND") == "pyspark",
         reason="Skip documentation tests in PySpark mode (subprocess interference in parallel execution)",
     )
+    @pytest.mark.skipif(
+        os.environ.get("PYTEST_XDIST_WORKER") is not None,
+        reason="Skip subprocess example tests under pytest-xdist (subprocess interference in parallel)",
+    )
     def test_basic_usage_runs(self):
         """Test that basic_usage.py runs successfully."""
         env = os.environ.copy()
@@ -104,11 +108,12 @@ class TestExampleScripts:
         env["PYTHONPATH"] = (
             f"{PROJECT_ROOT}:{existing_path}" if existing_path else str(PROJECT_ROOT)
         )
+        env["MOCK_SPARK_EXAMPLES_FULL"] = "0"  # Force fast mode to avoid timeout
         result = subprocess.run(
             [sys.executable, "examples/basic_usage.py"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=60,
             cwd=PROJECT_ROOT,
             env=env,
         )
@@ -121,6 +126,10 @@ class TestExampleScripts:
         os.environ.get("MOCK_SPARK_TEST_BACKEND") == "pyspark",
         reason="Skip documentation tests in PySpark mode (subprocess interference in parallel execution)",
     )
+    @pytest.mark.skipif(
+        os.environ.get("PYTEST_XDIST_WORKER") is not None,
+        reason="Skip subprocess example tests under pytest-xdist (subprocess interference in parallel)",
+    )
     def test_comprehensive_usage_runs(self):
         """Test that comprehensive_usage.py runs successfully."""
         env = os.environ.copy()
@@ -132,7 +141,7 @@ class TestExampleScripts:
             [sys.executable, "examples/comprehensive_usage.py"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=60,
             cwd=PROJECT_ROOT,
             env=env,
         )

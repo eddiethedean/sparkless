@@ -384,6 +384,11 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def distinct(self: SupportsDF) -> SupportsDF:
         """Return distinct rows."""
+        # Queue distinct when there are pending operations so it runs after
+        # withColumn/select during materialization (fixes all-None for computed columns)
+        if self._operations_queue:
+            return cast("SupportsDF", self._queue_op("distinct", ()))  # type: ignore[redundant-cast,unused-ignore]
+
         seen = set()
         distinct_data = []
 

@@ -74,6 +74,47 @@ class ColumnValidator:
         )
 
     @staticmethod
+    def _find_field_in_schema(
+        schema: StructType,
+        struct_col_name: str,
+        field_name: str,
+        case_sensitive: bool = False,
+    ) -> Optional[str]:
+        """Find struct field name in a struct column.
+
+        Args:
+            schema: Schema to search in.
+            struct_col_name: Name of the struct column.
+            field_name: Name of the field within the struct.
+            case_sensitive: Whether to use case-sensitive matching.
+
+        Returns:
+            Actual field name from struct if found, None otherwise.
+        """
+        from ...core.column_resolver import ColumnResolver
+
+        # Find the struct column
+        struct_col = ColumnValidator._find_column(
+            schema, struct_col_name, case_sensitive
+        )
+        if struct_col is None:
+            return None
+
+        # Find the struct field in the schema
+        for field in schema.fields:
+            if (
+                (case_sensitive and field.name == struct_col)
+                or (not case_sensitive and field.name.lower() == struct_col.lower())
+            ) and hasattr(field.dataType, "fields"):
+                # Get field names from the struct
+                struct_field_names = [f.name for f in field.dataType.fields]
+                # Resolve the field name
+                return ColumnResolver.resolve_column_name(
+                    field_name, struct_field_names, case_sensitive
+                )
+        return None
+
+    @staticmethod
     def validate_column_exists(
         schema: StructType,
         column_name: str,
@@ -94,6 +135,30 @@ class ColumnValidator:
         # Skip validation for wildcard selector
         if column_name == "*":
             return
+
+        # Check if this is a struct field path (e.g., "StructVal.E1")
+        if "." in column_name:
+            parts = column_name.split(".", 1)
+            struct_col_name = parts[0]
+            field_name = parts[1]
+
+            # Validate that the struct column exists
+            struct_col = ColumnValidator._find_column(
+                schema, struct_col_name, case_sensitive
+            )
+            if struct_col is None:
+                column_names = [field.name for field in schema.fields]
+                raise SparkColumnNotFoundError(struct_col_name, column_names)
+
+            # Validate that the struct field exists in the struct column
+            struct_field = ColumnValidator._find_field_in_schema(
+                schema, struct_col_name, field_name, case_sensitive
+            )
+            if struct_field is None:
+                # Struct column exists but field doesn't - this is acceptable
+                # (the field might be accessed dynamically or the struct might be dynamic)
+                # We'll let the actual execution handle this
+                return
 
         if ColumnValidator._find_column(schema, column_name, case_sensitive) is None:
             column_names = [field.name for field in schema.fields]

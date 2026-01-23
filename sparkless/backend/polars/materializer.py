@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, cast
 import polars as pl
 from sparkless.spark_types import StructType, Row
 from sparkless.functions import ColumnOperation
+from sparkless.functions.core.column import Column
 from .expression_translator import PolarsExpressionTranslator
 from .operation_executor import PolarsOperationExecutor
 
@@ -178,13 +179,18 @@ class PolarsMaterializer:
                 data_keys = set(getattr(first_row, "keys", lambda: [])())
 
             schema_keys = {field.name for field in schema.fields}
-            # If schema doesn't match data, infer from data (only for dict format)
-            # BUT: Skip inference if we have operations, as the schema already includes
-            # computed columns from operations. Inference should only happen when creating
-            # a new DataFrame (no operations).
-            if is_dict_format and data_keys != schema_keys and not operations:
-                # Use SchemaInferenceEngine for PySpark-compatible type inference
-                # instead of Polars' automatic inference
+            # If we have operations, use base schema from data for the op loop
+            # (e.g. union compares current_schema vs other; current_schema must be base, not projected).
+            if data and operations and is_dict_format:
+                from ...core.schema_inference import SchemaInferenceEngine
+
+                try:
+                    inferred_schema, _ = SchemaInferenceEngine.infer_from_data(data)
+                    original_schema = inferred_schema
+                except (ValueError, Exception):
+                    pass
+            elif is_dict_format and data_keys != schema_keys and not operations:
+                # No ops: infer when schema doesn't match data
                 from ...core.schema_inference import SchemaInferenceEngine
 
                 inferred_schema, _ = SchemaInferenceEngine.infer_from_data(data)
@@ -279,6 +285,32 @@ class PolarsMaterializer:
                     list(lazy_df.schema.keys()) if hasattr(lazy_df, "schema") else []
                 )
 
+                # Check if condition contains struct field paths that need special handling
+                # (e.g., F.col("StructVal")["E1"] > 2 creates ColumnOperation with Column("StructVal.E1"))
+                # This must be checked BEFORE translation to avoid ColumnNotFoundError
+                is_struct_field_path = False
+                if isinstance(optimized_condition, ColumnOperation):
+                    if (
+                        isinstance(optimized_condition.column, Column)
+                        and "." in optimized_condition.column.name
+                    ):
+                        is_struct_field_path = True
+                elif (
+                    isinstance(optimized_condition, Column)
+                    and "." in optimized_condition.name
+                ):
+                    is_struct_field_path = True
+
+                if is_struct_field_path:
+                    # Handle struct field path in filter
+                    # Use apply_filter which has the struct field path handling
+                    df_collected = lazy_df.collect()
+                    filtered_df = self.operation_executor.apply_filter(
+                        df_collected, optimized_condition
+                    )
+                    lazy_df = filtered_df.lazy()
+                    continue
+
                 # Extract column dtype for isin operations to enable type coercion
                 input_col_dtype = None
                 if (
@@ -303,6 +335,7 @@ class PolarsMaterializer:
                     # Check if this is a WindowFunction comparison that should be handled
                     error_msg = str(e)
                     from sparkless.functions.window_execution import WindowFunction
+                    # Note: Column is already imported at the top of the file
 
                     is_window_function_comparison = (
                         "WindowFunction comparison" in error_msg
@@ -313,6 +346,32 @@ class PolarsMaterializer:
                     if is_window_function_comparison:
                         # Handle WindowFunction comparison in filter
                         # Use apply_filter which has the WindowFunction comparison handling
+                        df_collected = lazy_df.collect()
+                        filtered_df = self.operation_executor.apply_filter(
+                            df_collected, optimized_condition
+                        )
+                        lazy_df = filtered_df.lazy()
+                        continue
+
+                    # Check if this is a struct field path comparison that should be handled
+                    # (e.g., F.col("StructVal")["E1"] > 2 creates ColumnOperation with Column("StructVal.E1"))
+                    # Note: Column is already imported at the top of the file
+                    is_struct_field_path = False
+                    if isinstance(optimized_condition, ColumnOperation):
+                        if (
+                            isinstance(optimized_condition.column, Column)
+                            and "." in optimized_condition.column.name
+                        ):
+                            is_struct_field_path = True
+                    elif (
+                        isinstance(optimized_condition, Column)
+                        and "." in optimized_condition.name
+                    ):
+                        is_struct_field_path = True
+
+                    if is_struct_field_path:
+                        # Handle struct field path in filter
+                        # Use apply_filter which has the struct field path handling
                         df_collected = lazy_df.collect()
                         filtered_df = self.operation_executor.apply_filter(
                             df_collected, optimized_condition
@@ -359,18 +418,50 @@ class PolarsMaterializer:
                     lazy_df = lazy_df.filter(filter_expr)
 
                 except pl.exceptions.ColumnNotFoundError as e:
+                    # Check if this is a struct field path error (e.g., "StructVal.E1" not found)
+                    # If so, handle it by collecting and using apply_filter
+                    error_msg = str(e)
+                    import re
+                    # Note: Column is already imported at the top of the file
+
+                    # Check if the error is about a struct field path
+                    col_match = re.search(
+                        r'unable to find column\s+"([^"]+)"', error_msg
+                    )
+                    if col_match:
+                        col_name = col_match.group(1)
+                        # Check if this is a struct field path (contains a dot)
+                        if "." in col_name:
+                            # Check if the condition contains this struct field path
+                            is_struct_field_path = False
+                            if isinstance(optimized_condition, ColumnOperation):
+                                if (
+                                    isinstance(optimized_condition.column, Column)
+                                    and "." in optimized_condition.column.name
+                                ):
+                                    is_struct_field_path = True
+                            elif (
+                                isinstance(optimized_condition, Column)
+                                and "." in optimized_condition.name
+                            ):
+                                is_struct_field_path = True
+
+                            if is_struct_field_path:
+                                # Handle struct field path in filter
+                                # Use apply_filter which has the struct field path handling
+                                df_collected = lazy_df.collect()
+                                filtered_df = self.operation_executor.apply_filter(
+                                    df_collected, optimized_condition
+                                )
+                                lazy_df = filtered_df.lazy()
+                                continue
+
                     # Convert Polars error to our consistent error format
                     from ...core.exceptions.operation import SparkColumnNotFoundError
 
                     # Extract column name from error message
-                    error_msg = str(e)
                     # Polars error format: "unable to find column "col_name"; valid columns: [...]"
                     # Extract column name and available columns
-                    import re
-
-                    col_match = re.search(
-                        r'unable to find column\s+"([^"]+)"', error_msg
-                    )
                     valid_match = re.search(r"valid columns:\s*\[([^\]]+)\]", error_msg)
 
                     if col_match and valid_match:
@@ -467,13 +558,34 @@ class PolarsMaterializer:
                 # Get columns after select
                 columns_after = set(result_df.columns)
 
-                # If we had materialized data before, keep it materialized after select
-                # This preserves computed values through select operations
-                if had_materialized_before_select:
+                # Check if select includes computed columns (columns created by withColumn)
+                # Computed columns are those in the current schema but not in the original schema
+                # or columns that were created by previous withColumn operations
+                original_column_names = {field.name for field in original_schema.fields}
+                selected_columns = set()
+                for col in payload:
+                    if isinstance(col, str) and col != "*":
+                        selected_columns.add(col)
+                    elif hasattr(col, "name"):
+                        # Column object - get the name
+                        selected_columns.add(col.name)
+                    elif hasattr(col, "_alias") and col._alias:
+                        # Column with alias - use alias name
+                        selected_columns.add(col._alias)
+
+                # Check if any selected column is a computed column (not in original schema)
+                has_computed_columns = bool(selected_columns - original_column_names)
+
+                # If we had materialized data before OR if we're selecting computed columns,
+                # keep it materialized after select to preserve computed values
+                # This is especially important when distinct follows select, as distinct
+                # needs the materialized DataFrame to preserve computed column values
+                if had_materialized_before_select or has_computed_columns:
                     df_materialized = result_df
                     lazy_df = None
                 else:
                     lazy_df = result_df.lazy()
+                    df_materialized = None
 
                 # If columns were dropped, clear the expression cache to invalidate
                 # cached expressions that reference the dropped columns
@@ -550,38 +662,60 @@ class PolarsMaterializer:
                     # 1. Next operation is withColumnRenamed
                     # 2. This is a timestamp column (to avoid validation issues)
                     # 3. We had materialized data before (to preserve computed values through multiple withColumn ops)
+                    # 4. Next operation is select (to preserve computed column values for select->distinct sequences)
                     if (
                         next_op_name == "withColumnRenamed"
                         or is_timestamp_column
                         or had_materialized_before
+                        or next_op_name == "select"
                     ):
                         # Keep materialized for next withColumnRenamed operation, for to_timestamp,
                         # or to preserve computed values from previous withColumn operations
                         # This avoids Polars schema validation issues when converting to lazy
                         # and ensures computed values are preserved
                         df_materialized = result_df
-                        # For to_timestamp or when preserving materialized state, don't create lazy_df
-                        # The materialized DataFrame will be used directly
+                        # For to_timestamp, when preserving materialized state, or when next op is select,
+                        # don't create lazy_df. The materialized DataFrame will be used directly.
                         lazy_df = (
                             None
-                            if (is_timestamp_column or had_materialized_before)
+                            if (
+                                is_timestamp_column
+                                or had_materialized_before
+                                or next_op_name == "select"
+                            )
                             else result_df.lazy()
-                        )  # Don't create lazy frame for to_timestamp or when preserving materialized
+                        )  # Don't create lazy frame for to_timestamp, when preserving materialized, or when next is select
                     else:
                         # Convert result back to lazy for other operations
                         lazy_df = result_df.lazy()
                         df_materialized = None
                 else:
                     # No more operations
+                    # Keep materialized for to_timestamp, when we had materialized data,
+                    # or when this is a computed column (to preserve values for final collection)
+                    # This avoids validation on final collection and preserves computed values
                     if is_timestamp_column or had_materialized_before:
-                        # Keep materialized for to_timestamp or when we had materialized data
-                        # This avoids validation on final collection and preserves computed values
                         df_materialized = result_df
                         lazy_df = None  # Don't create lazy frame for to_timestamp or when preserving materialized
                     else:
-                        # Convert result back to lazy for final collection
-                        lazy_df = result_df.lazy()
-                        df_materialized = None
+                        # For computed columns (like struct field paths), keep materialized to preserve values
+                        # Check if this column was created from a struct field path by checking the expression
+                        # Column is already imported at module level
+                        is_computed_column = (
+                            isinstance(expression, Column) and "." in expression.name
+                        ) or (
+                            hasattr(expression, "column")
+                            and isinstance(expression.column, Column)
+                            and "." in expression.column.name
+                        )
+
+                        if is_computed_column:
+                            df_materialized = result_df
+                            lazy_df = None
+                        else:
+                            # Convert result back to lazy for final collection
+                            lazy_df = result_df.lazy()
+                            df_materialized = None
                 # Update schema and available columns after withColumn
                 from ...dataframe.schema.schema_manager import SchemaManager
 
@@ -724,15 +858,25 @@ class PolarsMaterializer:
                                 other_df = pl.DataFrame()
                         else:
                             other_df = pl.DataFrame(other_data)
-                # Collect lazy_df before joining
-                df_collected = lazy_df.collect()
+                # Collect before joining - use df_materialized when available
+                # (e.g. after select with computed columns like struct field + alias)
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None
+                else:
+                    df_collected = lazy_df.collect()
                 result_df = self.operation_executor.apply_join(
                     df_collected, other_df, on=on, how=how
                 )
                 lazy_df = result_df.lazy()
             elif op_name == "union":
                 # Union operation - need to collect first
-                df_collected = lazy_df.collect()
+                # Use df_materialized when available (e.g. after select with computed columns)
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None
+                else:
+                    df_collected = lazy_df.collect()
                 other_df_payload = payload
 
                 # Validate schema compatibility before union (PySpark compatibility)
@@ -778,7 +922,52 @@ class PolarsMaterializer:
 
                 # Convert other_df to Polars DataFrame if needed
                 if not isinstance(other_df_payload, pl.DataFrame):
-                    other_data = getattr(other_df_payload, "data", [])
+                    # Check if other_df_payload has lazy operations that need materialization
+                    # (e.g., withColumn operations that create computed columns like struct field paths)
+                    if (
+                        hasattr(other_df_payload, "_operations_queue")
+                        and other_df_payload._operations_queue
+                    ):
+                        # Materialize the other DataFrame to ensure computed columns are available
+                        from ...dataframe.lazy import LazyEvaluationEngine
+
+                        materialized_other = LazyEvaluationEngine.materialize(
+                            other_df_payload
+                        )
+                        other_rows = materialized_other.collect()
+                        other_schema = getattr(materialized_other, "schema", None)
+
+                        def _row_to_dict(row: Any) -> Dict[str, Any]:
+                            # Sparkless Row
+                            if hasattr(row, "asDict") and callable(row.asDict):
+                                return cast("Dict[str, Any]", row.asDict())
+                            # Already a mapping
+                            if isinstance(row, dict):
+                                return cast("Dict[str, Any]", row)
+                            # Sequence-like rows (e.g. tuple/list) with a known schema
+                            if other_schema is not None and hasattr(
+                                other_schema, "fields"
+                            ):
+                                try:
+                                    values = list(row)
+                                    return {
+                                        field.name: values[i]
+                                        for i, field in enumerate(other_schema.fields)
+                                        if i < len(values)
+                                    }
+                                except Exception:
+                                    pass
+                            # Fallback: iterables of (k, v) pairs
+                            return cast("Dict[str, Any]", dict(row))
+
+                        other_data = (
+                            [_row_to_dict(row) for row in other_rows]
+                            if other_rows
+                            else []
+                        )
+                    else:
+                        other_data = getattr(other_df_payload, "data", [])
+
                     if not other_data:
                         # Empty DataFrame - create from schema if available
                         if hasattr(other_df_payload, "schema"):
@@ -847,6 +1036,10 @@ class PolarsMaterializer:
                 lazy_df = result_df.lazy()
             elif op_name == "orderBy":
                 # OrderBy operation - can be done lazily
+                # Use df_materialized when available (e.g. after select with computed columns)
+                if df_materialized is not None:
+                    lazy_df = df_materialized.lazy()
+                    df_materialized = None
                 # Payload can be (columns, ascending) tuple or just columns (for backward compatibility)
                 if isinstance(payload, tuple) and len(payload) == 2:
                     # New format: (columns, ascending)
@@ -1007,7 +1200,17 @@ class PolarsMaterializer:
                 lazy_df = result_df.lazy()
             elif op_name == "distinct":
                 # Distinct operation
-                lazy_df = lazy_df.unique()
+                # For distinct to work correctly with computed columns (like struct field paths),
+                # we need to ensure the DataFrame is materialized first
+                # This is especially important when distinct follows a select operation
+                # Use materialized DataFrame if available, otherwise collect from lazy
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                else:
+                    df_collected = lazy_df.collect()
+                result_df = df_collected.unique()
+                lazy_df = result_df.lazy()
+                df_materialized = result_df
             elif op_name == "drop":
                 # Drop operation - need to handle Polars lazy evaluation limitation
                 # Polars drops columns that depend on dropped columns during lazy evaluation
