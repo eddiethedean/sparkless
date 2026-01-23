@@ -683,9 +683,20 @@ class TransformationService:
         """
         return self.dropDuplicates(subset)
 
-    def orderBy(self, *columns: Union[str, Column]) -> "SupportsDataFrameOps":
-        """Order by columns."""
-        return self._df._queue_op("orderBy", columns)
+    def orderBy(
+        self, *columns: Union[str, Column], ascending: bool = True
+    ) -> "SupportsDataFrameOps":
+        """Order by columns.
+
+        Args:
+            *columns: Column names or Column objects to order by
+            ascending: Whether to sort in ascending order (default: True)
+
+        Returns:
+            DataFrame sorted by the specified columns
+        """
+        # Pass columns and ascending as a tuple: (columns, ascending)
+        return self._df._queue_op("orderBy", (columns, ascending))
 
     def sort(
         self, *columns: Union[str, Column], **kwargs: Any
@@ -699,7 +710,8 @@ class TransformationService:
         Returns:
             Sorted DataFrame
         """
-        return self.orderBy(*columns)
+        ascending = kwargs.get("ascending", True)
+        return self.orderBy(*columns, ascending=ascending)
 
     def limit(self, n: int) -> "SupportsDataFrameOps":
         """Limit number of rows."""
