@@ -862,7 +862,7 @@ class TestIssue336WindowFunctionComparison:
                         F.lit(False)
                     ),
                 )
-                .filter(F.col("IsFirst") == True)
+                .filter(F.col("IsFirst"))
                 .select("Name", "Type", "Score")
             )
             rows = result.collect()
