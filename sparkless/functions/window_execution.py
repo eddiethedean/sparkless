@@ -252,6 +252,114 @@ class WindowFunction:
 
         return ColumnOperation(Literal(0), "-", self, name=f"(-{self.name})")
 
+    def __eq__(self, other: Any) -> ColumnOperation:  # type: ignore[override]
+        """Equality comparison.
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the equality comparison.
+
+        Example:
+            >>> F.row_number().over(window) == 1
+        """
+        return ColumnOperation(self, "==", other, name=f"({self.name} == {other})")
+
+    def __ne__(self, other: Any) -> ColumnOperation:  # type: ignore[override]
+        """Inequality comparison.
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the inequality comparison.
+
+        Example:
+            >>> F.row_number().over(window) != 0
+        """
+        return ColumnOperation(self, "!=", other, name=f"({self.name} != {other})")
+
+    def __lt__(self, other: Any) -> ColumnOperation:
+        """Less than comparison.
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the less than comparison.
+
+        Example:
+            >>> F.row_number().over(window) < 5
+        """
+        return ColumnOperation(self, "<", other, name=f"({self.name} < {other})")
+
+    def __le__(self, other: Any) -> ColumnOperation:
+        """Less than or equal comparison.
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the less than or equal comparison.
+
+        Example:
+            >>> F.row_number().over(window) <= 10
+        """
+        return ColumnOperation(self, "<=", other, name=f"({self.name} <= {other})")
+
+    def __gt__(self, other: Any) -> ColumnOperation:
+        """Greater than comparison.
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the greater than comparison.
+
+        Example:
+            >>> F.row_number().over(window) > 0
+        """
+        return ColumnOperation(self, ">", other, name=f"({self.name} > {other})")
+
+    def __ge__(self, other: Any) -> ColumnOperation:
+        """Greater than or equal comparison.
+
+        Args:
+            other: The value to compare with.
+
+        Returns:
+            ColumnOperation representing the greater than or equal comparison.
+
+        Example:
+            >>> F.row_number().over(window) >= 1
+        """
+        return ColumnOperation(self, ">=", other, name=f"({self.name} >= {other})")
+
+    def isnull(self) -> ColumnOperation:
+        """Check if window function result is null.
+
+        Returns:
+            ColumnOperation representing the isnull check.
+
+        Example:
+            >>> F.lag("value", 1).over(window).isnull()
+        """
+        return ColumnOperation(self, "isnull", None, name=f"({self.name} IS NULL)")
+
+    def isnotnull(self) -> ColumnOperation:
+        """Check if window function result is not null.
+
+        Returns:
+            ColumnOperation representing the isnotnull check.
+
+        Example:
+            >>> F.lag("value", 1).over(window).isnotnull()
+        """
+        return ColumnOperation(
+            self, "isnotnull", None, name=f"({self.name} IS NOT NULL)"
+        )
+
     def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate the window function over the data.
 
