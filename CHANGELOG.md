@@ -3,6 +3,18 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Issue #330** - Fixed struct field selection with alias
+  - Struct field extraction now works correctly when combined with alias (e.g., `F.col("StructValue.E1").alias("E1-Extract")`)
+  - Updated `apply_select()` to check original column name (`_original_column._name`) for struct field paths when column is aliased
+  - Handles both Column and ColumnOperation objects with aliases
+  - Comprehensive test coverage: 8 unit tests + 3 PySpark parity tests
+  - Fixes `polars.exceptions.ColumnNotFoundError: unable to find column "StructValue.E1"` error
+- **Issue #332** - Fixed column resolution for cast+alias+select operations
+  - Column names are now correctly resolved when combining aggregation, cast, alias, and select operations
+  - Updated `GroupedData.agg()` to check for alias name (`_alias_name` or `expr.name`) before generating CAST expression name
+  - Schema now correctly uses alias name (e.g., "AvgValue") instead of CAST expression (e.g., "CAST(avg(Value) AS DOUBLETYPE(...))")
+  - Comprehensive test coverage: 8 unit tests + 3 PySpark parity tests
+  - Fixes `SparkColumnNotFoundError: cannot resolve 'AvgValue'` error
 - **Issue #327** - Added `ascending` parameter support to `orderBy()` method
   - Updated `orderBy()` method signature to accept optional `ascending` parameter (default: `True`)
   - Supports `df.orderBy("col", ascending=True)` and `df.orderBy("col", ascending=False)`
