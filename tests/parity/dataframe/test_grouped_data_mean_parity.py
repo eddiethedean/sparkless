@@ -5,7 +5,6 @@ Tests validate that Sparkless GroupedData.mean() behaves identically to PySpark.
 """
 
 from tests.fixtures.parity_base import ParityTestBase
-from tests.fixtures.spark_imports import get_spark_imports
 
 
 class TestGroupedDataMeanParity(ParityTestBase):
@@ -13,9 +12,6 @@ class TestGroupedDataMeanParity(ParityTestBase):
 
     def test_grouped_data_mean_single_column(self, spark):
         """Test GroupedData.mean() with single column matches PySpark behavior."""
-        imports = get_spark_imports()
-        F = imports.F
-
         df = spark.createDataFrame(
             [
                 {"Name": "Alice", "Value": 1},
@@ -39,8 +35,6 @@ class TestGroupedDataMeanParity(ParityTestBase):
 
     def test_grouped_data_mean_multiple_columns(self, spark):
         """Test GroupedData.mean() with multiple columns matches PySpark behavior."""
-        imports = get_spark_imports()
-
         df = spark.createDataFrame(
             [
                 {"Name": "Alice", "Value1": 1, "Value2": 2},
@@ -65,8 +59,6 @@ class TestGroupedDataMeanParity(ParityTestBase):
 
     def test_grouped_data_mean_equals_avg(self, spark):
         """Test that mean() produces same results as avg() matches PySpark behavior."""
-        imports = get_spark_imports()
-
         df = spark.createDataFrame(
             [
                 {"Name": "Alice", "Value": 1},
