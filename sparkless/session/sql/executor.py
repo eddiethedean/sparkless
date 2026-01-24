@@ -83,7 +83,9 @@ class SQLExecutor:
             ast = self.parser.parse(query)
 
             # Execute based on query type
-            if ast.query_type == "SELECT":
+            if ast.query_type == "WITH":
+                return self._execute_with(ast)
+            elif ast.query_type == "SELECT":
                 return self._execute_select(ast)
             elif ast.query_type == "UNION":
                 return self._execute_union(ast)
@@ -114,6 +116,76 @@ class SQLExecutor:
             if isinstance(e, QueryExecutionException):
                 raise
             raise QueryExecutionException(f"Failed to execute query: {str(e)}")
+
+    def _execute_with(self, ast: SQLAST) -> IDataFrame:
+        """Execute WITH query (CTE).
+
+        Args:
+            ast: Parsed SQL AST with WITH query components.
+
+        Returns:
+            DataFrame with query results.
+        """
+        components = ast.components
+        ctes = components.get("ctes", [])
+        main_query = components.get("main_query")
+
+        if not main_query:
+            raise QueryExecutionException("Main query not found in WITH statement")
+
+        # Execute each CTE and store results in temp views
+        temp_view_names = []
+        try:
+            for cte in ctes:
+                cte_name = cte["name"]
+                cte_query = cte["query"]
+
+                # Execute the CTE query
+                cte_result = self.execute(cte_query)
+
+                # Create temp view for this CTE
+                temp_view_name = f"__cte_{cte_name}"
+                cte_result.createOrReplaceTempView(temp_view_name)
+                temp_view_names.append(temp_view_name)
+
+            # Execute the main query (which can reference CTEs via temp views)
+            # First check if main query references any CTE names
+            # Replace CTE references in main query with temp view names
+            main_query_processed = main_query
+            for cte in ctes:
+                cte_name = cte["name"]
+                temp_view_name = f"__cte_{cte_name}"
+                # Replace CTE name references with temp view names
+                # Use word boundaries to avoid partial matches
+                main_query_processed = re.sub(
+                    r"\b" + re.escape(cte_name) + r"\b",
+                    temp_view_name,
+                    main_query_processed,
+                    flags=re.IGNORECASE,
+                )
+
+            # Execute the main query
+            result = self.execute(main_query_processed)
+
+            return result
+
+        finally:
+            # Clean up temp views
+            for temp_view_name in temp_view_names:
+                try:
+                    # Check if catalog has dropTempView method
+                    if hasattr(self.session, "catalog") and hasattr(
+                        self.session.catalog, "dropTempView"
+                    ):
+                        self.session.catalog.dropTempView(temp_view_name)
+                    else:
+                        # Fallback: try to drop via SQL if method not available
+                        try:
+                            self.execute(f"DROP VIEW IF EXISTS {temp_view_name}")
+                        except Exception:
+                            pass  # Ignore cleanup errors
+                except Exception:
+                    pass  # Ignore cleanup errors
 
     def _execute_select(self, ast: SQLAST) -> IDataFrame:
         """Execute SELECT query.
