@@ -3,15 +3,13 @@ Unit tests for SQL CTE (WITH clause) support.
 """
 
 import pytest
-from sparkless.sql import SparkSession
 
 
 class TestSQLCTE:
     """Test cases for Common Table Expressions (CTEs)."""
 
-    def test_simple_cte(self):
+    def test_simple_cte(self, spark):
         """Test basic CTE with single CTE definition."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -33,11 +31,10 @@ class TestSQLCTE:
             assert rows[0]["id"] == 3
             assert rows[0]["value"] == 100
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_multiple_ctes(self):
+    def test_multiple_ctes(self, spark):
         """Test CTE with multiple CTE definitions."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -61,11 +58,10 @@ class TestSQLCTE:
             assert len(rows) == 1
             assert rows[0]["count"] == 2
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_chained_ctes(self):
+    def test_chained_ctes(self, spark):
         """Test CTE that references another CTE."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -92,11 +88,10 @@ class TestSQLCTE:
             assert 150 in values  # 75 * 2
             assert 200 in values  # 100 * 2
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_with_aggregation(self):
+    def test_cte_with_aggregation(self, spark):
         """Test CTE with aggregation."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -117,11 +112,10 @@ class TestSQLCTE:
             assert len(rows) == 1
             assert rows[0]["avg_value"] == 75.0
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_with_filtering(self):
+    def test_cte_with_filtering(self, spark):
         """Test CTE with filtering in main query."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -142,11 +136,10 @@ class TestSQLCTE:
             assert len(rows) == 1
             assert rows[0]["value"] == 100
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_case_insensitive(self):
+    def test_cte_case_insensitive(self, spark):
         """Test that WITH keyword is case-insensitive."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}]
@@ -166,11 +159,10 @@ class TestSQLCTE:
             rows = result.collect()
             assert len(rows) == 1
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_with_column_selection(self):
+    def test_cte_with_column_selection(self, spark):
         """Test CTE with specific column selection."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50, "name": "A"}, {"id": 2, "value": 75, "name": "B"}]
@@ -193,11 +185,10 @@ class TestSQLCTE:
             # Verify only id column is present
             assert "value" not in rows[0].asDict() or "value" not in dir(rows[0])
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_whitespace_handling(self):
+    def test_cte_whitespace_handling(self, spark):
         """Test CTE with various whitespace patterns."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}]
@@ -217,11 +208,17 @@ class TestSQLCTE:
             rows = result.collect()
             assert len(rows) == 1
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_parser_detection(self):
+    def test_cte_parser_detection(self, spark):
         """Test that parser correctly detects WITH queries."""
-        spark = SparkSession("TestApp")
+        import os
+        backend = os.getenv("MOCK_SPARK_TEST_BACKEND", "sparkless")
+        
+        # Only test parser detection in sparkless mode (PySpark doesn't expose parser)
+        if backend == "pyspark":
+            pytest.skip("Parser detection only available in sparkless mode")
+        
         try:
             # Create test data
             data = [{"id": 1, "value": 50}]
@@ -245,11 +242,10 @@ class TestSQLCTE:
             assert len(ast.components["ctes"]) == 1
             assert ast.components["ctes"][0]["name"] == "filtered_data"
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_with_order_by(self):
+    def test_cte_with_order_by(self, spark):
         """Test CTE with ORDER BY in main query."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -271,11 +267,10 @@ class TestSQLCTE:
             assert rows[0]["value"] == 100
             assert rows[1]["value"] == 75
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
 
-    def test_cte_with_limit(self):
+    def test_cte_with_limit(self, spark):
         """Test CTE with LIMIT in main query."""
-        spark = SparkSession("TestApp")
         try:
             # Create test data
             data = [{"id": 1, "value": 50}, {"id": 2, "value": 75}, {"id": 3, "value": 100}]
@@ -295,4 +290,4 @@ class TestSQLCTE:
             rows = result.collect()
             assert len(rows) == 1
         finally:
-            spark.stop()
+            pass  # Fixture handles cleanup
