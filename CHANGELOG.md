@@ -267,6 +267,10 @@
   - Tests for `hour/minute/second` in `select`, `filter`, and `groupBy().agg()` contexts
   - Tests for null timestamp values (verifying `None` return behavior)
   - All tests pass in both Sparkless (mock) and PySpark backends
+- Complex MERGE tests (`tests/unit/session/test_sql_complex_merge.py`) now run in PySpark mode
+  - Removed PySpark-only skip; added `@pytest.mark.backend("mock")` so tests always use sparkless backend
+  - MERGE is implemented in sparkless's SQL executor; tests run and pass when the suite is executed with `MOCK_SPARK_TEST_BACKEND=pyspark`
+  - All 15 MERGE tests run and pass
 
 ## 3.31.0 — Unreleased
 

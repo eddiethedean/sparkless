@@ -4,22 +4,16 @@ This module tests advanced MERGE functionality including:
 - Multiple WHEN MATCHED clauses with conditions
 - WHEN NOT MATCHED BY SOURCE clause
 - Complex expressions in SET clauses
+
+These tests always use the mock (sparkless) backend because MERGE is implemented
+in sparkless's SQL executor. They run (and pass) even when the suite is executed
+with MOCK_SPARK_TEST_BACKEND=pyspark.
 """
 
 import pytest
-from tests.fixtures.spark_backend import get_backend_type, BackendType
 
 
-def _is_pyspark_mode() -> bool:
-    """Check if running in PySpark mode."""
-    backend = get_backend_type()
-    return backend == BackendType.PYSPARK
-
-
-@pytest.mark.skipif(
-    _is_pyspark_mode(),
-    reason="Complex MERGE patterns are sparkless-specific features",
-)
+@pytest.mark.backend("mock")
 class TestComplexMergeBasic:
     """Test basic complex MERGE functionality."""
 
@@ -135,10 +129,7 @@ class TestComplexMergeBasic:
             spark.sql("DROP TABLE IF EXISTS test_db.source3")
 
 
-@pytest.mark.skipif(
-    _is_pyspark_mode(),
-    reason="Complex MERGE patterns are sparkless-specific features",
-)
+@pytest.mark.backend("mock")
 class TestMergeNotMatchedBySource:
     """Test WHEN NOT MATCHED BY SOURCE clause."""
 
@@ -212,10 +203,7 @@ class TestMergeNotMatchedBySource:
             spark.sql("DROP TABLE IF EXISTS test_db.source4")
 
 
-@pytest.mark.skipif(
-    _is_pyspark_mode(),
-    reason="Complex MERGE patterns are sparkless-specific features",
-)
+@pytest.mark.backend("mock")
 class TestMergeComplexExpressions:
     """Test complex expressions in MERGE."""
 
@@ -271,10 +259,7 @@ class TestMergeComplexExpressions:
             spark.sql("DROP TABLE IF EXISTS test_db.source5")
 
 
-@pytest.mark.skipif(
-    _is_pyspark_mode(),
-    reason="Complex MERGE patterns are sparkless-specific features",
-)
+@pytest.mark.backend("mock")
 class TestMergeInsertAll:
     """Test WHEN NOT MATCHED INSERT patterns."""
 
@@ -344,10 +329,7 @@ class TestMergeInsertAll:
             spark.sql("DROP TABLE IF EXISTS test_db.source6")
 
 
-@pytest.mark.skipif(
-    _is_pyspark_mode(),
-    reason="Complex MERGE patterns are sparkless-specific features",
-)
+@pytest.mark.backend("mock")
 class TestMergeEdgeCases:
     """Test edge cases for MERGE operations."""
 
@@ -432,10 +414,7 @@ class TestMergeEdgeCases:
             spark.sql("DROP TABLE IF EXISTS test_db.source9")
 
 
-@pytest.mark.skipif(
-    _is_pyspark_mode(),
-    reason="Complex MERGE patterns are sparkless-specific features",
-)
+@pytest.mark.backend("mock")
 class TestMergeParserComplex:
     """Test parser for complex MERGE patterns."""
 
