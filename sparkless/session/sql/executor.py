@@ -30,11 +30,11 @@ from ...dataframe import DataFrame
 from ...spark_types import StructType
 from .parser import SQLAST
 
-# Import types for runtime use (needed for cast() calls with string annotations)
-from ...functions.core.column import ColumnOperation  # noqa: F401
-from ...functions.base import AggregateFunction  # noqa: F401
-from ...functions.conditional import CaseWhen  # noqa: F401
-from ...functions.core.literals import Literal  # noqa: F401
+# Import types for runtime use (needed for type annotations and cast() calls)
+from ...functions.core.column import ColumnOperation  # noqa: F401, TC001
+from ...functions.base import AggregateFunction  # noqa: F401, TC001
+from ...functions.conditional import CaseWhen  # noqa: F401, TC001
+from ...functions.core.literals import Literal  # noqa: F401, TC001
 
 if TYPE_CHECKING:
     from ...dataframe.protocols import SupportsDataFrameOps
@@ -617,7 +617,7 @@ class SQLExecutor:
             from ...functions import F
 
             agg_exprs: List[
-                Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, "IColumn"]  # noqa: F821
+                Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]  # noqa: F821
             ] = []
             select_exprs = []
 
@@ -1079,13 +1079,7 @@ class SQLExecutor:
                         result_expr = expr.alias(alias) if alias else expr
                         agg_exprs_no_group.append(
                             cast(
-                                Union[
-                                    ColumnOperation,
-                                    AggregateFunction,
-                                    CaseWhen,
-                                    Literal,
-                                    "IColumn",  # noqa: F821
-                                ],
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                 result_expr,
                             )
                         )
@@ -1099,13 +1093,7 @@ class SQLExecutor:
                         result_expr = expr.alias(alias) if alias else expr
                         agg_exprs_no_group.append(
                             cast(
-                                Union[
-                                    ColumnOperation,
-                                    AggregateFunction,
-                                    CaseWhen,
-                                    Literal,
-                                    "IColumn",  # noqa: F821
-                                ],
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                 result_expr,
                             )
                         )
@@ -1117,13 +1105,7 @@ class SQLExecutor:
                         result_expr = expr.alias(alias) if alias else expr
                         agg_exprs_no_group.append(
                             cast(
-                                Union[
-                                    ColumnOperation,
-                                    AggregateFunction,
-                                    CaseWhen,
-                                    Literal,
-                                    "IColumn",  # noqa: F821
-                                ],
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                 result_expr,
                             )
                         )
@@ -1135,13 +1117,7 @@ class SQLExecutor:
                         result_expr = expr.alias(alias) if alias else expr
                         agg_exprs_no_group.append(
                             cast(
-                                Union[
-                                    ColumnOperation,
-                                    AggregateFunction,
-                                    CaseWhen,
-                                    Literal,
-                                    "IColumn",  # noqa: F821
-                                ],
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                 result_expr,
                             )
                         )
@@ -1153,13 +1129,7 @@ class SQLExecutor:
                         result_expr = expr.alias(alias) if alias else expr
                         agg_exprs_no_group.append(
                             cast(
-                                Union[
-                                    ColumnOperation,
-                                    AggregateFunction,
-                                    CaseWhen,
-                                    Literal,
-                                    "IColumn",  # noqa: F821
-                                ],
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                 result_expr,
                             )
                         )
@@ -1190,7 +1160,13 @@ class SQLExecutor:
                 if select_columns != ["*"]:
                     # Parse column expressions with aliases, table prefixes, and CASE WHEN
                     select_exprs_no_group: List[
-                        Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, "IColumn"]  # noqa: F821
+                        Union[
+                            ColumnOperation,
+                            AggregateFunction,
+                            CaseWhen,
+                            Literal,
+                            IColumn,
+                        ]  # noqa: F821
                     ] = []
                     for col_item in select_columns:
                         # Normalize column item (handles both string and dict formats)
@@ -1208,32 +1184,22 @@ class SQLExecutor:
                                 AggregateFunction,
                                 CaseWhen,
                                 Literal,
-                                "IColumn",  # noqa: F821
+                                IColumn,  # noqa: F821
                             ] = cast(
-                                Union[
-                                    ColumnOperation,
-                                    AggregateFunction,
-                                    CaseWhen,
-                                    Literal,
-                                    "IColumn",  # noqa: F821
-                                ],
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                 SQLExprParser._parse_expression(col),
                             )
                             if alias:
                                 # alias() returns IColumn, cast to expected type
                                 case_expr = cast(
-                                    Union[
-                                        ColumnOperation,
-                                        AggregateFunction,
-                                        CaseWhen,
-                                        Literal,
-                                        "IColumn",  # noqa: F821
-                                    ],
+                                    "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
                                     case_expr.alias(alias),
                                 )
                             select_exprs_no_group.append(case_expr)
                         else:
-                            literal_expr: Union["Column", CaseWhen, Literal, "IColumn"] = None  # noqa: F821
+                            literal_expr: Union[Column, CaseWhen, Literal, IColumn] = (
+                                None  # noqa: F821
+                            )
                             is_string_literal = (
                                 col.startswith("'") and col.endswith("'")
                             ) or (col.startswith('"') and col.endswith('"'))

@@ -295,7 +295,6 @@ class AggregateFunctions:
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        from .core.column import ColumnOperation
 
         AggregateFunctions._require_active_session("std aggregate function")
         return AggregateFunctions.stddev(column)

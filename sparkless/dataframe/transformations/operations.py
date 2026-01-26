@@ -230,7 +230,7 @@ class TransformationOperations(Generic[SupportsDF]):
                     if alias:
                         # alias() returns IColumn, but we need ColumnOperation for the list type
                         aliased_col = Column(colname).alias(alias)
-                        columns.append(cast(ColumnOperation, aliased_col))
+                        columns.append(cast("ColumnOperation", aliased_col))
                     else:
                         columns.append(Column(colname))
                 else:
