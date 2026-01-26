@@ -101,12 +101,29 @@ class JoinOperations(Generic[SupportsDF]):
     ) -> SupportsDF:
         """Union with another DataFrame by column names.
 
+        Unlike `union()`, which matches columns by position, `unionByName()` matches
+        columns by name, allowing DataFrames with different column orders to be combined.
+        Both DataFrames are automatically materialized before unioning to ensure correct
+        results, especially in diamond dependency scenarios where the same DataFrame
+        is used in multiple transformation branches.
+
         Args:
-            other: Another DataFrame to union with.
+            other: Another DataFrame to union with. Must have compatible column types.
             allowMissingColumns: If True, allows missing columns (fills with null).
+                When False, both DataFrames must have the same columns.
 
         Returns:
-            New DataFrame with combined data.
+            New DataFrame with combined data from both DataFrames. Column order matches
+            the first DataFrame's schema.
+
+        Raises:
+            AnalysisException: If DataFrames have incompatible column types or missing
+                columns when `allowMissingColumns=False`.
+
+        Example:
+            >>> df1 = spark.createDataFrame([("Alice", 25)], ["name", "age"])
+            >>> df2 = spark.createDataFrame([(30, "Bob")], ["age", "name"])  # Different order
+            >>> result = df1.unionByName(df2)  # Works correctly despite different order
         """
         # Materialize lazy operations before accessing data
         # This is critical for diamond dependencies where the same DataFrame
