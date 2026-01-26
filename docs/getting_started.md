@@ -134,6 +134,9 @@ spark._storage.insert_data("test_db", "users", [
 
 **Note:** For maximum compatibility with PySpark, use SQL commands. The `.storage` API is a sparkless convenience feature that doesn't exist in PySpark.
 
+### Run SQL Queries
+
+```python
 # Run SQL queries
 result = spark.sql("SELECT name, salary FROM employees WHERE salary > 80000")
 result.show()
