@@ -20,4 +20,3 @@ Quick Reference
 The main API reference documentation is available in markdown format:
 
 .. include:: api_reference.md
-   :parser: myst_parser
