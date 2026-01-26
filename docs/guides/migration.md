@@ -1,4 +1,3 @@
-# PySpark → Sparkless Migration Guide
 
 ## Quick Swap
 

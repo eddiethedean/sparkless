@@ -1,4 +1,3 @@
-# Storage Serialization Guide
 
 This guide provides comprehensive documentation for Sparkless's storage serialization capabilities, including CSV, JSON, and other format support.
 

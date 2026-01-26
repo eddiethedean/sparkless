@@ -1,4 +1,3 @@
-# Query Optimization (v3.0.0+)
 
 ## Overview
 

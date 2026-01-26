@@ -1,4 +1,3 @@
-# Pandas Fallback Benchmarks
 
 Sparkless ships with a lightweight stub that mimics the minimal slice of the
 pandas API that appears in tests and documentation examples. The stub keeps the

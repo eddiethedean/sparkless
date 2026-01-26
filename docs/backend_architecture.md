@@ -1,4 +1,3 @@
-# Backend Architecture
 
 ## Overview
 

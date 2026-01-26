@@ -1,4 +1,3 @@
-# Function API Audit Report
 
 This document provides an audit of sparkless function APIs compared to PySpark, ensuring exact compatibility.
 

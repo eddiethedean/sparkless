@@ -1,4 +1,3 @@
-# Storage API Guide
 
 **⚠️ Important:** The `spark._storage` API is a **private sparkless-specific convenience feature** that does not exist in PySpark. For code that needs to work with both sparkless and PySpark, use SQL commands or DataFrame operations instead. The `spark._storage` API is now private and should not be used in production code.
 

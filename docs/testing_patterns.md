@@ -1,4 +1,3 @@
-# Testing Best Practices with Sparkless
 
 ## Overview
 

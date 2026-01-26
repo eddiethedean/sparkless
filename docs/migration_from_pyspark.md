@@ -1,4 +1,3 @@
-# Migrating from PySpark to Sparkless
 
 ## Overview
 

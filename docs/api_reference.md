@@ -1,4 +1,3 @@
-# Sparkless API Reference
 
 ## Overview
 
