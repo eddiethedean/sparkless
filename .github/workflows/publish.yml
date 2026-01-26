@@ -97,12 +97,14 @@ jobs:
       - name: Extract release notes from CHANGELOG.md
         if: github.event_name == 'push'
         id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           python3 << 'EOF'
+          import os
           import re
           
-          version = "${{ steps.version.outputs.version }}"
+          version = os.environ['VERSION']
           
           # Read CHANGELOG.md
           with open('CHANGELOG.md', 'r') as f:
@@ -132,7 +134,7 @@ jobs:
               release_notes = f"Release v{version}\n\nSee CHANGELOG.md for details."
           
           # Write to output using multiline format
-          with open('$GITHUB_OUTPUT', 'a') as f:
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write('notes<<EOF\n')
               f.write(release_notes)
               f.write('\nEOF\n')
