@@ -71,6 +71,12 @@ generate-outputs = [
     "pyspark>=3.5.0,<3.6.0",  # PySpark for generating expected outputs
     "delta-spark>=3.0.0,<4.0.0",  # Delta Lake for generating expected outputs (compatible with PySpark 3.5)
 ]
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "myst-parser>=1.0.0",
+    "sphinx-autodoc-typehints>=1.19.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/sparkless"

@@ -3,6 +3,26 @@
 ## 3.27.0 — Unreleased
 
 ### Added
+- **Read the Docs Documentation** - Complete Sphinx-based documentation system for Read the Docs
+  - Set up Sphinx configuration with Google-style docstring support (Napoleon extension)
+  - Created comprehensive API documentation with autodoc for all modules
+  - Integrated all existing markdown documentation using MyST parser
+  - Added `.readthedocs.yml` configuration for automatic builds
+  - Created documentation structure with navigation for:
+    - Getting Started guides
+    - Complete API reference (session, dataframe, functions, types, backend, storage)
+    - User guides (migration, configuration, lazy evaluation, CTE optimization, etc.)
+    - Advanced topics (backend architecture, performance, testing patterns)
+  - Added documentation validation scripts:
+    - `scripts/validate_docs_examples.py` - Tests all code examples in documentation
+    - `scripts/verify_api_signatures.py` - Verifies API signatures match code
+    - `scripts/check_doc_accuracy.py` - Checks version numbers, links, and feature claims
+  - Updated `pyproject.toml` with `docs` optional dependencies group
+  - Added `make docs`, `make docs-clean`, and `make docs-validate` targets to Makefile
+  - Fixed version number in `docs/getting_started.md` (3.26.0 → 3.27.0)
+  - Updated test count references (1106+ → 1309+ tests)
+  - All markdown documentation preserved and accessible through Sphinx
+  - Documentation ready for automatic builds on Read the Docs platform
 - **Issue #337** - Added `mean()` method to `GroupedData` class
   - `GroupedData.mean()` is now available as an alias for `GroupedData.avg()`
   - Enables expressions like `df.groupBy("Name").mean("Value")`

@@ -41,4 +41,15 @@ build: ## Build the package
 publish: ## Publish to PyPI (requires authentication)
 	twine upload dist/*
 
+docs: ## Build documentation
+	cd docs && sphinx-build -b html . _build/html
+
+docs-clean: ## Clean documentation build
+	rm -rf docs/_build/
+
+docs-validate: ## Validate documentation accuracy
+	python scripts/validate_docs_examples.py
+	python scripts/verify_api_signatures.py
+	python scripts/check_doc_accuracy.py
+
 all: clean format type-check test build ## Run all checks and build
