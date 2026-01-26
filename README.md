@@ -8,11 +8,14 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
+[![Documentation](https://readthedocs.org/projects/sparkless/badge/?version=latest)](https://sparkless.readthedocs.io/)
 [![Tests](https://img.shields.io/badge/tests-1309+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
 [![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 *⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🧵 Thread-safe Polars backend*
+
+📚 **[Full Documentation →](https://sparkless.readthedocs.io/)**
 
 </div>
 
@@ -64,6 +67,8 @@ from sparkless.sql import SparkSession
 ```bash
 pip install sparkless
 ```
+
+📖 **Need help?** Check out the [full documentation](https://sparkless.readthedocs.io/) for detailed guides, API reference, and examples.
 
 ### Basic Usage
 
@@ -137,7 +142,7 @@ Sparkless implements **120+ functions** and **70+ DataFrame methods** across PyS
 | **XML** (9+) | XML parsing and generation | `from_xml`, `to_xml`, `xpath_*` |
 | **Bitwise** (6+) | Bit manipulation | `bit_count`, `bit_and`, `bit_xor` |
 
-📖 **See complete function list**: [`PYSPARK_FUNCTION_MATRIX.md`](PYSPARK_FUNCTION_MATRIX.md)
+📖 **See complete function list**: [`PYSPARK_FUNCTION_MATRIX.md`](PYSPARK_FUNCTION_MATRIX.md) | [Full API Documentation](https://sparkless.readthedocs.io/)
 
 ### DataFrame Operations
 
@@ -359,8 +364,8 @@ Real-world test suite improvements:
 
 ### Performance Tooling
 
-- [Hot path profiling guide](docs/performance/profiling.md)
-- [Pandas fallback vs native benchmarks](docs/performance/pandas_fallback.md)
+- 📊 [Hot path profiling guide](https://sparkless.readthedocs.io/en/latest/performance/profiling.html)
+- 📈 [Pandas fallback vs native benchmarks](https://sparkless.readthedocs.io/en/latest/performance/pandas_fallback.html)
 
 ---
 
@@ -509,31 +514,36 @@ Real-world test suite improvements:
 - ✅ **All tests passing** - Full test suite validated with Polars backend
 - 📦 **Production-ready** - Stable release with improved architecture
 
-See [Migration Guide](docs/migration_from_v2_to_v3.md) for details.
+See [Migration Guide](https://sparkless.readthedocs.io/en/latest/migration_from_v2_to_v3.html) for details.
 
 ---
 
 ## Documentation
 
+📚 **Full documentation available at [sparkless.readthedocs.io](https://sparkless.readthedocs.io/)**
+
 ### Getting Started
-- 📖 [Installation & Setup](docs/getting_started.md)
-- 🎯 [Quick Start Guide](docs/getting_started.md#quick-start)
-- 🔄 [Migration from PySpark](docs/guides/migration.md)
+- 📖 [Installation & Setup](https://sparkless.readthedocs.io/en/latest/getting_started.html)
+- 🎯 [Quick Start Guide](https://sparkless.readthedocs.io/en/latest/getting_started.html#quick-start)
+- 🔄 [Migration from PySpark](https://sparkless.readthedocs.io/en/latest/guides/migration.html)
 
 ### Related Packages
 - 🔧 [spark-ddl-parser](https://github.com/eddiethedean/spark-ddl-parser) - Zero-dependency PySpark DDL schema parser
 
 ### Core Concepts
-- 📊 [API Reference](docs/api_reference.md)
-- 🔄 [Lazy Evaluation](docs/guides/lazy_evaluation.md)
-- 🗄️ [SQL Operations](docs/sql_operations_guide.md)
-- 💾 [Storage & Persistence](docs/storage_serialization_guide.md)
+- 📊 [API Reference](https://sparkless.readthedocs.io/en/latest/api_reference.html)
+- 🔄 [Lazy Evaluation](https://sparkless.readthedocs.io/en/latest/guides/lazy_evaluation.html)
+- 🗄️ [SQL Operations](https://sparkless.readthedocs.io/en/latest/sql_operations_guide.html)
+- 💾 [Storage & Persistence](https://sparkless.readthedocs.io/en/latest/storage_serialization_guide.html)
 
 ### Advanced Topics
-- ⚙️ [Configuration](docs/guides/configuration.md)
-- 📈 [Benchmarking](docs/guides/benchmarking.md)
-- 🔌 [Plugins & Hooks](docs/guides/plugins.md)
-- 🐍 [Pytest Integration](docs/guides/pytest_integration.md)
+- ⚙️ [Configuration](https://sparkless.readthedocs.io/en/latest/guides/configuration.html)
+- 📈 [Benchmarking](https://sparkless.readthedocs.io/en/latest/guides/benchmarking.html)
+- 🔌 [Plugins & Hooks](https://sparkless.readthedocs.io/en/latest/guides/plugins.html)
+- 🐍 [Pytest Integration](https://sparkless.readthedocs.io/en/latest/guides/pytest_integration.html)
+- 🧵 [Threading Guide](https://sparkless.readthedocs.io/en/latest/guides/threading.html)
+- 🧠 [Memory Management](https://sparkless.readthedocs.io/en/latest/guides/memory_management.html)
+- ⚡ [CTE Optimization](https://sparkless.readthedocs.io/en/latest/guides/cte_optimization.html)
 
 ---
 
@@ -596,8 +606,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **GitHub**: [github.com/eddiethedean/sparkless](https://github.com/eddiethedean/sparkless)
 - **PyPI**: [pypi.org/project/sparkless](https://pypi.org/project/sparkless/)
+- **Documentation**: [sparkless.readthedocs.io](https://sparkless.readthedocs.io/)
 - **Issues**: [github.com/eddiethedean/sparkless/issues](https://github.com/eddiethedean/sparkless/issues)
-- **Documentation**: [Full documentation](docs/)
 
 ---
 
