@@ -116,7 +116,8 @@ class JoinOperations(Generic[SupportsDF]):
 
         # Materialize self if it has operations queued
         if hasattr(self, "_operations_queue") and self._operations_queue:
-            self_materialized = LazyEvaluationEngine.materialize(self)
+            # Type cast: self should be a DataFrame at runtime
+            self_materialized = LazyEvaluationEngine.materialize(cast("DataFrame", self))
         else:
             # If no operations queued, create a new DataFrame with a copy of the data
             # to avoid sharing references in diamond dependencies
@@ -126,12 +127,15 @@ class JoinOperations(Generic[SupportsDF]):
 
         # Materialize other if it has operations queued
         if hasattr(other, "_operations_queue") and other._operations_queue:
-            other_materialized = LazyEvaluationEngine.materialize(other)
+            # Type cast: other should be a DataFrame at runtime
+            other_materialized = LazyEvaluationEngine.materialize(cast("DataFrame", other))
         else:
             # If no operations queued, create a new DataFrame with a copy of the data
             # to avoid sharing references in diamond dependencies
             other_materialized = DataFrame(
-                [dict(row) for row in other.data], other.schema, getattr(other, "storage", self.storage)
+                [dict(row) for row in other.data],
+                other.schema,
+                getattr(other, "storage", self.storage),
             )
 
         # Get column names from both DataFrames (using materialized schemas)

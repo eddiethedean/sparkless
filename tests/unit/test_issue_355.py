@@ -1,11 +1,10 @@
 """
-Test for issue #355: unionByName produces incorrect results when same DataFrame 
+Test for issue #355: unionByName produces incorrect results when same DataFrame
 is used in two join branches (diamond dependency).
 
 https://github.com/eddiethedean/sparkless/issues/355
 """
 
-import pytest
 from sparkless.sql import SparkSession
 from sparkless import functions as F
 
@@ -15,7 +14,7 @@ class TestIssue355DiamondDependency:
 
     def test_unionByName_diamond_dependency(self):
         """Test that unionByName correctly handles diamond dependencies.
-        
+
         When the same DataFrame is used as input to two separate join operations
         (creating a diamond/fork dependency graph), and the results are then
         combined via unionByName, sparkless should produce the correct result
@@ -59,9 +58,15 @@ class TestIssue355DiamondDependency:
 
         # Verify values are correct (not duplicated original values)
         id_to_value = {row.id: row.value for row in result}
-        assert id_to_value[1] == 100, f"Expected value 100 for id=1, got {id_to_value[1]}"
-        assert id_to_value[2] == 200, f"Expected value 200 for id=2, got {id_to_value[2]}"
-        assert id_to_value[3] == 300, f"Expected value 300 for id=3, got {id_to_value[3]}"
+        assert id_to_value[1] == 100, (
+            f"Expected value 100 for id=1, got {id_to_value[1]}"
+        )
+        assert id_to_value[2] == 200, (
+            f"Expected value 200 for id=2, got {id_to_value[2]}"
+        )
+        assert id_to_value[3] == 300, (
+            f"Expected value 300 for id=3, got {id_to_value[3]}"
+        )
 
         # Verify no duplicates
         assert len(ids) == 3, "Found duplicate IDs in result"

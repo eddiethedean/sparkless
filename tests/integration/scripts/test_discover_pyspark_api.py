@@ -17,6 +17,7 @@ def test_discover_pyspark_api_smoke(tmp_path, monkeypatch):
     def fake_discover(version: str) -> Dict[str, List[str]]:
         return {
             "functions": ["fake_func", f"unique_{version.replace('-', '_')}"],
+            "classes_types": ["fake_class"],
             "dataframe_methods": ["select", "fake_method"],
         }
 

@@ -277,12 +277,17 @@ class JoinService:
 
         # Materialize other if it has operations queued
         if hasattr(other, "_operations_queue") and other._operations_queue:
-            other_materialized = LazyEvaluationEngine.materialize(other)
+            # Type cast: other should be a DataFrame at runtime
+            from ..dataframe import DataFrame as DFType
+
+            other_materialized = LazyEvaluationEngine.materialize(cast(DFType, other))
         else:
             # If no operations queued, create a new DataFrame with a copy of the data
             # to avoid sharing references in diamond dependencies
             other_materialized = DataFrame(
-                [dict(row) for row in other.data], other.schema, getattr(other, "storage", self._df.storage)
+                [dict(row) for row in other.data],
+                other.schema,
+                getattr(other, "storage", self._df.storage),
             )
 
         # Create combined data with all columns
