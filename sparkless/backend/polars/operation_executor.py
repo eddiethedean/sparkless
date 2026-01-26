@@ -2884,6 +2884,7 @@ class PolarsOperationExecutor:
                     )
                     or "+ operation requires Python evaluation" in error_msg
                     or "format_string operation requires Python evaluation" in error_msg
+                    or "array function requires Python evaluation" in error_msg
                 ):
                     # Convert Polars DataFrame to list of dicts for Python evaluation
                     data = df.to_dicts()
@@ -2909,9 +2910,23 @@ class PolarsOperationExecutor:
                     # Polars will automatically infer struct type from dict values
                     # Create Series - use strict=False if available to handle mixed types
                     # This is needed for conditional expressions and other complex cases
+                    # For array() function, results are lists which may contain mixed types
+                    # Use Object dtype for array() to handle mixed types correctly
+                    is_array_function = (
+                        isinstance(expression, ColumnOperation)
+                        and expression.operation == "array"
+                    )
                     try:
-                        # Try with strict=False first (Polars 0.19+)
-                        result_series = pl.Series(column_name, results, strict=False)
+                        if is_array_function:
+                            # Array function may have mixed types - use Object dtype
+                            result_series = pl.Series(
+                                column_name, results, dtype=pl.Object
+                            )
+                        else:
+                            # Try with strict=False first (Polars 0.19+)
+                            result_series = pl.Series(
+                                column_name, results, strict=False
+                            )
                     except TypeError:
                         # Fallback: try without strict parameter or use Object dtype
                         try:

@@ -154,15 +154,28 @@ class MapFunctions:
         """Create a map from key-value pairs.
 
         Args:
-            *cols: Alternating key-value columns/literals.
+            *cols: Alternating key-value columns/literals. If no arguments are provided,
+                   returns an empty map {}.
 
         Returns:
             ColumnOperation representing the create_map function.
 
         Example:
             >>> df.select(F.create_map(F.col("k1"), F.col("v1"), F.col("k2"), F.col("v2")))
+            >>> df.select(F.create_map())  # Returns empty map {}
         """
         from .core.literals import Literal
+
+        # Allow 0 arguments (empty map) - PySpark returns {} for create_map()
+        if len(cols) == 0:
+            # Return empty map literal
+            base_col = Column("__create_map_base__")
+            return ColumnOperation(
+                base_col,
+                "create_map",
+                value=(),  # Empty tuple for no arguments
+                name="map()",
+            )
 
         if len(cols) < 2 or len(cols) % 2 != 0:
             raise ValueError(

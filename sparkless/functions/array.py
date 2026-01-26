@@ -24,7 +24,7 @@ Example:
     ['e', 'f', 'd']
 """
 
-from typing import Any, Callable, Optional, TYPE_CHECKING, Union
+from typing import Any, Callable, List, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from sparkless.functions.base import AggregateFunction
@@ -903,27 +903,42 @@ class ArrayFunctions:
         return ColumnOperation(column, "shuffle", name=f"shuffle({column.name})")
 
     @staticmethod
-    def array(*cols: Union[Column, str]) -> ColumnOperation:
+    def array(*cols: Union[Column, str, List[Union[Column, str]]]) -> ColumnOperation:
         """Create array from multiple columns (PySpark 3.0+).
 
         Args:
-            *cols: Variable number of columns to combine into array
+            *cols: Variable number of columns to combine into array.
+                   Supports multiple formats:
+                   - F.array("Name", "Type") - string column names
+                   - F.array(["Name", "Type"]) - list of string column names
+                   - F.array(F.col("Name"), F.col("Type")) - Column objects
+                   - F.array([F.col("Name"), F.col("Type")]) - list of Column objects
 
         Returns:
             ColumnOperation representing the array function.
 
         Example:
             >>> df.select(F.array(F.col("a"), F.col("b"), F.col("c")))
+            >>> df.select(F.array(["a", "b", "c"]))  # List format
         """
         if not cols:
             raise ValueError("array requires at least one column")
+
+        # Handle case where a single list is passed: F.array(["Name", "Type"])
+        # Unpack the list if it's the only argument
+        if len(cols) == 1 and isinstance(cols[0], list):
+            cols = tuple(cols[0])
 
         # Convert all columns
         converted_cols = []
         for c in cols:
             if isinstance(c, str):
                 converted_cols.append(Column(c))
+            elif isinstance(c, list):
+                # This shouldn't happen after unpacking, but handle it for type safety
+                raise ValueError("Nested lists are not supported in array()")
             else:
+                # c is a Column object
                 converted_cols.append(c)
 
         # First column is the main column, rest are in value as tuple
