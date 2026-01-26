@@ -164,6 +164,15 @@ class PolarsExpressionTranslator:
         self._translation_cache: OrderedDict[Any, pl.Expr] = OrderedDict()
         self._cache_size = 512
 
+        # Initialize specialized translators
+        from .translators.string_translator import StringTranslator
+        from .translators.type_translator import TypeTranslator
+        from .translators.arithmetic_translator import ArithmeticTranslator
+
+        self._string_translator = StringTranslator(self)
+        self._type_translator = TypeTranslator()
+        self._arithmetic_translator = ArithmeticTranslator(self)
+
     def _get_case_sensitive(self) -> bool:
         """Get case sensitivity setting from active session.
 
@@ -205,11 +214,22 @@ class PolarsExpressionTranslator:
         if case_sensitive is None:
             case_sensitive = self._get_case_sensitive()
 
-        cache_key = self._build_cache_key(expr) if self._cache_enabled else None
-        if cache_key is not None:
-            cached = self._cache_get(cache_key)
-            if cached is not None:
-                return cached
+        # Build cache key including context (available_columns, case_sensitive)
+        # This ensures cache hits only when context matches
+        cache_key = None
+        if self._cache_enabled:
+            expr_key = self._build_cache_key(expr)
+            if expr_key is not None:
+                # Include context in cache key to avoid incorrect cache hits
+                context_key = (
+                    tuple(available_columns) if available_columns else None,
+                    case_sensitive,
+                    input_col_dtype,
+                )
+                cache_key = (expr_key, context_key)
+                cached = self._cache_get(cache_key)
+                if cached is not None:
+                    return cached
 
         if isinstance(expr, ColumnOperation):
             # For nested operations (e.g., filter with isin), pass input_col_dtype down
@@ -330,9 +350,10 @@ class PolarsExpressionTranslator:
         """
         from sparkless.core.column_resolver import ColumnResolver
 
-        return ColumnResolver.resolve_column_name(
+        result = ColumnResolver.resolve_column_name(
             column_name, available_columns, case_sensitive
         )
+        return result
 
     def _translate_literal(self, lit: Literal) -> pl.Expr:
         """Translate Literal to Polars literal expression.
@@ -732,9 +753,12 @@ class PolarsExpressionTranslator:
         if value is None:
             # Handle operators first (before function calls)
             if operation in ["!", "~"]:
-                return ~left
+                op_str = str(operation)  # Ensure it's a string for type checking
+                return self._arithmetic_translator.translate_unary_arithmetic(
+                    left, op_str
+                )
             elif operation == "-":
-                return -left
+                return self._arithmetic_translator.translate_unary_arithmetic(left, "-")
             elif operation in ["isnull", "isNull"]:
                 return left.is_null()
             elif operation in ["isnotnull", "isNotNull"]:
@@ -849,8 +873,7 @@ class PolarsExpressionTranslator:
         # Handle binary operations with type coercion for string-to-numeric comparisons
         if operation in ["==", "!=", "<", "<=", ">", ">=", "eqNullSafe"]:
             # operation is guaranteed to be a string (from op.operation)
-            op_str: str = str(operation)
-            return self._coerce_for_comparison(left, right, op_str)
+            return self._coerce_for_comparison(left, right, str(operation))
         elif operation == "+":
             # + operator needs special handling: string concatenation vs numeric addition
             # PySpark behavior:
@@ -865,14 +888,16 @@ class PolarsExpressionTranslator:
         elif operation in ["-", "*", "/", "%", "**"]:
             # Arithmetic operations with automatic string-to-numeric coercion
             # PySpark automatically casts string columns to Double for arithmetic
-            return self._coerce_for_arithmetic(left, right, str(operation))
+            return self._arithmetic_translator.translate_arithmetic(
+                left, right, str(operation)
+            )
         elif operation == "&":
             return left & right
         elif operation == "|":
             return left | right
         elif operation == "cast":
             # Handle cast operation
-            return self._translate_cast(left, value)
+            return self._type_translator.translate_cast(left, value)
         # isin and between are handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
             # operation is guaranteed to be a string in ColumnOperation
@@ -1234,8 +1259,16 @@ class PolarsExpressionTranslator:
                     # For Polars, we need to create pl.lit(None, dtype=...) for typed nulls
                     # This is a workaround - we'll handle it by creating the literal with dtype
                     pass
-        except Exception:
+        except (ValueError, TypeError, AttributeError):
+            # Specific exceptions for type detection failures
             logger.debug("Exception in cast type detection, continuing", exc_info=True)
+            pass
+        except Exception as e:
+            # Log unexpected exceptions but continue
+            logger.warning(
+                f"Unexpected exception in cast type detection: {type(e).__name__}: {e}",
+                exc_info=True,
+            )
             pass
 
         # For string to int/long casting, Polars needs float intermediate step
@@ -1324,14 +1357,15 @@ class PolarsExpressionTranslator:
                 # create a new literal with dtype
                 try:
                     return expr.cast(polars_dtype, strict=False)
-                except Exception as e:
+                except (pl.exceptions.ComputeError, TypeError, ValueError) as e:
                     # If casting fails due to null type, create typed None literal
-                    if "null" in str(e).lower() or "dtype" in str(e).lower():
+                    error_msg = str(e).lower()
+                    if "null" in error_msg or "dtype" in error_msg:
                         return pl.lit(None, dtype=polars_dtype)
                     raise
             else:
                 return expr.cast(polars_dtype, strict=False)
-        except Exception as e:
+        except (pl.exceptions.ComputeError, TypeError, ValueError) as e:
             # Check if this is an InvalidOperationError for unsupported casts
             error_msg = str(e)
             if "not supported" in error_msg.lower() or "InvalidOperationError" in str(
@@ -1350,8 +1384,11 @@ class PolarsExpressionTranslator:
                 # Check if expr represents a None value
                 # For Polars, we need pl.lit(None, dtype=...) for typed nulls
                 return pl.lit(None, dtype=polars_dtype)
-            except Exception:
+            except (TypeError, ValueError) as fallback_error:
                 # Last resort: try regular cast
+                logger.debug(
+                    f"Typed None fallback failed: {fallback_error}", exc_info=True
+                )
                 logger.debug(
                     "Typed None creation failed, using regular cast", exc_info=True
                 )
@@ -1360,7 +1397,7 @@ class PolarsExpressionTranslator:
     def _translate_string_operation(
         self, expr: pl.Expr, operation: str, value: Any
     ) -> pl.Expr:
-        """Translate string operations.
+        """Translate string operations - delegates to StringTranslator.
 
         Args:
             expr: Polars expression (string column)
@@ -1370,26 +1407,9 @@ class PolarsExpressionTranslator:
         Returns:
             Polars expression for string operation
         """
-        if operation == "contains":
-            if isinstance(value, str):
-                return expr.str.contains(value)
-            else:
-                value_expr = self.translate(value)
-                return expr.str.contains(value_expr)
-        elif operation == "startswith":
-            if isinstance(value, str):
-                return expr.str.starts_with(value)
-            else:
-                value_expr = self.translate(value)
-                return expr.str.starts_with(value_expr)
-        elif operation == "endswith":
-            if isinstance(value, str):
-                return expr.str.ends_with(value)
-            else:
-                value_expr = self.translate(value)
-                return expr.str.ends_with(value_expr)
-        else:
-            raise ValueError(f"Unsupported string operation: {operation}")
+        return self._string_translator.translate_string_operation(
+            expr, operation, value
+        )
 
     def _build_cache_key(self, expr: Any) -> Optional[Tuple[Any, ...]]:
         try:
@@ -2199,157 +2219,13 @@ class PolarsExpressionTranslator:
                         "regexp_replace requires (pattern, replacement) tuple"
                     )
             elif operation == "regexp_extract":
-                # regexp_extract(col, pattern, idx)
-                if isinstance(op.value, tuple) and len(op.value) >= 2:
-                    pattern = op.value[0]
-                    idx = op.value[1] if len(op.value) > 1 else 0
-
-                    # Check if pattern contains lookahead/lookbehind assertions
-                    # Polars doesn't support these, so we need to use Python fallback
-                    import re as re_module
-
-                    has_lookaround = False
-                    try:
-                        # Check if pattern contains lookaround assertions
-                        if re_module.search(r"\(\?[<>=!]", pattern):
-                            has_lookaround = True
-                    except Exception:
-                        # If pattern check fails, try Polars anyway
-                        has_lookaround = False
-
-                    if has_lookaround:
-                        # Use Python re module fallback for lookahead/lookbehind patterns
-                        def regexp_extract_fallback(val: Any) -> Optional[str]:
-                            """Fallback for regexp_extract with lookahead/lookbehind."""
-                            if val is None or not isinstance(val, str):
-                                return None
-                            try:
-                                match = re_module.search(pattern, val)
-                                if match:
-                                    # Extract the group at idx (0 = full match, 1+ = groups)
-                                    if idx == 0:
-                                        return str(match.group(0))
-                                    elif idx <= len(match.groups()):
-                                        group_result = match.group(idx)
-                                        return (
-                                            str(group_result)
-                                            if group_result is not None
-                                            else None
-                                        )
-                                    else:
-                                        return None
-                                return None
-                            except Exception:
-                                return None
-
-                        # Use map_elements for Python fallback
-                        return col_expr.map_elements(
-                            regexp_extract_fallback, return_dtype=pl.Utf8
-                        )
-                    else:
-                        # Try Polars native extract first, fallback to Python if it fails
-                        try:
-                            # Polars extract returns a string, matching group at idx
-                            # Note: Polars str.extract uses group index 1-based, so idx=0 maps to full match
-                            # But PySpark regexp_extract idx=0 is full match, idx=1+ are capture groups
-                            # Polars doesn't support full match (idx=0) in extract, so we need special handling
-                            if idx == 0:
-                                # For idx=0 (full match), use extract_all and get first element
-                                extracted = col_expr.str.extract_all(pattern)
-
-                                # Get first match from list
-                                def get_first_match(matches: Any) -> Optional[str]:
-                                    if (
-                                        matches is None
-                                        or not isinstance(matches, list)
-                                        or len(matches) == 0
-                                    ):
-                                        return None
-                                    # Get the first match (which is the full match)
-                                    return matches[0] if matches else None
-
-                                return extracted.map_elements(
-                                    get_first_match, return_dtype=pl.Utf8
-                                )
-                            else:
-                                # For idx > 0, use Polars extract with group index
-                                # Polars uses 1-based indexing for groups
-                                return col_expr.str.extract(pattern, idx)
-                        except pl.exceptions.ComputeError as e:
-                            error_msg = str(e).lower()
-                            # Check if error is about look-around not being supported
-                            if (
-                                "look-around" in error_msg
-                                or "look-ahead" in error_msg
-                                or "look-behind" in error_msg
-                            ):
-                                # Fallback to Python re module
-                                def regexp_extract_fallback(val: Any) -> Optional[str]:
-                                    """Fallback for regexp_extract with lookahead/lookbehind."""
-                                    if val is None or not isinstance(val, str):
-                                        return None
-                                    try:
-                                        match = re_module.search(pattern, val)
-                                        if match:
-                                            if idx == 0:
-                                                return str(match.group(0))
-                                            elif idx <= len(match.groups()):
-                                                group_result = match.group(idx)
-                                                return (
-                                                    str(group_result)
-                                                    if group_result is not None
-                                                    else None
-                                                )
-                                            else:
-                                                return None
-                                        return None
-                                    except Exception:
-                                        return None
-
-                                return col_expr.map_elements(
-                                    regexp_extract_fallback, return_dtype=pl.Utf8
-                                )
-                            else:
-                                # Re-raise other ComputeErrors
-                                raise
-                else:
-                    raise ValueError("regexp_extract requires (pattern, idx) tuple")
+                # regexp_extract(col, pattern, idx) - delegate to string translator
+                return self._string_translator.translate_regexp_extract(
+                    col_expr, op.value
+                )
             elif operation == "split":
-                # split(col, delimiter, limit)
-                if isinstance(op.value, tuple):
-                    delimiter, limit = op.value
-                else:
-                    delimiter = op.value
-                    limit = None
-                # Polars split() doesn't have limit parameter
-                # If limit is None or -1, use regular split (no limit)
-                if limit is None or limit == -1:
-                    return col_expr.str.split(delimiter)
-                else:
-                    # Use Python fallback for split with limit
-                    # PySpark limit behavior: limit=3 means return at most 3 parts
-                    # Python split(maxsplit=n) splits n times, resulting in n+1 parts
-                    # So to get limit parts, we need maxsplit = limit - 1
-                    # Special case: limit=1 means no split (return original string as single-element list)
-                    def split_with_limit(val: Any) -> Optional[List[str]]:
-                        """Split string with limit using Python."""
-                        if val is None:
-                            return None
-                        try:
-                            s = str(val)
-                            if limit == 1:
-                                # limit=1 means no split, return original as single-element list
-                                return [s]
-                            # For limit > 1: maxsplit = limit - 1 to get limit parts
-                            maxsplit = limit - 1
-                            parts = s.split(delimiter, maxsplit=maxsplit)
-                            return parts
-                        except Exception:
-                            return None
-
-                    return col_expr.map_elements(
-                        split_with_limit, return_dtype=pl.List(pl.Utf8)
-                    )
+                # split(col, delimiter, limit) - delegate to string translator
+                return self._string_translator.translate_split(col_expr, op.value)
             elif operation == "format_string":
                 # format_string(format_str, *columns) - use Python fallback
                 # format_string is complex with multiple columns, so we use Python evaluation
@@ -2398,126 +2274,13 @@ class PolarsExpressionTranslator:
                 regex_pattern = pattern.replace("%", ".*").replace("_", ".")
                 return col_expr.str.contains(regex_pattern, literal=False)
             elif operation == "rlike":
-                # rlike(col, pattern) - Regular expression pattern matching
+                # rlike(col, pattern) - Regular expression pattern matching - delegate to string translator
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-
-                # Check if pattern contains lookahead/lookbehind assertions
-                # Polars doesn't support these, so we need to use Python fallback
-                import re as re_module
-
-                has_lookaround = False
-                try:
-                    # Check if pattern contains lookaround assertions
-                    if re_module.search(r"\(\?[<>=!]", pattern):
-                        has_lookaround = True
-                except Exception:
-                    # If pattern check fails, try Polars anyway
-                    has_lookaround = False
-
-                if has_lookaround:
-                    # Use Python re module fallback for lookahead/lookbehind patterns
-                    def rlike_fallback(val: Any) -> bool:
-                        """Fallback for rlike with lookahead/lookbehind."""
-                        if val is None or not isinstance(val, str):
-                            return False
-                        try:
-                            return bool(re_module.search(pattern, val))
-                        except Exception:
-                            return False
-
-                    # Use map_elements for Python fallback
-                    return col_expr.map_elements(
-                        rlike_fallback, return_dtype=pl.Boolean
-                    )
-                else:
-                    # Try Polars native contains first, fallback to Python if it fails
-                    try:
-                        return col_expr.str.contains(pattern, literal=False)
-                    except pl.exceptions.ComputeError as e:
-                        error_msg = str(e).lower()
-                        # Check if error is about look-around not being supported
-                        if (
-                            "look-around" in error_msg
-                            or "look-ahead" in error_msg
-                            or "look-behind" in error_msg
-                        ):
-                            # Fallback to Python re module
-                            def rlike_fallback(val: Any) -> bool:
-                                """Fallback for rlike with lookahead/lookbehind."""
-                                if val is None or not isinstance(val, str):
-                                    return False
-                                try:
-                                    return bool(re_module.search(pattern, val))
-                                except Exception:
-                                    return False
-
-                            return col_expr.map_elements(
-                                rlike_fallback, return_dtype=pl.Boolean
-                            )
-                        else:
-                            # Re-raise other ComputeErrors
-                            raise
+                return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "regexp":
-                # regexp(col, pattern) - Alias for rlike
-                # Use the same implementation as rlike (handles look-around patterns)
+                # regexp(col, pattern) - Alias for rlike - delegate to string translator
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-
-                # Check if pattern contains lookahead/lookbehind assertions
-                # Polars doesn't support these, so we need to use Python fallback
-                import re as re_module
-
-                has_lookaround = False
-                try:
-                    # Check if pattern contains lookaround assertions
-                    if re_module.search(r"\(\?[<>=!]", pattern):
-                        has_lookaround = True
-                except Exception:
-                    # If pattern check fails, try Polars anyway
-                    has_lookaround = False
-
-                if has_lookaround:
-                    # Use Python re module fallback for lookahead/lookbehind patterns
-                    def regexp_fallback(val: Any) -> bool:
-                        """Fallback for regexp with lookahead/lookbehind."""
-                        if val is None or not isinstance(val, str):
-                            return False
-                        try:
-                            return bool(re_module.search(pattern, val))
-                        except Exception:
-                            return False
-
-                    # Use map_elements for Python fallback
-                    return col_expr.map_elements(
-                        regexp_fallback, return_dtype=pl.Boolean
-                    )
-                else:
-                    # Try Polars native contains first, fallback to Python if it fails
-                    try:
-                        return col_expr.str.contains(pattern, literal=False)
-                    except pl.exceptions.ComputeError as e:
-                        error_msg = str(e).lower()
-                        # Check if error is about look-around not being supported
-                        if (
-                            "look-around" in error_msg
-                            or "look-ahead" in error_msg
-                            or "look-behind" in error_msg
-                        ):
-                            # Fallback to Python re module
-                            def regexp_fallback(val: Any) -> bool:
-                                """Fallback for regexp with lookahead/lookbehind."""
-                                if val is None or not isinstance(val, str):
-                                    return False
-                                try:
-                                    return bool(re_module.search(pattern, val))
-                                except Exception:
-                                    return False
-
-                            return col_expr.map_elements(
-                                regexp_fallback, return_dtype=pl.Boolean
-                            )
-                        else:
-                            # Re-raise other ComputeErrors
-                            raise
+                return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "ilike":
                 # ilike(col, pattern) - Case-insensitive LIKE
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
@@ -2526,66 +2289,9 @@ class PolarsExpressionTranslator:
                     regex_pattern, literal=False
                 )
             elif operation == "regexp_like":
-                # regexp_like(col, pattern) - Alias for rlike
-                # Use the same implementation as rlike (handles look-around patterns)
+                # regexp_like(col, pattern) - Alias for rlike - delegate to string translator
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-
-                # Check if pattern contains lookahead/lookbehind assertions
-                # Polars doesn't support these, so we need to use Python fallback
-                import re as re_module
-
-                has_lookaround = False
-                try:
-                    # Check if pattern contains lookaround assertions
-                    if re_module.search(r"\(\?[<>=!]", pattern):
-                        has_lookaround = True
-                except Exception:
-                    # If pattern check fails, try Polars anyway
-                    has_lookaround = False
-
-                if has_lookaround:
-                    # Use Python re module fallback for lookahead/lookbehind patterns
-                    def regexp_like_fallback(val: Any) -> bool:
-                        """Fallback for regexp_like with lookahead/lookbehind."""
-                        if val is None or not isinstance(val, str):
-                            return False
-                        try:
-                            return bool(re_module.search(pattern, val))
-                        except Exception:
-                            return False
-
-                    # Use map_elements for Python fallback
-                    return col_expr.map_elements(
-                        regexp_like_fallback, return_dtype=pl.Boolean
-                    )
-                else:
-                    # Try Polars native contains first, fallback to Python if it fails
-                    try:
-                        return col_expr.str.contains(pattern, literal=False)
-                    except pl.exceptions.ComputeError as e:
-                        error_msg = str(e).lower()
-                        # Check if error is about look-around not being supported
-                        if (
-                            "look-around" in error_msg
-                            or "look-ahead" in error_msg
-                            or "look-behind" in error_msg
-                        ):
-                            # Fallback to Python re module
-                            def regexp_like_fallback(val: Any) -> bool:
-                                """Fallback for regexp_like with lookahead/lookbehind."""
-                                if val is None or not isinstance(val, str):
-                                    return False
-                                try:
-                                    return bool(re_module.search(pattern, val))
-                                except Exception:
-                                    return False
-
-                            return col_expr.map_elements(
-                                regexp_like_fallback, return_dtype=pl.Boolean
-                            )
-                        else:
-                            # Re-raise other ComputeErrors
-                            raise
+                return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "regexp_count":
                 # regexp_count(col, pattern) - Count regex matches
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
@@ -2824,65 +2530,9 @@ class PolarsExpressionTranslator:
                 regex_pattern = pattern.replace("%", ".*").replace("_", ".")
                 return col_expr.str.contains(regex_pattern, literal=False)
             elif operation == "rlike":
-                # Regular expression pattern matching
+                # Regular expression pattern matching - delegate to string translator
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-
-                # Check if pattern contains lookahead/lookbehind assertions
-                # Polars doesn't support these, so we need to use Python fallback
-                import re as re_module
-
-                has_lookaround = False
-                try:
-                    # Check if pattern contains lookaround assertions
-                    if re_module.search(r"\(\?[<>=!]", pattern):
-                        has_lookaround = True
-                except Exception:
-                    # If pattern check fails, try Polars anyway
-                    has_lookaround = False
-
-                if has_lookaround:
-                    # Use Python re module fallback for lookahead/lookbehind patterns
-                    def rlike_fallback(val: Any) -> bool:
-                        """Fallback for rlike with lookahead/lookbehind."""
-                        if val is None or not isinstance(val, str):
-                            return False
-                        try:
-                            return bool(re_module.search(pattern, val))
-                        except Exception:
-                            return False
-
-                    # Use map_elements for Python fallback
-                    return col_expr.map_elements(
-                        rlike_fallback, return_dtype=pl.Boolean
-                    )
-                else:
-                    # Try Polars native contains first, fallback to Python if it fails
-                    try:
-                        return col_expr.str.contains(pattern, literal=False)
-                    except pl.exceptions.ComputeError as e:
-                        error_msg = str(e).lower()
-                        # Check if error is about look-around not being supported
-                        if (
-                            "look-around" in error_msg
-                            or "look-ahead" in error_msg
-                            or "look-behind" in error_msg
-                        ):
-                            # Fallback to Python re module
-                            def rlike_fallback(val: Any) -> bool:
-                                """Fallback for rlike with lookahead/lookbehind."""
-                                if val is None or not isinstance(val, str):
-                                    return False
-                                try:
-                                    return bool(re_module.search(pattern, val))
-                                except Exception:
-                                    return False
-
-                            return col_expr.map_elements(
-                                rlike_fallback, return_dtype=pl.Boolean
-                            )
-                        else:
-                            # Re-raise other ComputeErrors
-                            raise
+                return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "round":
                 # round(col, decimals)
                 decimals = op.value if isinstance(op.value, int) else 0
@@ -4321,7 +3971,9 @@ class PolarsExpressionTranslator:
                         else:
                             cast_col = self.translate(col.column)
                         # Translate cast with the type name directly
-                        all_cols.append(self._translate_cast(cast_col, col.value))
+                        all_cols.append(
+                            self._type_translator.translate_cast(cast_col, col.value)
+                        )
                     else:
                         all_cols.append(self.translate(col))
                 # Combine maps: merge all dicts together (later values override earlier ones)

@@ -58,8 +58,16 @@ def test_manual_cache_manipulation_to_force_bug(enable_cache):
     print(f"Cached expression: {cached_polars_expr}")
 
     # Verify it's cached
-    cache_key = translator._build_cache_key(expr)
-    assert cache_key in translator._translation_cache
+    # Cache key now includes context: (expr_key, context_key)
+    expr_key = translator._build_cache_key(expr)
+    # Check if any cache key starts with this expr_key
+    cache_found = any(
+        isinstance(key, tuple) and len(key) >= 1 and key[0] == expr_key
+        for key in translator._translation_cache
+    )
+    assert cache_found, (
+        f"Expression not found in cache. Cache keys: {list(translator._translation_cache.keys())[:5]}"
+    )
 
     # Now drop the column via select
     df_dropped = df.select("impression_id", "campaign_id")

@@ -197,3 +197,108 @@ def normalize_date_input(value: Any) -> Union["Column", "Literal"]:
         return cast("Union[Column, Literal]", value)
     # For other types (ColumnOperation, etc.), create Column from name
     return cast("Union[Column, Literal]", Column(str(value)))
+
+
+def ensure_column_operation(expr: Any) -> "ColumnOperation":
+    """Convert AggregateFunction or Column to ColumnOperation.
+
+    This helper normalizes aggregate expressions to ColumnOperation,
+    which is required for agg() validation. If the expression is already
+    a ColumnOperation, returns it as-is. If it's an AggregateFunction,
+    wraps it in a ColumnOperation.
+
+    Args:
+        expr: Expression that may be Column, ColumnOperation, or AggregateFunction
+
+    Returns:
+        ColumnOperation wrapping the expression
+
+    Example:
+        >>> # AggregateFunction -> ColumnOperation
+        >>> agg_func = AggregateFunction(column, "sum", DoubleType())
+        >>> col_op = ensure_column_operation(agg_func)
+        >>> # ColumnOperation -> ColumnOperation (no-op)
+        >>> col_op = ensure_column_operation(existing_col_op)
+    """
+    from ..functions import Column, ColumnOperation
+    from ..functions.base import AggregateFunction
+
+    # Already a ColumnOperation - return as-is
+    if is_column_operation(expr):
+        return cast("ColumnOperation", expr)
+
+    # AggregateFunction - wrap in ColumnOperation
+    if isinstance(expr, AggregateFunction):
+        # Get the base column from the aggregate function
+        base_col = expr.column
+        if base_col is None:
+            # For count(*), create a dummy column
+            base_col = Column("__count_star__")
+        elif isinstance(base_col, str):
+            base_col = Column(base_col)
+        elif not is_column(base_col):
+            # Convert to Column if needed
+            base_col = Column(str(base_col))
+
+        # Create ColumnOperation wrapping the aggregate function
+        op = ColumnOperation(base_col, expr.function_name, value=None, name=expr.name)
+        op._aggregate_function = expr
+        return op
+
+    # Column - convert to ColumnOperation
+    if is_column(expr):
+        return ColumnOperation(cast("Column", expr), "identity", value=None)
+
+    # String - convert to Column then ColumnOperation
+    if isinstance(expr, str):
+        col = Column(expr)
+        return ColumnOperation(col, "identity", value=None)
+
+    # For other types, try to create ColumnOperation
+    # This handles edge cases where expr might be something else
+    return ColumnOperation(Column(str(expr)), "identity", value=None)
+
+
+def normalize_aggregate_expression(expr: Any) -> "ColumnOperation":
+    """Normalize aggregate expressions to ColumnOperation.
+
+    This is an alias for ensure_column_operation() for clarity when
+    working specifically with aggregate expressions.
+
+    Args:
+        expr: Aggregate expression (AggregateFunction, ColumnOperation, etc.)
+
+    Returns:
+        ColumnOperation wrapping the aggregate expression
+
+    Example:
+        >>> # Normalize aggregate function for use in agg()
+        >>> result = df.groupBy("dept").agg(normalize_aggregate_expression(F.sum("salary")))
+    """
+    return ensure_column_operation(expr)
+
+
+def is_aggregate_function(obj: Any) -> bool:
+    """Check if object is an AggregateFunction.
+
+    Args:
+        obj: Object to check
+
+    Returns:
+        True if object is an AggregateFunction, False otherwise
+    """
+    from ..functions.base import AggregateFunction
+
+    return isinstance(obj, AggregateFunction)
+
+
+def is_column_expression(obj: Any) -> bool:
+    """Check if object is a column expression (Column, ColumnOperation, or AggregateFunction).
+
+    Args:
+        obj: Object to check
+
+    Returns:
+        True if object is a column expression, False otherwise
+    """
+    return is_column(obj) or is_column_operation(obj) or is_aggregate_function(obj)

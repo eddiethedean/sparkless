@@ -990,13 +990,17 @@ class Functions:
         return AggregateFunctions.collect_set(column)
 
     @staticmethod
-    def stddev(column: Union[Column, str]) -> AggregateFunction:
+    def stddev(column: Union[Column, str]) -> "ColumnOperation":  # noqa: F821
         """Standard deviation."""
+        from .core.column import ColumnOperation
+
         return AggregateFunctions.stddev(column)
 
     @staticmethod
-    def std(column: Union[Column, str]) -> AggregateFunction:
+    def std(column: Union[Column, str]) -> "ColumnOperation":  # noqa: F821
         """Alias for stddev - Standard deviation."""
+        from .core.column import ColumnOperation
+
         return AggregateFunctions.std(column)
 
     @staticmethod
@@ -1010,8 +1014,10 @@ class Functions:
         return AggregateFunctions.sum_distinct(column)
 
     @staticmethod
-    def variance(column: Union[Column, str]) -> AggregateFunction:
+    def variance(column: Union[Column, str]) -> "ColumnOperation":  # noqa: F821
         """Variance."""
+        from .core.column import ColumnOperation
+
         return AggregateFunctions.variance(column)
 
     @staticmethod

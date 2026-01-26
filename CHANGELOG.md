@@ -1,5 +1,78 @@
 # Changelog
 
+## 3.27.1 — 2026-01-26
+
+### Fixed
+- **BUG-002** - Fixed Column aggregate methods to return ColumnOperation wrapping AggregateFunction
+  - `Column.sum()`, `Column.avg()`, `Column.max()`, `Column.min()`, `Column.stddev()`, and `Column.variance()` now return `ColumnOperation` objects that internally wrap `AggregateFunction` instances
+  - Matches the pattern used by `AggregateFunctions.sum()`, `AggregateFunctions.avg()`, etc.
+  - Ensures consistent API behavior across all aggregate function entry points
+  - Updated `AggregateFunctions.std()` and `AggregateFunctions.variance()` to also return `ColumnOperation`
+  - Updated `Functions.stddev()`, `Functions.std()`, and `Functions.variance()` return type annotations
+  - All aggregate function tests passing (57 tests)
+- **BUG-004** - Fixed SQL column alias parsing in SELECT statements
+  - SQL parser now correctly extracts column aliases from `SELECT` statements (e.g., `col AS alias`)
+  - Parser stores column selections as dictionaries with `"expression"` and optional `"alias"` keys
+  - SQL executor properly handles both old (string) and new (dict) formats via `_normalize_column_item()` helper
+  - Fixes issues where column aliases were not properly recognized in SQL queries
+- **BUG-005** - Fixed SQL CASE WHEN expression parsing
+  - Enhanced SQL parser to correctly handle `CASE WHEN ... END as alias` expressions
+  - Added `case_when_depth` tracking with word boundary checks for `CASE` and `END` keywords
+  - Prevents incorrect splitting on commas within CASE WHEN blocks
+  - Correctly extracts aliases after the `END` keyword
+  - Fixes `QueryExecutionException: cannot resolve 'ELSE ... END'` errors
+
+### Added
+- **Code Organization** - Split large monolithic files into specialized modules for better maintainability
+  - Created `sparkless/backend/polars/translators/` module with specialized translators:
+    - `StringTranslator` - Handles string operation translations (substring, regexp_replace, regexp_extract, split, rlike)
+    - `TypeTranslator` - Handles type casting translations
+    - `ArithmeticTranslator` - Handles arithmetic operation translations
+  - Created `sparkless/dataframe/evaluation/evaluators/` module:
+    - `ConditionalEvaluator` - Handles CASE WHEN expression evaluation
+  - Created `sparkless/backend/polars/executors/` module structure for future operation executor splitting
+  - All specialized modules integrated into main classes while maintaining backward compatibility
+- **Type Utilities** - Added helper functions to `sparkless/core/type_utils.py`
+  - `ensure_column_operation()` - Normalizes aggregate expressions to ColumnOperation
+  - `normalize_aggregate_expression()` - Alias for ensure_column_operation
+  - `is_aggregate_function()` - Type checking helper for aggregate functions
+  - `is_column_expression()` - Type checking helper for column expressions
+
+### Changed
+- **Exception Handling** - Improved exception specificity in expression translator
+  - Replaced generic `except Exception:` blocks with specific exception types
+  - Now catches `pl.exceptions.ComputeError`, `TypeError`, and `ValueError` explicitly
+  - Improves error messages and performance by avoiding overly broad exception handling
+- **Cache Optimization** - Enhanced expression translation cache key generation
+  - Cache keys now include `available_columns`, `case_sensitive`, and `input_col_dtype` context
+  - Prevents incorrect cache hits when translation context differs
+  - Ensures cache hits only occur when translation context is identical
+  - Updated cache validation tests to account for new tuple-based cache key structure
+- **Type Safety** - Comprehensive mypy type checking improvements
+  - Fixed 25 mypy type errors across the codebase
+  - Added runtime imports for types used in string annotations (`ColumnOperation`, `AggregateFunction`, `CaseWhen`, `Literal`)
+  - Fixed import paths in `aggregate.py` and `functions.py` (changed `..core.column` to `.core.column`)
+  - Added proper type casts and type annotations throughout SQL executor
+  - All 486 source files now pass mypy type checking
+- **Code Quality** - Applied ruff formatting and linting fixes
+  - Fixed redundant casts and unused variable assignments
+  - Improved code formatting consistency
+  - All files pass ruff format and ruff check
+
+### Testing
+- All 2,176 tests passing (22 skipped)
+- All aggregate function tests passing (57 tests)
+- All SQL parsing tests passing (62 tests for aggregate and case_when)
+- All new specialized modules pass mypy and ruff checks
+- Comprehensive test coverage for all bug fixes
+
+### Technical Details
+- Updated `PolarsExpressionTranslator` to delegate to specialized translators for string, type, and arithmetic operations
+- Updated `ExpressionEvaluator` to delegate CASE WHEN evaluation to `ConditionalEvaluator`
+- Enhanced SQL parser with improved column and CASE WHEN parsing logic
+- Improved type annotations and imports throughout the codebase
+- All code quality checks passing (ruff format, ruff check, mypy type checking)
+
 ## 3.27.0 — 2026-01-26
 
 ### Added
