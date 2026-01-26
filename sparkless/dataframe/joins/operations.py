@@ -101,16 +101,67 @@ class JoinOperations(Generic[SupportsDF]):
     ) -> SupportsDF:
         """Union with another DataFrame by column names.
 
+        Unlike `union()`, which matches columns by position, `unionByName()` matches
+        columns by name, allowing DataFrames with different column orders to be combined.
+        Both DataFrames are automatically materialized before unioning to ensure correct
+        results, especially in diamond dependency scenarios where the same DataFrame
+        is used in multiple transformation branches.
+
         Args:
-            other: Another DataFrame to union with.
+            other: Another DataFrame to union with. Must have compatible column types.
             allowMissingColumns: If True, allows missing columns (fills with null).
+                When False, both DataFrames must have the same columns.
 
         Returns:
-            New DataFrame with combined data.
+            New DataFrame with combined data from both DataFrames. Column order matches
+            the first DataFrame's schema.
+
+        Raises:
+            AnalysisException: If DataFrames have incompatible column types or missing
+                columns when `allowMissingColumns=False`.
+
+        Example:
+            >>> df1 = spark.createDataFrame([("Alice", 25)], ["name", "age"])
+            >>> df2 = spark.createDataFrame([(30, "Bob")], ["age", "name"])  # Different order
+            >>> result = df1.unionByName(df2)  # Works correctly despite different order
         """
-        # Get column names from both DataFrames
-        self_cols = {field.name for field in self.schema.fields}
-        other_cols = {field.name for field in other.schema.fields}
+        # Materialize lazy operations before accessing data
+        # This is critical for diamond dependencies where the same DataFrame
+        # is used in multiple branches and then combined via unionByName
+        from ..lazy import LazyEvaluationEngine
+        from ..dataframe import DataFrame
+
+        # Materialize self if it has operations queued
+        if hasattr(self, "_operations_queue") and self._operations_queue:
+            # Type cast: self should be a DataFrame at runtime
+            self_materialized = LazyEvaluationEngine.materialize(
+                cast("DataFrame", self)
+            )
+        else:
+            # If no operations queued, create a new DataFrame with a copy of the data
+            # to avoid sharing references in diamond dependencies
+            self_materialized = DataFrame(
+                [dict(row) for row in self.data], self.schema, self.storage
+            )
+
+        # Materialize other if it has operations queued
+        if hasattr(other, "_operations_queue") and other._operations_queue:
+            # Type cast: other should be a DataFrame at runtime
+            other_materialized = LazyEvaluationEngine.materialize(
+                cast("DataFrame", other)
+            )
+        else:
+            # If no operations queued, create a new DataFrame with a copy of the data
+            # to avoid sharing references in diamond dependencies
+            other_materialized = DataFrame(
+                [dict(row) for row in other.data],
+                other.schema,
+                getattr(other, "storage", self.storage),
+            )
+
+        # Get column names from both DataFrames (using materialized schemas)
+        self_cols = {field.name for field in self_materialized.schema.fields}
+        other_cols = {field.name for field in other_materialized.schema.fields}
 
         # Check for missing columns
         missing_in_other = self_cols - other_cols
@@ -130,8 +181,8 @@ class JoinOperations(Generic[SupportsDF]):
         # Create combined data with all columns
         combined_data = []
 
-        # Add rows from self DataFrame
-        for row in self.data:
+        # Add rows from self DataFrame (using materialized data)
+        for row in self_materialized.data:
             new_row = {}
             for col in all_cols:
                 if col in row:
@@ -140,8 +191,8 @@ class JoinOperations(Generic[SupportsDF]):
                     new_row[col] = None  # Missing column filled with null
             combined_data.append(new_row)
 
-        # Add rows from other DataFrame
-        for row in other.data:
+        # Add rows from other DataFrame (using materialized data)
+        for row in other_materialized.data:
             new_row = {}
             for col in all_cols:
                 if col in row:
@@ -150,19 +201,19 @@ class JoinOperations(Generic[SupportsDF]):
                     new_row[col] = None  # Missing column filled with null
             combined_data.append(new_row)
 
-        # Create new schema with all columns
+        # Create new schema with all columns (using materialized schemas)
 
         new_fields = []
         for col in all_cols:
-            # Try to get the data type from the original schema, default to StringType
+            # Try to get the data type from the materialized schema, default to StringType
             field_type: DataType = StringType()
-            for field in self.schema.fields:
+            for field in self_materialized.schema.fields:
                 if field.name == col:
                     field_type = field.dataType
                     break
             # If not found in self schema, check other schema
             if isinstance(field_type, StringType):
-                for field in other.schema.fields:
+                for field in other_materialized.schema.fields:
                     if field.name == col:
                         field_type = field.dataType
                         break

@@ -10,7 +10,7 @@ This script tests code examples in:
 import doctest
 import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import Tuple
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -24,7 +24,7 @@ def test_docstring_examples() -> Tuple[int, int]:
         Tuple of (failures, tests) counts.
     """
     print("Testing docstring examples...")
-    
+
     modules_to_test = [
         "sparkless.session.core.session",
         "sparkless.dataframe.dataframe",
@@ -32,22 +32,22 @@ def test_docstring_examples() -> Tuple[int, int]:
         "sparkless.functions.string",
         "sparkless.functions.math",
     ]
-    
+
     total_failures = 0
     total_tests = 0
-    
+
     for module_name in modules_to_test:
         try:
             module = __import__(module_name, fromlist=[""])
             finder = doctest.DocTestFinder()
             tests = finder.find(module, module_name)
-            
+
             for test in tests:
                 runner = doctest.DocTestRunner(verbose=True)
                 result = runner.run(test)
                 total_failures += len(result.failures)
                 total_tests += result.tried
-                
+
                 if result.failures:
                     print(f"  ❌ {module_name}: {len(result.failures)} failures")
                 else:
@@ -57,7 +57,7 @@ def test_docstring_examples() -> Tuple[int, int]:
         except Exception as e:
             print(f"  ❌ Error testing {module_name}: {e}")
             total_failures += 1
-    
+
     return total_failures, total_tests
 
 
@@ -68,7 +68,7 @@ def test_markdown_examples() -> Tuple[int, int]:
         Tuple of (failures, tests) counts.
     """
     print("\nTesting markdown documentation examples...")
-    
+
     # For now, just check that files exist and are readable
     # Full execution testing would require more sophisticated parsing
     docs_dir = project_root / "docs"
@@ -77,10 +77,10 @@ def test_markdown_examples() -> Tuple[int, int]:
         docs_dir / "api_reference.md",
         project_root / "README.md",
     ]
-    
+
     failures = 0
     tests = 0
-    
+
     for md_file in markdown_files:
         if md_file.exists():
             print(f"  ✅ Found {md_file.name}")
@@ -89,7 +89,7 @@ def test_markdown_examples() -> Tuple[int, int]:
             print(f"  ❌ Missing {md_file.name}")
             failures += 1
             tests += 1
-    
+
     return failures, tests
 
 
@@ -102,13 +102,13 @@ def main() -> int:
     print("=" * 60)
     print("Documentation Example Validation")
     print("=" * 60)
-    
+
     docstring_failures, docstring_tests = test_docstring_examples()
     markdown_failures, markdown_tests = test_markdown_examples()
-    
+
     total_failures = docstring_failures + markdown_failures
     total_tests = docstring_tests + markdown_tests
-    
+
     print("\n" + "=" * 60)
     print(f"Summary: {total_tests - total_failures}/{total_tests} tests passed")
     if total_failures > 0:

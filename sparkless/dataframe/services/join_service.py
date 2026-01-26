@@ -145,15 +145,29 @@ class JoinService:
     ) -> "SupportsDataFrameOps":
         """Union with another DataFrame by column names.
 
+        Unlike `union()`, which matches columns by position, `unionByName()` matches
+        columns by name, allowing DataFrames with different column orders to be combined.
+        Both DataFrames are automatically materialized before unioning to ensure correct
+        results, especially in diamond dependency scenarios where the same DataFrame
+        is used in multiple transformation branches.
+
         Args:
-            other: Another DataFrame to union with.
+            other: Another DataFrame to union with. Must have compatible column types.
             allowMissingColumns: If True, allows missing columns (fills with null).
+                When False, both DataFrames must have the same columns.
 
         Returns:
-            New DataFrame with combined data.
+            New DataFrame with combined data from both DataFrames. Column order matches
+            the first DataFrame's schema.
 
         Raises:
-            AnalysisException: If DataFrames have incompatible column types
+            AnalysisException: If DataFrames have incompatible column types or missing
+                columns when `allowMissingColumns=False`.
+
+        Example:
+            >>> df1 = spark.createDataFrame([("Alice", 25)], ["name", "age"])
+            >>> df2 = spark.createDataFrame([(30, "Bob")], ["age", "name"])  # Different order
+            >>> result = df1.unionByName(df2)  # Works correctly despite different order
         """
         from ...core.exceptions.analysis import AnalysisException
         from ...dataframe.operations.set_operations import SetOperations
@@ -259,11 +273,42 @@ class JoinService:
                         # Already added, skip
                         break
 
+        # Materialize lazy operations before accessing data
+        # This is critical for diamond dependencies where the same DataFrame
+        # is used in multiple branches and then combined via unionByName
+        from ..lazy import LazyEvaluationEngine
+        from ..dataframe import DataFrame
+
+        # Materialize self if it has operations queued
+        if hasattr(self._df, "_operations_queue") and self._df._operations_queue:
+            self_materialized = LazyEvaluationEngine.materialize(self._df)
+        else:
+            # If no operations queued, create a new DataFrame with a copy of the data
+            # to avoid sharing references in diamond dependencies
+            self_materialized = DataFrame(
+                [dict(row) for row in self._df.data], self._df.schema, self._df.storage
+            )
+
+        # Materialize other if it has operations queued
+        if hasattr(other, "_operations_queue") and other._operations_queue:
+            # Type cast: other should be a DataFrame at runtime
+            from ..dataframe import DataFrame as DFType
+
+            other_materialized = LazyEvaluationEngine.materialize(cast("DFType", other))
+        else:
+            # If no operations queued, create a new DataFrame with a copy of the data
+            # to avoid sharing references in diamond dependencies
+            other_materialized = DataFrame(
+                [dict(row) for row in other.data],
+                other.schema,
+                getattr(other, "storage", self._df.storage),
+            )
+
         # Create combined data with all columns
         combined_data: List[Dict[str, Any]] = []
 
-        # Add rows from self DataFrame
-        for row in self._df.data:
+        # Add rows from self DataFrame (using materialized data)
+        for row in self_materialized.data:
             new_row: Dict[str, Any] = {}
             for col in all_cols:
                 if col in row:
@@ -272,10 +317,10 @@ class JoinService:
                     new_row[col] = None  # Missing column filled with null
             combined_data.append(new_row)
 
-        # Add rows from other DataFrame
+        # Add rows from other DataFrame (using materialized data)
         # Build a mapping from column names to actual column names in other DataFrame rows
-        if other.data:
-            other_row_keys = list(other.data[0].keys())
+        if other_materialized.data:
+            other_row_keys = list(other_materialized.data[0].keys())
             other_row_map: Dict[str, Optional[str]] = {}
             for col in all_cols:
                 actual_col_in_row = ColumnResolver.resolve_column_name(
@@ -285,7 +330,7 @@ class JoinService:
         else:
             other_row_map = dict.fromkeys(all_cols, None)
 
-        for row in other.data:
+        for row in other_materialized.data:
             other_new_row: Dict[str, Any] = {}
             for col in all_cols:
                 # Find actual column name using ColumnResolver
@@ -323,11 +368,11 @@ class JoinService:
             field_type: DataType = StringType()
             nullable: bool = True
 
-            # Get field types from both schemas
+            # Get field types from both schemas (using materialized schemas)
             self_field_coerce: Optional[StructField] = None
             other_field_coerce: Optional[StructField] = None
 
-            for field in self._df.schema.fields:
+            for field in self_materialized.schema.fields:
                 if field.name == col:
                     self_field_coerce = field
                     field_type = field.dataType
@@ -340,7 +385,7 @@ class JoinService:
                 # Column might be only in other DataFrame
                 other_col_name = col
             if other_col_name:
-                for field in other.schema.fields:
+                for field in other_materialized.schema.fields:
                     if field.name == other_col_name:
                         other_field_coerce = field
                         break

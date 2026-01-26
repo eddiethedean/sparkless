@@ -1,0 +1,4312 @@
+{
+  "functions": {
+    "abs": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "acos": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "acosh": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "add_months": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "aes_decrypt": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "aes_encrypt": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "aggregate": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "any_value": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "approxCountDistinct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "approx_count_distinct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "approx_percentile": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "array": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_agg": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "array_append": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_compact": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_contains": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_distinct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_except": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_insert": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_intersect": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_join": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_max": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_min": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_position": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_prepend": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "array_remove": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_repeat": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_size": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "array_sort": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "array_union": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "arrays_overlap": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "arrays_zip": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "asc": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "asc_nulls_first": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "asc_nulls_last": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ascii": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "asin": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "asinh": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "assert_true": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "atan": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "atan2": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "atanh": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "avg": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "base64": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "bin": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "bit_and": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bit_count": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bit_get": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bit_length": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "bit_or": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bit_xor": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bitmap_bit_position": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bitmap_bucket_number": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bitmap_construct_agg": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bitmap_count": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bitmap_or_agg": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bitwiseNOT": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "bitwise_not": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "bool_and": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bool_or": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "broadcast": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "bround": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "btrim": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "bucket": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "call_function": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "call_udf": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cardinality": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "cast": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cbrt": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ceil": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ceiling": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "char": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "char_length": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "character_length": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "coalesce": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "col": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "collect_list": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "collect_set": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "column": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "concat": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "concat_ws": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "contains": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "conv": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "convert_timezone": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "corr": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cos": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cosh": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cot": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "count": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "countDistinct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "count_distinct": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "count_if": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "count_min_sketch": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "covar_pop": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "covar_samp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "crc32": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "create_map": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "csc": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cume_dist": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "curdate": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "current_catalog": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "current_database": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "current_date": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "current_schema": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "current_timestamp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "current_timezone": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "current_user": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "date_add": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "date_diff": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "date_format": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "date_from_unix_date": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "date_part": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "date_sub": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "date_trunc": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dateadd": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "datediff": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "datepart": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "day": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "dayofmonth": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dayofweek": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dayofyear": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "days": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "decode": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "degrees": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dense_rank": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "desc": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "desc_nulls_first": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "desc_nulls_last": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "e": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "element_at": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "elt": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "encode": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "endswith": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "equal_null": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "every": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "exists": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "exp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "explode": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "explode_outer": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "expm1": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "expr": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "extract": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "factorial": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "filter": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "find_in_set": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "first": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "first_value": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "flatten": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "floor": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "forall": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "format_number": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "format_string": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "from_csv": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "from_json": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "from_unixtime": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "from_utc_timestamp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "get": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "get_active_spark_context": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "get_json_object": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "getbit": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "greatest": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "grouping": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "grouping_id": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "hash": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "hex": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "histogram_numeric": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "hll_sketch_agg": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "hll_sketch_estimate": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "hll_union": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "hll_union_agg": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "hour": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "hours": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "hypot": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ifnull": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "ignore_unicode_prefix": {
+      "3.0.3": true,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": false
+    },
+    "ilike": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "initcap": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "inline": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "inline_outer": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "input_file_block_length": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "input_file_block_start": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "input_file_name": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "instr": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "isnan": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "isnotnull": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "isnull": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "java_method": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "json_array_length": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "json_object_keys": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "json_tuple": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "kurtosis": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "lag": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "last": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "last_day": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "last_value": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "lcase": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "lead": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "least": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "left": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "length": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "levenshtein": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "like": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "lit": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ln": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "localtimestamp": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "locate": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "log": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "log10": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "log1p": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "log2": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "lower": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "lpad": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ltrim": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "make_date": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "make_dt_interval": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "make_interval": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "make_timestamp": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "make_timestamp_ltz": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "make_timestamp_ntz": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "make_ym_interval": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "map_concat": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_contains_key": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_entries": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_filter": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_from_arrays": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_from_entries": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_keys": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_values": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "map_zip_with": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "mask": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "max": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "max_by": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "md5": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "mean": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "median": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "min": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "min_by": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "minute": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "mode": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "monotonically_increasing_id": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "month": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "months": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "months_between": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "named_struct": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "nanvl": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "negate": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "negative": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "next_day": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "now": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "nth_value": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "ntile": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "nullif": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "nvl": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "nvl2": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "octet_length": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "overlay": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "overload": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "pandas_udf": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "parse_url": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "percent_rank": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "percentile": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "percentile_approx": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "pi": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "pmod": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "posexplode": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "posexplode_outer": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "position": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "positive": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "pow": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "power": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "printf": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "product": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "quarter": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "radians": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "raise_error": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "rand": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "randn": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "rank": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "reduce": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "reflect": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regexp": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regexp_count": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regexp_extract": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "regexp_extract_all": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regexp_instr": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regexp_like": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regexp_replace": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "regexp_substr": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_avgx": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_avgy": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_count": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_intercept": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_r2": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_slope": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_sxx": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_sxy": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "regr_syy": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "repeat": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "replace": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "reverse": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "right": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "rint": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "rlike": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "round": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "row_number": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "rpad": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "rtrim": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "schema_of_csv": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "schema_of_json": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sec": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "second": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sentences": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sequence": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "session_window": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sha": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "sha1": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sha2": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shiftLeft": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shiftRight": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shiftRightUnsigned": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shiftleft": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shiftright": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shiftrightunsigned": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "shuffle": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sign": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "signum": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sin": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "since": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": false,
+      "3.5.2": false
+    },
+    "sinh": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "size": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "skewness": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "slice": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "some": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "sort_array": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "soundex": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "spark_partition_id": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "split": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "split_part": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "sqrt": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "stack": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "startswith": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "std": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "stddev": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "stddev_pop": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "stddev_samp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "str_to_map": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "struct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "substr": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "substring": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "substring_index": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sum": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sumDistinct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sum_distinct": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "tan": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "tanh": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "timestamp_micros": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "timestamp_millis": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "timestamp_seconds": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "toDegrees": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "toRadians": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_binary": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "to_char": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "to_csv": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_date": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_json": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_number": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "to_str": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_timestamp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_timestamp_ltz": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "to_timestamp_ntz": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "to_unix_timestamp": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "to_utc_timestamp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_varchar": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "transform": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "transform_keys": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "transform_values": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "translate": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "trim": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "trunc": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "try_add": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_aes_decrypt": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_avg": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_divide": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_element_at": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_multiply": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_remote_functions": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "try_subtract": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_sum": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_to_binary": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_to_number": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "try_to_timestamp": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "typeof": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "ucase": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "udf": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "udtf": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "unbase64": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unhex": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unix_date": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "unix_micros": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "unix_millis": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "unix_seconds": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "unix_timestamp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unwrap_udt": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "upper": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "url_decode": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "url_encode": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "user": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "var_pop": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "var_samp": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "variance": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "version": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "weekday": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "weekofyear": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "when": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "width_bucket": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "window": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "window_time": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "xpath": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_boolean": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_double": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_float": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_int": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_long": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_number": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_short": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xpath_string": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "xxhash64": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "year": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "years": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "zip_with": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    }
+  },
+  "classes_types": {
+    "ArrayType": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "Column": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "DataFrame": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "DataType": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "JVMView": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "PandasUDFType": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "PySparkTypeError": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "PySparkValueError": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "PythonEvalType": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": false
+    },
+    "SparkContext": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "StringType": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "StructType": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "UserDefinedFunction": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "UserDefinedTableFunction": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    }
+  },
+  "dataframe_methods": {
+    "agg": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "alias": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "approxQuantile": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cache": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "checkpoint": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "coalesce": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "colRegex": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "collect": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "corr": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "count": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cov": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "createGlobalTempView": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "createOrReplaceGlobalTempView": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "createOrReplaceTempView": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "createTempView": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "crossJoin": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "crosstab": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "cube": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "describe": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "distinct": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "drop": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dropDuplicates": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dropDuplicatesWithinWatermark": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "drop_duplicates": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "dropna": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "exceptAll": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "explain": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "fillna": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "filter": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "first": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "foreach": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "foreachPartition": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "freqItems": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "groupBy": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "groupby": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "head": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "hint": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "inputFiles": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "intersect": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "intersectAll": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "isEmpty": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "isLocal": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "join": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "limit": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "localCheckpoint": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "mapInArrow": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "mapInPandas": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "melt": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "observe": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "offset": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": false,
+      "3.5.2": true
+    },
+    "orderBy": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "pandas_api": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "persist": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "printSchema": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "randomSplit": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "registerTempTable": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "repartition": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "repartitionByRange": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "replace": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "rollup": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sameSemantics": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sample": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sampleBy": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "select": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "selectExpr": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "semanticHash": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "show": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sort": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "sortWithinPartitions": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "subtract": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "summary": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "tail": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "take": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "toDF": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "toJSON": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "toLocalIterator": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "toPandas": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_koalas": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "to_pandas_on_spark": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "transform": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "union": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unionAll": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unionByName": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unpersist": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "unpivot": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "where": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "withColumn": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "withColumnRenamed": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "withColumns": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "withColumnsRenamed": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": false,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "withMetadata": {
+      "3.0.3": false,
+      "3.1.3": false,
+      "3.2.4": false,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "withWatermark": {
+      "3.0.3": true,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    },
+    "writeTo": {
+      "3.0.3": false,
+      "3.1.3": true,
+      "3.2.4": true,
+      "3.3.4": true,
+      "3.4.3": true,
+      "3.5.2": true
+    }
+  }
+}
