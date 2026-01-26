@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.27.0 — Unreleased
+## 3.27.0 — 2026-01-26
 
 ### Added
 - **Read the Docs Documentation** - Complete Sphinx-based documentation system for Read the Docs
