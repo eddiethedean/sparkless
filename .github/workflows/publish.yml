@@ -17,7 +17,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write  # Required to create GitHub Releases
       id-token: write  # For trusted publishing (optional, for future use)
     
     steps:
@@ -94,8 +94,67 @@ jobs:
         run: |
           twine upload dist/*
       
-      - name: Create GitHub release notes (if release)
-        if: github.event_name == 'release'
+      - name: Extract release notes from CHANGELOG.md
+        if: github.event_name == 'push'
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          python3 << 'EOF'
+          import re
+          
+          version = "${{ steps.version.outputs.version }}"
+          
+          # Read CHANGELOG.md
+          with open('CHANGELOG.md', 'r') as f:
+              content = f.read()
+          
+          # Try to find the section for this version (with or without 'v' prefix)
+          patterns = [
+              rf'^## {re.escape(version)} —',
+              rf'^## v{re.escape(version)} —',
+          ]
+          
+          release_notes = None
+          for pattern in patterns:
+              match = re.search(pattern, content, re.MULTILINE)
+              if match:
+                  # Extract everything from this section until the next ## section
+                  start = match.end()
+                  next_section = re.search(r'^## ', content[start:], re.MULTILINE)
+                  if next_section:
+                      release_notes = content[start:start + next_section.start()].strip()
+                  else:
+                      release_notes = content[start:].strip()
+                  break
+          
+          # If not found, create a basic release note
+          if not release_notes:
+              release_notes = f"Release v{version}\n\nSee CHANGELOG.md for details."
+          
+          # Write to output using multiline format
+          with open('$GITHUB_OUTPUT', 'a') as f:
+              f.write('notes<<EOF\n')
+              f.write(release_notes)
+              f.write('\nEOF\n')
+          EOF
+      
+      - name: Create GitHub Release (if tag push)
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: v${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Publish confirmation
         run: |
           echo "✅ Published to PyPI: https://pypi.org/project/sparkless/${{ steps.version.outputs.version }}/"
-          echo "Release created: ${{ github.event.release.html_url }}"
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "✅ GitHub Release created: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          else
+            echo "✅ Release created: ${{ github.event.release.html_url }}"
+          fi
