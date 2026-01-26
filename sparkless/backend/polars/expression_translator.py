@@ -1752,6 +1752,103 @@ class PolarsExpressionTranslator:
                 [expr.alias(name) for expr, name in zip(struct_exprs, field_names)]
             )
 
+        # Handle array function - creates an array from multiple columns
+        # This must be before the "if op.value is not None:" check because
+        # array() can have op.value=None for single-column arrays
+        if operation == "array":
+            # array(*cols) - create array containing values from each column as elements
+            # array("Name", "Type") creates [Name_value, Type_value] for each row
+            # Supports: F.array("Name", "Type"), F.array(["Name", "Type"]),
+            #           F.array(F.col("Name"), F.col("Type")), F.array([F.col("Name"), F.col("Type")])
+
+            # Get all column arguments
+            # op.column is the first column, op.value contains the rest as a tuple (or None for single column)
+            # Collect all column expressions
+            col_exprs = []
+
+            # First column (base column)
+            if op.column is not None:
+                first_expr = self.translate(
+                    op.column,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
+                )
+                col_exprs.append(first_expr)
+
+            # Remaining columns from op.value
+            if op.value is not None:
+                if isinstance(op.value, (list, tuple)):
+                    for col_arg in op.value:
+                        if isinstance(col_arg, (Column, ColumnOperation)):
+                            col_expr = self.translate(
+                                col_arg,
+                                available_columns=available_columns,
+                                case_sensitive=case_sensitive,
+                            )
+                            col_exprs.append(col_expr)
+                        elif isinstance(col_arg, str):
+                            # String column name - resolve and translate
+                            resolved_col = Column(col_arg)
+                            col_expr = self.translate(
+                                resolved_col,
+                                available_columns=available_columns,
+                                case_sensitive=case_sensitive,
+                            )
+                            col_exprs.append(col_expr)
+                        else:
+                            # Literal value
+                            col_exprs.append(pl.lit(col_arg))
+                else:
+                    # Single value (not a list/tuple)
+                    if isinstance(op.value, (Column, ColumnOperation)):
+                        col_expr = self.translate(
+                            op.value,
+                            available_columns=available_columns,
+                            case_sensitive=case_sensitive,
+                        )
+                        col_exprs.append(col_expr)
+                    elif isinstance(op.value, str):
+                        resolved_col = Column(op.value)
+                        col_expr = self.translate(
+                            resolved_col,
+                            available_columns=available_columns,
+                            case_sensitive=case_sensitive,
+                        )
+                        col_exprs.append(col_expr)
+                    else:
+                        col_exprs.append(pl.lit(op.value))
+
+            # Create array from all column expressions
+            # array() creates an array from scalar column values: [val1, val2, val3]
+            # In Polars, we can use pl.struct to collect values, then convert to list
+            if len(col_exprs) == 0:
+                # No columns - return empty array literal
+                return pl.lit([])
+            elif len(col_exprs) == 1:
+                # Single column - wrap in array using struct approach for consistency
+                # Create a struct with one field, then convert to list
+                struct_expr = pl.struct(**{"_field_0": col_exprs[0]})
+                return struct_expr.map_elements(
+                    lambda s: [s["_field_0"]]
+                    if isinstance(s, dict)
+                    else [getattr(s, "_field_0", None)]
+                    if hasattr(s, "_field_0")
+                    else [
+                        list(s.values())[0]
+                        if hasattr(s, "values") and s.values()
+                        else None
+                    ],
+                    return_dtype=pl.Object,  # Object type to handle mixed types
+                )
+            else:
+                # Multiple columns - create array from all values
+                # Polars has issues with mixed types in arrays during materialization
+                # Use Python evaluation which already handles this correctly
+                # Raise ValueError to trigger Python evaluation fallback
+                raise ValueError(
+                    "array function requires Python evaluation to create array from multiple columns"
+                )
+
         # Special-case eqNullSafe when it is treated as a function call.
         # Some call-sites may surface null-safe equality via op.function_name
         # rather than the comparison operator path; delegate to the same
@@ -3156,15 +3253,6 @@ class PolarsExpressionTranslator:
                 return col_expr.list.eval(
                     pl.element().filter(pl.element() != value_expr)
                 )
-            elif operation == "array":
-                # array(*cols) - create array containing values from each column as elements
-                # So array(arr1, arr2) where arr1=[1,2,3] and arr2=[4,5] creates [[1,2,3], [4,5]]
-                # NOT [1,2,3,4,5] (which would be concatenation)
-                # Polars concat_list concatenates arrays, so we need Python evaluation
-                # Raise ValueError to trigger Python evaluation fallback
-                raise ValueError(
-                    "array function requires Python evaluation to create array of arrays"
-                )
             elif operation == "timestamp_seconds":
                 # timestamp_seconds needs to return formatted string, not datetime object
                 # Force Python evaluation to format correctly
@@ -3642,8 +3730,12 @@ class PolarsExpressionTranslator:
         elif function_name == "create_map":
             # create_map(key1, val1, key2, val2, ...) - create a map from key-value pairs
             # op.value contains all arguments as a tuple (key1, val1, key2, val2, ...)
+            # If no arguments, returns empty map {}
             args = op.value if op.value else ()
-            if not args or len(args) < 2 or len(args) % 2 != 0:
+            if len(args) == 0:
+                # Return empty map literal for each row
+                return pl.lit({})
+            if len(args) < 2 or len(args) % 2 != 0:
                 raise ValueError(
                     "create_map requires an even number of arguments (key-value pairs)"
                 )
