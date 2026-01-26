@@ -222,8 +222,7 @@ class Literal(IColumn):
         This behaves like PySpark's eqNullSafe:
         - If both sides are null, the comparison is True.
         - If exactly one side is null, the comparison is False.
-        - Otherwise, it behaves like standard equality, including any
-          backend-specific type coercion rules.
+        - Otherwise, it behaves like standard equality, including any backend-specific type coercion rules.
         """
         from .column import ColumnOperation
 

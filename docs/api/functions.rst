@@ -53,7 +53,7 @@ Aggregate Functions
    :undoc-members:
 
 Conditional Functions
---------------------
+---------------------
 
 .. automodule:: sparkless.functions.conditional
    :members:

@@ -79,7 +79,7 @@ myst_enable_extensions = [
     "fieldlist",
     "html_admonition",
     "html_image",
-    "linkify",
+    # "linkify",  # Disabled - requires linkify-it-py which isn't in dependencies
     "replacements",
     "smartquotes",
     "strikethrough",
@@ -110,6 +110,22 @@ exclude_patterns = [
     ".DS_Store",
     "internal",
     "*.pyc",
+    # Exclude markdown files that are included via RST wrappers to avoid duplicates
+    "api_reference.md",
+    "backend_architecture.md",
+    "backend_selection.md",
+    "function_api_audit.md",
+    "getting_started.md",
+    "known_issues.md",
+    "migration_from_pyspark.md",
+    "migration_from_v2_to_v3.md",
+    "mock_spark_features.md",
+    "sql_operations_guide.md",
+    "storage_api_guide.md",
+    "storage_serialization_guide.md",
+    "testing_patterns.md",
+    "guides/*.md",
+    "performance/*.md",
 ]
 
 # -- Options for HTML output -------------------------------------------------

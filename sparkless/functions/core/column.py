@@ -48,8 +48,7 @@ class ColumnOperatorMixin:
         This behaves like PySpark's eqNullSafe:
         - If both sides are null, the comparison is True.
         - If exactly one side is null, the comparison is False.
-        - Otherwise, it behaves like standard equality, including any
-          backend-specific type coercion rules.
+        - Otherwise, it behaves like standard equality, including any backend-specific type coercion rules.
         """
         return self._create_operation("eqNullSafe", other)
 
@@ -182,7 +181,7 @@ class ColumnOperatorMixin:
             >>> df.filter(F.col("str_col").isin(1, 2, 3))  # Auto-converts to strings
 
         Note:
-            Fixed in version 3.23.0 (Issue #226): Added support for *values arguments
+            Fixed in version 3.23.0 (Issue #226): Added support for ``*values`` arguments
             and automatic type coercion for mixed types to match PySpark behavior.
         """
         # Normalize: if single list argument provided, use it directly
