@@ -1,3 +1,5 @@
+# SQL Operations Guide
+
 
 This guide provides comprehensive documentation for Sparkless's SQL operations, including parsing, validation, optimization, and execution.
 

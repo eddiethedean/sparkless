@@ -1,3 +1,5 @@
+# Plugins
+
 
 Register plugins to hook into DataFrame creation and operations.
 

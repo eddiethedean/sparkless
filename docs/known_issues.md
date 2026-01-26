@@ -1,3 +1,5 @@
+# Known Issues
+
 
 ## Delta Schema Evolution with the Polars Backend
 

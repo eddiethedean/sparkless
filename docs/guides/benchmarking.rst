@@ -1,4 +1,0 @@
-Benchmarking
-============
-
-.. include:: benchmarking.md

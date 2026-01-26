@@ -1,3 +1,5 @@
+# Backend Selection
+
 
 Sparkless ships with multiple storage backends. Polars is the default engine in
 v3.x, replacing the legacy DuckDB implementation used in previous releases. You

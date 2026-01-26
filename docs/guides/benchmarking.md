@@ -1,3 +1,5 @@
+# Benchmarking
+
 
 Use the session benchmarking API to time operations and inspect results.
 

@@ -1,3 +1,5 @@
+# Configuration
+
 
 Sparkless configuration is managed via SparkSession constructor options and the session builder.
 

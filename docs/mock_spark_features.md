@@ -1,3 +1,5 @@
+# Mock Spark Features
+
 
 This guide explains sparkless-specific features that are not available in PySpark, and when to use them versus PySpark-compatible APIs.
 

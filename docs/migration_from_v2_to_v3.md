@@ -1,3 +1,5 @@
+# Migration from v2 to v3
+
 
 > **Versioning Note:** The functionality described here now ships as Sparkless `0.0.x`–`0.3.x` in the semver-aligned roadmap. References to “v3.0.0” map directly to the current `0.0.0` baseline release.
 

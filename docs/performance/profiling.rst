@@ -1,4 +1,0 @@
-Profiling
-=========
-
-.. include:: profiling.md

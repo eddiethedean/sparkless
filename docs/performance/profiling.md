@@ -1,3 +1,5 @@
+# Profiling
+
 
 This guide explains how to enable the new hot-path profiling hooks and interpret
 the baseline measurements captured for the Polars backend and Python expression

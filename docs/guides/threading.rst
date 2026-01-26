@@ -1,4 +1,0 @@
-Threading
-=========
-
-.. include:: threading.md

@@ -1,3 +1,5 @@
+# Threading
+
 
 Sparkless's Polars backend is **thread-safe by design**, eliminating threading issues that were present with DuckDB. Polars uses Rayon (Rust's data parallelism library) internally, making it safe for concurrent operations.
 

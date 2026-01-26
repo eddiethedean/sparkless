@@ -1,4 +1,0 @@
-Plugins
-=======
-
-.. include:: plugins.md

@@ -1,3 +1,5 @@
+# Lazy Evaluation
+
 
 Enable lazy mode and queue operations until an action is called.
 
