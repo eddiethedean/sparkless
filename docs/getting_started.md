@@ -223,7 +223,7 @@ Sparkless provides significant speed improvements:
 
 - **[API Reference](api_reference.md)** - Complete API documentation
 - **[SQL Operations](sql_operations_guide.md)** - SQL query examples
-- **[Testing Utilities](testing_utilities_guide.md)** - Test helpers and fixtures
+- **[Testing Patterns](testing_patterns.md)** - Test helpers and fixtures
 - **[Examples](../examples/)** - More code examples
 
 ## Getting Help
