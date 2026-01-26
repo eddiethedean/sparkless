@@ -282,6 +282,10 @@ class SQLParser:
         """
         query_upper = query.upper().strip()
 
+        # Check for WITH (CTE) before other query types
+        # WITH queries start with WITH and contain SELECT/INSERT/UPDATE/DELETE
+        if query_upper.startswith("WITH"):
+            return "WITH"
         # Check for UNION before SELECT (since UNION queries start with SELECT)
         if " UNION " in query_upper or re.search(r"\bUNION\b", query_upper):
             return "UNION"
@@ -340,6 +344,8 @@ class SQLParser:
 
         if query_type == "SELECT":
             components.update(self._parse_select_query(query))
+        elif query_type == "WITH":
+            components.update(self._parse_with_query(query))
         elif query_type == "UNION":
             components.update(self._parse_union_query(query))
         elif query_type == "CREATE":
@@ -1228,5 +1234,116 @@ class SQLParser:
             ).strip()  # Join any additional parts (shouldn't happen with single UNION)
             components["left_query"] = left_query
             components["right_query"] = right_query
+
+        return components
+
+    def _parse_with_query(self, query: str) -> Dict[str, Any]:
+        """Parse WITH (CTE) query into components.
+
+        Extracts CTE definitions and the main query.
+
+        Example:
+            WITH sales_data AS (
+                SELECT * FROM sales WHERE amount > 100
+            ),
+            high_value AS (
+                SELECT * FROM sales_data WHERE customer_id IN (...)
+            )
+            SELECT * FROM high_value
+
+        Args:
+            query: WITH query string.
+
+        Returns:
+            Dictionary containing:
+                - ctes: List of CTE definitions with name and query
+                - main_query: The main query after CTE definitions
+        """
+        import re
+
+        components: Dict[str, Any] = {
+            "ctes": [],
+            "main_query": "",
+        }
+
+        # Find where the main query starts (SELECT, INSERT, UPDATE, DELETE, MERGE)
+        # This is the first of these keywords that is NOT inside parentheses
+        query_upper = query.upper()
+        main_query_start = -1
+        paren_depth = 0
+
+        # Track position character by character to find main query start
+        i = 0
+        # Skip past "WITH" keyword
+        with_match = re.match(r"\s*WITH\s+", query, re.IGNORECASE)
+        if with_match:
+            i = with_match.end()
+
+        while i < len(query):
+            char = query[i]
+            if char == "(":
+                paren_depth += 1
+            elif char == ")":
+                paren_depth -= 1
+
+            # Only check for main query keywords when not inside parentheses
+            if paren_depth == 0:
+                remaining = query_upper[i:]
+                for keyword in ["SELECT", "INSERT", "UPDATE", "DELETE", "MERGE"]:
+                    if remaining.startswith(keyword):
+                        # Make sure it's a complete word (followed by space or end)
+                        next_pos = i + len(keyword)
+                        if next_pos >= len(query) or not query[next_pos].isalnum():
+                            main_query_start = i
+                            break
+                if main_query_start != -1:
+                    break
+            i += 1
+
+        if main_query_start == -1:
+            raise ParseException("Invalid WITH clause: could not find main query")
+
+        # Extract CTE definitions (everything between WITH and main query)
+        cte_section = query[
+            with_match.end() if with_match else 4 : main_query_start
+        ].strip()
+        if cte_section.endswith(","):
+            cte_section = cte_section[:-1].strip()
+
+        # Extract main query
+        components["main_query"] = query[main_query_start:].strip()
+
+        # Parse individual CTEs
+        # Pattern: name AS (subquery)
+        cte_pattern = re.compile(r"(\w+)\s+AS\s*\(", re.IGNORECASE)
+
+        for match in cte_pattern.finditer(cte_section):
+            cte_name = match.group(1)
+            paren_start = match.end() - 1  # Position of opening (
+
+            # Find matching closing parenthesis (handle nested parens)
+            paren_depth = 0
+            subquery_end = None
+            for j in range(paren_start, len(cte_section)):
+                if cte_section[j] == "(":
+                    paren_depth += 1
+                elif cte_section[j] == ")":
+                    paren_depth -= 1
+                    if paren_depth == 0:
+                        subquery_end = j
+                        break
+
+            if subquery_end is None:
+                raise ParseException(f"Unmatched parentheses in CTE '{cte_name}'")
+
+            # Extract CTE subquery (between parens)
+            cte_query = cte_section[paren_start + 1 : subquery_end].strip()
+
+            components["ctes"].append(
+                {
+                    "name": cte_name,
+                    "query": cte_query,
+                }
+            )
 
         return components
