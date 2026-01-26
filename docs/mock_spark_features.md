@@ -251,7 +251,7 @@ def setup_test_data(spark):
 
 ## See Also
 
-- [Storage API Guide](storage_api_guide.md) - Detailed guide on storage APIs
-- [Getting Started](getting_started.md) - Quick start guide
-- [API Reference](api_reference.md) - Complete API documentation
+- [Storage API Guide](../storage_api_guide) - Detailed guide on storage APIs
+- [Getting Started](../getting_started) - Quick start guide
+- [API Reference](../api_reference) - Complete API documentation
 
