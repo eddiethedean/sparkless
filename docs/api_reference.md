@@ -94,6 +94,34 @@ schema2 = StructType([StructField("value", LongType(), True)])
 df1 = spark.createDataFrame([(1,)], schema1)
 df2 = spark.createDataFrame([(2,)], schema2)
 result = df1.union(df2)  # ✅ Works - numeric types are compatible
+
+# unionByName - Union by column names (allows different column order)
+df1 = spark.createDataFrame([("Alice", 25)], ["name", "age"])
+df2 = spark.createDataFrame([(30, "Bob")], ["age", "name"])  # Different order
+
+# ✅ unionByName matches columns by name, not position
+result = df1.unionByName(df2)  # Works correctly despite different column order
+
+# unionByName with allowMissingColumns - fills missing columns with null
+df1 = spark.createDataFrame([("Alice", 25, "Engineer")], ["name", "age", "role"])
+df2 = spark.createDataFrame([("Bob", 30)], ["name", "age"])  # Missing "role" column
+
+# ✅ With allowMissingColumns=True, missing columns are filled with null
+result = df1.unionByName(df2, allowMissingColumns=True)
+
+# Diamond dependency support - unionByName correctly handles when the same DataFrame
+# is used in multiple branches (e.g., different joins) and then combined
+existing = spark.createDataFrame([(1, "a", 100), (2, "b", 200)], ["id", "name", "value"])
+source = spark.createDataFrame([(1, "a", 150)], ["id", "name", "value"])
+
+# Branch A: Anti-join (rows NOT in source)
+branch_a = existing.join(source.select("id").distinct(), on=["id"], how="left_anti")
+
+# Branch B: Inner-join (rows that ARE in source)
+branch_b = existing.join(source.select("id").distinct(), on=["id"], how="inner")
+
+# ✅ unionByName correctly combines branches without duplicating data
+combined = branch_a.unionByName(branch_b, allowMissingColumns=True)
 ```
 
 ### Column Access
