@@ -99,7 +99,8 @@ def to_date_str(
 
     to_date_op = _ensure_to_date_operation(column)
     formatted = F.date_format(cast("Column", to_date_op), fmt)
-    return formatted.alias(to_date_op.name)
+    aliased = formatted.alias(to_date_op.name)
+    return cast("Union[ColumnOperation, ColumnLike]", aliased)
 
 
 def to_timestamp_str(
@@ -117,7 +118,8 @@ def to_timestamp_str(
 
     to_timestamp_op = _ensure_to_timestamp_operation(column, source_format)
     formatted = F.date_format(cast("Column", to_timestamp_op), fmt)
-    return formatted.alias(to_timestamp_op.name)
+    aliased = formatted.alias(to_timestamp_op.name)
+    return cast("Union[ColumnOperation, ColumnLike]", aliased)
 
 
 def normalize_date_value(value: object) -> Optional[Union[str, object]]:

@@ -407,7 +407,9 @@ class TransformationService:
 
                         raise SparkColumnNotFoundError(colname, self._df.columns)
                     if alias:
-                        columns.append(Column(resolved_colname).alias(alias))
+                        # alias() returns IColumn, but we need ColumnOperation for the list type
+                        aliased_col = Column(resolved_colname).alias(alias)
+                        columns.append(cast("ColumnOperation", aliased_col))
                     else:
                         columns.append(Column(resolved_colname))
                 else:

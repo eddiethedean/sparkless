@@ -406,26 +406,115 @@ class SQLParser:
             if columns_str == "*":
                 components["select_columns"] = ["*"]
             else:
-                # Split by comma, handling multiline and whitespace
+                # Split by comma, handling multiline, whitespace, and CASE WHEN expressions
+                # CASE WHEN expressions contain commas but shouldn't be split on them
                 columns = []
                 current_col = ""
                 paren_depth = 0
-                for char in columns_str:
+                case_when_depth = 0  # Track CASE WHEN nesting
+                i = 0
+                columns_upper = columns_str.upper()
+                while i < len(columns_str):
+                    char = columns_str[i]
+
+                    # Track CASE WHEN expressions (they contain commas but shouldn't split)
+                    # Check if we're at the start of CASE or END keywords
+                    if i < len(columns_str) - 4:
+                        # Check for CASE keyword (must be at word boundary)
+                        if (
+                            columns_upper[i : i + 4] == "CASE"
+                            and (i == 0 or not columns_str[i - 1].isalnum())
+                            and (
+                                i + 4 >= len(columns_str)
+                                or not columns_str[i + 4].isalnum()
+                            )
+                        ):
+                            case_when_depth += 1
+                        # Check for END keyword (must be at word boundary)
+                        elif (
+                            columns_upper[i : i + 3] == "END"
+                            and case_when_depth > 0
+                            and (i == 0 or not columns_str[i - 1].isalnum())
+                            and (
+                                i + 3 >= len(columns_str)
+                                or not columns_str[i + 3].isalnum()
+                            )
+                        ):
+                            case_when_depth -= 1
+
                     if char == "(":
                         paren_depth += 1
                         current_col += char
                     elif char == ")":
                         paren_depth -= 1
                         current_col += char
-                    elif char == "," and paren_depth == 0:
+                    elif char == "," and paren_depth == 0 and case_when_depth == 0:
                         if current_col.strip():
                             columns.append(current_col.strip())
                         current_col = ""
                     else:
                         current_col += char
+                    i += 1
                 if current_col.strip():
                     columns.append(current_col.strip())
-                components["select_columns"] = columns
+
+                # Parse column aliases (e.g., "col AS alias" or "col alias")
+                # Handle CASE WHEN expressions specially - they end with "END as alias"
+                parsed_columns = []
+                for col_expr in columns:
+                    col_expr = col_expr.strip()
+                    col_upper = col_expr.upper()
+
+                    # Check if this is a CASE WHEN expression
+                    if col_upper.startswith("CASE") and "END" in col_upper:
+                        # For CASE WHEN, find "END" followed by "AS alias" or just "alias"
+                        # Match "END" followed by optional "AS" and alias name
+                        end_as_match = re.search(
+                            r"END\s+(?:AS\s+)?(\w+)$", col_expr, re.IGNORECASE
+                        )
+                        if end_as_match:
+                            alias = end_as_match.group(1).strip()
+                            # Extract everything before "END" + alias
+                            column_expr = (
+                                col_expr[: end_as_match.start()].strip() + " END"
+                            )
+                            parsed_columns.append(
+                                {"expression": column_expr, "alias": alias}
+                            )
+                        else:
+                            # No alias after END
+                            parsed_columns.append(
+                                {"expression": col_expr, "alias": None}
+                            )
+                    else:
+                        # Regular column - check for AS alias
+                        as_match = re.search(
+                            r"(.+?)\s+AS\s+(\w+)$", col_expr, re.IGNORECASE
+                        )
+                        if as_match:
+                            column_expr = as_match.group(1).strip()
+                            alias = as_match.group(2).strip()
+                            parsed_columns.append(
+                                {"expression": column_expr, "alias": alias}
+                            )
+                        else:
+                            # Check for implicit alias: "column alias" (without AS)
+                            # Only if it looks like "word word" pattern (simple case)
+                            words = col_expr.split()
+                            if len(words) == 2 and not any(
+                                op in col_expr for op in ["(", ")", ".", "=", ">", "<"]
+                            ):
+                                # Simple two-word pattern might be column alias
+                                # But be conservative - only if no operators
+                                parsed_columns.append(
+                                    {"expression": words[0], "alias": words[1]}
+                                )
+                            else:
+                                # No alias, use expression as-is
+                                parsed_columns.append(
+                                    {"expression": col_expr, "alias": None}
+                                )
+                components["select_columns"] = parsed_columns
 
         # Extract FROM tables (handle aliases and JOINs)
         # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]

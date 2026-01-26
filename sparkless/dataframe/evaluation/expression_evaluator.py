@@ -64,12 +64,17 @@ class ExpressionEvaluator:
         self._function_registry = self._build_function_registry()
         self._dataframe_context = dataframe_context
 
+        # Initialize specialized evaluators
+        from .evaluators.conditional_evaluator import ConditionalEvaluator
+
+        self._conditional_evaluator = ConditionalEvaluator(self)
+
     @profiled("expression.evaluate_expression", category="expression")
     def evaluate_expression(self, row: Dict[str, Any], expression: Any) -> Any:
         """Main entry point for expression evaluation."""
-        # Handle CaseWhen (when/otherwise expressions)
+        # Handle CaseWhen (when/otherwise expressions) - delegate to conditional evaluator
         if isinstance(expression, CaseWhen):
-            return self._evaluate_case_when(row, expression)
+            return self._conditional_evaluator.evaluate_case_when(row, expression)
         # Check for ColumnOperation BEFORE Column, since ColumnOperation is a subclass of Column
         # ColumnOperation has both "operation" and "column" attributes
         elif hasattr(expression, "operation") and hasattr(expression, "column"):
@@ -94,33 +99,8 @@ class ExpressionEvaluator:
         return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
 
     def _evaluate_case_when(self, row: Dict[str, Any], case_when: CaseWhen) -> Any:
-        """Evaluate when/otherwise expressions."""
-        # Evaluate each condition in order
-        for condition, value in case_when.conditions:
-            condition_result = self.evaluate_expression(row, condition)
-            if condition_result:
-                # Return the value (evaluate if it's an expression)
-                # Check for Literal, Column, or ColumnOperation
-                if hasattr(value, "value") and hasattr(value, "name"):
-                    # It's a Literal - evaluate it
-                    return self._evaluate_value(row, value)
-                elif isinstance(value, (Column, ColumnOperation)):
-                    return self.evaluate_expression(row, value)
-                return value
-
-        # No condition matched, return default value
-        if case_when.default_value is not None:
-            # Check for Literal, Column, or ColumnOperation
-            if hasattr(case_when.default_value, "value") and hasattr(
-                case_when.default_value, "name"
-            ):
-                # It's a Literal - evaluate it
-                return self._evaluate_value(row, case_when.default_value)
-            elif isinstance(case_when.default_value, (Column, ColumnOperation)):
-                return self.evaluate_expression(row, case_when.default_value)
-            return case_when.default_value
-
-        return None
+        """Evaluate when/otherwise expressions - delegates to ConditionalEvaluator."""
+        return self._conditional_evaluator.evaluate_case_when(row, case_when)
 
     def _evaluate_mock_column(self, row: Dict[str, Any], column: Column) -> Any:
         """Evaluate a Column expression."""

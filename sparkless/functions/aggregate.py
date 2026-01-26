@@ -260,34 +260,42 @@ class AggregateFunctions:
         return AggregateFunction(column, "collect_set", DoubleType())
 
     @staticmethod
-    def stddev(column: Union[Column, str]) -> AggregateFunction:
+    def stddev(column: Union[Column, str]) -> ColumnOperation:
         """Standard deviation.
 
         Args:
             column: The column to get stddev of.
 
         Returns:
-            AggregateFunction representing the stddev function.
+            ColumnOperation representing the stddev function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("stddev aggregate function")
-        return AggregateFunction(column, "stddev", DoubleType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "stddev", value=None, name=f"stddev({col.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(column, "stddev", DoubleType())
+        return op
 
     @staticmethod
-    def std(column: Union[Column, str]) -> AggregateFunction:
+    def std(column: Union[Column, str]) -> "ColumnOperation":  # noqa: F821
         """Alias for stddev - Standard deviation.
 
         Args:
             column: The column to get stddev of.
 
         Returns:
-            AggregateFunction representing the std function.
+            ColumnOperation representing the std function.
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
+
         AggregateFunctions._require_active_session("std aggregate function")
         return AggregateFunctions.stddev(column)
 
@@ -324,20 +332,27 @@ class AggregateFunctions:
         return AggregateFunction(column, "sum_distinct", DoubleType())
 
     @staticmethod
-    def variance(column: Union[Column, str]) -> AggregateFunction:
+    def variance(column: Union[Column, str]) -> ColumnOperation:
         """Variance.
 
         Args:
             column: The column to get variance of.
 
         Returns:
-            AggregateFunction representing the variance function.
+            ColumnOperation representing the variance function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("variance aggregate function")
-        return AggregateFunction(column, "variance", DoubleType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "variance", value=None, name=f"variance({col.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(column, "variance", DoubleType())
+        return op
 
     @staticmethod
     def skewness(column: Union[Column, str]) -> AggregateFunction:

@@ -433,7 +433,7 @@ class Column(ColumnOperatorMixin, IColumn):
         """Return string representation of column for SQL generation."""
         return self.name
 
-    def alias(self, name: str) -> "Column":
+    def alias(self, name: str) -> "IColumn":
         """Create an alias for the column."""
         aliased_column = Column(name, self.column_type)
         aliased_column._original_column = self
@@ -466,71 +466,113 @@ class Column(ColumnOperatorMixin, IColumn):
         """
         return ColumnOperation(self, "count", None)
 
-    def avg(self) -> "AggregateFunction":  # noqa: F821
+    def avg(self) -> "ColumnOperation":  # noqa: F821
         """Average values in this column.
 
         Returns:
-            AggregateFunction representing the avg function.
+            ColumnOperation representing the avg function (PySpark-compatible).
         """
         from ..base import AggregateFunction
         from ...spark_types import DoubleType
 
-        return AggregateFunction(self, "avg", DoubleType())
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(self, "avg", DoubleType())
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(self, "avg", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
-    def sum(self) -> "AggregateFunction":  # noqa: F821
+    def sum(self) -> "ColumnOperation":  # noqa: F821
         """Sum values in this column.
 
         Returns:
-            AggregateFunction representing the sum function.
+            ColumnOperation representing the sum function (PySpark-compatible).
         """
         from ..base import AggregateFunction
         from ...spark_types import DoubleType
 
-        return AggregateFunction(self, "sum", DoubleType())
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(self, "sum", DoubleType())
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(self, "sum", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
-    def max(self) -> "AggregateFunction":  # noqa: F821
+    def max(self) -> "ColumnOperation":  # noqa: F821
         """Maximum value in this column.
 
         Returns:
-            AggregateFunction representing the max function.
+            ColumnOperation representing the max function (PySpark-compatible).
         """
         from ..base import AggregateFunction
         from ...spark_types import DoubleType
 
-        return AggregateFunction(self, "max", DoubleType())
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(self, "max", DoubleType())
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(self, "max", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
-    def min(self) -> "AggregateFunction":  # noqa: F821
+    def min(self) -> "ColumnOperation":  # noqa: F821
         """Minimum value in this column.
 
         Returns:
-            AggregateFunction representing the min function.
+            ColumnOperation representing the min function (PySpark-compatible).
         """
         from ..base import AggregateFunction
         from ...spark_types import DoubleType
 
-        return AggregateFunction(self, "min", DoubleType())
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(self, "min", DoubleType())
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(self, "min", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
-    def stddev(self) -> "AggregateFunction":  # noqa: F821
+    def stddev(self) -> "ColumnOperation":  # noqa: F821
         """Standard deviation of values in this column.
 
         Returns:
-            AggregateFunction representing the stddev function.
+            ColumnOperation representing the stddev function (PySpark-compatible).
         """
         from ..base import AggregateFunction
         from ...spark_types import DoubleType
 
-        return AggregateFunction(self, "stddev", DoubleType())
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(self, "stddev", DoubleType())
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(self, "stddev", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
-    def variance(self) -> "AggregateFunction":  # noqa: F821
+    def variance(self) -> "ColumnOperation":  # noqa: F821
         """Variance of values in this column.
 
         Returns:
-            AggregateFunction representing the variance function.
+            ColumnOperation representing the variance function (PySpark-compatible).
         """
         from ..base import AggregateFunction
         from ...spark_types import DoubleType
 
-        return AggregateFunction(self, "variance", DoubleType())
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(self, "variance", DoubleType())
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(self, "variance", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func
+        return op
 
     def bitwise_not(self) -> "ColumnOperation":
         """Bitwise NOT operation on this column.
@@ -956,7 +998,7 @@ class ColumnOperation(Column):
         """
         return self._generate_name_early()
 
-    def alias(self, name: str) -> "ColumnOperation":
+    def alias(self, name: str) -> "IColumn":
         """Create an alias for this operation."""
         # self.operation is guaranteed to be a string in ColumnOperation
         op_str: str = self.operation  # type: ignore[assignment]

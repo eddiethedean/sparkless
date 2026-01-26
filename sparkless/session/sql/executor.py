@@ -22,7 +22,7 @@ Example:
 
 import contextlib
 import re
-from typing import Any, Dict, List, TYPE_CHECKING, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union, cast
 from ...core.exceptions.execution import QueryExecutionException
 from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.session import ISession
@@ -30,12 +30,16 @@ from ...dataframe import DataFrame
 from ...spark_types import StructType
 from .parser import SQLAST
 
+# Import types for runtime use (needed for type annotations and cast() calls)
+from ...functions.core.column import ColumnOperation  # noqa: F401, TC001
+from ...functions.base import AggregateFunction  # noqa: F401, TC001
+from ...functions.conditional import CaseWhen  # noqa: F401, TC001
+from ...functions.core.literals import Literal  # noqa: F401, TC001
+
 if TYPE_CHECKING:
     from ...dataframe.protocols import SupportsDataFrameOps
-    from ...functions.core.column import ColumnOperation
-    from ...functions.base import AggregateFunction
-    from ...functions.conditional import CaseWhen
-    from ...functions.core.literals import Literal
+    from ...functions import Column
+    from ...functions.core.interfaces import IColumn
 
 
 class SQLExecutor:
@@ -54,6 +58,36 @@ class SQLExecutor:
         >>> result = executor.execute("SELECT name, age FROM users")
         >>> result.show()
     """
+
+    @staticmethod
+    def _normalize_column_item(
+        col_item: Union[str, Dict[str, Any]],
+    ) -> Tuple[str, Optional[str]]:
+        """Normalize column item to (expression, alias) tuple.
+
+        Handles both old format (string) and new format (dict with expression/alias).
+
+        Args:
+            col_item: Column item (string or dict)
+
+        Returns:
+            Tuple of (column_expression, alias_name)
+        """
+        if isinstance(col_item, dict):
+            # New format: {"expression": "col", "alias": "alias_name"}
+            col_expr = col_item.get("expression", "")
+            alias = col_item.get("alias")
+            return (col_expr.strip(), alias)
+        else:
+            # Old format: string like "col" or "col AS alias"
+            col_expr = str(col_item).strip()
+            alias = None
+            # Extract alias if present
+            alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col_expr)
+            if alias_match:
+                alias = alias_match.group(1)
+                col_expr = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col_expr).strip()
+            return (col_expr, alias)
 
     def __init__(self, session: ISession):
         """Initialize SQLExecutor.
@@ -583,20 +617,14 @@ class SQLExecutor:
             from ...functions import F
 
             agg_exprs: List[
-                Union[ColumnOperation, AggregateFunction, CaseWhen, Literal]
+                Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]  # noqa: F821
             ] = []
             select_exprs = []
 
-            for col_expr in select_columns:
+            for col_item in select_columns:
+                # Normalize column item (handles both string and dict formats)
+                col_expr, alias = self._normalize_column_item(col_item)
                 col_expr = col_expr.strip()
-
-                # Extract alias if present (handle both " AS " and " as ")
-                alias = None
-                alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col_expr)
-                if alias_match:
-                    alias = alias_match.group(1)
-                    # Remove alias from col_expr
-                    col_expr = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col_expr).strip()
 
                 col_upper = col_expr.upper()
 
@@ -621,8 +649,9 @@ class SQLExecutor:
                     if "*" in inner:
                         parts = [p.strip() for p in inner.split("*")]
                         if len(parts) == 2:
-                            col_expr = F.col(parts[0]) * F.col(parts[1])
-                            expr = F.sum(col_expr.name)
+                            col_op = F.col(parts[0]) * F.col(parts[1])
+                            # F.sum can accept ColumnOperation directly
+                            expr = F.sum(col_op)
                         else:
                             # More complex expression - try to parse
                             expr = F.sum(inner)  # Fallback
@@ -636,8 +665,9 @@ class SQLExecutor:
                     if "*" in inner:
                         parts = [p.strip() for p in inner.split("*")]
                         if len(parts) == 2:
-                            col_expr = F.col(parts[0]) * F.col(parts[1])
-                            expr = F.avg(col_expr.name)
+                            col_op = F.col(parts[0]) * F.col(parts[1])
+                            # F.avg can accept ColumnOperation directly
+                            expr = F.avg(col_op)
                         else:
                             expr = F.avg(inner)
                     else:
@@ -907,16 +937,16 @@ class SQLExecutor:
             select_columns = components.get("select_columns", ["*"])
             if select_columns != ["*"]:
                 # Check if any group-by columns are in the SELECT
-                select_col_names = [
-                    col.split(" AS ")[0].strip().split(".")[-1]
-                    for col in select_columns
-                ]
-                # Also check for aliases in SELECT (e.g., "AVG(salary) as avg_salary")
+                # Extract column names and aliases from normalized format
+                select_col_names = []
                 select_aliases = []
-                for col in select_columns:
-                    alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col)
-                    if alias_match:
-                        select_aliases.append(alias_match.group(1))
+                for col_item in select_columns:
+                    col_expr, alias = self._normalize_column_item(col_item)
+                    # Extract column name (handle table.column format)
+                    col_name = col_expr.split(".")[-1].strip()
+                    select_col_names.append(col_name)
+                    if alias:
+                        select_aliases.append(alias)
 
                 # Remove temporary group-by columns that aren't in SELECT
                 cols_to_keep = []
@@ -1005,8 +1035,10 @@ class SQLExecutor:
             has_aggregates = False
 
             if select_columns != ["*"]:
-                for col in select_columns:
-                    col_upper = col.upper().strip()
+                for col_item in select_columns:
+                    # Normalize column item (handles both string and dict formats)
+                    col_expr, _ = self._normalize_column_item(col_item)
+                    col_upper = col_expr.upper().strip()
                     # Check for aggregate functions
                     if any(
                         col_upper.startswith(agg)
@@ -1028,15 +1060,10 @@ class SQLExecutor:
                     Union[ColumnOperation, AggregateFunction, CaseWhen, Literal]
                 ] = []
 
-                for col_expr in select_columns:
+                for col_item in select_columns:
+                    # Normalize column item (handles both string and dict formats)
+                    col_expr, alias = self._normalize_column_item(col_item)
                     col_expr = col_expr.strip()
-
-                    # Extract alias if present
-                    alias = None
-                    alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col_expr)
-                    if alias_match:
-                        alias = alias_match.group(1)
-                        col_expr = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col_expr).strip()
 
                     col_upper = col_expr.upper()
 
@@ -1049,7 +1076,13 @@ class SQLExecutor:
                                 col_expr.index("(") + 1 : col_expr.rindex(")")
                             ].strip()
                             expr = F.count(inner)
-                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
+                        result_expr = expr.alias(alias) if alias else expr
+                        agg_exprs_no_group.append(
+                            cast(
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                result_expr,
+                            )
+                        )
                     elif col_upper.startswith("AVG(") or col_upper.startswith(
                         "AVERAGE("
                     ):
@@ -1057,25 +1090,49 @@ class SQLExecutor:
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.avg(inner)
-                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
+                        result_expr = expr.alias(alias) if alias else expr
+                        agg_exprs_no_group.append(
+                            cast(
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                result_expr,
+                            )
+                        )
                     elif col_upper.startswith("SUM("):
                         inner = col_expr[
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.sum(inner)
-                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
+                        result_expr = expr.alias(alias) if alias else expr
+                        agg_exprs_no_group.append(
+                            cast(
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                result_expr,
+                            )
+                        )
                     elif col_upper.startswith("MAX("):
                         inner = col_expr[
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.max(inner)
-                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
+                        result_expr = expr.alias(alias) if alias else expr
+                        agg_exprs_no_group.append(
+                            cast(
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                result_expr,
+                            )
+                        )
                     elif col_upper.startswith("MIN("):
                         inner = col_expr[
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.min(inner)
-                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
+                        result_expr = expr.alias(alias) if alias else expr
+                        agg_exprs_no_group.append(
+                            cast(
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                result_expr,
+                            )
+                        )
                     else:
                         # Non-aggregate column in aggregate query - use F.col()
                         col_name = col_expr
@@ -1102,22 +1159,19 @@ class SQLExecutor:
                 # No GROUP BY, no aggregates - just apply column selection
                 if select_columns != ["*"]:
                     # Parse column expressions with aliases, table prefixes, and CASE WHEN
-                    select_exprs_no_group: List[Any] = []
-                    for col in select_columns:
-                        col = col.strip()
-                        # Extract alias if present (handle both " AS " and " as ")
-                        # Support aliases with underscores and multiple words (e.g., "dept_name", "my_col")
-                        alias = None
-                        # Match " AS alias" or " as alias" at the end, where alias can contain underscores
-                        alias_match = re.search(
-                            r"\s+[Aa][Ss]\s+([a-zA-Z_][a-zA-Z0-9_]*)$", col
-                        )
-                        if alias_match:
-                            alias = alias_match.group(1)
-                            # Remove alias from col expression (match case-insensitive)
-                            col = re.sub(
-                                r"\s+[Aa][Ss]\s+[a-zA-Z_][a-zA-Z0-9_]*$", "", col
-                            ).strip()
+                    select_exprs_no_group: List[
+                        Union[
+                            ColumnOperation,
+                            AggregateFunction,
+                            CaseWhen,
+                            Literal,
+                            IColumn,
+                        ]  # noqa: F821
+                    ] = []
+                    for col_item in select_columns:
+                        # Normalize column item (handles both string and dict formats)
+                        col_expr, alias = self._normalize_column_item(col_item)
+                        col = col_expr.strip()
 
                         # Check if this is a CASE WHEN expression
                         col_upper = col.upper().strip()
@@ -1125,12 +1179,27 @@ class SQLExecutor:
                             # Parse CASE WHEN expression using SQLExprParser
                             from ...functions.core.sql_expr_parser import SQLExprParser
 
-                            case_expr = SQLExprParser._parse_expression(col)
+                            case_expr: Union[
+                                ColumnOperation,
+                                AggregateFunction,
+                                CaseWhen,
+                                Literal,
+                                IColumn,  # noqa: F821
+                            ] = cast(
+                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                SQLExprParser._parse_expression(col),
+                            )
                             if alias:
-                                case_expr = case_expr.alias(alias)
+                                # alias() returns IColumn, cast to expected type
+                                case_expr = cast(
+                                    "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
+                                    case_expr.alias(alias),
+                                )
                             select_exprs_no_group.append(case_expr)
                         else:
-                            literal_expr: Any = None
+                            literal_expr: Union[Column, CaseWhen, Literal, IColumn] = (
+                                None  # noqa: F821
+                            )
                             is_string_literal = (
                                 col.startswith("'") and col.endswith("'")
                             ) or (col.startswith('"') and col.endswith('"'))
