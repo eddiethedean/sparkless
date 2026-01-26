@@ -280,7 +280,7 @@ class JoinService:
             # Type cast: other should be a DataFrame at runtime
             from ..dataframe import DataFrame as DFType
 
-            other_materialized = LazyEvaluationEngine.materialize(cast(DFType, other))
+            other_materialized = LazyEvaluationEngine.materialize(cast("DFType", other))
         else:
             # If no operations queued, create a new DataFrame with a copy of the data
             # to avoid sharing references in diamond dependencies

@@ -20,6 +20,7 @@ author = "Odos Matthews"
 # Get version from package
 try:
     from sparkless import __version__
+
     version = __version__
     release = __version__
 except ImportError:

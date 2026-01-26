@@ -130,6 +130,29 @@
   - Fixes `AttributeError: 'float' object has no attribute 'name'` error
 
 ### Fixed
+- **Issue #355** - Fixed `unionByName` producing incorrect, duplicated results when the same DataFrame is used in two join branches (diamond dependency)
+  - Fixed `unionByName` to properly materialize lazy operations before accessing data and schemas
+  - When the same DataFrame is used in multiple branches (e.g., two different joins) and then combined via `unionByName`, sparkless now correctly materializes each branch's transformations before unioning
+  - Updated `JoinService.unionByName()` and `JoinOperations.unionByName()` to explicitly materialize both DataFrames involved in the union operation
+  - Ensures that all queued lazy operations (filters, joins, selects, etc.) are executed before data is accessed for the union
+  - Prevents data duplication that occurred when branches shared the same upstream DataFrame reference
+  - Comprehensive test coverage: 14 tests covering various scenarios:
+    - Original join-based diamond dependency test
+    - Filter operations in branches
+    - Select operations with `allowMissingColumns`
+    - `withColumn` operations with different computed columns
+    - Three or more branches
+    - Nested/chain transformations
+    - Aggregations in branches
+    - Empty branch edge cases
+    - Single row edge cases
+    - Complex column expressions
+    - Drop operations
+    - Multiple union operations
+    - Window functions in branches
+    - Data immutability verification
+  - All tests pass in both Sparkless (mock) and PySpark modes, confirming full compatibility
+  - Fixes issue where `unionByName` would return 6 rows instead of 3 when combining branches from the same source DataFrame
 - **Issue #330** - Join / union / orderBy after select with computed columns
   - Fixed `AttributeError: 'NoneType' object has no attribute 'collect'` when join, union, or orderBy followed a select that used computed columns (e.g. struct field alias)
   - When select includes computed columns, the Polars materializer keeps the result in `df_materialized` and sets `lazy_df = None`
@@ -474,6 +497,11 @@
   - Removed PySpark-only skip; added `@pytest.mark.backend("mock")` so tests always use sparkless backend
   - MERGE is implemented in sparkless's SQL executor; tests run and pass when the suite is executed with `MOCK_SPARK_TEST_BACKEND=pyspark`
   - All 15 MERGE tests run and pass
+- Added comprehensive test suite for issue #355 (`tests/unit/test_issue_355.py`)
+  - 14 test cases covering all diamond dependency scenarios with `unionByName`
+  - Tests for filters, selects, withColumn, aggregations, window functions, and edge cases
+  - All tests pass in both Sparkless (mock) and PySpark modes
+  - Validates that the fix correctly handles diamond dependencies without data duplication
 
 ## 3.31.0 — Unreleased
 
