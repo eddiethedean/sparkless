@@ -19,6 +19,7 @@ from ...spark_types import (
     StringType,
     StructField,
     StructType,
+    get_row_value,
 )
 
 if TYPE_CHECKING:
@@ -102,7 +103,9 @@ class MiscService:
         for row in self._df.data:
             if resolved_subset:
                 # Check only specified columns
-                null_count = sum(1 for col in resolved_subset if row.get(col) is None)
+                null_count = sum(
+                    1 for col in resolved_subset if get_row_value(row, col) is None
+                )
             else:
                 # Check all columns
                 null_count = sum(1 for v in row.values() if v is None)
@@ -223,7 +226,7 @@ class MiscService:
             if isinstance(value, dict):
                 # When value is a dict, subset is ignored (PySpark behavior)
                 for col, fill_value in value.items():
-                    if new_row.get(col) is None:
+                    if get_row_value(row, col) is None:
                         # Check type compatibility (PySpark silently ignores mismatches)
                         col_type = column_types.get(col)
                         if col_type and self._is_value_compatible_with_type(
@@ -236,7 +239,7 @@ class MiscService:
                 if subset_cols is not None:
                     # Only fill nulls in specified columns
                     for col in subset_cols:
-                        if new_row.get(col) is None:
+                        if get_row_value(row, col) is None:
                             # Check type compatibility (PySpark silently ignores mismatches)
                             col_type = column_types.get(col)
                             if col_type and self._is_value_compatible_with_type(
@@ -382,7 +385,7 @@ class MiscService:
 
         result_data = []
         for row in self._df.data:
-            stratum_value = row.get(resolved_col)
+            stratum_value = get_row_value(row, resolved_col)
             fraction = fractions.get(stratum_value, 0.0)
             if random.random() < fraction:
                 result_data.append(row)
@@ -506,7 +509,7 @@ class MiscService:
             # Extract values for this column
             values = []
             for row in self._df.data:
-                value = row.get(col)
+                value = get_row_value(row, col)
                 if value is not None and isinstance(value, (int, float)):
                     values.append(value)
 
@@ -592,7 +595,7 @@ class MiscService:
             # Extract values for this column
             values = []
             for row in self._df.data:
-                value = row.get(col)
+                value = get_row_value(row, col)
                 if value is not None and isinstance(value, (int, float)):
                     values.append(value)
 
@@ -685,8 +688,8 @@ class MiscService:
         col2_values = set()
 
         for row in self._df.data:
-            val1 = row.get(resolved_col1)
-            val2 = row.get(resolved_col2)
+            val1 = get_row_value(row, resolved_col1)
+            val2 = get_row_value(row, resolved_col2)
             crosstab_data[val1][val2] += 1
             col2_values.add(val2)
 
@@ -752,9 +755,9 @@ class MiscService:
 
         for col, resolved_col in zip(cols, resolved_cols):
             values = [
-                row.get(resolved_col)
+                get_row_value(row, resolved_col)
                 for row in self._df.data
-                if row.get(resolved_col) is not None
+                if get_row_value(row, resolved_col) is not None
             ]
             counter = Counter(values)
             freq_items = [item for item, count in counter.items() if count >= min_count]
@@ -794,7 +797,7 @@ class MiscService:
         def calc_quantiles(column_name: str) -> List[float]:
             values_list: List[float] = []
             for row in self._df.data:
-                val = row.get(column_name)
+                val = get_row_value(row, column_name)
                 if val is not None:
                     values_list.append(float(val))
             if not values_list:
@@ -820,9 +823,10 @@ class MiscService:
         """
         # Filter rows where both values are not None and extract numeric values
         pairs = [
-            (row.get(col1), row.get(col2))
+            (get_row_value(row, col1), get_row_value(row, col2))
             for row in self._df.data
-            if row.get(col1) is not None and row.get(col2) is not None
+            if get_row_value(row, col1) is not None
+            and get_row_value(row, col2) is not None
         ]
 
         if not pairs:
@@ -1082,10 +1086,10 @@ class MiscService:
                 new_row = {}
                 # Add id columns
                 for id_col in id_cols:
-                    new_row[id_col] = row.get(id_col)
+                    new_row[id_col] = get_row_value(row, id_col)
                 # Add variable and value
                 new_row[variableColumnName] = value_col
-                new_row[valueColumnName] = row.get(value_col)
+                new_row[valueColumnName] = get_row_value(row, value_col)
                 unpivoted_data.append(new_row)
 
         # Infer schema for unpivoted DataFrame
@@ -1151,7 +1155,7 @@ class MiscService:
             for val_col in value_cols:
                 new_row = {col: row[col] for col in id_cols}
                 new_row[variableColumnName] = val_col
-                new_row[valueColumnName] = row.get(val_col)
+                new_row[valueColumnName] = get_row_value(row, val_col)
                 result_data.append(new_row)
 
         # Build new schema - find fields by name

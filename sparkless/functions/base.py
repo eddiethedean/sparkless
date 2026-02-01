@@ -6,7 +6,7 @@ Most classes are imported from core/ modules to avoid duplication.
 """
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
-from sparkless.spark_types import DataType, StringType
+from sparkless.spark_types import DataType, StringType, get_row_value
 
 # Import core classes from their canonical locations
 from .core.column import Column, ColumnOperation
@@ -169,7 +169,7 @@ class AggregateFunction:
             column_name = (
                 self.column if isinstance(self.column, str) else self.column.name
             )
-            return sum(1 for row in data if row.get(column_name) is not None)
+            return sum(1 for row in data if get_row_value(row, column_name) is not None)
 
     def _evaluate_sum(self, data: List[Dict[str, Any]]) -> Any:
         """Evaluate sum function."""
@@ -179,7 +179,7 @@ class AggregateFunction:
         column_name = self.column if isinstance(self.column, str) else self.column.name
         total = 0
         for row in data:
-            value = row.get(column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 total += value
         return total
@@ -191,7 +191,9 @@ class AggregateFunction:
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [
-            row.get(column_name) for row in data if row.get(column_name) is not None
+            get_row_value(row, column_name)
+            for row in data
+            if get_row_value(row, column_name) is not None
         ]
         numeric_values = [v for v in values if isinstance(v, (int, float))]
         if numeric_values:
@@ -206,10 +208,12 @@ class AggregateFunction:
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [
-            row.get(column_name) for row in data if row.get(column_name) is not None
+            get_row_value(row, column_name)
+            for row in data
+            if get_row_value(row, column_name) is not None
         ]
         if values:
-            return max(values)  # type: ignore[type-var]
+            return max(values)
         else:
             return None
 
@@ -220,10 +224,12 @@ class AggregateFunction:
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [
-            row.get(column_name) for row in data if row.get(column_name) is not None
+            get_row_value(row, column_name)
+            for row in data
+            if get_row_value(row, column_name) is not None
         ]
         if values:
-            return min(values)  # type: ignore[type-var]
+            return min(values)
         else:
             return None
 

@@ -518,7 +518,6 @@ class SQLParser:
 
         # Extract FROM tables (handle aliases and JOINs)
         # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
-        # The join condition should capture until WHERE, GROUP BY, ORDER BY, LIMIT, or end of query
         from_match = re.search(
             r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?:(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?)?",
             query,
@@ -532,6 +531,19 @@ class SQLParser:
             alias2_raw = from_match.group(4)
             alias2 = alias2_raw.strip("`") if alias2_raw else None
             join_condition = from_match.group(5)
+
+            # If main regex did not capture JOIN (e.g. "e JOIN" has only one space),
+            # try separate JOIN pattern (issue #354: CTE with JOIN).
+            if not table2 and re.search(r"\s+JOIN\s+\w+", query, re.IGNORECASE):
+                join_match = re.search(
+                    r"\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+)",
+                    query,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                if join_match:
+                    table2 = join_match.group(1).strip("`")
+                    alias2 = (join_match.group(2) or "").strip("`") or table2
+                    join_condition = join_match.group(3).strip()
 
             # Extract join type (INNER, LEFT, RIGHT, FULL OUTER)
             join_type = "inner"  # default

@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Tuple, Union
 import statistics
-from ...spark_types import StructType, StructField, StringType
+from ...spark_types import StructType, StructField, StringType, get_row_value
 
 
 class AggregationOperationsStatic:
@@ -58,7 +58,7 @@ class AggregationOperationsStatic:
             # Extract values for this column
             values = []
             for row in data:
-                value = row.get(col)
+                value = get_row_value(row, col)
                 if value is not None and isinstance(value, (int, float)):
                     values.append(value)
 
@@ -143,7 +143,7 @@ class AggregationOperationsStatic:
             # Extract values for this column
             values = []
             for row in data:
-                value = row.get(col)
+                value = get_row_value(row, col)
                 if value is not None and isinstance(value, (int, float)):
                     values.append(value)
 
@@ -307,7 +307,7 @@ class AggregationOperationsStatic:
         """
         values = []
         for row in data:
-            value = row.get(column)
+            value = get_row_value(row, column)
             if value is not None and isinstance(value, (int, float)):
                 values.append(value)
         return values

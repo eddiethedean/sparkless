@@ -1,7 +1,7 @@
 """Join operations for DataFrame."""
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
-from ...spark_types import StructType, StructField
+from ...spark_types import StructType, StructField, get_row_value
 
 if TYPE_CHECKING:
     from ...dataframe.dataframe import DataFrame
@@ -57,7 +57,7 @@ class JoinOperationsStatic:
 
                 # Add fields from left DataFrame
                 for field in left_df.schema.fields:
-                    new_row[field.name] = left_row.get(field.name)
+                    new_row[field.name] = get_row_value(left_row, field.name)
 
                 # Add fields from right DataFrame, handling name conflicts
                 for field in right_df.schema.fields:
@@ -71,9 +71,9 @@ class JoinOperationsStatic:
                                 renamed = new_field.name
                                 break
                         if renamed is not None:
-                            new_row[renamed] = right_row.get(field.name)
+                            new_row[renamed] = get_row_value(right_row, field.name)
                     else:
-                        new_row[field.name] = right_row.get(field.name)
+                        new_row[field.name] = get_row_value(right_row, field.name)
 
                 result_data.append(new_row)
 
@@ -112,7 +112,7 @@ class JoinOperationsStatic:
                 # Check if join condition is met
                 join_match = True
                 for col in on_columns:
-                    if left_row.get(col) != right_row.get(col):
+                    if get_row_value(left_row, col) != get_row_value(right_row, col):
                         join_match = False
                         break
 
@@ -164,7 +164,7 @@ class JoinOperationsStatic:
                 # Check if join condition is met
                 join_match = True
                 for col in on_columns:
-                    if left_row.get(col) != right_row.get(col):
+                    if get_row_value(left_row, col) != get_row_value(right_row, col):
                         join_match = False
                         break
 
@@ -247,7 +247,7 @@ class JoinOperationsStatic:
                 # Check if join condition is met
                 join_match = True
                 for col in on_columns:
-                    if left_row.get(col) != right_row.get(col):
+                    if get_row_value(left_row, col) != get_row_value(right_row, col):
                         join_match = False
                         break
 

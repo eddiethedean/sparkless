@@ -11,7 +11,7 @@ from .window_handler import PolarsWindowHandler
 from sparkless import config
 from sparkless.functions import Column, ColumnOperation
 from sparkless.functions.window_execution import WindowFunction
-from sparkless.spark_types import StructType
+from sparkless.spark_types import StructType, get_row_value
 from sparkless.core.ddl_adapter import parse_ddl_schema
 from sparkless.utils.profiling import profiled
 
@@ -357,6 +357,7 @@ class PolarsOperationExecutor:
         select_exprs = []
         select_names = []
         map_op_indices = set()  # Track which columns are map operations
+        posexplode_pending: List[Tuple[str, str, str]] = []  # (temp_name, name0, name1)
         python_columns: List[Tuple[str, List[Any]]] = []
         rows_cache: Optional[List[Dict[str, Any]]] = None
         evaluator: Union[ExpressionEvaluator, None] = None
@@ -663,6 +664,68 @@ class PolarsOperationExecutor:
                         ).alias(name)
                     )
                     select_names.append(name)
+            elif isinstance(col, ColumnOperation) and col.operation in (
+                "posexplode",
+                "posexplode_outer",
+            ):
+                # posexplode produces two columns (pos, val); alias("Name1", "Name2") names them
+                from sparkless.functions import Column as ColumnType
+
+                source_col = col.column
+                if isinstance(source_col, ColumnType):
+                    source_col_name = source_col.name
+                elif isinstance(source_col, str):
+                    source_col_name = source_col
+                else:
+                    source_col_name = str(getattr(source_col, "name", ""))
+                if not source_col_name:
+                    raise ValueError(
+                        f"Cannot determine source column for posexplode: {col}"
+                    )
+                from ...core.column_resolver import ColumnResolver
+
+                case_sensitive = self._get_case_sensitive()
+                resolved_col_name = ColumnResolver.resolve_column_name(
+                    source_col_name, list(df.columns), case_sensitive
+                )
+                if resolved_col_name is None:
+                    raise ValueError(
+                        f"Column '{source_col_name}' not found for posexplode"
+                    )
+                # PySpark alias() takes single name; posexplode output columns are (pos, col)
+                _first = getattr(col, "_alias_name", None) or "pos"
+                alias_names = (_first, "col")
+                temp_name = "__posexplode_struct"
+
+                def _posexplode_list(arr: Any) -> Any:
+                    if arr is None:
+                        return []
+                    if not isinstance(arr, (list, tuple)):
+                        return []
+                    return [{"pos": i, "val": v} for i, v in enumerate(arr)]
+
+                # Polars requires return_dtype for map_elements; use List(Struct) for pos+val
+                list_dtype = df[resolved_col_name].dtype
+                val_dtype = (
+                    list_dtype.inner
+                    if hasattr(list_dtype, "inner") and list_dtype.inner is not None
+                    else pl.Int64
+                )
+                posexplode_dtype = pl.List(
+                    pl.Struct([pl.Field("pos", pl.Int64), pl.Field("val", val_dtype)])
+                )
+                posexplode_expr = (
+                    pl.col(resolved_col_name)
+                    .map_elements(
+                        _posexplode_list,
+                        return_dtype=posexplode_dtype,
+                    )
+                    .alias(temp_name)
+                )
+                select_exprs.append(posexplode_expr)
+                select_names.append(temp_name)
+                posexplode_pending.append((temp_name, alias_names[0], alias_names[1]))
+                continue
             elif isinstance(col, WindowFunction) or (
                 isinstance(col, ColumnOperation)
                 and (
@@ -1522,6 +1585,12 @@ class PolarsOperationExecutor:
                         exploded_col_name = select_names[explode_outer_index]
                     if exploded_col_name:
                         result = result.explode(exploded_col_name)
+                elif posexplode_pending:
+                    result = df.select(select_exprs)
+                    for temp_name, name0, name1 in posexplode_pending:
+                        result = result.explode(temp_name)
+                        result = result.unnest(temp_name)
+                        result = result.rename({"pos": name0, "val": name1})
                 else:
                     result = df.select(select_exprs)
             except Exception as e:
@@ -1707,7 +1776,7 @@ class PolarsOperationExecutor:
                         data_rows, [(alias_name, window_func)]
                     )
                     # Extract values from evaluated data
-                    values = [row.get(alias_name) for row in data_rows]
+                    values = [get_row_value(row, alias_name) for row in data_rows]
                     result = result.with_columns(pl.Series(alias_name, values))
 
             # Clean up
@@ -1775,7 +1844,7 @@ class PolarsOperationExecutor:
         if not column_name:
             return None
 
-        raw_value = row.get(column_name)
+        raw_value = get_row_value(row, column_name)
         if raw_value is None:
             return None
 
@@ -1800,7 +1869,7 @@ class PolarsOperationExecutor:
         field_names = self._extract_struct_field_names(expression.column)
         if not field_names:
             return None
-        struct_dict = {name: row.get(name) for name in field_names}
+        struct_dict = {name: get_row_value(row, name) for name in field_names}
         return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"))
 
     def _python_to_csv(
@@ -1812,7 +1881,7 @@ class PolarsOperationExecutor:
 
         values = []
         for name in field_names:
-            val = row.get(name)
+            val = get_row_value(row, name)
             values.append("" if val is None else str(val))
         return ",".join(values)
 

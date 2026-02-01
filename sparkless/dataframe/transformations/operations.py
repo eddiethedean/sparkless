@@ -20,7 +20,7 @@ from typing import (
 )
 
 from ...functions import Column, ColumnOperation, Literal
-from ...spark_types import StructType, StructField
+from ...spark_types import StructType, StructField, get_row_value
 from ...core.exceptions import PySparkValueError
 from ..protocols import SupportsDataFrameOps
 
@@ -399,7 +399,7 @@ class TransformationOperations(Generic[SupportsDF]):
 
         for row in self.data:
             # Create tuple in schema order for consistent hashing
-            row_tuple = tuple(row.get(name) for name in field_names)
+            row_tuple = tuple(get_row_value(row, name) for name in field_names)
             if row_tuple not in seen:
                 seen.add(row_tuple)
                 distinct_data.append(row)

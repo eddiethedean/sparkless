@@ -22,6 +22,7 @@ from ...core.type_utils import (
     get_expression_value,
 )
 
+from ...spark_types import get_row_value
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
@@ -145,7 +146,7 @@ class GroupedData:
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in self.df.data:
-            group_key = tuple(row.get(col) for col in self.group_columns)
+            group_key = tuple(get_row_value(row, col) for col in self.group_columns)
             if group_key not in groups:
                 groups[group_key] = []
             groups[group_key].append(row)
@@ -699,9 +700,9 @@ class GroupedData:
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr, sum(values) if values else 0
         elif expr.startswith("avg("):
@@ -712,9 +713,9 @@ class GroupedData:
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr, sum(values) / len(values) if values else 0
         elif expr.startswith("count("):
@@ -727,7 +728,9 @@ class GroupedData:
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             return expr, max(values) if values else None
         elif expr.startswith("min("):
@@ -738,7 +741,9 @@ class GroupedData:
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             return expr, min(values) if values else None
         else:
@@ -829,7 +834,7 @@ class GroupedData:
                 col_name = actual_col_name
             values = []
             for row in group_rows:
-                val = row.get(col_name)
+                val = get_row_value(row, col_name)
                 if val is not None:
                     if isinstance(val, bool):
                         val = 1 if val else 0
@@ -903,7 +908,7 @@ class GroupedData:
                 col_name = actual_col_name
             values = []
             for row in group_rows:
-                val = row.get(col_name)
+                val = get_row_value(row, col_name)
                 if val is not None:
                     if isinstance(val, bool):
                         val = 1 if val else 0
@@ -946,9 +951,9 @@ class GroupedData:
             else:
                 # Simple column reference
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 result_key = alias_name if alias_name else f"max({col_name})"
                 return result_key, max(values) if values else None
@@ -973,21 +978,25 @@ class GroupedData:
             else:
                 # Simple column reference
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 result_key = alias_name if alias_name else f"min({col_name})"
                 return result_key, min(values) if values else None
         elif func_name == "collect_list":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"collect_list({col_name})"
             return result_key, values
         elif func_name == "collect_set":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"collect_set({col_name})"
             return result_key, list(set(values))
@@ -996,9 +1005,9 @@ class GroupedData:
             if ignorenulls:
                 # Filter out None values and return first non-null value
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 result_key = alias_name if alias_name else f"first({col_name})"
                 return result_key, values[0] if values else None
@@ -1011,16 +1020,18 @@ class GroupedData:
                     return result_key, None
         elif func_name == "last":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"last({col_name})"
             return result_key, values[-1] if values else None
         elif func_name == "stddev" or func_name == "std":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"stddev({col_name})"
             # PySpark returns None (not 0.0) when there's only one value
@@ -1031,7 +1042,7 @@ class GroupedData:
             # product(col) - multiply all values
             values = []
             for row in group_rows:
-                val = row.get(col_name)
+                val = get_row_value(row, col_name)
                 if val is not None:
                     if isinstance(val, bool):
                         val = 1 if val else 0
@@ -1054,7 +1065,7 @@ class GroupedData:
             values = []
             seen = set()
             for row in group_rows:
-                val = row.get(col_name)
+                val = get_row_value(row, col_name)
                 if val is not None:
                     if isinstance(val, bool):
                         val = 1 if val else 0
@@ -1071,10 +1082,10 @@ class GroupedData:
             return result_key, sum(values) if values else 0
         elif func_name == "variance":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"variance({col_name})"
             # PySpark returns None (not 0.0) when there's only one value
@@ -1083,10 +1094,10 @@ class GroupedData:
             return result_key, statistics.variance(values)
         elif func_name == "skewness":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"skewness({col_name})"
             if values and len(values) > 2:
@@ -1103,10 +1114,10 @@ class GroupedData:
                 return result_key, None
         elif func_name == "kurtosis":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"kurtosis({col_name})"
             if values and len(values) > 3:
@@ -1125,13 +1136,17 @@ class GroupedData:
                 return result_key, None
         elif func_name == "bool_and":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"bool_and({col_name})"
             return result_key, all(values) if values else None
         elif func_name == "bool_or":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"bool_or({col_name})"
             return result_key, any(values) if values else None
@@ -1149,7 +1164,7 @@ class GroupedData:
                     group_rows, key=lambda r: r.get(ord_col_name, float("-inf"))
                 )
                 result_key = alias_name if alias_name else f"max_by({col_name})"
-                return result_key, max_row.get(col_name)
+                return result_key, get_row_value(max_row, col_name)
             return alias_name if alias_name else f"max_by({col_name})", None
         elif func_name == "min_by":
             # min_by(col, ord) - return col value where ord is minimum
@@ -1165,7 +1180,7 @@ class GroupedData:
                     group_rows, key=lambda r: r.get(ord_col_name, float("inf"))
                 )
                 result_key = alias_name if alias_name else f"min_by({col_name})"
-                return result_key, min_row.get(col_name)
+                return result_key, get_row_value(min_row, col_name)
             return alias_name if alias_name else f"min_by({col_name})", None
         elif func_name == "count_if":
             # count_if(condition) - count where condition is true
@@ -1181,10 +1196,11 @@ class GroupedData:
                         and hasattr(cond_expr, "operation")
                         and hasattr(cond_expr, "value")
                     ):
-                        col_val = row.get(
+                        col_val = get_row_value(
+                            row,
                             cond_expr.column.name
                             if hasattr(cond_expr.column, "name")
-                            else cond_expr.column
+                            else cond_expr.column,
                         )
                         comp_val = (
                             cond_expr.value.value
@@ -1216,9 +1232,9 @@ class GroupedData:
             else:
                 # Simple boolean column
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 true_count = sum(
                     1 for v in values if v is True or v == 1 or str(v).lower() == "true"
@@ -1228,14 +1244,18 @@ class GroupedData:
         elif func_name == "any_value":
             # any_value(col) - return any non-null value (non-deterministic)
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"any_value({col_name})"
             return result_key, values[0] if values else None
         elif func_name == "mean":
             # mean(col) - alias for avg
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = (
                 alias_name  # Use the name from expr.name (already set correctly)
@@ -1244,7 +1264,9 @@ class GroupedData:
         elif func_name == "approx_count_distinct":
             # approx_count_distinct(col) - approximate distinct count
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             distinct_count = len(set(values))
             result_key = (
@@ -1254,7 +1276,9 @@ class GroupedData:
         elif func_name == "countDistinct":
             # countDistinct(col) - exact distinct count
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             distinct_count = len(set(values))
             result_key = (
@@ -1264,28 +1288,36 @@ class GroupedData:
         elif func_name == "stddev_pop":
             # stddev_pop(col) - population standard deviation
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"stddev_pop({col_name})"
             return result_key, statistics.pstdev(values) if len(values) > 0 else None
         elif func_name == "stddev_samp":
             # stddev_samp(col) - sample standard deviation
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"stddev_samp({col_name})"
             return result_key, statistics.stdev(values) if len(values) > 1 else None
         elif func_name == "var_pop":
             # var_pop(col) - population variance
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"var_pop({col_name})"
             return result_key, statistics.pvariance(values) if len(values) > 0 else None
         elif func_name == "var_samp":
             # var_samp(col) - sample variance
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"var_samp({col_name})"
             return result_key, statistics.variance(values) if len(values) > 1 else None
@@ -1299,20 +1331,21 @@ class GroupedData:
                     else str(expr.ord_column)
                 )
                 values1 = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                    if get_row_value(row, col_name) is not None
+                    and get_row_value(row, col2_name) is not None
                 ]
                 values2 = [
-                    row.get(col2_name)
+                    get_row_value(row, col2_name)
                     for row in group_rows
-                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                    if get_row_value(row, col_name) is not None
+                    and get_row_value(row, col2_name) is not None
                 ]
 
                 if len(values1) > 0 and len(values2) > 0:
-                    # Mypy has limitations with statistics.mean and list comprehensions
-                    mean1 = statistics.mean(values1)  # type: ignore[type-var]
-                    mean2 = statistics.mean(values2)  # type: ignore[type-var]
+                    mean1 = statistics.mean(values1)
+                    mean2 = statistics.mean(values2)
                     if mean1 is not None and mean2 is not None:
                         covar = sum(
                             (x1 - mean1) * (x2 - mean2)
@@ -1342,22 +1375,23 @@ class GroupedData:
                     else str(expr.ord_column)
                 )
                 values1 = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                    if get_row_value(row, col_name) is not None
+                    and get_row_value(row, col2_name) is not None
                 ]
                 values2 = [
-                    row.get(col2_name)
+                    get_row_value(row, col2_name)
                     for row in group_rows
-                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                    if get_row_value(row, col_name) is not None
+                    and get_row_value(row, col2_name) is not None
                 ]
 
                 if (
                     len(values1) > 1 and len(values2) > 1
                 ):  # Need at least 2 points for sample covariance
-                    # Mypy has limitations with statistics.mean and list comprehensions
-                    mean1 = statistics.mean(values1)  # type: ignore[type-var]
-                    mean2 = statistics.mean(values2)  # type: ignore[type-var]
+                    mean1 = statistics.mean(values1)
+                    mean2 = statistics.mean(values2)
                     if mean1 is not None and mean2 is not None:
                         # Sample covariance: divide by (n-1) instead of n
                         covar = sum(
@@ -1388,22 +1422,23 @@ class GroupedData:
                     else str(expr.ord_column)
                 )
                 values1 = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                    if get_row_value(row, col_name) is not None
+                    and get_row_value(row, col2_name) is not None
                 ]
                 values2 = [
-                    row.get(col2_name)
+                    get_row_value(row, col2_name)
                     for row in group_rows
-                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                    if get_row_value(row, col_name) is not None
+                    and get_row_value(row, col2_name) is not None
                 ]
 
                 if (
                     len(values1) > 1 and len(values2) > 1
                 ):  # Need at least 2 points for correlation
-                    # Mypy has limitations with statistics.mean and list comprehensions
-                    mean1 = statistics.mean(values1)  # type: ignore[type-var]
-                    mean2 = statistics.mean(values2)  # type: ignore[type-var]
+                    mean1 = statistics.mean(values1)
+                    mean2 = statistics.mean(values2)
                     if mean1 is not None and mean2 is not None:
                         # Calculate covariance
                         covar = sum(
@@ -1469,8 +1504,8 @@ class GroupedData:
                 # Get pairs of (y, x) values where both are not None
                 cleaned_pairs: List[Tuple[float, float]] = []
                 for row in group_rows:
-                    y_raw = row.get(y_col_name)
-                    x_raw = row.get(x_col_name)
+                    y_raw = get_row_value(row, y_col_name)
+                    x_raw = get_row_value(row, x_col_name)
                     if y_raw is None or x_raw is None:
                         continue
                     try:
@@ -1549,7 +1584,9 @@ class GroupedData:
 
             # Values of the column
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
 
             if not values:
@@ -1785,7 +1822,7 @@ class GroupedData:
                     else str(expr.column)
                 )
                 count_value = sum(
-                    1 for row in group_rows if row.get(col_name) is not None
+                    1 for row in group_rows if get_row_value(row, col_name) is not None
                 )
                 return expr.name, count_value
             elif operation == "sum":
@@ -1795,9 +1832,9 @@ class GroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name, 0)
+                    get_row_value(row, col_name, 0)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, sum(values) if values else 0
             elif operation == "avg":
@@ -1807,9 +1844,9 @@ class GroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name, 0)
+                    get_row_value(row, col_name, 0)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, sum(values) / len(values) if values else 0
             elif operation == "max":
@@ -1819,9 +1856,9 @@ class GroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, max(values) if values else None
             elif operation == "min":
@@ -1831,9 +1868,9 @@ class GroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, min(values) if values else None
 
@@ -1842,35 +1879,41 @@ class GroupedData:
         if expr_name.startswith("sum("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr_name, sum(values) if values else 0
         elif expr_name.startswith("avg("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr_name, sum(values) / len(values) if values else 0
         elif expr_name.startswith("count("):
             # Extract column name from count(column_name)
             col_name = expr_name[6:-1]  # Remove "count(" and ")"
             # Count non-null values in the specified column
-            count_value = sum(1 for row in group_rows if row.get(col_name) is not None)
+            count_value = sum(
+                1 for row in group_rows if get_row_value(row, col_name) is not None
+            )
             return expr_name, count_value
         elif expr_name.startswith("max("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             return expr_name, max(values) if values else None
         elif expr_name.startswith("min("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name)
+                for row in group_rows
+                if get_row_value(row, col_name) is not None
             ]
             return expr_name, min(values) if values else None
         else:
@@ -2214,9 +2257,9 @@ class GroupedData:
         if values is None:
             values = list(
                 {
-                    row.get(resolved_pivot_col)
+                    get_row_value(row, resolved_pivot_col)
                     for row in self.df.data
-                    if row.get(resolved_pivot_col) is not None
+                    if get_row_value(row, resolved_pivot_col) is not None
                 }
             )
             values.sort()  # Sort for consistent ordering
@@ -2257,7 +2300,7 @@ class GroupedData:
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in df.data:
-            group_key = tuple(row.get(col) for col in self.group_columns)
+            group_key = tuple(get_row_value(row, col) for col in self.group_columns)
             if group_key not in groups:
                 groups[group_key] = []
             groups[group_key].append(row)
@@ -2348,7 +2391,7 @@ class GroupedData:
         group_indices: Dict[Any, List[int]] = {}  # Track original indices
 
         for idx, row in enumerate(df.data):
-            group_key = tuple(row.get(col) for col in self.group_columns)
+            group_key = tuple(get_row_value(row, col) for col in self.group_columns)
             if group_key not in groups:
                 groups[group_key] = []
                 group_indices[group_key] = []

@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple
 import contextlib
 import sys
 
+from sparkless.spark_types import get_row_value
+
 if TYPE_CHECKING:
     from sparkless.sql import WindowSpec
     from sparkless.functions.base import ColumnOperation
@@ -437,7 +439,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -513,7 +515,7 @@ class WindowFunction:
                     is_desc = False
                     nulls_last = True  # Default for asc
 
-                value = row.get(col_name)
+                value = get_row_value(row, col_name)
                 # Handle None values based on nulls_last flag
                 if value is None:
                     if nulls_last:
@@ -562,7 +564,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -638,7 +640,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -703,7 +705,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -751,7 +753,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -804,7 +806,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -859,7 +861,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -925,7 +927,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -1033,7 +1035,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -1109,7 +1111,9 @@ class WindowFunction:
             for i, row in enumerate(data):
                 if partition_by_cols:
                     partition_key = tuple(
-                        row.get(col.name if hasattr(col, "name") else str(col))
+                        get_row_value(
+                            row, col.name if hasattr(col, "name") else str(col)
+                        )
                         for col in partition_by_cols
                     )
                 else:
@@ -1158,7 +1162,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -1272,7 +1276,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -1335,7 +1339,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:
@@ -1383,7 +1387,7 @@ class WindowFunction:
         for i, row in enumerate(data):
             if partition_by_cols:
                 partition_key = tuple(
-                    row.get(col.name if hasattr(col, "name") else str(col))
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
                     for col in partition_by_cols
                 )
             else:

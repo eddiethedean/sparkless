@@ -9,6 +9,7 @@ from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union
 import itertools
 
 from ...functions import Column, ColumnOperation, AggregateFunction
+from ...spark_types import get_row_value
 from .base import GroupedData
 from ..protocols import SupportsDataFrameOps
 
@@ -99,7 +100,9 @@ class CubeGroupedData(GroupedData):
                     # Group by active columns
                     groups: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
                     for row in self.df.data:
-                        group_key = tuple(row.get(col) for col in active_columns)
+                        group_key = tuple(
+                            get_row_value(row, col) for col in active_columns
+                        )
                         if group_key not in groups:
                             groups[group_key] = []
                         groups[group_key].append(row)

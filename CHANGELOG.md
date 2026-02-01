@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.28.0 — 2026-02-01
+
+### Fixed
+- **Issue #368** - Exposed `F.DataFrame` for `reduce(F.DataFrame.union, dfs)` and similar patterns
+- **Issue #358** - Added `Column.getField()` for array index and struct field access (PySpark parity)
+- **Issue #366** - `Column.alias()` now accepts a single name only (PySpark parity); posexplode first column gets the alias, second column is `"col"`
+- **Issue #374** - Aliased column references in joins (e.g. `F.col("sm.brand_id")`) now resolve correctly in join conditions
+- **Issue #373** - `F.round()` on string columns containing numeric values now supported (Polars backend)
+- **Issue #354** - CTE with JOIN: table-prefixed columns in SELECT (e.g. `e.name`, `d.dept_name`) now resolve correctly for basic two-table JOINs
+- **ImportError** - Fixed relative import beyond top-level package in `condition_handler.py` and `window_handler.py` (use `..spark_types` from dataframe root)
+- **NameError** - Replaced incorrect `new_get_row_value` with `get_row_value` in misc operations and services
+- **Ruff** - Resolved undefined names and unused variables: `get_row_value(max_row/min_row)` in grouped base, `get_row_value(left_row/right_row)` in lazy joins, `get_row_value(prev_row)` in window handler, `get_row_value(target_row/source_row)` in delta merge
+- **Mypy** - Removed unused `type: ignore` comments and redundant casts in functions base, dataframe grouped base, and SQL executor
+
+### Changed
+- **PySpark parity** - Removed Sparkless-only APIs to match PySpark behavior:
+  - `Row.get(key, default)` removed; use `row[key]` or `row.field_name` or the internal helper `get_row_value(row, key, default)` where applicable
+  - `Column.alias(*names)` removed; use `Column.alias(name)` (single argument only)
+- Internal usage of `row.get()` replaced with `get_row_value()` across the codebase
+
+### Added
+- Robust tests for the above fixes (F.DataFrame, getField, alias/posexplode, join aliased columns, round string, SQL CTE with JOIN)
+- Follow-up issues for unfixed edge cases: #376 (multi-JOIN SELECT), #377 (GROUP BY with table prefix), #378 (round string with whitespace), #379 (join SELECT with table prefix), #380 (join compound condition row count), #381 (SQL WHERE on join), #382 (self-join row count)
+
+### Testing
+- All 2,215 tests passing (19 skipped) with `pytest -n 10`
+- New issue tests verified in PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
+
 ## 3.27.1 — 2026-01-26
 
 ### Fixed

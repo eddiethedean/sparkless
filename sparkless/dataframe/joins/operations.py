@@ -7,7 +7,7 @@ the DataFrame class to add join capabilities.
 
 from typing import Any, Dict, Generic, List, TYPE_CHECKING, Tuple, TypeVar, Union, cast
 
-from ...spark_types import DataType, StringType, StructField, StructType
+from ...spark_types import DataType, StringType, StructField, StructType, get_row_value
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
@@ -75,13 +75,13 @@ class JoinOperations(Generic[SupportsDF]):
 
                 # Add fields from left DataFrame
                 for field in self.schema.fields:
-                    new_row[field.name] = left_row.get(field.name)
+                    new_row[field.name] = get_row_value(left_row, field.name)
 
                 # Add fields from right DataFrame - allow duplicates
                 for field in other.schema.fields:
                     # When accessing by key, duplicate columns get overwritten
                     # Use a dict which naturally handles this (last value wins)
-                    new_row[field.name] = right_row.get(field.name)
+                    new_row[field.name] = get_row_value(right_row, field.name)
 
                 result_data.append(new_row)
 
@@ -257,11 +257,11 @@ class JoinOperations(Generic[SupportsDF]):
         """
         # Convert rows to tuples for comparison
         self_rows = [
-            tuple(row.get(field.name) for field in self.schema.fields)
+            tuple(get_row_value(row, field.name) for field in self.schema.fields)
             for row in self.data
         ]
         other_rows = [
-            tuple(row.get(field.name) for field in other.schema.fields)
+            tuple(get_row_value(row, field.name) for field in other.schema.fields)
             for row in other.data
         ]
 
@@ -294,7 +294,7 @@ class JoinOperations(Generic[SupportsDF]):
         from collections import Counter
 
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
-            return tuple(row.get(field.name) for field in self.schema.fields)
+            return tuple(get_row_value(row, field.name) for field in self.schema.fields)
 
         # Count occurrences in each DataFrame
         self_counter = Counter(row_to_tuple(row) for row in self.data)
@@ -326,11 +326,11 @@ class JoinOperations(Generic[SupportsDF]):
         """
         # Convert rows to tuples for comparison
         self_rows = [
-            tuple(row.get(field.name) for field in self.schema.fields)
+            tuple(get_row_value(row, field.name) for field in self.schema.fields)
             for row in self.data
         ]
         other_rows = [
-            tuple(row.get(field.name) for field in other.schema.fields)
+            tuple(get_row_value(row, field.name) for field in other.schema.fields)
             for row in other.data
         ]
 
@@ -380,7 +380,7 @@ class JoinOperations(Generic[SupportsDF]):
 
         # Convert rows to tuples for comparison
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
-            return tuple(row.get(field.name) for field in self.schema.fields)
+            return tuple(get_row_value(row, field.name) for field in self.schema.fields)
 
         self_rows = {row_to_tuple(row) for row in self.data}
         other_rows = {row_to_tuple(row) for row in other.data}

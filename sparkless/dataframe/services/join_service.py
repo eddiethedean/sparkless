@@ -14,6 +14,7 @@ from ...spark_types import (
     IntegerType,
     LongType,
     DoubleType,
+    get_row_value,
 )
 from ...core.column_resolver import ColumnResolver
 from ..protocols import SupportsDataFrameOps
@@ -78,13 +79,13 @@ class JoinService:
 
                 # Add fields from left DataFrame
                 for field in self._df.schema.fields:
-                    new_row[field.name] = left_row.get(field.name)
+                    new_row[field.name] = get_row_value(left_row, field.name)
 
                 # Add fields from right DataFrame - allow duplicates
                 for field in other.schema.fields:
                     # When accessing by key, duplicate columns get overwritten
                     # Use a dict which naturally handles this (last value wins)
-                    new_row[field.name] = right_row.get(field.name)
+                    new_row[field.name] = get_row_value(right_row, field.name)
 
                 result_data.append(new_row)
 
@@ -479,11 +480,11 @@ class JoinService:
         """
         # Convert rows to tuples for comparison
         self_rows = [
-            tuple(row.get(field.name) for field in self._df.schema.fields)
+            tuple(get_row_value(row, field.name) for field in self._df.schema.fields)
             for row in self._df.data
         ]
         other_rows = [
-            tuple(row.get(field.name) for field in other.schema.fields)
+            tuple(get_row_value(row, field.name) for field in other.schema.fields)
             for row in other.data
         ]
 
@@ -519,7 +520,9 @@ class JoinService:
         from collections import Counter
 
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
-            return tuple(row.get(field.name) for field in self._df.schema.fields)
+            return tuple(
+                get_row_value(row, field.name) for field in self._df.schema.fields
+            )
 
         # Count occurrences in each DataFrame
         self_counter = Counter(row_to_tuple(row) for row in self._df.data)
@@ -554,11 +557,11 @@ class JoinService:
         """
         # Convert rows to tuples for comparison
         self_rows = [
-            tuple(row.get(field.name) for field in self._df.schema.fields)
+            tuple(get_row_value(row, field.name) for field in self._df.schema.fields)
             for row in self._df.data
         ]
         other_rows = [
-            tuple(row.get(field.name) for field in other.schema.fields)
+            tuple(get_row_value(row, field.name) for field in other.schema.fields)
             for row in other.data
         ]
 
@@ -611,7 +614,9 @@ class JoinService:
 
         # Convert rows to tuples for comparison
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
-            return tuple(row.get(field.name) for field in self._df.schema.fields)
+            return tuple(
+                get_row_value(row, field.name) for field in self._df.schema.fields
+            )
 
         self_rows = {row_to_tuple(row) for row in self._df.data}
         other_rows = {row_to_tuple(row) for row in other.data}

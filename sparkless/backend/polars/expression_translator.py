@@ -602,8 +602,8 @@ class PolarsExpressionTranslator:
                 "withField operation requires Python evaluation - will be handled by ExpressionEvaluator"
             )
 
-        # Special handling for getItem - extract element from array or character from string
-        if operation == "getItem":
+        # Special handling for getItem/getField - extract element from array or character from string
+        if operation in ("getItem", "getField"):
             index = value
             try:
                 idx = int(index)
@@ -2535,14 +2535,16 @@ class PolarsExpressionTranslator:
                 return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "round":
                 # round(col, decimals)
+                # PySpark implicitly casts string columns to numeric; cast to Float64 first
                 decimals = op.value if isinstance(op.value, int) else 0
+                numeric_expr = col_expr.cast(pl.Float64)
                 if decimals < 0:
                     # Negative decimals: round to nearest 10^|decimals|
                     # e.g., round(12345, -3) = round(12345/1000) * 1000 = 12000
                     factor = 10 ** abs(decimals)
-                    return (col_expr / factor).round() * factor
+                    return (numeric_expr / factor).round() * factor
                 else:
-                    return col_expr.round(decimals)
+                    return numeric_expr.round(decimals)
             elif operation == "pow":
                 # pow(col, exponent)
                 exponent = (

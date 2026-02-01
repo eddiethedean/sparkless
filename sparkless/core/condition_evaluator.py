@@ -7,6 +7,7 @@ between DataFrame and conditional function modules.
 
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from ..functions.base import Column, ColumnOperation
+from ..spark_types import get_row_value
 
 
 class ConditionEvaluator:
@@ -49,7 +50,7 @@ class ConditionEvaluator:
             return ConditionEvaluator._evaluate_column_operation(row, condition)
 
         if isinstance(condition, Column):
-            return row.get(condition.name) is not None
+            return get_row_value(row, condition.name) is not None
 
         # For simple values, check if truthy
         return bool(condition) if condition is not None else False
@@ -84,8 +85,8 @@ class ConditionEvaluator:
                     is_string_concatenation = isinstance(
                         left_value, str
                     ) and isinstance(right_value, str)
-                    if is_string_concatenation and row.get(
-                        "__dataframe_is_cached__", False
+                    if is_string_concatenation and get_row_value(
+                        row, "__dataframe_is_cached__", False
                     ):
                         # Check if we're in a cached DataFrame context
                         return None
@@ -743,8 +744,8 @@ class ConditionEvaluator:
                     is_string_concatenation = isinstance(
                         left_value, str
                     ) and isinstance(right_value, str)
-                    if is_string_concatenation and row.get(
-                        "__dataframe_is_cached__", False
+                    if is_string_concatenation and get_row_value(
+                        row, "__dataframe_is_cached__", False
                     ):
                         # Check if we're in a cached DataFrame context
                         return None
@@ -1218,9 +1219,9 @@ class ConditionEvaluator:
             # Recursively evaluate the operation
             return ConditionEvaluator._evaluate_column_operation_value(row, column)
         elif isinstance(column, Column):
-            return row.get(column.name)
+            return get_row_value(row, column.name)
         elif isinstance(column, str):
-            return row.get(column)
+            return get_row_value(row, column)
         elif hasattr(column, "value"):
             # Literal or similar object with a value attribute
             return column.value

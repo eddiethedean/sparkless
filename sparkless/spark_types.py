@@ -739,11 +739,19 @@ def create_schema_from_columns(columns: List[str]) -> StructType:
     return StructType(fields)
 
 
+def get_row_value(row: Any, key: str, default: Any = None) -> Any:
+    """Get value from Row or dict by key (PySpark-compatible; Row has no .get())."""
+    if key in row:
+        return row[key]
+    return default
+
+
 class Row:
     """Mock Row object providing PySpark-compatible row interface.
 
     Represents a single row in a DataFrame with PySpark-compatible methods
-    for accessing data by index, key, or attribute.
+    for accessing data by index, key, or attribute. Use row[key] or
+    row.field_name (PySpark Row does not support .get()).
 
     Attributes:
         data: Dictionary containing row data.
@@ -751,6 +759,8 @@ class Row:
     Example:
         >>> row = Row({"name": "Alice", "age": 25})
         >>> row.name
+        'Alice'
+        >>> row["name"]
         'Alice'
         >>> row[0]
         'Alice'
@@ -972,11 +982,6 @@ class Row:
             f"{k}={data_dict.get(k)}" for k in self._get_field_names_ordered()
         )
         return f"Row({values_str})"
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get value by key with default."""
-        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
-        return data_dict.get(key, default)
 
     def _get_field_names_ordered(self) -> List[str]:
         if self._schema is not None and getattr(self._schema, "fields", None):
