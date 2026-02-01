@@ -692,9 +692,9 @@ class PolarsOperationExecutor:
                     raise ValueError(
                         f"Column '{source_col_name}' not found for posexplode"
                     )
-                alias_names = getattr(col, "_alias_names", ("pos", "col"))
-                if len(alias_names) < 2:
-                    alias_names = ("pos", "col")
+                # PySpark alias() takes single name; posexplode output columns are (pos, col)
+                _first = getattr(col, "_alias_name", None) or "pos"
+                alias_names = (_first, "col")
                 temp_name = "__posexplode_struct"
 
                 def _posexplode_list(arr: Any) -> Any:

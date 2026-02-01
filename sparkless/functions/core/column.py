@@ -1015,18 +1015,14 @@ class ColumnOperation(Column):
         """
         return self._generate_name_early()
 
-    def alias(self, *names: str) -> "ColumnOperation":
-        """Create an alias for this operation (PySpark: single or multiple names for posexplode)."""
-        if len(names) == 0:
-            raise TypeError("alias() requires at least one name")
+    def alias(self, name: str) -> "ColumnOperation":
+        """Create an alias for this operation (PySpark: single name only)."""
         # self.operation is guaranteed to be a string in ColumnOperation
         op_str: str = self.operation  # type: ignore[assignment]
         aliased_operation = ColumnOperation(
             self.column, op_str, self.value, name=self._name
         )
-        aliased_operation._alias_name = names[0]
-        if len(names) > 1:
-            aliased_operation._alias_names = tuple(names)
+        aliased_operation._alias_name = name
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)
         if hasattr(self, "_aggregate_function"):
             aliased_operation._aggregate_function = self._aggregate_function

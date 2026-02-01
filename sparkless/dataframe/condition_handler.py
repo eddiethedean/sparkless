@@ -7,10 +7,10 @@ ensuring consistency and adherence to the Single Responsibility Principle.
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 
-from ...spark_types import get_row_value
+from ..spark_types import get_row_value
 
 if TYPE_CHECKING:
-    from ...functions import Column, ColumnOperation
+    from ..functions import Column, ColumnOperation
     from .evaluation.expression_evaluator import ExpressionEvaluator
 
 

@@ -224,7 +224,7 @@ class MiscService:
             if isinstance(value, dict):
                 # When value is a dict, subset is ignored (PySpark behavior)
                 for col, fill_value in value.items():
-                    if new_get_row_value(row, col) is None:
+                    if get_row_value(row, col) is None:
                         # Check type compatibility (PySpark silently ignores mismatches)
                         col_type = column_types.get(col)
                         if col_type and self._is_value_compatible_with_type(
@@ -237,7 +237,7 @@ class MiscService:
                 if subset_cols is not None:
                     # Only fill nulls in specified columns
                     for col in subset_cols:
-                        if new_get_row_value(row, col) is None:
+                        if get_row_value(row, col) is None:
                             # Check type compatibility (PySpark silently ignores mismatches)
                             col_type = column_types.get(col)
                             if col_type and self._is_value_compatible_with_type(

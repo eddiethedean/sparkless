@@ -8,7 +8,7 @@ following the Single Responsibility Principle.
 from typing import Any, Dict, List, Tuple
 import sys
 
-from ...spark_types import get_row_value
+from ..spark_types import get_row_value
 
 
 class WindowFunctionHandler:

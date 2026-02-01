@@ -124,14 +124,14 @@ class MiscellaneousOperations:
             if isinstance(value, dict):
                 # When value is a dict, subset is ignored (PySpark behavior)
                 for col, fill_value in value.items():
-                    if new_get_row_value(row, col) is None:
+                    if get_row_value(row, col) is None:
                         new_row[col] = fill_value
             else:
                 # When value is not a dict, use subset if provided
                 if subset_cols is not None:
                     # Only fill nulls in specified columns
                     for col in subset_cols:
-                        if new_get_row_value(row, col) is None:
+                        if get_row_value(row, col) is None:
                             new_row[col] = value
                 else:
                     # Fill nulls in all columns
