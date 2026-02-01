@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from sparkless.backend.protocols import StorageBackend
     from .dataframe import DataFrame
 
-from ..spark_types import StructField, StructType
+from ..spark_types import StructField, StructType, get_row_value
 
 logger = logging.getLogger(__name__)
 
@@ -686,7 +686,7 @@ class DataFrameWriter:
         )
         with open(target, mode, encoding="utf-8") as handle:
             for row in data:
-                value = row.get(column_name)
+                value = get_row_value(row, column_name)
                 handle.write("" if value is None else str(value))
                 handle.write(os.linesep)
 

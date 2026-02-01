@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 from sparkless.functions.base import Column, ColumnOperation
 from sparkless.core.condition_evaluator import ConditionEvaluator
 from sparkless.core.type_utils import get_expression_name
+from sparkless.spark_types import get_row_value
 
 if TYPE_CHECKING:
     from sparkless.spark_types import DataType
@@ -404,7 +405,7 @@ class CaseWhen:
             if isinstance(value, ColumnOperation):
                 return self._evaluate_column_operation_value(row, value)
         elif hasattr(value, "name"):
-            return row.get(value.name)
+            return get_row_value(row, value.name)
         elif hasattr(value, "value"):
             return value.value
         else:

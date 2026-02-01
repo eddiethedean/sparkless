@@ -11,7 +11,7 @@ from .window_handler import PolarsWindowHandler
 from sparkless import config
 from sparkless.functions import Column, ColumnOperation
 from sparkless.functions.window_execution import WindowFunction
-from sparkless.spark_types import StructType
+from sparkless.spark_types import StructType, get_row_value
 from sparkless.core.ddl_adapter import parse_ddl_schema
 from sparkless.utils.profiling import profiled
 
@@ -1774,7 +1774,7 @@ class PolarsOperationExecutor:
                         data_rows, [(alias_name, window_func)]
                     )
                     # Extract values from evaluated data
-                    values = [row.get(alias_name) for row in data_rows]
+                    values = [get_row_value(row, alias_name) for row in data_rows]
                     result = result.with_columns(pl.Series(alias_name, values))
 
             # Clean up
@@ -1842,7 +1842,7 @@ class PolarsOperationExecutor:
         if not column_name:
             return None
 
-        raw_value = row.get(column_name)
+        raw_value = get_row_value(row, column_name)
         if raw_value is None:
             return None
 
@@ -1867,7 +1867,7 @@ class PolarsOperationExecutor:
         field_names = self._extract_struct_field_names(expression.column)
         if not field_names:
             return None
-        struct_dict = {name: row.get(name) for name in field_names}
+        struct_dict = {name: get_row_value(row, name) for name in field_names}
         return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"))
 
     def _python_to_csv(
@@ -1879,7 +1879,7 @@ class PolarsOperationExecutor:
 
         values = []
         for name in field_names:
-            val = row.get(name)
+            val = get_row_value(row, name)
             values.append("" if val is None else str(val))
         return ",".join(values)
 

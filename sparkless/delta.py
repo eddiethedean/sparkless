@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 from .functions import Column
 from .core.safe_evaluator import SafeExpressionEvaluator
+from .spark_types import get_row_value
 
 
 def _normalize_boolean_expression(expression: str) -> str:
@@ -383,7 +384,7 @@ class DeltaTable:
             if expr.startswith("'") and expr.endswith("'"):
                 return expr[1:-1]
             if expr in row:
-                return row.get(expr)
+                return get_row_value(row, expr)
 
             normalized = _normalize_boolean_expression(expr)
             context = _build_eval_context(row, {alias, "target"})
@@ -462,13 +463,13 @@ class DeltaMergeBuilder:
         target_key, source_key = self._parse_join_keys(self._condition)
         source_groups = defaultdict(list)
         for row in source_rows:
-            source_groups[row.get(source_key)].append(row)
+            source_groups[get_row_value(row, source_key)].append(row)
 
         matched_keys: Set[Any] = set()
         result_rows: List[Dict[str, Any]] = []
 
         for target_row in target_rows:
-            key = target_row.get(target_key)
+            key = target_get_row_value(row, target_key)
             source_candidates = source_groups.get(key)
             source_row = source_candidates[0] if source_candidates else None
             if source_row is not None:
@@ -483,7 +484,7 @@ class DeltaMergeBuilder:
                 result_rows.append(dict(target_row))
 
         if self._not_matched_insert_all or self._not_matched_insert_assignments:
-            existing_keys = {row.get(target_key) for row in result_rows}
+            existing_keys = {get_row_value(row, target_key) for row in result_rows}
             for key, rows in source_groups.items():
                 if key in matched_keys or key in existing_keys:
                     continue
@@ -552,7 +553,7 @@ class DeltaMergeBuilder:
         if self._matched_update_all:
             for field in schema.fields:
                 if field.name in source_row:
-                    updated[field.name] = source_row.get(field.name)
+                    updated[field.name] = source_get_row_value(row, field.name)
 
         if self._matched_update_assignments:
             for column, expression in self._matched_update_assignments.items():
@@ -567,7 +568,7 @@ class DeltaMergeBuilder:
     ) -> Dict[str, Any]:
         projected = {}
         for field in schema.fields:
-            projected[field.name] = source_row.get(field.name)
+            projected[field.name] = source_get_row_value(row, field.name)
         return projected
 
     def _build_insert_from_assignments(
@@ -599,13 +600,13 @@ class DeltaMergeBuilder:
                 alias = alias.strip()
                 field = field.strip()
                 if alias in self._source_aliases:
-                    return source_row.get(field)
+                    return source_get_row_value(row, field)
                 if alias in self._target_aliases:
-                    return target_row.get(field)
+                    return target_get_row_value(row, field)
             if expr in source_row:
-                return source_row.get(expr)
+                return source_get_row_value(row, expr)
             if expr in target_row:
-                return target_row.get(expr)
+                return target_get_row_value(row, expr)
             try:
                 return int(expr)
             except ValueError:

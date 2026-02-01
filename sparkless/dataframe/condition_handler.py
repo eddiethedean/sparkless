@@ -7,6 +7,8 @@ ensuring consistency and adherence to the Single Responsibility Principle.
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 
+from ...spark_types import get_row_value
+
 if TYPE_CHECKING:
     from ...functions import Column, ColumnOperation
     from .evaluation.expression_evaluator import ExpressionEvaluator
@@ -135,44 +137,44 @@ class ConditionHandler:
             # Handle ColumnOperation conditions
             if condition.operation == ">":
                 col_value = (
-                    row.get(condition.column.name)
+                    get_row_value(row, condition.column.name)
                     if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
+                    else get_row_value(row, str(condition.column))
                 )
                 return col_value is not None and col_value > condition.value
             elif condition.operation == ">=":
                 col_value = (
-                    row.get(condition.column.name)
+                    get_row_value(row, condition.column.name)
                     if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
+                    else get_row_value(row, str(condition.column))
                 )
                 return col_value is not None and col_value >= condition.value
             elif condition.operation == "<":
                 col_value = (
-                    row.get(condition.column.name)
+                    get_row_value(row, condition.column.name)
                     if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
+                    else get_row_value(row, str(condition.column))
                 )
                 return col_value is not None and col_value < condition.value
             elif condition.operation == "<=":
                 col_value = (
-                    row.get(condition.column.name)
+                    get_row_value(row, condition.column.name)
                     if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
+                    else get_row_value(row, str(condition.column))
                 )
                 return col_value is not None and col_value <= condition.value
             elif condition.operation == "==":
                 col_value = (
-                    row.get(condition.column.name)
+                    get_row_value(row, condition.column.name)
                     if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
+                    else get_row_value(row, str(condition.column))
                 )
                 return bool(col_value == condition.value)
             elif condition.operation == "!=":
                 col_value = (
-                    row.get(condition.column.name)
+                    get_row_value(row, condition.column.name)
                     if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
+                    else get_row_value(row, str(condition.column))
                 )
                 return bool(col_value != condition.value)
         return False

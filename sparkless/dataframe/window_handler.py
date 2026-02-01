@@ -8,6 +8,8 @@ following the Single Responsibility Principle.
 from typing import Any, Dict, List, Tuple
 import sys
 
+from ...spark_types import get_row_value
+
 
 class WindowFunctionHandler:
     """Handles window function evaluation (row_number, rank, lag, lead, etc.)."""
@@ -66,9 +68,9 @@ class WindowFunctionHandler:
                             # Create partition key
                             partition_key = tuple(
                                 (
-                                    row.get(col.name)
+                                    get_row_value(row, col.name)
                                     if hasattr(col, "name")
-                                    else row.get(str(col))
+                                    else get_row_value(row, str(col))
                                 )
                                 for col in partition_by_cols
                             )
@@ -181,7 +183,7 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        row.get(col.name) if hasattr(col, "name") else row.get(str(col))
+                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:
@@ -274,7 +276,7 @@ class WindowFunctionHandler:
                     col_name = col.name
                 else:
                     col_name = str(col)
-                value = row.get(col_name)
+                value = get_row_value(row, col_name)
 
                 # Handle None values based on nulls_last flag
                 if value is None:
@@ -357,7 +359,7 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        row.get(col.name) if hasattr(col, "name") else row.get(str(col))
+                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:
@@ -442,7 +444,7 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        row.get(col.name) if hasattr(col, "name") else row.get(str(col))
+                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:
@@ -499,7 +501,7 @@ class WindowFunctionHandler:
                         order_col_name = col.name
                     else:
                         order_col_name = str(col)
-                    value = row.get(order_col_name)
+                    value = get_row_value(row, order_col_name)
                     current_values.append(value)
 
                 if previous_values is not None:  # noqa: SIM102
@@ -529,8 +531,8 @@ class WindowFunctionHandler:
                             order_col_name = col.name
                         else:
                             order_col_name = str(col)
-                        current_values.append(row.get(order_col_name))
-                        prev_values.append(prev_row.get(order_col_name))
+                        current_values.append(get_row_value(row, order_col_name))
+                        prev_values.append(prev_get_row_value(row, order_col_name))
 
                     if current_values != prev_values:
                         current_rank = i + 1
@@ -579,7 +581,7 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        row.get(col.name) if hasattr(col, "name") else row.get(str(col))
+                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:

@@ -6,7 +6,7 @@ This service provides display and collection operations using composition instea
 
 from typing import Any, List, TYPE_CHECKING, Union, cast
 
-from ...spark_types import Row, StringType, StructField, StructType
+from ...spark_types import Row, StringType, StructField, StructType, get_row_value
 
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
@@ -73,7 +73,7 @@ class DisplayService:
             col_widths[col] = len(col)
             # Check data widths
             for row in display_data:
-                value = str(row.get(col, "null"))
+                value = str(get_row_value(row, col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 col_widths[col] = max(col_widths[col], len(value))
@@ -89,7 +89,7 @@ class DisplayService:
         for row in display_data:
             row_parts = []
             for col in columns:
-                value = str(row.get(col, "null"))
+                value = str(get_row_value(row, col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 # Add padding to data but not headers
@@ -154,7 +154,7 @@ class DisplayService:
         for row in display_data:
             row_values = []
             for col in columns:
-                value = str(row.get(col, "null"))
+                value = str(get_row_value(row, col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 row_values.append(value)

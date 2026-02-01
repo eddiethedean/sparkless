@@ -45,8 +45,14 @@ def test_cte_with_join(spark) -> None:
         assert "e_name" in result.columns or "name" in result.columns
         assert "d_dept_name" in result.columns or "dept_name" in result.columns
 
-        # Check content: Alice and Carol in Engineering, Bob in Sales
-        by_name = {r.get("e_name") or r.get("name"): r.get("d_dept_name") or r.get("dept_name") for r in rows}
+        # Check content: Alice and Carol in Engineering, Bob in Sales.
+        # Use row[key] (PySpark-compatible); PySpark Row has no .get() method.
+        def _val(r, *keys):
+            for k in keys:
+                if k in result.columns:
+                    return r[k]
+            return None
+        by_name = {_val(r, "e_name", "name"): _val(r, "d_dept_name", "dept_name") for r in rows}
         assert by_name["Alice"] == "Engineering"
         assert by_name["Bob"] == "Sales"
         assert by_name["Carol"] == "Engineering"

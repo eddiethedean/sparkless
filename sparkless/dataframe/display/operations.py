@@ -7,7 +7,7 @@ the DataFrame class to add display capabilities.
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 
-from ...spark_types import Row, StringType, StructField, StructType
+from ...spark_types import Row, StringType, StructField, StructType, get_row_value
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
@@ -67,7 +67,7 @@ class DisplayOperations:
             col_widths[col] = len(col)
             # Check data widths
             for row in display_data:
-                value = str(row.get(col, "null"))
+                value = str(get_row_value(row, col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 col_widths[col] = max(col_widths[col], len(value))
@@ -83,7 +83,7 @@ class DisplayOperations:
         for row in display_data:
             row_parts = []
             for col in columns:
-                value = str(row.get(col, "null"))
+                value = str(get_row_value(row, col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 # Add padding to data but not headers
@@ -146,7 +146,7 @@ class DisplayOperations:
         for row in display_data:
             row_values = []
             for col in columns:
-                value = str(row.get(col, "null"))
+                value = str(get_row_value(row, col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 row_values.append(value)

@@ -30,6 +30,7 @@ from ..spark_types import (
     TimestampType,
     DateType,
     NullType,
+    get_row_value,
 )
 
 
@@ -115,7 +116,7 @@ class SchemaInferenceEngine:
         for row in data:
             if isinstance(row, dict):
                 # Create row with all keys, using None for missing ones
-                normalized_row = {key: row.get(key, None) for key in sorted_keys}
+                normalized_row = {key: get_row_value(row, key, None) for key in sorted_keys}
                 normalized_data.append(normalized_row)
             else:
                 normalized_data.append(row)  # type: ignore[unreachable]
@@ -290,7 +291,7 @@ def normalize_data_for_schema(
     normalized_data = []
     for row in data:
         if isinstance(row, dict):
-            normalized_row = {key: row.get(key, None) for key in sorted_keys}
+            normalized_row = {key: get_row_value(row, key, None) for key in sorted_keys}
             normalized_data.append(normalized_row)
         else:
             normalized_data.append(row)  # type: ignore[unreachable]

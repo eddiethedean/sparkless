@@ -7,6 +7,7 @@ that Sparkless supports the same.
 
 from sparkless.sql import SparkSession
 import sparkless.sql.functions as F
+from sparkless.spark_types import get_row_value
 
 
 class TestIssue291PowerOperatorFloatColumn:
@@ -662,7 +663,9 @@ class TestIssue291PowerOperatorFloatColumn:
             # Verify the operation completes
             # Note: Complex arithmetic combinations may return None in some cases
             assert all(
-                r.get("Result") is not None or r.get("Result") is None for r in rows
+                get_row_value(r, "Result") is not None
+                or get_row_value(r, "Result") is None
+                for r in rows
             )
         finally:
             spark.stop()

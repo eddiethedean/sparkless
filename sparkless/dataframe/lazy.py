@@ -19,6 +19,7 @@ from ..spark_types import (
     DataType,
     StructType,
     ArrayType,
+    get_row_value,
 )
 from ..optimizer.query_optimizer import OperationType
 
@@ -1191,7 +1192,7 @@ class LazyEvaluationEngine:
 
                         # Infer the new column's type from the evaluated values
                         col_values = [
-                            row.get(col_name) for row in new_data if col_name in row
+                            get_row_value(row, col_name) for row in new_data if col_name in row
                         ]
                         if col_values:
                             col_type = SchemaInferenceEngine._infer_type(col_values[0])
@@ -1530,9 +1531,9 @@ class LazyEvaluationEngine:
                                     if field.name in row:
                                         new_row[field_name] = row[field.name]
                                     else:
-                                        new_row[field_name] = row.get(col, None)
+                                        new_row[field_name] = get_row_value(row, col, None)
                                 else:
-                                    new_row[field_name] = row.get(col, None)
+                                    new_row[field_name] = get_row_value(row, col, None)
                             elif isinstance(col, Column) and (
                                 not hasattr(col, "operation") or col.operation is None
                             ):
@@ -1546,7 +1547,7 @@ class LazyEvaluationEngine:
                                     new_row[field_name] = row[col.name]
                                 else:
                                     # Column name not in row - try to get it
-                                    new_row[field_name] = row.get(col.name, None)
+                                    new_row[field_name] = get_row_value(row, col.name, None)
                             elif isinstance(col, ColumnOperation):
                                 # Check if this is a ColumnOperation wrapping a WindowFunction (e.g., WindowFunction.cast())
                                 from ..functions.window_execution import WindowFunction
@@ -1607,7 +1608,7 @@ class LazyEvaluationEngine:
                                         if hasattr(col, "column") and hasattr(
                                             col.column, "name"
                                         ):
-                                            source_value = row.get(col.column.name)
+                                            source_value = get_row_value(row, col.column.name)
                                         else:
                                             source_value = None
 
@@ -1782,7 +1783,7 @@ class LazyEvaluationEngine:
                     seen: Set[Tuple[Any, ...]] = set()
                     distinct_data: List[Dict[str, Any]] = []
                     for row in current.data:
-                        row_tuple = tuple(row.get(name) for name in field_names)
+                        row_tuple = tuple(get_row_value(row, name) for name in field_names)
                         if row_tuple not in seen:
                             seen.add(row_tuple)
                             distinct_data.append(row)
@@ -1846,7 +1847,7 @@ class LazyEvaluationEngine:
                             # Check if join condition is met
                             join_match = True
                             for left_col, right_col in join_conditions:
-                                if left_row.get(left_col) != right_row.get(right_col):
+                                if left_get_row_value(row, left_col) != right_get_row_value(row, right_col):
                                     join_match = False
                                     break
 
@@ -1966,8 +1967,8 @@ class LazyEvaluationEngine:
                             sorted_data = sorted(
                                 current.data,
                                 key=lambda row: (
-                                    row.get(sort_key) is not None,
-                                    row.get(sort_key),
+                                    get_row_value(row, sort_key) is not None,
+                                    get_row_value(row, sort_key),
                                 ),
                             )
                             # Preserve the current data and schema - don't reset

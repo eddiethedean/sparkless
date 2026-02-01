@@ -8,7 +8,7 @@ type coercion for better usability.
 
 from typing import Any, Dict, List
 
-from ..spark_types import StructType
+from ..spark_types import StructType, get_row_value
 from .exceptions.validation import IllegalArgumentException
 
 
@@ -138,7 +138,7 @@ class DataValidator:
 
             new_row: Dict[str, Any] = {}
             for field_name in self._field_types:
-                value = row.get(field_name)
+                value = get_row_value(row, field_name)
                 expected_type = self._field_types[field_name]
                 new_row[field_name] = self._coerce_value(value, expected_type)
 

@@ -8,6 +8,7 @@ operations, maintaining compatibility with PySpark's GroupedData interface.
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union
 
 from ...functions import Column, ColumnOperation, AggregateFunction
+from ...spark_types import get_row_value
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
@@ -53,7 +54,7 @@ class PivotGroupedData:
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in self.df.data:
-            group_key = tuple(row.get(col) for col in self.group_columns)
+            group_key = tuple(get_row_value(row, col) for col in self.group_columns)
             if group_key not in groups:
                 groups[group_key] = []
             groups[group_key].append(row)
@@ -66,7 +67,7 @@ class PivotGroupedData:
             # For each pivot value, filter rows and apply aggregation
             for pivot_value in self.pivot_values:
                 pivot_rows = [
-                    row for row in group_rows if row.get(self.pivot_col) == pivot_value
+                    row for row in group_rows if get_row_value(row, self.pivot_col) == pivot_value
                 ]
 
                 # If no rows for this pivot value, set to None for all expressions
@@ -359,17 +360,17 @@ class PivotGroupedData:
         if expr.startswith("sum("):
             col_name = expr[4:-1]
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr, sum(values) if values else 0
         elif expr.startswith("avg("):
             col_name = expr[4:-1]
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr, sum(values) / len(values) if values else 0
         elif expr.startswith("count("):
@@ -377,13 +378,13 @@ class PivotGroupedData:
         elif expr.startswith("max("):
             col_name = expr[4:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr, max(values) if values else None
         elif expr.startswith("min("):
             col_name = expr[4:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr, min(values) if values else None
         else:
@@ -407,7 +408,7 @@ class PivotGroupedData:
             # Simple column: validate and sum
             values = []
             for row in group_rows:
-                val = row.get(col_name)
+                val = get_row_value(row, col_name)
                 if val is not None:
                     if isinstance(val, bool):
                         val = 1 if val else 0
@@ -422,7 +423,7 @@ class PivotGroupedData:
         elif func_name == "avg":
             values = []
             for row in group_rows:
-                val = row.get(col_name)
+                val = get_row_value(row, col_name)
                 if val is not None:
                     if isinstance(val, bool):
                         val = 1 if val else 0
@@ -443,25 +444,25 @@ class PivotGroupedData:
                 return result_key, len(group_rows)
         elif func_name == "max":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"max({col_name})"
             return result_key, max(values) if values else None
         elif func_name == "min":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"min({col_name})"
             return result_key, min(values) if values else None
         elif func_name == "collect_list":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"collect_list({col_name})"
             return result_key, values
         elif func_name == "collect_set":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"collect_set({col_name})"
             return result_key, list(set(values))
@@ -469,9 +470,9 @@ class PivotGroupedData:
             ignorenulls = getattr(expr, "ignorenulls", False)
             if ignorenulls:
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 result_key = alias_name if alias_name else f"first({col_name})"
                 return result_key, values[0] if values else None
@@ -483,16 +484,16 @@ class PivotGroupedData:
                     return result_key, None
         elif func_name == "last":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"last({col_name})"
             return result_key, values[-1] if values else None
         elif func_name == "stddev" or func_name == "std":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"stddev({col_name})"
             if len(values) <= 1:
@@ -500,10 +501,10 @@ class PivotGroupedData:
             return result_key, statistics.stdev(values)
         elif func_name == "variance":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"variance({col_name})"
             if len(values) <= 1:
@@ -511,13 +512,13 @@ class PivotGroupedData:
             return result_key, statistics.variance(values)
         elif func_name == "mean":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"avg({col_name})"
             return result_key, statistics.mean(values) if values else None
         elif func_name == "approx_count_distinct":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             distinct_count = len(set(values))
             result_key = (
@@ -526,41 +527,41 @@ class PivotGroupedData:
             return result_key, distinct_count
         elif func_name == "countDistinct":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             distinct_count = len(set(values))
             result_key = alias_name if alias_name else f"count({col_name})"
             return result_key, distinct_count
         elif func_name == "stddev_pop":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"stddev_pop({col_name})"
             return result_key, statistics.pstdev(values) if len(values) > 0 else None
         elif func_name == "stddev_samp":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"stddev_samp({col_name})"
             return result_key, statistics.stdev(values) if len(values) > 1 else None
         elif func_name == "var_pop":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"var_pop({col_name})"
             return result_key, statistics.pvariance(values) if len(values) > 0 else None
         elif func_name == "var_samp":
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             result_key = alias_name if alias_name else f"var_samp({col_name})"
             return result_key, statistics.variance(values) if len(values) > 1 else None
         elif func_name == "skewness":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"skewness({col_name})"
             if values and len(values) > 2:
@@ -577,10 +578,10 @@ class PivotGroupedData:
                 return result_key, None
         elif func_name == "kurtosis":
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"kurtosis({col_name})"
             if values and len(values) > 3:
@@ -619,7 +620,7 @@ class PivotGroupedData:
                     else str(expr.column)
                 )
                 count_value = sum(
-                    1 for row in group_rows if row.get(col_name) is not None
+                    1 for row in group_rows if get_row_value(row, col_name) is not None
                 )
                 return expr.name, count_value
             elif operation == "sum":
@@ -629,9 +630,9 @@ class PivotGroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name, 0)
+                    get_row_value(row, col_name, 0)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, sum(values) if values else 0
             elif operation == "avg":
@@ -641,9 +642,9 @@ class PivotGroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name, 0)
+                    get_row_value(row, col_name, 0)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, sum(values) / len(values) if values else 0
             elif operation == "max":
@@ -653,9 +654,9 @@ class PivotGroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, max(values) if values else None
             elif operation == "min":
@@ -665,9 +666,9 @@ class PivotGroupedData:
                     else str(expr.column)
                 )
                 values = [
-                    row.get(col_name)
+                    get_row_value(row, col_name)
                     for row in group_rows
-                    if row.get(col_name) is not None
+                    if get_row_value(row, col_name) is not None
                 ]
                 return expr.name, min(values) if values else None
 
@@ -676,47 +677,47 @@ class PivotGroupedData:
         if expr_name.startswith("sum("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr_name, sum(values) if values else 0
         elif expr_name.startswith("avg("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name, 0)
+                get_row_value(row, col_name, 0)
                 for row in group_rows
-                if row.get(col_name) is not None
+                if get_row_value(row, col_name) is not None
             ]
             return expr_name, sum(values) / len(values) if values else 0
         elif expr_name.startswith("count("):
             col_name = expr_name[6:-1] if len(expr_name) > 6 else ""
             if col_name == "*" or col_name == "":
                 return expr_name, len(group_rows)
-            count_value = sum(1 for row in group_rows if row.get(col_name) is not None)
+            count_value = sum(1 for row in group_rows if get_row_value(row, col_name) is not None)
             return expr_name, count_value
         elif expr_name.startswith("max("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr_name, max(values) if values else None
         elif expr_name.startswith("min("):
             col_name = expr_name[4:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr_name, min(values) if values else None
         elif expr_name.startswith("collect_list("):
             col_name = expr_name[13:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr_name, values
         elif expr_name.startswith("collect_set("):
             col_name = expr_name[12:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr_name, list(set(values))
         elif expr_name.startswith("first("):
@@ -728,7 +729,7 @@ class PivotGroupedData:
         elif expr_name.startswith("last("):
             col_name = expr_name[5:-1]
             values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+                get_row_value(row, col_name) for row in group_rows if get_row_value(row, col_name) is not None
             ]
             return expr_name, values[-1] if values else None
         elif expr_name.startswith("stddev(") or expr_name.startswith("std("):
@@ -736,10 +737,10 @@ class PivotGroupedData:
                 expr_name[7:-1] if expr_name.startswith("stddev(") else expr_name[4:-1]
             )
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             if len(values) <= 1:
                 return expr_name, None
@@ -747,10 +748,10 @@ class PivotGroupedData:
         elif expr_name.startswith("variance("):
             col_name = expr_name[9:-1]
             values = [
-                row.get(col_name)
+                get_row_value(row, col_name)
                 for row in group_rows
-                if row.get(col_name) is not None
-                and isinstance(row.get(col_name), (int, float))
+                if get_row_value(row, col_name) is not None
+                and isinstance(get_row_value(row, col_name), (int, float))
             ]
             if len(values) <= 1:
                 return expr_name, None

@@ -7,7 +7,7 @@ replacing SQL-based materialization with Polars DataFrame operations.
 
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 import polars as pl
-from sparkless.spark_types import StructType, Row
+from sparkless.spark_types import StructType, Row, get_row_value
 from sparkless.functions import ColumnOperation
 from sparkless.functions.core.column import Column
 from .expression_translator import PolarsExpressionTranslator
@@ -809,7 +809,7 @@ class PolarsMaterializer:
                                         ordered_data = []
                                         for row in other_data:
                                             ordered_row = {
-                                                field.name: row.get(field.name)
+                                                field.name: get_row_value(row, field.name)
                                                 for field in materialized_other.schema.fields
                                             }
                                             ordered_data.append(ordered_row)

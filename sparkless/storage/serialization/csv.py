@@ -6,7 +6,7 @@ This module provides CSV serialization and deserialization for storage.
 
 import csv
 from typing import Any, Dict, List
-from sparkless.spark_types import StructType, StructField
+from sparkless.spark_types import StructType, StructField, get_row_value
 
 
 class CSVSerializer:
@@ -83,7 +83,7 @@ class CSVSerializer:
                     field = StructField(
                         row["name"],
                         data_type,
-                        row.get("nullable", "True").lower() == "true",
+                        get_row_value(row, "nullable", "True").lower() == "true",
                     )
                     fields.append(field)
 
