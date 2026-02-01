@@ -48,7 +48,11 @@ class RollupGroupedData(GroupedData):
         unique_values = {}
         for col in self.rollup_columns:
             unique_values[col] = list(
-                {get_row_value(row, col) for row in self.df.data if get_row_value(row, col) is not None}
+                {
+                    get_row_value(row, col)
+                    for row in self.df.data
+                    if get_row_value(row, col) is not None
+                }
             )
 
         result_data = []

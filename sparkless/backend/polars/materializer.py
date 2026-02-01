@@ -809,7 +809,9 @@ class PolarsMaterializer:
                                         ordered_data = []
                                         for row in other_data:
                                             ordered_row = {
-                                                field.name: get_row_value(row, field.name)
+                                                field.name: get_row_value(
+                                                    row, field.name
+                                                )
                                                 for field in materialized_other.schema.fields
                                             }
                                             ordered_data.append(ordered_row)

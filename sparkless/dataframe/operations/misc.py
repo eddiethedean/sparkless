@@ -572,7 +572,11 @@ class MiscellaneousOperations:
         result_row = {}
 
         for col in cols:
-            values = [get_row_value(row, col) for row in self.data if get_row_value(row, col) is not None]
+            values = [
+                get_row_value(row, col)
+                for row in self.data
+                if get_row_value(row, col) is not None
+            ]
             counter = Counter(values)
             freq_items = [item for item, count in counter.items() if count >= min_count]
             result_row[f"{col}_freqItems"] = freq_items
@@ -639,7 +643,8 @@ class MiscellaneousOperations:
         pairs = [
             (get_row_value(row, col1), get_row_value(row, col2))
             for row in self.data
-            if get_row_value(row, col1) is not None and get_row_value(row, col2) is not None
+            if get_row_value(row, col1) is not None
+            and get_row_value(row, col2) is not None
         ]
 
         if not pairs:

@@ -1111,7 +1111,9 @@ class WindowFunction:
             for i, row in enumerate(data):
                 if partition_by_cols:
                     partition_key = tuple(
-                        get_row_value(row, col.name if hasattr(col, "name") else str(col))
+                        get_row_value(
+                            row, col.name if hasattr(col, "name") else str(col)
+                        )
                         for col in partition_by_cols
                     )
                 else:

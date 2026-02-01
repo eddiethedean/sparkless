@@ -183,7 +183,9 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
+                        get_row_value(row, col.name)
+                        if hasattr(col, "name")
+                        else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:
@@ -359,7 +361,9 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
+                        get_row_value(row, col.name)
+                        if hasattr(col, "name")
+                        else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:
@@ -444,7 +448,9 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
+                        get_row_value(row, col.name)
+                        if hasattr(col, "name")
+                        else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:
@@ -532,7 +538,7 @@ class WindowFunctionHandler:
                         else:
                             order_col_name = str(col)
                         current_values.append(get_row_value(row, order_col_name))
-                        prev_values.append(prev_get_row_value(row, order_col_name))
+                        prev_values.append(get_row_value(prev_row, order_col_name))
 
                     if current_values != prev_values:
                         current_rank = i + 1
@@ -581,7 +587,9 @@ class WindowFunctionHandler:
                 partition_groups: Dict[Any, List[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
-                        get_row_value(row, col.name) if hasattr(col, "name") else get_row_value(row, str(col))
+                        get_row_value(row, col.name)
+                        if hasattr(col, "name")
+                        else get_row_value(row, str(col))
                         for col in partition_by_cols
                     )
                     if partition_key not in partition_groups:

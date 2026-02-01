@@ -440,7 +440,9 @@ class Column(ColumnOperatorMixin, IColumn):
         aliased_column._alias_name = name
         return aliased_column
 
-    def getField(self, index_or_name: Union[int, str]) -> Union["Column", "ColumnOperation"]:
+    def getField(
+        self, index_or_name: Union[int, str]
+    ) -> Union["Column", "ColumnOperation"]:
         """Access array element by index or struct field by name (PySpark getField).
 
         Args:

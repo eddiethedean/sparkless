@@ -1185,16 +1185,9 @@ class SQLExecutor:
                                 CaseWhen,
                                 Literal,
                                 IColumn,  # noqa: F821
-                            ] = cast(
-                                "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
-                                SQLExprParser._parse_expression(col),
-                            )
+                            ] = SQLExprParser._parse_expression(col)
                             if alias:
-                                # alias() returns IColumn, cast to expected type
-                                case_expr = cast(
-                                    "Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]",  # noqa: F821
-                                    case_expr.alias(alias),
-                                )
+                                case_expr = case_expr.alias(alias)
                             select_exprs_no_group.append(case_expr)
                         else:
                             literal_expr: Union[Column, CaseWhen, Literal, IColumn] = (

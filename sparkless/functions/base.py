@@ -191,7 +191,9 @@ class AggregateFunction:
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [
-            get_row_value(row, column_name) for row in data if get_row_value(row, column_name) is not None
+            get_row_value(row, column_name)
+            for row in data
+            if get_row_value(row, column_name) is not None
         ]
         numeric_values = [v for v in values if isinstance(v, (int, float))]
         if numeric_values:
@@ -206,10 +208,12 @@ class AggregateFunction:
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [
-            get_row_value(row, column_name) for row in data if get_row_value(row, column_name) is not None
+            get_row_value(row, column_name)
+            for row in data
+            if get_row_value(row, column_name) is not None
         ]
         if values:
-            return max(values)  # type: ignore[type-var]
+            return max(values)
         else:
             return None
 
@@ -220,10 +224,12 @@ class AggregateFunction:
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [
-            get_row_value(row, column_name) for row in data if get_row_value(row, column_name) is not None
+            get_row_value(row, column_name)
+            for row in data
+            if get_row_value(row, column_name) is not None
         ]
         if values:
-            return min(values)  # type: ignore[type-var]
+            return min(values)
         else:
             return None
 

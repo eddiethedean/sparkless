@@ -52,9 +52,7 @@ class TestIssue358GetField:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"arr": [10, 20, 30]}, {"arr": [40, 50]}]
-            )
+            df = spark.createDataFrame([{"arr": [10, 20, 30]}, {"arr": [40, 50]}])
             df_getfield = df.withColumn("x", F.col("arr").getField(1))
             df_getitem = df.withColumn("x", F.col("arr").getItem(1))
             rows_gf = df_getfield.collect()
@@ -73,19 +71,32 @@ class TestIssue358GetField:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            from sparkless.sql.types import StructType, StructField, StringType, IntegerType
-            
-            schema = StructType([
-                StructField("id", IntegerType(), True),
-                StructField("person", StructType([
-                    StructField("name", StringType(), True),
-                    StructField("age", IntegerType(), True)
-                ]), True)
-            ])
-            
+            from sparkless.sql.types import (
+                StructType,
+                StructField,
+                StringType,
+                IntegerType,
+            )
+
+            schema = StructType(
+                [
+                    StructField("id", IntegerType(), True),
+                    StructField(
+                        "person",
+                        StructType(
+                            [
+                                StructField("name", StringType(), True),
+                                StructField("age", IntegerType(), True),
+                            ]
+                        ),
+                        True,
+                    ),
+                ]
+            )
+
             df = spark.createDataFrame(
                 [(1, {"name": "Alice", "age": 30}), (2, {"name": "Bob", "age": 25})],
-                schema=schema
+                schema=schema,
             )
             df = df.withColumn("person_name", F.col("person").getField("name"))
             rows = df.collect()
@@ -124,7 +135,6 @@ class TestIssue358GetField:
         support negative indexing. Accept either behavior.
         """
         import inspect
-        import os
 
         test_name = inspect.stack()[1].function
         spark = SparkSession.builder.appName(
@@ -154,9 +164,7 @@ class TestIssue358GetField:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"matrix": [[1, 2, 3], [4, 5, 6], [7, 8, 9]]}]
-            )
+            df = spark.createDataFrame([{"matrix": [[1, 2, 3], [4, 5, 6], [7, 8, 9]]}])
             # Access matrix[1][2] -> 6
             df = df.withColumn("val", F.col("matrix").getField(1).getField(2))
             rows = df.collect()

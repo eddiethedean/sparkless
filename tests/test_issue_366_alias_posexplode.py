@@ -97,9 +97,7 @@ class TestIssue366AliasPosexplode:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"nested": [[1, 2], [3, 4]]}]
-            )
+            df = spark.createDataFrame([{"nested": [[1, 2], [3, 4]]}])
             result = df.select(F.posexplode("nested").alias("idx"))
             rows = result.collect()
             # At least one row; structure may vary by backend
@@ -118,8 +116,7 @@ class TestIssue366AliasPosexplode:
         ).getOrCreate()
         try:
             df = spark.createDataFrame(
-                [(1, [10, 20]), (2, None)],
-                schema="id: int, arr: array<int>"
+                [(1, [10, 20]), (2, None)], schema="id: int, arr: array<int>"
             )
             result = df.select("id", F.posexplode_outer("arr").alias("pos"))
             rows = result.collect()

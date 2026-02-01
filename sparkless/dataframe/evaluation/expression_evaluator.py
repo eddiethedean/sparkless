@@ -125,7 +125,7 @@ class ExpressionEvaluator:
             # Simple column reference - resolve column name case-insensitively
             # First try exact match
             if col_name in row:
-                return get_row_value(row,col_name)
+                return get_row_value(row, col_name)
             # If not found, try case-insensitive match using ColumnResolver
             from ...core.column_resolver import ColumnResolver
 
@@ -146,9 +146,9 @@ class ExpressionEvaluator:
                 col_name, available_columns, case_sensitive
             )
             if resolved_name:
-                return get_row_value(row,resolved_name)
+                return get_row_value(row, resolved_name)
             # Fallback to original name if resolution fails
-            return get_row_value(row,col_name)
+            return get_row_value(row, col_name)
 
     def _evaluate_nested_field_access(self, row: Dict[str, Any], col_path: str) -> Any:
         """Evaluate nested struct field access like 'my_struct.value_1'.
@@ -187,7 +187,7 @@ class ExpressionEvaluator:
             # Fallback to exact match
             resolved_first_part = parts[0]
 
-        current: Any = get_row_value(row,resolved_first_part)
+        current: Any = get_row_value(row, resolved_first_part)
         if current is None:
             return None
 
@@ -452,7 +452,7 @@ class ExpressionEvaluator:
                     if "." in col_name:
                         value = self._evaluate_nested_field_access(row, col_name)
                     else:
-                        value = get_row_value(row,col_name)
+                        value = get_row_value(row, col_name)
 
         func_name = operation.operation
 
@@ -530,7 +530,7 @@ class ExpressionEvaluator:
                                     # Can't extract - skip
                                     pass
                                 else:
-                                    all_values.append(get_row_value(row,col_name))
+                                    all_values.append(get_row_value(row, col_name))
                                     all_names.append(col_name)
                             elif hasattr(item, "operation") and hasattr(item, "column"):
                                 # It's a ColumnOperation - evaluate it
@@ -574,7 +574,7 @@ class ExpressionEvaluator:
                                 ):
                                     pass
                                 else:
-                                    all_values.append(get_row_value(row,col_name))
+                                    all_values.append(get_row_value(row, col_name))
                                     all_names.append(col_name)
                             elif hasattr(item, "operation") and hasattr(item, "column"):
                                 all_values.append(self.evaluate_expression(row, item))
@@ -602,7 +602,7 @@ class ExpressionEvaluator:
                             isinstance(col_name, str)
                             and "<sparkless.functions.core.literals.Literal" in col_name
                         ):
-                            all_values.append(get_row_value(row,col_name))
+                            all_values.append(get_row_value(row, col_name))
                     else:
                         all_values.append(operation.value)
             else:
@@ -636,7 +636,7 @@ class ExpressionEvaluator:
                             array_result.append(self._get_literal_value(item))
                         elif hasattr(item, "name"):
                             # It's a Column - get from row (this gets the column's value)
-                            col_val = get_row_value(row,item.name)
+                            col_val = get_row_value(row, item.name)
                             array_result.append(col_val)
                         elif hasattr(item, "operation") and hasattr(item, "column"):
                             # It's a ColumnOperation - evaluate it to get the column's value
@@ -651,7 +651,7 @@ class ExpressionEvaluator:
                     ):
                         array_result.append(self._get_literal_value(operation.value))
                     elif hasattr(operation.value, "name"):
-                        array_result.append(get_row_value(row,operation.value.name))
+                        array_result.append(get_row_value(row, operation.value.name))
                     else:
                         array_result.append(operation.value)
             return array_result
@@ -674,7 +674,7 @@ class ExpressionEvaluator:
                     second_val = operation.value.value
                 elif hasattr(operation.value, "name"):
                     # It's a Column - get from row
-                    second_val = get_row_value(row,operation.value.name)
+                    second_val = get_row_value(row, operation.value.name)
                 else:
                     second_val = operation.value
 
@@ -700,9 +700,9 @@ class ExpressionEvaluator:
             try:
                 # Prefer direct lookup by column names when available
                 if hasattr(operation.column, "name"):
-                    left_raw = get_row_value(row,operation.column.name)
+                    left_raw = get_row_value(row, operation.column.name)
                 if hasattr(operation, "value") and hasattr(operation.value, "name"):
-                    right_raw = get_row_value(row,operation.value.name)
+                    right_raw = get_row_value(row, operation.value.name)
                 # Fall back to evaluated values
                 if left_raw is None:
                     # Force evaluation of left expression if needed
@@ -731,7 +731,7 @@ class ExpressionEvaluator:
                         inner_col = operation.column.column
                         inner_name = getattr(inner_col, "name", None)
                         if inner_name:
-                            left_raw = get_row_value(row,inner_name)
+                            left_raw = get_row_value(row, inner_name)
                     except Exception:
                         pass
 
@@ -785,7 +785,7 @@ class ExpressionEvaluator:
                         col_name = col.name
                         # First try exact match
                         if col_name in row:
-                            col_value = get_row_value(row,col_name)
+                            col_value = get_row_value(row, col_name)
                         else:
                             # Try case-insensitive match using ColumnResolver
                             from ...core.column_resolver import ColumnResolver
@@ -806,9 +806,9 @@ class ExpressionEvaluator:
                                 col_name, available_columns, case_sensitive
                             )
                             if resolved_name:
-                                col_value = get_row_value(row,resolved_name)
+                                col_value = get_row_value(row, resolved_name)
                             else:
-                                col_value = get_row_value(row,col_name)  # Fallback
+                                col_value = get_row_value(row, col_name)  # Fallback
                     elif hasattr(col, "value"):
                         col_value = col.value  # For other values
                     else:
@@ -848,7 +848,7 @@ class ExpressionEvaluator:
                 ):
                     second_date = self._get_literal_value(operation.value)
                 elif hasattr(operation.value, "name"):
-                    second_date = get_row_value(row,operation.value.name)
+                    second_date = get_row_value(row, operation.value.name)
                 else:
                     second_date = operation.value
 
@@ -915,7 +915,7 @@ class ExpressionEvaluator:
                     second_val = operation.value.value
                 elif hasattr(operation.value, "name"):
                     # It's a Column - get from row
-                    second_val = get_row_value(row,operation.value.name)
+                    second_val = get_row_value(row, operation.value.name)
                 else:
                     second_val = operation.value
 
@@ -986,11 +986,11 @@ class ExpressionEvaluator:
                     col_value = self.evaluate_expression(row, col)
                 elif hasattr(col, "name"):
                     # It's a Column - get value from row
-                    col_value = get_row_value(row,col.name)
+                    col_value = get_row_value(row, col.name)
                 elif isinstance(col, str):
                     # It's a string literal or column name
                     # Check if it exists in row (column name) or use as literal
-                    col_value = get_row_value(row,col) if col in row else col
+                    col_value = get_row_value(row, col) if col in row else col
                 else:
                     col_value = col
 
@@ -1019,7 +1019,7 @@ class ExpressionEvaluator:
                 ):
                     second_array = self._get_literal_value(operation.value)
                 elif hasattr(operation.value, "name"):
-                    second_array = get_row_value(row,operation.value.name)
+                    second_array = get_row_value(row, operation.value.name)
                 elif isinstance(operation.value, (list, tuple)):
                     second_array = operation.value
                 else:
@@ -1084,7 +1084,7 @@ class ExpressionEvaluator:
                         arr_val = arr.value
                         col_names.append(f"arr{idx + 2}")
                     elif hasattr(arr, "name"):
-                        arr_val = get_row_value(row,arr.name)
+                        arr_val = get_row_value(row, arr.name)
                         col_name = (
                             arr.name.replace("arr", "arr")
                             if "arr" in arr.name
@@ -1140,7 +1140,7 @@ class ExpressionEvaluator:
                         elif hasattr(stop_val, "value") and hasattr(stop_val, "name"):
                             stop = int(stop_val.value)
                         elif hasattr(stop_val, "name"):
-                            stop_val = get_row_value(row,stop_val.name)
+                            stop_val = get_row_value(row, stop_val.name)
                             stop = int(stop_val) if stop_val is not None else None
                         elif isinstance(stop_val, (int, float)):
                             stop = int(stop_val)
@@ -1156,7 +1156,7 @@ class ExpressionEvaluator:
                         elif hasattr(step_val, "value") and hasattr(step_val, "name"):
                             step = int(step_val.value)
                         elif hasattr(step_val, "name"):
-                            step_val = get_row_value(row,step_val.name)
+                            step_val = get_row_value(row, step_val.name)
                             step = int(step_val) if step_val is not None else 1
                         elif isinstance(step_val, (int, float)):
                             step = int(step_val)
@@ -1171,7 +1171,7 @@ class ExpressionEvaluator:
                 ):
                     stop = int(self._get_literal_value(operation.value))
                 elif hasattr(operation.value, "name"):
-                    stop_val = get_row_value(row,operation.value.name)
+                    stop_val = get_row_value(row, operation.value.name)
                     stop = int(stop_val) if stop_val is not None else None
                 elif isinstance(operation.value, (int, float)):
                     stop = int(operation.value)
@@ -1217,7 +1217,7 @@ class ExpressionEvaluator:
                         # It's a Literal
                         evaluated_pairs.append(pair.value)
                     elif hasattr(pair, "name"):
-                        evaluated_pairs.append(get_row_value(row,pair.name))
+                        evaluated_pairs.append(get_row_value(row, pair.name))
                     else:
                         evaluated_pairs.append(pair)
 
@@ -1254,7 +1254,7 @@ class ExpressionEvaluator:
                     values_array = val_obj.value
                 elif hasattr(val_obj, "name"):
                     # It's a Column - get from row
-                    values_array = get_row_value(row,val_obj.name)
+                    values_array = get_row_value(row, val_obj.name)
                 else:
                     values_array = val_obj
 
@@ -1294,7 +1294,7 @@ class ExpressionEvaluator:
                 if hasattr(operation, "column") and operation.column is not None:
                     base_col = operation.column
                     if hasattr(base_col, "name"):
-                        args.append(get_row_value(row,base_col.name))
+                        args.append(get_row_value(row, base_col.name))
                     elif hasattr(base_col, "operation") and hasattr(base_col, "column"):
                         args.append(self.evaluate_expression(row, base_col))
                     else:
@@ -1306,7 +1306,7 @@ class ExpressionEvaluator:
                     elif hasattr(a, "value"):
                         args.append(a.value)
                     elif hasattr(a, "name"):
-                        args.append(get_row_value(row,a.name))
+                        args.append(get_row_value(row, a.name))
                     else:
                         args.append(a)
         try:
@@ -1328,17 +1328,17 @@ class ExpressionEvaluator:
         if expr_str.startswith("lower(") and expr_str.endswith(")"):
             # Extract column name from lower(column_name)
             col_name = expr_str[6:-1]  # Remove "lower(" and ")"
-            col_value = get_row_value(row,col_name)
+            col_value = get_row_value(row, col_name)
             return col_value.lower() if col_value is not None else None
         elif expr_str.startswith("upper(") and expr_str.endswith(")"):
             # Extract column name from upper(column_name)
             col_name = expr_str[6:-1]  # Remove "upper(" and ")"
-            col_value = get_row_value(row,col_name)
+            col_value = get_row_value(row, col_name)
             return col_value.upper() if col_value is not None else None
         elif expr_str.startswith("ascii(") and expr_str.endswith(")"):
             # Extract column name from ascii(column_name)
             col_name = expr_str[6:-1]
-            col_value = get_row_value(row,col_name)
+            col_value = get_row_value(row, col_name)
             if col_value is None:
                 return None
             s = str(col_value)
@@ -1346,14 +1346,14 @@ class ExpressionEvaluator:
         elif expr_str.startswith("base64(") and expr_str.endswith(")"):
             # Extract column name from base64(column_name)
             col_name = expr_str[7:-1]
-            col_value = get_row_value(row,col_name)
+            col_value = get_row_value(row, col_name)
             if col_value is None:
                 return None
             return base64.b64encode(str(col_value).encode("utf-8")).decode("utf-8")
         elif expr_str.startswith("unbase64(") and expr_str.endswith(")"):
             # Extract column name from unbase64(column_name)
             col_name = expr_str[9:-1]
-            col_value = get_row_value(row,col_name)
+            col_value = get_row_value(row, col_name)
             if col_value is None:
                 return None
             try:
@@ -1363,7 +1363,7 @@ class ExpressionEvaluator:
         elif expr_str.startswith("length(") and expr_str.endswith(")"):
             # Extract column name from length(column_name)
             col_name = expr_str[7:-1]  # Remove "length(" and ")"
-            col_value = get_row_value(row,col_name)
+            col_value = get_row_value(row, col_name)
             return len(col_value) if col_value is not None else None
         elif expr_str == "e()":
             # Euler's number
@@ -1383,7 +1383,7 @@ class ExpressionEvaluator:
             # Parse coalesce arguments: coalesce(col1, col2, ...)
             # For now, implement basic coalesce logic
             if "name" in col_name and "Unknown" in col_name:
-                name_value = get_row_value(row,"name")
+                name_value = get_row_value(row, "name")
                 return name_value if name_value is not None else "Unknown"
             else:
                 # Generic coalesce logic - return first non-null value
@@ -1392,46 +1392,46 @@ class ExpressionEvaluator:
         elif col_name.startswith("isnull("):
             # Parse isnull argument: isnull(col)
             if "name" in col_name:
-                result = get_row_value(row,"name") is None
+                result = get_row_value(row, "name") is None
                 return result
             else:
                 return None
         elif col_name.startswith("isnan("):
             # Parse isnan argument: isnan(col)
             if "salary" in col_name:
-                value = get_row_value(row,"salary")
+                value = get_row_value(row, "salary")
                 if isinstance(value, float):
                     return value != value  # NaN check
                 return False
         elif col_name.startswith("upper("):
             # Parse upper argument: upper(col)
             if "name" in col_name:
-                value = get_row_value(row,"name")
+                value = get_row_value(row, "name")
                 return str(value).upper() if value is not None else None
         elif col_name.startswith("lower("):
             # Parse lower argument: lower(col)
             if "name" in col_name:
-                value = get_row_value(row,"name")
+                value = get_row_value(row, "name")
                 return str(value).lower() if value is not None else None
         elif col_name.startswith("trim("):
             # Parse trim argument: trim(col)
             if "name" in col_name:
-                value = get_row_value(row,"name")
+                value = get_row_value(row, "name")
                 return str(value).strip() if value is not None else None
         elif col_name.startswith("ceil("):
             # Parse ceil argument: ceil(col)
             if "value" in col_name:
-                value = get_row_value(row,"value")
+                value = get_row_value(row, "value")
                 return math.ceil(value) if isinstance(value, (int, float)) else value
         elif col_name.startswith("floor("):
             # Parse floor argument: floor(col)
             if "value" in col_name:
-                value = get_row_value(row,"value")
+                value = get_row_value(row, "value")
                 return math.floor(value) if isinstance(value, (int, float)) else value
         elif col_name.startswith("sqrt("):
             # Parse sqrt argument: sqrt(col)
             if "value" in col_name:
-                value = get_row_value(row,"value")
+                value = get_row_value(row, "value")
                 return (
                     math.sqrt(value)
                     if isinstance(value, (int, float)) and value >= 0
@@ -1452,14 +1452,14 @@ class ExpressionEvaluator:
         elif col_name.startswith("regexp_replace("):
             # Parse regexp_replace arguments: regexp_replace(col, pattern, replacement)
             if "name" in col_name:
-                value = get_row_value(row,"name")
+                value = get_row_value(row, "name")
                 if value is not None:
                     # Simple regex replacement - replace 'e' with 'X'
                     return re.sub(r"e", "X", str(value))
                 return value
         elif col_name.startswith("split("):
             # Parse split arguments: split(col, delimiter)
-            if "name" in col_name and (value := get_row_value(row,"name")) is not None:
+            if "name" in col_name and (value := get_row_value(row, "name")) is not None:
                 # Simple split on 'l'
                 return str(value).split("l")
             return []
@@ -1473,7 +1473,7 @@ class ExpressionEvaluator:
         match = re.search(r"to_date\(([^)]+)\)", col_name)
         if match:
             column_name = match.group(1)
-            value = get_row_value(row,column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 try:
                     # Try to parse as datetime first, then extract date
@@ -1496,7 +1496,7 @@ class ExpressionEvaluator:
         match = re.search(r"to_timestamp\(([^)]+)\)", col_name)
         if match:
             column_name = match.group(1)
-            value = get_row_value(row,column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 try:
                     if isinstance(value, str):
@@ -1512,7 +1512,7 @@ class ExpressionEvaluator:
         match = re.search(r"hour\(([^)]+)\)", col_name)
         if match:
             column_name = match.group(1)
-            value = get_row_value(row,column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 try:
                     if isinstance(value, str):
@@ -1531,7 +1531,7 @@ class ExpressionEvaluator:
         match = re.search(r"day\(([^)]+)\)", col_name)
         if match:
             column_name = match.group(1)
-            value = get_row_value(row,column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 try:
                     if isinstance(value, str):
@@ -1550,7 +1550,7 @@ class ExpressionEvaluator:
         match = re.search(r"month\(([^)]+)\)", col_name)
         if match:
             column_name = match.group(1)
-            value = get_row_value(row,column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 try:
                     if isinstance(value, str):
@@ -1569,7 +1569,7 @@ class ExpressionEvaluator:
         match = re.search(r"year\(([^)]+)\)", col_name)
         if match:
             column_name = match.group(1)
-            value = get_row_value(row,column_name)
+            value = get_row_value(row, column_name)
             if value is not None:
                 try:
                     if isinstance(value, str):
@@ -1621,7 +1621,7 @@ class ExpressionEvaluator:
             return literal_value
         elif hasattr(value, "name"):
             # It's a Column
-            return get_row_value(row,value.name)
+            return get_row_value(row, value.name)
         else:
             # It's a direct value
             return value

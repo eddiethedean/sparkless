@@ -469,7 +469,7 @@ class DeltaMergeBuilder:
         result_rows: List[Dict[str, Any]] = []
 
         for target_row in target_rows:
-            key = target_get_row_value(row, target_key)
+            key = get_row_value(target_row, target_key)
             source_candidates = source_groups.get(key)
             source_row = source_candidates[0] if source_candidates else None
             if source_row is not None:
@@ -553,7 +553,7 @@ class DeltaMergeBuilder:
         if self._matched_update_all:
             for field in schema.fields:
                 if field.name in source_row:
-                    updated[field.name] = source_get_row_value(row, field.name)
+                    updated[field.name] = get_row_value(source_row, field.name)
 
         if self._matched_update_assignments:
             for column, expression in self._matched_update_assignments.items():
@@ -568,7 +568,7 @@ class DeltaMergeBuilder:
     ) -> Dict[str, Any]:
         projected = {}
         for field in schema.fields:
-            projected[field.name] = source_get_row_value(row, field.name)
+            projected[field.name] = get_row_value(source_row, field.name)
         return projected
 
     def _build_insert_from_assignments(
@@ -600,13 +600,13 @@ class DeltaMergeBuilder:
                 alias = alias.strip()
                 field = field.strip()
                 if alias in self._source_aliases:
-                    return source_get_row_value(row, field)
+                    return get_row_value(source_row, field)
                 if alias in self._target_aliases:
-                    return target_get_row_value(row, field)
+                    return get_row_value(target_row, field)
             if expr in source_row:
-                return source_get_row_value(row, expr)
+                return get_row_value(source_row, expr)
             if expr in target_row:
-                return target_get_row_value(row, expr)
+                return get_row_value(target_row, expr)
             try:
                 return int(expr)
             except ValueError:

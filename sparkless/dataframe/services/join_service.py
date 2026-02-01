@@ -520,7 +520,9 @@ class JoinService:
         from collections import Counter
 
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
-            return tuple(get_row_value(row, field.name) for field in self._df.schema.fields)
+            return tuple(
+                get_row_value(row, field.name) for field in self._df.schema.fields
+            )
 
         # Count occurrences in each DataFrame
         self_counter = Counter(row_to_tuple(row) for row in self._df.data)
@@ -612,7 +614,9 @@ class JoinService:
 
         # Convert rows to tuples for comparison
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
-            return tuple(get_row_value(row, field.name) for field in self._df.schema.fields)
+            return tuple(
+                get_row_value(row, field.name) for field in self._df.schema.fields
+            )
 
         self_rows = {row_to_tuple(row) for row in self._df.data}
         other_rows = {row_to_tuple(row) for row in other.data}

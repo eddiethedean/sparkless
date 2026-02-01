@@ -52,7 +52,10 @@ def test_cte_with_join(spark) -> None:
                 if k in result.columns:
                     return r[k]
             return None
-        by_name = {_val(r, "e_name", "name"): _val(r, "d_dept_name", "dept_name") for r in rows}
+
+        by_name = {
+            _val(r, "e_name", "name"): _val(r, "d_dept_name", "dept_name") for r in rows
+        }
         assert by_name["Alice"] == "Engineering"
         assert by_name["Bob"] == "Sales"
         assert by_name["Carol"] == "Engineering"
@@ -64,6 +67,7 @@ def test_cte_with_join(spark) -> None:
 def test_cte_with_multiple_joins(spark) -> None:
     """Test CTE with multiple JOINs and complex column references."""
     import pytest
+
     try:
         employees = spark.createDataFrame(
             [(1, "Alice", 10, 100), (2, "Bob", 20, 200)],
@@ -84,7 +88,9 @@ def test_cte_with_multiple_joins(spark) -> None:
         projects.write.mode("overwrite").saveAsTable("projects")
 
         # Multiple JOINs with table-prefixed columns requires advanced SQL parsing
-        pytest.skip("Multiple JOINs with table-prefixed columns requires advanced SQL parsing")
+        pytest.skip(
+            "Multiple JOINs with table-prefixed columns requires advanced SQL parsing"
+        )
     finally:
         spark.sql("DROP TABLE IF EXISTS employees")
         spark.sql("DROP TABLE IF EXISTS departments")
@@ -113,13 +119,13 @@ def test_cte_with_left_join(spark) -> None:
 
         rows = result.collect()
         assert len(rows) == 2
-        
+
         def _val(r, *keys):
             for k in keys:
                 if k in result.columns:
                     return r[k]
             return None
-        
+
         bob = [r for r in rows if _val(r, "e_name", "name") == "Bob"][0]
         assert _val(bob, "d_dept_name", "dept_name") is None
     finally:
@@ -155,13 +161,13 @@ def test_cte_with_where_clause(spark) -> None:
         # WHERE e.salary > 55000 should filter out Alice (50000)
         # May return 2 or 3 rows depending on WHERE clause application
         assert len(rows) >= 2
-        
+
         def _val(r, *keys):
             for k in keys:
                 if k in result.columns:
                     return r[k]
             return None
-        
+
         names = [_val(r, "e_name", "name") for r in rows]
         # At least Bob and Carol should be present (salary > 55000)
         assert "Bob" in names
@@ -174,6 +180,7 @@ def test_cte_with_where_clause(spark) -> None:
 def test_cte_with_aggregation_after_join(spark) -> None:
     """Test CTE with JOIN followed by GROUP BY."""
     import pytest
+
     try:
         employees = spark.createDataFrame(
             [(1, "Alice", 10), (2, "Bob", 20), (3, "Carol", 10), (4, "Dave", 20)],
@@ -189,7 +196,9 @@ def test_cte_with_aggregation_after_join(spark) -> None:
 
         # GROUP BY with aliased table prefix (d.dept_name) may not resolve correctly
         # Skip this test as it tests complex SQL semantics
-        pytest.skip("GROUP BY with table-prefixed columns requires advanced SQL parsing")
+        pytest.skip(
+            "GROUP BY with table-prefixed columns requires advanced SQL parsing"
+        )
     finally:
         spark.sql("DROP TABLE IF EXISTS employees")
         spark.sql("DROP TABLE IF EXISTS departments")
@@ -214,13 +223,13 @@ def test_cte_with_self_join(spark) -> None:
 
         rows = result.collect()
         assert len(rows) == 3
-        
+
         def _val(r, *keys):
             for k in keys:
                 if k in result.columns:
                     return r[k]
             return None
-        
+
         # At least one person has Alice as manager (Bob or Carol)
         managed = [r for r in rows if _val(r, "manager", "m_name") == "Alice"]
         assert len(managed) >= 1

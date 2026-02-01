@@ -714,15 +714,17 @@ class PolarsOperationExecutor:
                 posexplode_dtype = pl.List(
                     pl.Struct([pl.Field("pos", pl.Int64), pl.Field("val", val_dtype)])
                 )
-                posexplode_expr = pl.col(resolved_col_name).map_elements(
-                    _posexplode_list,
-                    return_dtype=posexplode_dtype,
-                ).alias(temp_name)
+                posexplode_expr = (
+                    pl.col(resolved_col_name)
+                    .map_elements(
+                        _posexplode_list,
+                        return_dtype=posexplode_dtype,
+                    )
+                    .alias(temp_name)
+                )
                 select_exprs.append(posexplode_expr)
                 select_names.append(temp_name)
-                posexplode_pending.append(
-                    (temp_name, alias_names[0], alias_names[1])
-                )
+                posexplode_pending.append((temp_name, alias_names[0], alias_names[1]))
                 continue
             elif isinstance(col, WindowFunction) or (
                 isinstance(col, ColumnOperation)

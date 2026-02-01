@@ -78,25 +78,26 @@ class TestIssue374JoinAliasedColumns:
         ).getOrCreate()
         try:
             users = spark.createDataFrame(
-                [(1, "Alice", 10), (2, "Bob", 20)],
-                ["user_id", "name", "dept_id"]
+                [(1, "Alice", 10), (2, "Bob", 20)], ["user_id", "name", "dept_id"]
             )
             departments = spark.createDataFrame(
                 [(10, "Engineering", 100), (20, "Sales", 200)],
-                ["dept_id", "dept_name", "location_id"]
+                ["dept_id", "dept_name", "location_id"],
             )
             locations = spark.createDataFrame(
-                [(100, "NYC"), (200, "SF")],
-                ["location_id", "city"]
+                [(100, "NYC"), (200, "SF")], ["location_id", "city"]
             )
-            
+
             result = (
                 users.alias("u")
                 .join(departments.alias("d"), F.col("u.dept_id") == F.col("d.dept_id"))
-                .join(locations.alias("l"), F.col("d.location_id") == F.col("l.location_id"))
+                .join(
+                    locations.alias("l"),
+                    F.col("d.location_id") == F.col("l.location_id"),
+                )
                 .select(F.col("u.name"), F.col("d.dept_name"), F.col("l.city"))
             )
-            
+
             rows = result.collect()
             assert len(rows) == 2
             # Check Alice is in Engineering in NYC
@@ -117,14 +118,14 @@ class TestIssue374JoinAliasedColumns:
         try:
             df1 = spark.createDataFrame([(1, "a"), (2, "b")], ["id", "val"])
             df2 = spark.createDataFrame([(1, "x"), (2, "y")], ["id", "data"])
-            
+
             # After join, columns might be id, val, data (no prefix)
             result = (
                 df1.alias("t1")
                 .join(df2.alias("t2"), F.col("t1.id") == F.col("t2.id"))
                 .select("id", "val", "data")  # Use unprefixed names
             )
-            
+
             rows = result.collect()
             assert len(rows) == 2
         finally:
@@ -141,23 +142,20 @@ class TestIssue374JoinAliasedColumns:
         try:
             employees = spark.createDataFrame(
                 [(1, "Alice", None), (2, "Bob", 1), (3, "Carol", 1)],
-                ["id", "name", "manager_id"]
+                ["id", "name", "manager_id"],
             )
-            
+
             # Self-join to get employee and manager names
             result = (
                 employees.alias("e")
                 .join(
-                    employees.alias("m"),
-                    F.col("e.manager_id") == F.col("m.id"),
-                    "left"
+                    employees.alias("m"), F.col("e.manager_id") == F.col("m.id"), "left"
                 )
                 .select(
-                    F.col("e.name").alias("employee"),
-                    F.col("m.name").alias("manager")
+                    F.col("e.name").alias("employee"), F.col("m.name").alias("manager")
                 )
             )
-            
+
             rows = result.collect()
             assert len(rows) == 3
             # At least one person has Alice as manager (Bob or Carol)
@@ -177,25 +175,25 @@ class TestIssue374JoinAliasedColumns:
         try:
             orders = spark.createDataFrame(
                 [(1, 100, 50.0), (2, 101, 75.0), (3, 100, 25.0)],
-                ["order_id", "customer_id", "amount"]
+                ["order_id", "customer_id", "amount"],
             )
             customers = spark.createDataFrame(
                 [(100, "Alice", "premium"), (101, "Bob", "standard")],
-                ["customer_id", "name", "tier"]
+                ["customer_id", "name", "tier"],
             )
-            
+
             # Join with multiple conditions
             result = (
                 orders.alias("o")
                 .join(
                     customers.alias("c"),
-                    (F.col("o.customer_id") == F.col("c.customer_id")) & 
-                    (F.col("o.amount") > 30),
-                    "inner"
+                    (F.col("o.customer_id") == F.col("c.customer_id"))
+                    & (F.col("o.amount") > 30),
+                    "inner",
                 )
                 .select(F.col("o.order_id"), F.col("c.name"), F.col("o.amount"))
             )
-            
+
             rows = result.collect()
             # Should have at least 2 rows (orders with amount > 30)
             assert len(rows) >= 2

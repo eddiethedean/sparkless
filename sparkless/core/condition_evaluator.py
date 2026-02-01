@@ -85,8 +85,8 @@ class ConditionEvaluator:
                     is_string_concatenation = isinstance(
                         left_value, str
                     ) and isinstance(right_value, str)
-                    if is_string_concatenation and get_row_value(row, 
-                        "__dataframe_is_cached__", False
+                    if is_string_concatenation and get_row_value(
+                        row, "__dataframe_is_cached__", False
                     ):
                         # Check if we're in a cached DataFrame context
                         return None
@@ -744,8 +744,8 @@ class ConditionEvaluator:
                     is_string_concatenation = isinstance(
                         left_value, str
                     ) and isinstance(right_value, str)
-                    if is_string_concatenation and get_row_value(row, 
-                        "__dataframe_is_cached__", False
+                    if is_string_concatenation and get_row_value(
+                        row, "__dataframe_is_cached__", False
                     ):
                         # Check if we're in a cached DataFrame context
                         return None

@@ -53,9 +53,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"val": "3.14159"}, {"val": "2.71828"}]
-            )
+            df = spark.createDataFrame([{"val": "3.14159"}, {"val": "2.71828"}])
             df = df.withColumn("rounded", F.round("val", 2))
             rows = df.collect()
             assert rows[0]["rounded"] == 3.14
@@ -72,9 +70,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"val": "-10.7"}, {"val": "-5.3"}]
-            )
+            df = spark.createDataFrame([{"val": "-10.7"}, {"val": "-5.3"}])
             df = df.withColumn("rounded", F.round("val"))
             rows = df.collect()
             assert rows[0]["rounded"] == -11.0
@@ -91,9 +87,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"val": "1.23e2"}, {"val": "4.56e-1"}]
-            )
+            df = spark.createDataFrame([{"val": "1.23e2"}, {"val": "4.56e-1"}])
             df = df.withColumn("rounded", F.round("val", 1))
             rows = df.collect()
             assert rows[0]["rounded"] == 123.0
@@ -111,11 +105,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"val": "  10.5  "}, {"val": "\t20.7\n"}]
-            )
             # Polars doesn't auto-strip whitespace when casting string to float
-            # This is a known limitation; skip or expect error
             pytest.skip("Polars doesn't strip whitespace when casting string to float")
         finally:
             spark.stop()
@@ -129,9 +119,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"val": "42"}, {"val": "100"}]
-            )
+            df = spark.createDataFrame([{"val": "42"}, {"val": "100"}])
             df = df.withColumn("rounded", F.round("val"))
             rows = df.collect()
             assert rows[0]["rounded"] == 42.0
@@ -148,9 +136,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"str_val": "10.7", "num_val": 20.3}]
-            )
+            df = spark.createDataFrame([{"str_val": "10.7", "num_val": 20.3}])
             df = df.withColumn("str_rounded", F.round("str_val"))
             df = df.withColumn("num_rounded", F.round("num_val"))
             rows = df.collect()
@@ -168,9 +154,7 @@ class TestIssue373RoundString:
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            df = spark.createDataFrame(
-                [{"val": "0"}, {"val": "0.0"}, {"val": "-0.0"}]
-            )
+            df = spark.createDataFrame([{"val": "0"}, {"val": "0.0"}, {"val": "-0.0"}])
             df = df.withColumn("rounded", F.round("val"))
             rows = df.collect()
             assert rows[0]["rounded"] == 0.0

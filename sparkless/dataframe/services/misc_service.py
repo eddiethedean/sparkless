@@ -103,7 +103,9 @@ class MiscService:
         for row in self._df.data:
             if resolved_subset:
                 # Check only specified columns
-                null_count = sum(1 for col in resolved_subset if get_row_value(row, col) is None)
+                null_count = sum(
+                    1 for col in resolved_subset if get_row_value(row, col) is None
+                )
             else:
                 # Check all columns
                 null_count = sum(1 for v in row.values() if v is None)
@@ -823,7 +825,8 @@ class MiscService:
         pairs = [
             (get_row_value(row, col1), get_row_value(row, col2))
             for row in self._df.data
-            if get_row_value(row, col1) is not None and get_row_value(row, col2) is not None
+            if get_row_value(row, col1) is not None
+            and get_row_value(row, col2) is not None
         ]
 
         if not pairs:
