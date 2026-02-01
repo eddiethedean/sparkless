@@ -282,8 +282,11 @@ class SQLParser:
         """
         query_upper = query.upper().strip()
 
+        # Check for WITH before UNION (since CTE queries can contain UNION)
+        if query_upper.startswith("WITH") or re.search(r"^\s*WITH\s+", query_upper, re.IGNORECASE):
+            return "WITH"
         # Check for UNION before SELECT (since UNION queries start with SELECT)
-        if " UNION " in query_upper or re.search(r"\bUNION\b", query_upper):
+        elif " UNION " in query_upper or re.search(r"\bUNION\b", query_upper):
             return "UNION"
         elif query_upper.startswith("SELECT"):
             return "SELECT"
@@ -338,7 +341,9 @@ class SQLParser:
             "offset": None,
         }
 
-        if query_type == "SELECT":
+        if query_type == "WITH":
+            components.update(self._parse_with_query(query))
+        elif query_type == "SELECT":
             components.update(self._parse_select_query(query))
         elif query_type == "UNION":
             components.update(self._parse_union_query(query))
@@ -630,6 +635,147 @@ class SQLParser:
         limit_match = re.search(r"LIMIT\s+(\d+)", query, re.IGNORECASE)
         if limit_match:
             components["limit_value"] = int(limit_match.group(1))
+
+        return components
+
+    def _parse_with_query(self, query: str) -> Dict[str, Any]:
+        """Parse WITH query (CTE) components.
+
+        Args:
+            query: WITH query string.
+
+        Returns:
+            Dictionary of WITH query components.
+        """
+        components = {
+            "ctes": [],
+            "main_query": None,
+        }
+
+        # Remove leading/trailing whitespace
+        query = query.strip()
+
+        # Find the main query (after all CTEs)
+        # CTEs are: WITH cte1 AS (...), cte2 AS (...) SELECT ...
+        # We need to find where the SELECT (or other main query) starts
+
+        # First, find the end of the WITH clause by finding the main query
+        # The main query starts after the last CTE definition
+        # Pattern: WITH ... AS (...) SELECT or WITH ... AS (...), ... AS (...) SELECT
+
+        # Use balanced parenthesis counting to find CTE boundaries
+        query_upper = query.upper()
+        with_start = query_upper.find("WITH")
+        if with_start == -1:
+            raise ParseException("WITH keyword not found in query")
+
+        # Skip "WITH" keyword
+        pos = with_start + 4
+        query_len = len(query)
+
+        ctes = []
+        current_cte_name = None
+        current_cte_query = None
+        paren_depth = 0
+        in_cte_def = False
+        collecting_cte_query = False
+
+        # Parse CTEs: WITH cte_name AS (SELECT ...), cte_name2 AS (SELECT ...) SELECT ...
+        while pos < query_len:
+            char = query[pos]
+            char_upper = char.upper()
+
+            # Skip whitespace
+            if char.isspace():
+                pos += 1
+                continue
+
+            # Check if we've reached the main query (SELECT, INSERT, etc.)
+            if not in_cte_def and not collecting_cte_query:
+                # Check for main query keywords
+                remaining = query_upper[pos:]
+                if remaining.startswith("SELECT") or remaining.startswith("INSERT") or \
+                   remaining.startswith("UPDATE") or remaining.startswith("DELETE"):
+                    # We've found the main query
+                    components["main_query"] = query[pos:].strip()
+                    break
+
+            # Parse CTE name
+            if not in_cte_def and not collecting_cte_query:
+                # Extract CTE name (until AS keyword)
+                cte_name_end = query_upper.find(" AS ", pos)
+                if cte_name_end == -1:
+                    # No more CTEs, must be main query
+                    components["main_query"] = query[pos:].strip()
+                    break
+
+                current_cte_name = query[pos:cte_name_end].strip()
+                # Remove backticks if present
+                current_cte_name = current_cte_name.strip("`")
+
+                # Skip to AS
+                pos = cte_name_end + 4  # Skip " AS "
+                in_cte_def = True
+                collecting_cte_query = False
+                continue
+
+            # Find opening parenthesis for CTE query
+            if in_cte_def and not collecting_cte_query:
+                if char == "(":
+                    paren_depth = 1
+                    collecting_cte_query = True
+                    current_cte_query = ""
+                    pos += 1
+                    continue
+                elif char.isspace():
+                    pos += 1
+                    continue
+                else:
+                    raise ParseException(f"Expected '(' after AS in CTE definition at position {pos}")
+
+            # Collect CTE query content
+            if collecting_cte_query:
+                if char == "(":
+                    paren_depth += 1
+                    current_cte_query += char
+                elif char == ")":
+                    paren_depth -= 1
+                    if paren_depth == 0:
+                        # End of this CTE definition
+                        ctes.append({
+                            "name": current_cte_name,
+                            "query": current_cte_query.strip(),
+                        })
+                        current_cte_name = None
+                        current_cte_query = None
+                        in_cte_def = False
+                        collecting_cte_query = False
+
+                        # Check if there's another CTE (comma) or main query
+                        pos += 1
+                        # Skip whitespace
+                        while pos < query_len and query[pos].isspace():
+                            pos += 1
+                        if pos < query_len:
+                            if query[pos] == ",":
+                                # Another CTE follows
+                                pos += 1
+                                continue
+                            else:
+                                # Main query follows
+                                components["main_query"] = query[pos:].strip()
+                                break
+                    else:
+                        current_cte_query += char
+                else:
+                    current_cte_query += char
+
+            pos += 1
+
+        components["ctes"] = ctes
+
+        if not components["main_query"]:
+            raise ParseException("Main query not found after CTE definitions")
 
         return components
 
