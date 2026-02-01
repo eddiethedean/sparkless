@@ -45,7 +45,9 @@ class ColumnResolver:
         """
         if case_sensitive:
             # Case-sensitive: exact match only
-            return column_name if column_name in available_columns else None
+            result: Optional[str] = (
+                column_name if column_name in available_columns else None
+            )
         else:
             # Case-insensitive: find first match
             # PySpark behavior: when multiple columns match (differ only by case),
@@ -56,12 +58,15 @@ class ColumnResolver:
             matches = [
                 col for col in available_columns if col.lower() == column_name_lower
             ]
+            result = matches[0] if matches else None
 
-            if len(matches) == 0:
-                return None
-            else:
-                # Return first match (PySpark behavior for ambiguous columns)
-                return matches[0]
+        # Alias-prefixed resolution (e.g. "sm.brand_id" -> "brand_id" for joins)
+        if result is None and "." in column_name:
+            suffix = column_name.split(".", 1)[-1]
+            return ColumnResolver.resolve_column_name(
+                suffix, available_columns, case_sensitive
+            )
+        return result
 
     @staticmethod
     def resolve_columns(

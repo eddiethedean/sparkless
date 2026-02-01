@@ -357,6 +357,7 @@ class PolarsOperationExecutor:
         select_exprs = []
         select_names = []
         map_op_indices = set()  # Track which columns are map operations
+        posexplode_pending: List[Tuple[str, str, str]] = []  # (temp_name, name0, name1)
         python_columns: List[Tuple[str, List[Any]]] = []
         rows_cache: Optional[List[Dict[str, Any]]] = None
         evaluator: Union[ExpressionEvaluator, None] = None
@@ -663,6 +664,66 @@ class PolarsOperationExecutor:
                         ).alias(name)
                     )
                     select_names.append(name)
+            elif isinstance(col, ColumnOperation) and col.operation in (
+                "posexplode",
+                "posexplode_outer",
+            ):
+                # posexplode produces two columns (pos, val); alias("Name1", "Name2") names them
+                from sparkless.functions import Column as ColumnType
+
+                source_col = col.column
+                if isinstance(source_col, ColumnType):
+                    source_col_name = source_col.name
+                elif isinstance(source_col, str):
+                    source_col_name = source_col
+                else:
+                    source_col_name = str(getattr(source_col, "name", ""))
+                if not source_col_name:
+                    raise ValueError(
+                        f"Cannot determine source column for posexplode: {col}"
+                    )
+                from ...core.column_resolver import ColumnResolver
+
+                case_sensitive = self._get_case_sensitive()
+                resolved_col_name = ColumnResolver.resolve_column_name(
+                    source_col_name, list(df.columns), case_sensitive
+                )
+                if resolved_col_name is None:
+                    raise ValueError(
+                        f"Column '{source_col_name}' not found for posexplode"
+                    )
+                alias_names = getattr(col, "_alias_names", ("pos", "col"))
+                if len(alias_names) < 2:
+                    alias_names = ("pos", "col")
+                temp_name = "__posexplode_struct"
+
+                def _posexplode_list(arr: Any) -> Any:
+                    if arr is None:
+                        return []
+                    if not isinstance(arr, (list, tuple)):
+                        return []
+                    return [{"pos": i, "val": v} for i, v in enumerate(arr)]
+
+                # Polars requires return_dtype for map_elements; use List(Struct) for pos+val
+                list_dtype = df[resolved_col_name].dtype
+                val_dtype = (
+                    list_dtype.inner
+                    if hasattr(list_dtype, "inner") and list_dtype.inner is not None
+                    else pl.Int64
+                )
+                posexplode_dtype = pl.List(
+                    pl.Struct([pl.Field("pos", pl.Int64), pl.Field("val", val_dtype)])
+                )
+                posexplode_expr = pl.col(resolved_col_name).map_elements(
+                    _posexplode_list,
+                    return_dtype=posexplode_dtype,
+                ).alias(temp_name)
+                select_exprs.append(posexplode_expr)
+                select_names.append(temp_name)
+                posexplode_pending.append(
+                    (temp_name, alias_names[0], alias_names[1])
+                )
+                continue
             elif isinstance(col, WindowFunction) or (
                 isinstance(col, ColumnOperation)
                 and (
@@ -1522,6 +1583,12 @@ class PolarsOperationExecutor:
                         exploded_col_name = select_names[explode_outer_index]
                     if exploded_col_name:
                         result = result.explode(exploded_col_name)
+                elif posexplode_pending:
+                    result = df.select(select_exprs)
+                    for temp_name, name0, name1 in posexplode_pending:
+                        result = result.explode(temp_name)
+                        result = result.unnest(temp_name)
+                        result = result.rename({"pos": name0, "val": name1})
                 else:
                     result = df.select(select_exprs)
             except Exception as e:

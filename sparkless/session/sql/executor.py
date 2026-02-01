@@ -1224,7 +1224,10 @@ class SQLExecutor:
                                 continue
 
                             # Handle table alias prefix (e.g., "e.name" -> "e_name" after join)
-                            # After a join, columns are renamed with table alias prefix
+                            # After a join, columns are renamed with table alias prefix.
+                            # Use df_ops (current DataFrame) so resolution sees the join result
+                            # schema (prefixed columns), e.g. for CTE with JOIN (issue #354).
+                            available_columns = df_ops.columns
                             if (
                                 "." in col
                                 and not col.startswith("'")
@@ -1235,7 +1238,7 @@ class SQLExecutor:
                                     table_alias, base_col = parts
                                     # Check if this column exists with the alias prefix (from join)
                                     prefixed_col = f"{table_alias}_{base_col}"
-                                    if prefixed_col in df.columns:
+                                    if prefixed_col in available_columns:
                                         col_name = prefixed_col
                                     else:
                                         # If join happened, we should have prefixed columns
@@ -1243,7 +1246,7 @@ class SQLExecutor:
                                         # This handles cases where the alias might be different
                                         matching_cols = [
                                             c
-                                            for c in df.columns
+                                            for c in available_columns
                                             if c.endswith(f"_{base_col}")
                                             or c == base_col
                                         ]

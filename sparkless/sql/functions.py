@@ -58,6 +58,13 @@ def __getattr__(name: str) -> object:
     if name in _cached_attrs:
         return _cached_attrs[name]
 
+    # PySpark compatibility: F.DataFrame for reduce(F.DataFrame.union, dfs)
+    if name == "DataFrame":
+        from ..dataframe import DataFrame  # noqa: E402
+
+        _cached_attrs[name] = DataFrame
+        return DataFrame
+
     # Try to get from F instance
     if hasattr(F, name):
         attr_value = getattr(F, name)

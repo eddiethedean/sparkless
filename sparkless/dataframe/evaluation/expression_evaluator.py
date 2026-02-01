@@ -1745,6 +1745,7 @@ class ExpressionEvaluator:
             # New utility functions
             "get": self._func_get,
             "getItem": self._func_getItem,
+            "getField": self._func_getItem,
             "withField": self._func_withField,
             "inline": self._func_inline,
             "inline_outer": self._func_inline_outer,

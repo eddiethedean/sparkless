@@ -440,6 +440,23 @@ class Column(ColumnOperatorMixin, IColumn):
         aliased_column._alias_name = name
         return aliased_column
 
+    def getField(self, index_or_name: Union[int, str]) -> Union["Column", "ColumnOperation"]:
+        """Access array element by index or struct field by name (PySpark getField).
+
+        Args:
+            index_or_name: int for array index (same as getItem), str for struct field.
+
+        Returns:
+            Column for struct field path, ColumnOperation for array/map access.
+
+        Example:
+            >>> df.select(F.col("ArrayVal").getField(0))
+            >>> df.select(F.col("Person").getField("name"))
+        """
+        if isinstance(index_or_name, str):
+            return self[index_or_name]
+        return self.getItem(index_or_name)
+
     def when(self, condition: "ColumnOperation", value: Any) -> "CaseWhen":
         """Start a CASE WHEN expression."""
         from ..conditional import CaseWhen
@@ -998,18 +1015,26 @@ class ColumnOperation(Column):
         """
         return self._generate_name_early()
 
-    def alias(self, name: str) -> "IColumn":
-        """Create an alias for this operation."""
+    def alias(self, *names: str) -> "ColumnOperation":
+        """Create an alias for this operation (PySpark: single or multiple names for posexplode)."""
+        if len(names) == 0:
+            raise TypeError("alias() requires at least one name")
         # self.operation is guaranteed to be a string in ColumnOperation
         op_str: str = self.operation  # type: ignore[assignment]
         aliased_operation = ColumnOperation(
             self.column, op_str, self.value, name=self._name
         )
-        aliased_operation._alias_name = name
+        aliased_operation._alias_name = names[0]
+        if len(names) > 1:
+            aliased_operation._alias_names = tuple(names)
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)
         if hasattr(self, "_aggregate_function"):
             aliased_operation._aggregate_function = self._aggregate_function
         return aliased_operation
+
+    def getField(self, index_or_name: Union[int, str]) -> "ColumnOperation":
+        """Access array element by index or struct field by name (PySpark getField)."""
+        return self._create_operation("getField", index_or_name)
 
     def over(self, window_spec: "WindowSpec") -> "WindowFunction":
         """Apply window function over window specification."""
