@@ -469,13 +469,19 @@ class PolarsExpressionTranslator:
         if operation == "isin":
             # Get the column's dtype; fallback: numeric list/value -> assume string column (Issue #370, PySpark coercion)
             isin_col_dtype = input_col_dtype
-            if isin_col_dtype is None and (
-                (
-                    isinstance(value, list)
-                    and value
-                    and all(isinstance(v, (int, float)) for v in value)
-                )
-                or isinstance(value, (int, float))
+            values_are_all_numeric = (
+                isinstance(value, list)
+                and value
+                and all(isinstance(v, (int, float)) for v in value)
+            ) or isinstance(value, (int, float))
+            if isin_col_dtype is None and values_are_all_numeric:
+                isin_col_dtype = pl.Utf8
+            # When values are numeric literals, prefer string coercion so "col in (20)" matches string column (Issue #370)
+            if (
+                values_are_all_numeric
+                and isin_col_dtype is not None
+                and isin_col_dtype
+                in (pl.Int64, pl.Int32, pl.Int16, pl.Int8, pl.Float64, pl.Float32)
             ):
                 isin_col_dtype = pl.Utf8
             if isinstance(value, list):
@@ -486,6 +492,16 @@ class PolarsExpressionTranslator:
                     dtype_str = str(getattr(isin_col_dtype, "name", isin_col_dtype))
                     if isin_col_dtype == pl.Utf8 or dtype_str in ("String", "Utf8"):
                         # String column - convert all values to strings
+                        coerced_values = [str(v) for v in value]
+                    elif values_are_all_numeric and isin_col_dtype not in (
+                        pl.Int64,
+                        pl.Int32,
+                        pl.Int16,
+                        pl.Int8,
+                        pl.Float64,
+                        pl.Float32,
+                    ):
+                        # Column is non-numeric (e.g. String type with different repr); coerce RHS to string
                         coerced_values = [str(v) for v in value]
                     elif isin_col_dtype in (pl.Int64, pl.Int32, pl.Int16, pl.Int8):
                         # Integer column - try to convert string values to int
@@ -515,6 +531,12 @@ class PolarsExpressionTranslator:
                                     )  # Keep original if conversion fails
                             else:
                                 coerced_values.append(v)
+                # Defensive: when RHS is numeric and no coercion ran, coerce to string (Issue #370)
+                if values_are_all_numeric and coerced_values == value:
+                    coerced_values = [str(v) for v in value]
+                # When RHS is numeric literals, compare as string so string column matches (PySpark)
+                if values_are_all_numeric:
+                    return left.cast(pl.Utf8).is_in([str(v) for v in value])
                 return left.is_in(coerced_values)
             else:
                 coerced_value = value

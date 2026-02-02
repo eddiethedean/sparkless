@@ -24,8 +24,6 @@ class TestIssue370FilterInString:
 
     def test_filter_values_in_numeric_literal(self, spark):
         """df.filter('Values in (20)') - numeric literal (PySpark coerces to string column)."""
-        import pytest
-
         df = spark.createDataFrame(
             [
                 {"Name": "Alice", "Values": "10"},
@@ -34,14 +32,8 @@ class TestIssue370FilterInString:
         )
         df1 = df.filter("Values in (20)")
         rows = df1.collect()
-        # PySpark returns Bob; Sparkless may need schema/dtype for coercion (see #369)
-        if len(rows) == 1:
-            assert rows[0]["Name"] == "Bob"
-        else:
-            pytest.skip(
-                "Values in (20) coercion depends on schema in materializer; "
-                "Values in ('20') is the primary fix for #370"
-            )
+        assert len(rows) == 1
+        assert rows[0]["Name"] == "Bob" and rows[0]["Values"] == "20"
 
     def test_filter_in_string_show(self, spark):
         """Exact issue scenario: filter + show()."""

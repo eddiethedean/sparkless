@@ -329,12 +329,43 @@ class PolarsMaterializer:
                     col_name = getattr(col_ref, "name", None)
                     if col_name is None and hasattr(col_ref, "_original_column"):
                         col_name = getattr(col_ref._original_column, "name", None)
-                    if (
-                        col_name
-                        and hasattr(lazy_df, "schema")
-                        and col_name in lazy_df.schema
+                    if col_name and hasattr(lazy_df, "schema"):
+                        from ...core.column_resolver import ColumnResolver
+
+                        polars_schema = lazy_df.schema
+                        schema_names: List[str] = (
+                            list(polars_schema.names())
+                            if hasattr(polars_schema, "names")
+                            else list(polars_schema.keys())
+                        )
+                        resolved_name = ColumnResolver.resolve_column_name(
+                            col_name, schema_names, case_sensitive=False
+                        )
+                        if resolved_name is not None:
+                            input_col_dtype = polars_schema[resolved_name]
+
+                # Issue #370: isin with numeric literals on string column - apply on eager
+                # DataFrame so cast(Utf8).is_in([...]) is evaluated correctly (LazyFrame
+                # path can yield 0 rows in some Polars/contexts).
+                if isin_op is not None:
+                    isin_value = getattr(isin_op, "value", None)
+                    values_numeric = (
+                        isinstance(isin_value, list)
+                        and isin_value
+                        and all(isinstance(v, (int, float)) for v in isin_value)
+                    ) or isinstance(isin_value, (int, float))
+                    if values_numeric and (
+                        input_col_dtype is None
+                        or getattr(input_col_dtype, "name", None) == "Utf8"
+                        or str(getattr(input_col_dtype, "name", "")).lower()
+                        in ("string", "utf8")
                     ):
-                        input_col_dtype = lazy_df.schema[col_name]
+                        df_collected = lazy_df.collect()
+                        filtered_df = self.operation_executor.apply_filter(
+                            df_collected, optimized_condition
+                        )
+                        lazy_df = filtered_df.lazy()
+                        continue
 
                 try:
                     filter_expr = self.translator.translate(
@@ -1626,9 +1657,8 @@ class PolarsMaterializer:
         Returns:
             True if expression contains operations that require manual materialization
         """
-        # Check if this expression was created by F.expr()
-        if hasattr(expr, "_from_expr") and expr._from_expr:
-            return True
+        # Do NOT reject expressions just because they came from F.expr(); we can translate
+        # them (e.g. "col IN (lit)" for Issue #370).
         # Check if this is a ColumnOperation with expr operation
         if hasattr(expr, "operation"):
             # Check for direct expr operation (old F.expr() style)

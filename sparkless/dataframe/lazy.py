@@ -838,9 +838,9 @@ class LazyEvaluationEngine:
         Returns:
             True if expression contains operations that require manual materialization
         """
-        # Check if this expression was created by F.expr()
-        if hasattr(expr, "_from_expr") and expr._from_expr:
-            return True
+        # Do NOT force manual materialization just because expression came from F.expr().
+        # The Polars backend can translate F.expr() filter expressions (e.g. "col IN (lit)")
+        # (Issue #370).
         # Check if this is a ColumnOperation with expr operation
         if hasattr(expr, "operation"):
             # Check for direct expr operation (old F.expr() style)
