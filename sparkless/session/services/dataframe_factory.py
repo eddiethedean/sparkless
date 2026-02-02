@@ -355,8 +355,9 @@ class DataFrameFactory:
                     from sparkless.core.schema_inference import SchemaInferenceEngine
 
                     schema, data = SchemaInferenceEngine.infer_from_data(
-                        data, column_order=column_order_from_pandas
-                    )  # type: ignore[arg-type]
+                        cast(List[Dict[str, Any]], data),
+                        column_order=column_order_from_pandas,
+                    )
                 elif isinstance(sample_row, tuple):
                     # For tuples, we need column names - this should have been handled earlier
                     # If we get here, it's an error
