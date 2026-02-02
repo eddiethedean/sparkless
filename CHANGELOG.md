@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.28.3 — 2026-02-02
+
+### Fixed
+- **Issue #361** - `createDataFrame(df.rdd, schema=...)` now supported
+  - RDD-like objects (e.g. `df.rdd`) are detected via duck typing (`hasattr(data, "collect")` and callable)
+  - Data is collected via `data.collect()` and passed through as a list of rows
+  - Matches PySpark behavior: `spark.createDataFrame(df.rdd, schema=["Name", "Value"])` works
+  - Fixes `IllegalArgumentException: Data must be a list of dictionaries, tuples, lists, Row objects, or a Pandas DataFrame`
+
+### Added
+- **Issue #361 tests** - `tests/test_issue_361_createDataFrame_rdd.py` with 5 tests
+  - Exact issue scenario, show() output, empty DataFrame (backend-appropriate StructType), single row, schema order preservation
+  - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
+
+### Testing
+- All 2,265 tests passing (16 skipped) with `pytest -n 12`
+- Issue #361 tests pass in Sparkless and PySpark mode
+- `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (496 source files)
+
 ## 3.28.2 — 2026-02-02
 
 ### Fixed
