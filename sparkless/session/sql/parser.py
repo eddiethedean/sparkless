@@ -518,8 +518,10 @@ class SQLParser:
 
         # Extract FROM tables (handle aliases and JOINs)
         # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
+        # ON clause uses lookahead to stop at next JOIN/WHERE/etc (#376)
+        _on_lookahead = r"(?=\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s*JOIN\b|\s+WHERE\b|\s+GROUP\s+BY|\s+HAVING\b|\s+ORDER\s+BY|\s+LIMIT\b|$)"
         from_match = re.search(
-            r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?:(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?)?",
+            rf"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?:(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+(.+?){_on_lookahead})?)?)?",
             query,
             re.IGNORECASE | re.DOTALL,
         )
@@ -536,7 +538,7 @@ class SQLParser:
             # try separate JOIN pattern (issue #354: CTE with JOIN).
             if not table2 and re.search(r"\s+JOIN\s+\w+", query, re.IGNORECASE):
                 join_match = re.search(
-                    r"\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+)",
+                    r"\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?\s+ON\s+(.+?)(?=\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s*JOIN\b|\s+WHERE\b|\s+GROUP\s+BY|\s+HAVING\b|\s+ORDER\s+BY|\s+LIMIT\b|$)",
                     query,
                     re.IGNORECASE | re.DOTALL,
                 )
@@ -563,19 +565,58 @@ class SQLParser:
                 else:
                     join_type = "inner"
 
-            # Store table and alias mappings
+            # Store table and alias mappings; support multiple JOINs (#376)
+            # For self-join (table2 == table1), don't overwrite - keep alias1 for left
             table_aliases = {table1: alias1 or table1}
+            joins_list = []
             if table2:
-                table_aliases[table2] = alias2 or table2
-                components["joins"] = [
+                # Don't overwrite: for self-join, left keeps alias1 (e.g. "e") (#382)
+                table_aliases.setdefault(table2, alias2 or table2)
+                joins_list.append(
                     {
                         "table": table2,
                         "alias": alias2 or table2,
                         "condition": join_condition.strip() if join_condition else None,
                         "type": join_type,
                     }
-                ]
+                )
 
+            # Parse additional JOINs (e.g. JOIN projects p ON e.project_id = p.id)
+            from_end = from_match.end()
+            remaining = query[from_end:]
+            # ON clause: capture until next JOIN, WHERE, GROUP BY, etc. (lookahead)
+            join_pattern = re.compile(
+                r"\s+(INNER|LEFT|RIGHT|FULL\s+OUTER)?\s*JOIN\s+([`\w.]+)(?:\s+([`\w]+))?\s+ON\s+(.+?)(?=\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s*JOIN\b|\s+WHERE\b|\s+GROUP\s+BY|\s+HAVING\b|\s+ORDER\s+BY|\s+LIMIT\b|$)",
+                re.IGNORECASE | re.DOTALL,
+            )
+            while True:
+                next_join = join_pattern.search(remaining)
+                if not next_join:
+                    break
+                jtype_str = (next_join.group(1) or "").upper()
+                jtype = "inner"
+                if "LEFT" in jtype_str:
+                    jtype = "left"
+                elif "RIGHT" in jtype_str:
+                    jtype = "right"
+                elif "FULL" in jtype_str:
+                    jtype = "full"
+                jtable = next_join.group(2).strip("`")
+                jalias = (next_join.group(3) or "").strip("`") or jtable
+                jcond = next_join.group(4).strip()
+                # Don't overwrite: preserve FROM/first-join alias for self-joins (#382)
+                table_aliases.setdefault(jtable, jalias)
+                joins_list.append(
+                    {
+                        "table": jtable,
+                        "alias": jalias,
+                        "condition": jcond,
+                        "type": jtype,
+                    }
+                )
+                remaining = remaining[next_join.end() :]
+
+            components["joins"] = joins_list
             components["from_tables"] = [table1]
             components["table_aliases"] = table_aliases
 

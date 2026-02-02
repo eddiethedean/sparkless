@@ -158,21 +158,26 @@ class TransformationService:
             # No pending joins: resolve now based on current schema
             for col in columns:
                 if isinstance(col, str) and col != "*":
-                    # Handle nested struct field access (e.g., "Person.name")
+                    # Table-prefixed (e.g. "t1.id") or struct field (e.g. "Person.name")
                     if "." in col:
-                        # Split into struct column and field name
-                        parts = col.split(".", 1)
-                        struct_col = parts[0]
-                        # Resolve the struct column name case-insensitively
-                        actual_struct_col = self._find_column(struct_col)
-                        if actual_struct_col is None:
-                            from ...core.exceptions.operation import (
-                                SparkColumnNotFoundError,
-                            )
+                        # Try full string first - ColumnResolver maps "t1.id" to "id" (issue #379)
+                        actual_col = self._find_column(col)
+                        if actual_col is not None:
+                            resolved_columns.append(actual_col)
+                        else:
+                            # Struct field access: validate struct column exists
+                            parts = col.split(".", 1)
+                            struct_col = parts[0]
+                            actual_struct_col = self._find_column(struct_col)
+                            if actual_struct_col is None:
+                                from ...core.exceptions.operation import (
+                                    SparkColumnNotFoundError,
+                                )
 
-                            raise SparkColumnNotFoundError(struct_col, self._df.columns)
-                        # Use the resolved struct column name + field path
-                        resolved_columns.append(f"{actual_struct_col}.{parts[1]}")
+                                raise SparkColumnNotFoundError(
+                                    struct_col, self._df.columns
+                                )
+                            resolved_columns.append(f"{actual_struct_col}.{parts[1]}")
                     else:
                         # Use ColumnResolver to resolve column name for validation
                         # but keep the original requested column name for output schema
@@ -229,24 +234,24 @@ class TransformationService:
                             resolved_columns.append(col)
                             continue
                         if col_name and col_name != "*":
-                            # Handle nested struct field access (e.g., "Person.name")
+                            # Table-prefixed (e.g. "t1.id") or struct field (e.g. "Person.name")
                             if "." in col_name:
-                                # Split into struct column and field name
-                                parts = col_name.split(".", 1)
-                                struct_col = parts[0]
-                                # Validate the struct column exists
-                                actual_struct_col = self._find_column(struct_col)
-                                if actual_struct_col is None:
-                                    from ...core.exceptions.operation import (
-                                        SparkColumnNotFoundError,
-                                    )
+                                actual_col = self._find_column(col_name)
+                                if actual_col is not None:
+                                    resolved_columns.append(Column(actual_col))
+                                else:
+                                    parts = col_name.split(".", 1)
+                                    struct_col = parts[0]
+                                    actual_struct_col = self._find_column(struct_col)
+                                    if actual_struct_col is None:
+                                        from ...core.exceptions.operation import (
+                                            SparkColumnNotFoundError,
+                                        )
 
-                                    raise SparkColumnNotFoundError(
-                                        struct_col, self._df.columns
-                                    )
-                                # For nested fields, keep the original Column object as-is
-                                # The validation will be done during execution
-                                resolved_columns.append(col)
+                                        raise SparkColumnNotFoundError(
+                                            struct_col, self._df.columns
+                                        )
+                                    resolved_columns.append(col)
                             else:
                                 # Use case-insensitive lookup to check if column exists
                                 actual_col_name = self._find_column(col_name)

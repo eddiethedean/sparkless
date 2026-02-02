@@ -109,11 +109,13 @@ def normalize_dataframe_for_comparison(df: Any) -> Any:
 class DifferenceHandler:
     """Handler for known differences between backends."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize difference handler."""
-        self.known_differences: Dict[str, Callable] = {}
+        self.known_differences: Dict[str, Callable[..., Any]] = {}
 
-    def register_handler(self, difference_type: str, handler: Callable) -> None:
+    def register_handler(
+        self, difference_type: str, handler: Callable[..., Any]
+    ) -> None:
         """Register a handler for a known difference type.
 
         Args:

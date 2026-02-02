@@ -564,19 +564,32 @@ class PolarsOperationExecutor:
                     # Select all columns - return original DataFrame
                     return df
                 elif "." in col:
-                    # Handle nested struct field access (e.g., "Person.name")
-                    # Split into struct column and field name
+                    # Try table-prefixed first (e.g. "t1.id" -> "id" or "t1_id")
+                    from ...core.column_resolver import ColumnResolver
+
+                    case_sensitive = self._get_case_sensitive()
+                    resolved_table_prefixed = ColumnResolver.resolve_column_name(
+                        col, list(df.columns), case_sensitive
+                    )
+                    if resolved_table_prefixed is not None:
+                        # Table-prefixed column - use resolved name
+                        select_exprs.append(pl.col(resolved_table_prefixed).alias(col))
+                        select_names.append(col)
+                        continue
+                    # Handle nested struct field access, or right-alias.column after join (#380)
                     parts = col.split(".", 1)
                     struct_col = parts[0]
                     field_name = parts[1]
+                    right_prefixed = f"_right_{field_name}"
+                    if right_prefixed in df.columns:
+                        select_exprs.append(pl.col(right_prefixed).alias(col))
+                        select_names.append(col)
+                        continue
                     if struct_col in df.columns:
                         # Get struct dtype
                         struct_dtype = df[struct_col].dtype
                         if hasattr(struct_dtype, "fields") and struct_dtype.fields:
                             # Resolve field name case-insensitively within struct
-                            from ...core.column_resolver import ColumnResolver
-
-                            case_sensitive = self._get_case_sensitive()
                             field_names = [f.name for f in struct_dtype.fields]
                             resolved_field = ColumnResolver.resolve_column_name(
                                 field_name, field_names, case_sensitive
@@ -808,6 +821,15 @@ class PolarsOperationExecutor:
                         from ...core.column_resolver import ColumnResolver
 
                         case_sensitive = self._get_case_sensitive()
+                        # After join with right prefix, "right_alias.column" -> "_right_column" (#380)
+                        right_prefixed = f"_right_{field_name}"
+                        if right_prefixed in df.columns:
+                            expr = pl.col(right_prefixed)
+                            if alias_name:
+                                expr = expr.alias(alias_name)
+                            select_exprs.append(expr)
+                            select_names.append(alias_name or struct_field_path)
+                            continue
                         resolved_struct_col = ColumnResolver.resolve_column_name(
                             struct_col, list(df.columns), case_sensitive
                         )
@@ -3352,6 +3374,7 @@ class PolarsOperationExecutor:
         df2: pl.DataFrame,
         on: Optional[Union[str, List[str], ColumnOperation]] = None,
         how: str = "inner",
+        right_alias: Optional[str] = None,
     ) -> pl.DataFrame:
         """Apply a join operation.
 
@@ -3433,7 +3456,7 @@ class PolarsOperationExecutor:
         # Handle expression-based joins (e.g., array_contains)
         if expression_condition is not None:
             return self._apply_expression_join(
-                df1, df2, expression_condition, polars_how, how.lower()
+                df1, df2, expression_condition, polars_how, how.lower(), right_alias
             )
 
         # Resolve join_keys using ColumnResolver if they are strings
@@ -3633,6 +3656,7 @@ class PolarsOperationExecutor:
         condition: ColumnOperation,
         polars_how: str,
         how: str,
+        right_alias: Optional[str] = None,
     ) -> pl.DataFrame:
         """Apply join with expression-based condition (e.g., array_contains).
 
@@ -3652,6 +3676,59 @@ class PolarsOperationExecutor:
         Returns:
             Joined DataFrame
         """
+        # Compound condition (A == B) & (C > D): join on equality then filter (#380)
+        if isinstance(condition, ColumnOperation) and condition.operation == "&":
+            eq_part = None
+            filter_part = None
+            for attr in ("column", "value"):
+                part = getattr(condition, attr, None)
+                if (
+                    isinstance(part, ColumnOperation)
+                    and getattr(part, "operation", None) == "=="
+                ):
+                    eq_part = part
+                    filter_part = getattr(
+                        condition, "value" if attr == "column" else "column"
+                    )
+                    break
+            if eq_part is not None and filter_part is not None:
+                # Resolve equality columns: left_col from df1, right_col from df2 (prefixed)
+                left_col = getattr(eq_part.column, "name", None) or str(eq_part.column)
+                right_col = getattr(eq_part.value, "name", None) or str(eq_part.value)
+                if (
+                    isinstance(left_col, str)
+                    and isinstance(right_col, str)
+                    and "." in left_col
+                    and "." in right_col
+                ):
+                    left_base = left_col.split(".", 1)[1]
+                    right_base = right_col.split(".", 1)[1]
+                    df2_prefixed = df2.select(
+                        [pl.col(c).alias(f"_right_{c}") for c in df2.columns]
+                    )
+                    right_join_col = (
+                        f"_right_{right_base}"
+                        if right_base in df2.columns
+                        else right_base
+                    )
+                    if (
+                        left_base in df1.columns
+                        and right_join_col in df2_prefixed.columns
+                    ):
+                        joined = df1.join(
+                            df2_prefixed,
+                            left_on=[left_base],
+                            right_on=[right_join_col],
+                            how=polars_how,
+                        )
+                        # Apply filter on joined result
+                        case_sensitive = self._get_case_sensitive()
+                        filter_expr = self.translator.translate(
+                            filter_part,
+                            available_columns=joined.columns,
+                            case_sensitive=case_sensitive,
+                        )
+                        return joined.filter(filter_expr)
         # Step 1: Do cross join to get all row combinations
         # Check for column name conflicts and prefix df2 columns if needed
         df1_cols = set(df1.columns)
@@ -3673,19 +3750,66 @@ class PolarsOperationExecutor:
         # Step 2: Translate and evaluate the condition expression
         case_sensitive = self._get_case_sensitive()
 
+        # If we have conflicts but no right_alias, infer from condition.
+        # Prefer the alias on the *value* side of equality (e.g. a.id == b.id -> b is right).
+        if has_conflicts and not right_alias:
+
+            def _infer_right_alias(expr: Any) -> Optional[str]:
+                from sparkless.functions.core.column import Column
+
+                if isinstance(expr, Column) and "." in getattr(expr, "name", ""):
+                    alias_part, col_part = expr.name.split(".", 1)
+                    if col_part in df2.columns:
+                        return alias_part
+                elif isinstance(expr, ColumnOperation):
+                    op = getattr(expr, "operation", None)
+                    if op == "==":
+                        # In left == right, right is typically .value; infer from value only
+                        return _infer_right_alias(expr.value)
+                    a = _infer_right_alias(expr.column)
+                    if a is not None:
+                        return a
+                    return _infer_right_alias(expr.value)
+                return None
+
+            right_alias = _infer_right_alias(condition)
+
         # If there are column name conflicts, we need to map df2 column references
-        # to prefixed names. Create a modified condition that uses prefixed column names.
-        condition_to_translate = condition
-        if has_conflicts and isinstance(condition, ColumnOperation):
-            # For array_contains(df1.IDs, df2.ID), we need to replace df2.ID with _right_ID
-            # Create a new condition with prefixed df2 column references
+        # to prefixed names. Recursively rewrite Column("right_alias.col") -> Column("_right_col")
+        def _rewrite_right_cols(expr: Any) -> Any:
+            """Replace Column('alias.col') with Column('_right_col') when alias is right."""
             from sparkless.functions.core.column import Column
 
-            if condition.operation == "array_contains":
+            if isinstance(expr, Column) and "." in getattr(expr, "name", ""):
+                name = expr.name
+                if right_alias and name.startswith(f"{right_alias}."):
+                    col = name.split(".", 1)[1]
+                    if col in df2.columns:
+                        return Column(f"_right_{col}")
+            elif isinstance(expr, ColumnOperation):
+                col_rewritten = _rewrite_right_cols(expr.column)
+                val_rewritten = _rewrite_right_cols(expr.value)
+                if col_rewritten is not expr.column or val_rewritten is not expr.value:
+                    return ColumnOperation(
+                        col_rewritten, expr.operation or "", val_rewritten
+                    )
+            return expr
+
+        condition_to_translate = (
+            _rewrite_right_cols(condition)
+            if (has_conflicts and right_alias)
+            else condition
+        )
+
+        if has_conflicts and isinstance(condition_to_translate, ColumnOperation):
+            # For array_contains(df1.IDs, df2.ID), we need to replace df2.ID with _right_ID
+            from sparkless.functions.core.column import Column
+
+            if condition_to_translate.operation == "array_contains":
                 # array_contains(column, value)
                 # column is from df1 (keep as is), value might be from df2 (needs prefix)
-                original_column = condition.column
-                original_value = condition.value
+                original_column = condition_to_translate.column
+                original_value = condition_to_translate.value
 
                 # Check if value is a Column from df2 that needs prefixing
                 modified_value = original_value
@@ -3716,8 +3840,7 @@ class PolarsOperationExecutor:
 
                 if modified_value != original_value:
                     # Create new condition with modified value
-                    # condition.operation is always a string for ColumnOperation instances
-                    op = getattr(condition, "operation", None)
+                    op = getattr(condition_to_translate, "operation", None)
                     if op is not None:
                         condition_to_translate = ColumnOperation(
                             original_column,

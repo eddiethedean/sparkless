@@ -96,17 +96,19 @@ class TestIssue373RoundString:
             spark.stop()
 
     def test_round_string_with_whitespace(self):
-        """Test round on string with leading/trailing whitespace."""
+        """Test round on string with leading/trailing whitespace (issue #378)."""
         import inspect
-        import pytest
 
         test_name = inspect.stack()[1].function
         spark = SparkSession.builder.appName(
             self._get_unique_app_name(test_name)
         ).getOrCreate()
         try:
-            # Polars doesn't auto-strip whitespace when casting string to float
-            pytest.skip("Polars doesn't strip whitespace when casting string to float")
+            df = spark.createDataFrame([{"val": "  10.5  "}, {"val": "\t20.7\n"}])
+            df = df.withColumn("rounded", F.round("val"))
+            rows = df.collect()
+            assert rows[0]["rounded"] == 10.0 or rows[0]["rounded"] == 11.0
+            assert rows[1]["rounded"] == 21.0 or rows[1]["rounded"] == 20.0
         finally:
             spark.stop()
 

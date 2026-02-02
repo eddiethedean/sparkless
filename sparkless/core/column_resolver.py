@@ -60,8 +60,15 @@ class ColumnResolver:
             ]
             result = matches[0] if matches else None
 
-        # Alias-prefixed resolution (e.g. "sm.brand_id" -> "brand_id" for joins)
+        # Alias-prefixed resolution (e.g. "sm.brand_id" -> "brand_id" or "o.customer_id" -> "o_customer_id")
         if result is None and "." in column_name:
+            # Try alias_col form (e.g. "o.customer_id" -> "o_customer_id") for join rows
+            alias_underscore = column_name.replace(".", "_", 1)
+            result = ColumnResolver.resolve_column_name(
+                alias_underscore, available_columns, case_sensitive
+            )
+            if result is not None:
+                return result
             suffix = column_name.split(".", 1)[-1]
             return ColumnResolver.resolve_column_name(
                 suffix, available_columns, case_sensitive
