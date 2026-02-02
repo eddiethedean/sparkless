@@ -7,8 +7,8 @@
   - Polars expression translator now parses string cast types `Decimal(X,Y)` / `decimal(X,Y)` (case insensitive) and maps to DecimalType(precision, scale), then to Polars Float64 (Polars has no exact decimal type)
 
 ### Added
-- **Issue #371 tests** - `tests/test_issue_371_cast_decimal.py` with 2 tests
-  - withColumn + cast("Decimal(10,0)") (exact issue scenario), cast("decimal(10,0)") lowercase
+- **Issue #371 tests** - `tests/test_issue_371_cast_decimal.py` with 9 tests (PySpark and mock backends)
+  - withColumn + cast("Decimal(10,0)") (exact issue scenario), cast("decimal(10,0)") lowercase; cast in select; Decimal(5,2)/Decimal(38,2); cast after filter; nulls preserved; float to Decimal(10,1); show then collect; Decimal(1,0)
 
 ## 3.28.7 — 2026-02-02
 

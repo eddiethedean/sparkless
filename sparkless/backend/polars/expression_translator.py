@@ -1264,9 +1264,14 @@ class PolarsExpressionTranslator:
             type_str = target_type.strip()
             type_str_lower = type_str.lower()
             # PySpark-style Decimal(precision, scale) - Issue #371
-            decimal_match = re.match(r"decimal\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", type_str_lower)
+            decimal_match = re.match(
+                r"decimal\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", type_str_lower
+            )
             if decimal_match:
-                precision, scale = int(decimal_match.group(1)), int(decimal_match.group(2))
+                precision, scale = (
+                    int(decimal_match.group(1)),
+                    int(decimal_match.group(2)),
+                )
                 target_type = DecimalType(precision, scale)
             else:
                 type_name_map = {
