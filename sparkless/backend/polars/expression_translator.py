@@ -1561,6 +1561,9 @@ class PolarsExpressionTranslator:
                 # monotonically_increasing_id() - generate row numbers
                 # Use int_range to generate sequential IDs
                 return pl.int_range(pl.len())
+            elif function_name == "input_file_name":
+                # input_file_name() - path of file being read (empty string in mock; PySpark returns actual path)
+                return pl.lit("")
 
         # Extract operation for use in comparisons
         operation = op.operation  # Extract operation for use in comparisons
@@ -4229,6 +4232,7 @@ class PolarsExpressionTranslator:
             "json_object_keys": lambda e: e,  # Will be handled in operation-specific code
             "xpath_number": lambda e: e,  # Will be handled in operation-specific code
             "user": lambda e: pl.lit(""),  # Will be handled in operation-specific code
+            "input_file_name": lambda e: pl.lit(""),  # Path of file being read; empty in mock
             "format_string": lambda e: e,  # Will be handled in operation-specific code
             # New math functions (PySpark 3.5+)
             "getbit": lambda e: e,  # Will be handled in operation-specific code
