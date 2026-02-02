@@ -1783,6 +1783,15 @@ class PolarsExpressionTranslator:
         # This must be before the "if op.value is not None:" check because
         # array() can have op.value=None for single-column arrays
         if operation == "array":
+            # F.array() and F.array([]) return empty array [] (Issue #367)
+            col_name = (
+                getattr(op.column, "name", None) if op.column is not None else None
+            )
+            if col_name == "__array_empty_base__" and (
+                op.value is None or op.value == ()
+            ):
+                return pl.lit([])
+
             # array(*cols) - create array containing values from each column as elements
             # array("Name", "Type") creates [Name_value, Type_value] for each row
             # Supports: F.array("Name", "Type"), F.array(["Name", "Type"]),

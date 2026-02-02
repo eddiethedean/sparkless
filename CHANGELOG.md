@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.28.5 — 2026-02-02
+
+### Fixed
+- **Issue #367** - `F.array()` and `F.array([])` now return empty array `[]` (PySpark parity)
+  - When no arguments or single empty list is passed, return empty-array ColumnOperation
+  - Polars translator and column validator/transformation_service treat `__array_empty_base__` placeholder
+  - Fixes `ValueError: array requires at least one column` for `F.array()` and `F.array([])`
+- **Issue #367 (PySpark parity)** - `F.array(())` now raises `ValueError` to match PySpark (PySpark rejects empty tuple; use `F.array()` or `F.array([])` for an empty array)
+
+### Added
+- **Issue #367 tests** - `tests/test_issue_367_array_empty.py` with 13 tests
+  - F.array() and F.array([]), show(), in select, equivalent, after filter, in union; F.array(()) raises; multiple empty arrays, different data types, computed columns, join
+
 ## 3.28.4 — 2026-02-02
 
 ### Fixed

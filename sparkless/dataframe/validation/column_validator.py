@@ -370,6 +370,7 @@ class ColumnValidator:
                         "__struct_dummy__",
                         "__create_map_base__",
                         "__create_map_dummy__",
+                        "__array_empty_base__",
                     ):
                         return
 
