@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.28.7 — 2026-02-02
+
+### Fixed
+- **Issue #370** - `df.filter("Values in ('20')")` and `df.filter("Values in (20)")` no longer raise `ParseException: Invalid identifier or literal: Values in ('20')`
+  - SQL expression parser (F.expr) now parses `col IN (literal, ...)` and `col IN (literal list)` and builds the corresponding ColumnOperation(operation="isin", ...)
+  - Expression translator: isin coercion accepts String/Utf8 dtype by name for schema dtypes; fallback when value is numeric list and column type unknown (assume string column)
+
+### Added
+- **Issue #370 tests** - `tests/test_issue_370_filter_in_string.py` with 5 tests
+  - filter("Values in ('20')"), filter("Values in (20)") [skip when coercion not available], show(), equality sanity, multiple literals
+
 ## 3.28.6 — 2026-02-02
 
 ### Fixed

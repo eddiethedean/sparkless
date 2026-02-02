@@ -467,17 +467,27 @@ class PolarsExpressionTranslator:
         # Special handling for isin - value is a list, don't translate it
         # Need to handle type coercion for mixed types (e.g., checking int values in string column)
         if operation == "isin":
-            # Get the column's dtype if available (from input_col_dtype or by checking the DataFrame)
-            # Coerce values to match the column type
+            # Get the column's dtype; fallback: numeric list/value -> assume string column (Issue #370, PySpark coercion)
+            isin_col_dtype = input_col_dtype
+            if isin_col_dtype is None and (
+                (
+                    isinstance(value, list)
+                    and value
+                    and all(isinstance(v, (int, float)) for v in value)
+                )
+                or isinstance(value, (int, float))
+            ):
+                isin_col_dtype = pl.Utf8
             if isinstance(value, list):
                 # Try to infer the column type from input_col_dtype or default to original values
                 coerced_values = value
-                if input_col_dtype is not None:
-                    # Coerce values to match column type
-                    if input_col_dtype == pl.Utf8:
+                if isin_col_dtype is not None:
+                    # Coerce values to match column type (accept Utf8/String for schema dtypes)
+                    dtype_str = str(getattr(isin_col_dtype, "name", isin_col_dtype))
+                    if isin_col_dtype == pl.Utf8 or dtype_str in ("String", "Utf8"):
                         # String column - convert all values to strings
                         coerced_values = [str(v) for v in value]
-                    elif input_col_dtype in (pl.Int64, pl.Int32, pl.Int16, pl.Int8):
+                    elif isin_col_dtype in (pl.Int64, pl.Int32, pl.Int16, pl.Int8):
                         # Integer column - try to convert string values to int
                         coerced_values = []
                         for v in value:
@@ -492,7 +502,7 @@ class PolarsExpressionTranslator:
                                     )  # Keep original if conversion fails
                             else:
                                 coerced_values.append(v)
-                    elif input_col_dtype in (pl.Float64, pl.Float32):
+                    elif isin_col_dtype in (pl.Float64, pl.Float32):
                         # Float column - try to convert string values to float
                         coerced_values = []
                         for v in value:
@@ -508,7 +518,14 @@ class PolarsExpressionTranslator:
                 return left.is_in(coerced_values)
             else:
                 coerced_value = value
-                if input_col_dtype is not None and input_col_dtype == pl.Utf8:
+                dtype_str = (
+                    str(getattr(isin_col_dtype, "name", isin_col_dtype))
+                    if isin_col_dtype is not None
+                    else ""
+                )
+                if isin_col_dtype is not None and (
+                    isin_col_dtype == pl.Utf8 or dtype_str in ("String", "Utf8")
+                ):
                     # String column - convert value to string
                     coerced_value = str(value)
                 return left.is_in([coerced_value])

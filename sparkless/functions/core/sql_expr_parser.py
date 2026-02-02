@@ -270,6 +270,28 @@ class SQLExprParser:
                 right = SQLExprParser._parse_expression(parts[1].strip())
                 return ColumnOperation(left, op, right)
 
+        # Parse IN (literal list): "col IN ('a', 'b')", "col IN (1, 2)" (Issue #370)
+        in_match = re.search(r"\s+IN\s*\(", expr, re.IGNORECASE)
+        if in_match:
+            left_str = expr[: in_match.start()].strip()
+            open_paren = in_match.end() - 1  # position of '('
+            depth = 1
+            i = in_match.end()
+            while i < len(expr) and depth > 0:
+                if expr[i] == "(":
+                    depth += 1
+                elif expr[i] == ")":
+                    depth -= 1
+                i += 1
+            if depth == 0:
+                in_list_str = expr[open_paren + 1 : i - 1].strip()
+                left_expr = SQLExprParser._parse_expression(left_str)
+                values = SQLExprParser._parse_function_args(in_list_str)
+                if hasattr(left_expr, "isin"):
+                    return left_expr.isin(values)
+                # If left is not a Column (e.g. literal), wrap as ColumnOperation isin
+                return ColumnOperation(left_expr, "isin", values)
+
         # Parse function calls: LENGTH(name), TRIM(name), pi(), e(), etc.
         # Allow empty arguments for functions like pi() and e()
         func_match = re.match(r"^(\w+)\s*\((.*)\)$", expr, re.IGNORECASE)
