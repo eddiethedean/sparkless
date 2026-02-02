@@ -356,7 +356,7 @@ class TestIssue261Between:
         finally:
             spark.stop()
 
-    @pytest.mark.skipif(  # type: ignore[misc]
+    @pytest.mark.skipif(  # type: ignore[misc,untyped-decorator]
         not _is_pyspark_mode(),
         reason="PySpark parity test - only run with PySpark backend",
     )

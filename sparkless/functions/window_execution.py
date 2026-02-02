@@ -683,7 +683,7 @@ class WindowFunction:
                     current_values = None
 
                 if previous_values is not None:  # noqa: SIM102
-                    if current_values != previous_values:  # type: ignore[unreachable]
+                    if current_values != previous_values:  # type: ignore[unreachable,unused-ignore]
                         current_rank += 1
 
                 results[idx] = current_rank

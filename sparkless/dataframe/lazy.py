@@ -1942,7 +1942,7 @@ class LazyEvaluationEngine:
                             )
                         for f in other_df.schema.fields:
                             if f is None:
-                                continue  # type: ignore[unreachable]
+                                continue  # type: ignore[unreachable,unused-ignore]
                             name = f"{right_alias}_{f.name}" if right_alias else f.name
                             if not any(m.name == name for m in merged_fields):
                                 merged_fields.append(

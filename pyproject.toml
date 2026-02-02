@@ -132,7 +132,7 @@ check_untyped_defs = true
 disallow_untyped_decorators = true
 no_implicit_optional = true
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false  # allow [misc,untyped-decorator] on pytest decorators (3.9 needs misc, 3.11 reports misc unused)
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
@@ -152,6 +152,7 @@ ignore_missing_imports = true
 module = [
     "sparkless.testing.*",
     "tests.*",
+    "tests.documentation.*",
     "tests.fixtures.*",
     "tests.tools.*",
     "tests.unit.*",
@@ -164,6 +165,17 @@ module = [
     "tests.documentation.test_examples",
 ]
 # Allow unused type: ignore for tomllib import (needed for Python 3.11, unused for 3.9)
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.test_issue_259_datetime_string_comparison",
+    "tests.unit.session.test_sql_update",
+    "tests.unit.session.test_sql_create_table_as_select",
+    "tests.test_issue_261_between",
+    "tests.test_issue_260_eq_null_safe",
+]
+# Pytest decorators: 3.9 needs [misc], 3.11 reports [misc] unused
 warn_unused_ignores = false
 
 [[tool.mypy.overrides]]

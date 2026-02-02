@@ -56,7 +56,7 @@ class TestIssue259DatetimeStringComparison:
         finally:
             spark.stop()
 
-    @pytest.mark.parametrize(  # type: ignore[misc]
+    @pytest.mark.parametrize(  # type: ignore[misc,untyped-decorator]
         "op,expected_names",
         [
             (">", {"Alice"}),
