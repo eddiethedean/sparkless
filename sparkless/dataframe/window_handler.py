@@ -511,7 +511,7 @@ class WindowFunctionHandler:
                     current_values.append(value)
 
                 if previous_values is not None:  # noqa: SIM102
-                    if current_values != previous_values:
+                    if current_values != previous_values:  # type: ignore[unreachable]
                         current_rank += 1
 
                 data[idx][col_name] = current_rank

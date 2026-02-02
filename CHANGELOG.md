@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.28.1 — 2026-02-02
+
+### Fixed
+- **Issue #359** - Added `NAHandler.drop()` for `df.na.drop()` (PySpark parity)
+  - `df.na.drop()`, `df.na.drop(subset=["col"])`, `df.na.drop(how="all")`, and `df.na.drop(thresh=n)` now supported
+  - Delegates to `DataFrame.dropna()` with `subset` normalized from str/list/tuple
+  - Fixes `AttributeError: 'NAHandler' object has no attribute 'drop'`
+
+### Added
+- **Issue #359 tests** - `tests/test_issue_359_na_drop.py` with 22 tests (8 core + 14 robust)
+  - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
+  - Covers empty DataFrame, `how`/`thresh`/`subset` edge cases, chaining with filter/select, invalid column raise, schema preservation
+
+### Fixed (mypy)
+- **Tests** - Replaced `# type: ignore[untyped-decorator]` with `# type: ignore[misc]` for pytest decorators in 6 test files (documentation, issue 259/260/261, sql_update, sql_create_table_as_select)
+- **sparkless** - Resolved 7 mypy errors: unreachable-statement suppressions in `window_handler.py`, `window_execution.py`, `lazy.py`, `expression_translator.py` (elt, substring_index); refactored `optimization_rules.py` LIMIT logic to avoid “right operand of or never evaluated”; `operation_executor.py` null-check for `rows_cache` before `window_func.evaluate()`
+
+### Testing
+- All 2,248 tests passing (16 skipped) with `pytest -n 12`
+- Issue #359 tests pass in Sparkless and PySpark mode
+- `mypy sparkless tests` — Success: no issues found in 494 source files
+
 ## 3.28.0 — 2026-02-01
 
 ### Fixed
