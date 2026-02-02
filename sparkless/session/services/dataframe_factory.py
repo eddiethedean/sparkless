@@ -77,6 +77,9 @@ class DataFrameFactory:
             except Exception:
                 pass
 
+        # PySpark preserves Pandas column order; list-of-dicts gets alphabetical order (Issue #372)
+        column_order_from_pandas: Optional[List[str]] = None
+
         # Handle Pandas DataFrame
         # Use duck typing to detect pandas DataFrame (works for both mock and real pandas)
         # Check for to_dict method with orient parameter, which is characteristic of pandas DataFrame
@@ -87,13 +90,16 @@ class DataFrameFactory:
                 if isinstance(test_dict, list) and (
                     not test_dict or isinstance(test_dict[0], dict)
                 ):
-                    # This looks like a pandas DataFrame - convert it
+                    # This looks like a pandas DataFrame - preserve column order (Issue #372)
+                    if hasattr(data, "columns"):
+                        column_order_from_pandas = list(data.columns)
                     data = test_dict
             except (TypeError, ValueError, AttributeError):
                 # Not a pandas DataFrame or doesn't support orient="records"
                 pass
         elif pd is not None and isinstance(data, pd.DataFrame):
-            # Fallback: check against imported pandas (might be mock)
+            # Fallback: check against imported pandas (might be mock); preserve column order
+            column_order_from_pandas = list(data.columns)
             data = data.to_dict(orient="records")
 
         if not isinstance(data, list):
@@ -345,9 +351,12 @@ class DataFrameFactory:
 
                 if isinstance(sample_row, dict):
                     # Use SchemaInferenceEngine for dictionary data
+                    # When data came from Pandas, preserve column order (Issue #372)
                     from sparkless.core.schema_inference import SchemaInferenceEngine
 
-                    schema, data = SchemaInferenceEngine.infer_from_data(data)  # type: ignore[arg-type]
+                    schema, data = SchemaInferenceEngine.infer_from_data(
+                        data, column_order=column_order_from_pandas
+                    )  # type: ignore[arg-type]
                 elif isinstance(sample_row, tuple):
                     # For tuples, we need column names - this should have been handled earlier
                     # If we get here, it's an error

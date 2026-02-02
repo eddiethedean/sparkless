@@ -14,7 +14,7 @@ Key behaviors:
 - Supports sparse data (different keys per row)
 """
 
-from typing import Any, Dict, List, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from ..spark_types import (
     StructType,
@@ -40,6 +40,7 @@ class SchemaInferenceEngine:
     @staticmethod
     def infer_from_data(
         data: List[Dict[str, Any]],
+        column_order: Optional[List[str]] = None,
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
         """
         Infer schema from a list of dictionaries.
@@ -49,17 +50,20 @@ class SchemaInferenceEngine:
         - Infers type from non-null values
         - Raises ValueError if all values for a column are null
         - Raises TypeError if type conflicts exist
-        - Sorts columns alphabetically
+        - Sorts columns alphabetically (or uses column_order when provided, e.g. from Pandas)
         - Sets all fields as nullable=True
         - Fills missing keys with None
 
         Args:
             data: List of dictionaries representing rows
+            column_order: Optional order for columns (e.g. from Pandas DataFrame.columns).
+                         When provided, schema and normalized data use this order; keys
+                         in data not in column_order are appended sorted (Issue #372).
 
         Returns:
             Tuple of (inferred_schema, normalized_data)
             - inferred_schema: StructType with inferred fields
-            - normalized_data: Data with all keys present, alphabetically ordered
+            - normalized_data: Data with all keys present, in key order
 
         Raises:
             ValueError: If any column has all null values
@@ -74,12 +78,16 @@ class SchemaInferenceEngine:
             if isinstance(row, dict):
                 all_keys.update(row.keys())
 
-        # Sort keys alphabetically (PySpark behavior)
-        sorted_keys = sorted(all_keys)
+        # PySpark: list-of-dicts → alphabetical; Pandas DataFrame → preserve column order (Issue #372)
+        if column_order is not None:
+            keys_ordered = [k for k in column_order if k in all_keys]
+            keys_ordered += sorted(all_keys - set(keys_ordered))
+        else:
+            keys_ordered = sorted(all_keys)
 
         # Infer type for each key
         fields = []
-        for key in sorted_keys:
+        for key in keys_ordered:
             # Collect all non-null values for this key
             values_for_key = []
             for row in data:
@@ -111,13 +119,13 @@ class SchemaInferenceEngine:
 
         schema = StructType(fields)
 
-        # Normalize data: fill missing keys with None and reorder alphabetically
+        # Normalize data: fill missing keys with None and reorder by keys_ordered
         normalized_data = []
         for row in data:
             if isinstance(row, dict):
                 # Create row with all keys, using None for missing ones
                 normalized_row = {
-                    key: get_row_value(row, key, None) for key in sorted_keys
+                    key: get_row_value(row, key, None) for key in keys_ordered
                 }
                 normalized_data.append(normalized_row)
             else:

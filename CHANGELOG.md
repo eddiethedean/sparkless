@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.28.9 — 2026-02-02
+
+### Fixed
+- **Issue #372** - Column order when creating DataFrame from Pandas now matches PySpark
+  - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
+
+### Added
+- **Issue #372 tests** - `tests/test_issue_372_pandas_column_order.py` with 3 tests
+  - createDataFrame(pandas_df) preserves order (ZZZ, AAA, PPP); createDataFrame(list_of_dicts) alphabetical; show() displays Pandas order
+
 ## 3.28.8 — 2026-02-02
 
 ### Fixed
