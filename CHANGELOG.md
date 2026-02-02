@@ -9,7 +9,13 @@
   - Related to #356 (create_map() with no args already supported)
 
 ### Added
-- **Issue #365 test** - `test_create_map_empty_list_returns_empty_map` in `tests/unit/test_create_map.py`
+- **Issue #365 tests** - `tests/unit/test_create_map.py`: 1 core + 10 robust tests for `create_map([])` / `create_map(())`
+  - Core: `test_create_map_empty_list_returns_empty_map`
+  - Robust: empty tuple, in select, different data types, after filter, equivalent to `create_map()`, multiple in select, in union, exact issue scenario (show), with computed columns, in join
+
+### Testing
+- All 2,276 tests passing (16 skipped) with `pytest -n 12`
+- `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (496 source files)
 
 ## 3.28.3 — 2026-02-02
 
