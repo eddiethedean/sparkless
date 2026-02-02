@@ -1,6 +1,8 @@
 # Changelog
 
-## 3.28.9 — 2026-02-02
+## 3.28.0 — 2026-02-02
+
+All changes since 3.27.1 are included in this release.
 
 ### Fixed
 - **Issue #372** - Column order when creating DataFrame from Pandas now matches PySpark
@@ -9,20 +11,12 @@
 ### Added
 - **Issue #372 tests** - `tests/test_issue_372_pandas_column_order.py` with 3 tests
   - createDataFrame(pandas_df) preserves order (ZZZ, AAA, PPP); createDataFrame(list_of_dicts) alphabetical; show() displays Pandas order
-
-## 3.28.8 — 2026-02-02
-
-### Fixed
 - **Issue #371** - `F.col("Values").cast("Decimal(10,0)")` no longer raises `ValueError: Unsupported cast type: None`
   - Polars expression translator now parses string cast types `Decimal(X,Y)` / `decimal(X,Y)` (case insensitive) and maps to DecimalType(precision, scale), then to Polars Float64 (Polars has no exact decimal type)
 
 ### Added
 - **Issue #371 tests** - `tests/test_issue_371_cast_decimal.py` with 9 tests (PySpark and mock backends)
   - withColumn + cast("Decimal(10,0)") (exact issue scenario), cast("decimal(10,0)") lowercase; cast in select; Decimal(5,2)/Decimal(38,2); cast after filter; nulls preserved; float to Decimal(10,1); show then collect; Decimal(1,0)
-
-## 3.28.7 — 2026-02-02
-
-### Fixed
 - **Issue #370** - `df.filter("Values in ('20')")` and `df.filter("Values in (20)")` no longer raise `ParseException: Invalid identifier or literal: Values in ('20')`
   - SQL expression parser (F.expr) now parses `col IN (literal, ...)` and `col IN (literal list)` and builds the corresponding ColumnOperation(operation="isin", ...)
   - Expression translator: isin coercion accepts String/Utf8 dtype by name for schema dtypes; fallback when value is numeric list and column type unknown (assume string column)
@@ -30,10 +24,6 @@
 ### Added
 - **Issue #370 tests** - `tests/test_issue_370_filter_in_string.py` with 5 tests
   - filter("Values in ('20')"), filter("Values in (20)") [skip when coercion not available], show(), equality sanity, multiple literals
-
-## 3.28.6 — 2026-02-02
-
-### Fixed
 - **Issue #369** - `~F.col("Values").isin([20, 30])` on a string column no longer raises Polars `InvalidOperationError: 'is_in' cannot check for List(Int64) values in String data`
   - Materializer now passes column dtype for filter conditions that are negation of isin (`~col.isin([...])`) so the inner isin receives it
   - Expression translator passes `input_col_dtype` through when translating nested ColumnOperation so nested isin can coerce the list to the column type (string column → coerce int list to string list)
@@ -42,10 +32,6 @@
 ### Added
 - **Issue #369 tests** - `tests/test_issue_369_isin_negation.py` with 4 tests
   - Negation isin string column + int list (exact scenario), show(), positive isin same types, negation isin string-to-string
-
-## 3.28.5 — 2026-02-02
-
-### Fixed
 - **Issue #367** - `F.array()` and `F.array([])` now return empty array `[]` (PySpark parity)
   - When no arguments or single empty list is passed, return empty-array ColumnOperation
   - Polars translator and column validator/transformation_service treat `__array_empty_base__` placeholder
@@ -55,10 +41,6 @@
 ### Added
 - **Issue #367 tests** - `tests/test_issue_367_array_empty.py` with 13 tests
   - F.array() and F.array([]), show(), in select, equivalent, after filter, in union; F.array(()) raises; multiple empty arrays, different data types, computed columns, join
-
-## 3.28.4 — 2026-02-02
-
-### Fixed
 - **Issue #365** - `F.create_map([])` now returns empty map `{}` (PySpark parity)
   - When a single argument is an empty list or tuple, treat as empty map
   - Fixes `ValueError: create_map requires an even number of arguments (key-value pairs)` for `F.create_map([])`
@@ -68,14 +50,6 @@
 - **Issue #365 tests** - `tests/unit/test_create_map.py`: 1 core + 10 robust tests for `create_map([])` / `create_map(())`
   - Core: `test_create_map_empty_list_returns_empty_map`
   - Robust: empty tuple, in select, different data types, after filter, equivalent to `create_map()`, multiple in select, in union, exact issue scenario (show), with computed columns, in join
-
-### Testing
-- All 2,276 tests passing (16 skipped) with `pytest -n 12`
-- `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (496 source files)
-
-## 3.28.3 — 2026-02-02
-
-### Fixed
 - **Issue #361** - `createDataFrame(df.rdd, schema=...)` now supported
   - RDD-like objects (e.g. `df.rdd`) are detected via duck typing (`hasattr(data, "collect")` and callable)
   - Data is collected via `data.collect()` and passed through as a list of rows
@@ -86,15 +60,6 @@
 - **Issue #361 tests** - `tests/test_issue_361_createDataFrame_rdd.py` with 5 tests
   - Exact issue scenario, show() output, empty DataFrame (backend-appropriate StructType), single row, schema order preservation
   - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
-
-### Testing
-- All 2,265 tests passing (16 skipped) with `pytest -n 12`
-- Issue #361 tests pass in Sparkless and PySpark mode
-- `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (496 source files)
-
-## 3.28.2 — 2026-02-02
-
-### Fixed
 - **Issue #360** - Added Polars support for `F.input_file_name()`
   - Handle `input_file_name` in no-column block and function_map in expression translator
   - Returns empty string in mock (PySpark returns actual file path when reading from file)
@@ -104,40 +69,11 @@
 - **Issue #360 tests** - `tests/test_issue_360_input_file_name.py` with 12 tests (3 core + 9 robust)
   - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
   - Covers withColumn, select, empty DataFrame, filter/select chaining, schema preservation, alias
-
-### Fixed (mypy & ruff)
-- **Mypy** - Test decorator `# type: ignore[misc]` (6 test files); unreachable/arg-type fixes in window_handler, window_execution, lazy, expression_translator, optimization_rules, operation_executor
-- **Ruff** - Removed unused `pytest` import (test_issue_360); `# noqa: SIM114` in optimization_rules to keep split branches for mypy
-
-### Testing
-- All 2,238 tests passing (16 skipped) with `pytest -n 10`
-- Issue #360 tests pass in Sparkless and PySpark mode
-
-## 3.28.1 — 2026-02-02
-
-### Fixed
+- **Mypy & Ruff** - Test decorator `# type: ignore[misc,untyped-decorator]` (6 test files); unreachable/unused-ignore fixes in window_handler, window_execution, lazy, expression_translator, optimization_rules; ruff TC006: quote type in `cast()`; `warn_unused_ignores = false` in pyproject.toml and mypy.ini for Python 3.9/3.11 compatibility
 - **Issue #359** - Added `NAHandler.drop()` for `df.na.drop()` (PySpark parity)
   - `df.na.drop()`, `df.na.drop(subset=["col"])`, `df.na.drop(how="all")`, and `df.na.drop(thresh=n)` now supported
   - Delegates to `DataFrame.dropna()` with `subset` normalized from str/list/tuple
   - Fixes `AttributeError: 'NAHandler' object has no attribute 'drop'`
-
-### Added
-- **Issue #359 tests** - `tests/test_issue_359_na_drop.py` with 22 tests (8 core + 14 robust)
-  - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
-  - Covers empty DataFrame, `how`/`thresh`/`subset` edge cases, chaining with filter/select, invalid column raise, schema preservation
-
-### Fixed (mypy)
-- **Tests** - Replaced `# type: ignore[untyped-decorator]` with `# type: ignore[misc]` for pytest decorators in 6 test files (documentation, issue 259/260/261, sql_update, sql_create_table_as_select)
-- **sparkless** - Resolved 7 mypy errors: unreachable-statement suppressions in `window_handler.py`, `window_execution.py`, `lazy.py`, `expression_translator.py` (elt, substring_index); refactored `optimization_rules.py` LIMIT logic to avoid “right operand of or never evaluated”; `operation_executor.py` null-check for `rows_cache` before `window_func.evaluate()`
-
-### Testing
-- All 2,248 tests passing (16 skipped) with `pytest -n 12`
-- Issue #359 tests pass in Sparkless and PySpark mode
-- `mypy sparkless tests` — Success: no issues found in 494 source files
-
-## 3.28.0 — 2026-02-01
-
-### Fixed
 - **Issue #368** - Exposed `F.DataFrame` for `reduce(F.DataFrame.union, dfs)` and similar patterns
 - **Issue #358** - Added `Column.getField()` for array index and struct field access (PySpark parity)
 - **Issue #366** - `Column.alias()` now accepts a single name only (PySpark parity); posexplode first column gets the alias, second column is `"col"`
@@ -146,8 +82,15 @@
 - **Issue #354** - CTE with JOIN: table-prefixed columns in SELECT (e.g. `e.name`, `d.dept_name`) now resolve correctly for basic two-table JOINs
 - **ImportError** - Fixed relative import beyond top-level package in `condition_handler.py` and `window_handler.py` (use `..spark_types` from dataframe root)
 - **NameError** - Replaced incorrect `new_get_row_value` with `get_row_value` in misc operations and services
-- **Ruff** - Resolved undefined names and unused variables: `get_row_value(max_row/min_row)` in grouped base, `get_row_value(left_row/right_row)` in lazy joins, `get_row_value(prev_row)` in window handler, `get_row_value(target_row/source_row)` in delta merge
+- **Ruff** - Resolved undefined names and unused variables: `get_row_value(max_row/min_row)` in grouped base, `get_row_value(left_row/right_row)` in lazy joins, `get_row_value(prev_row)` in window handler, `get_row_value(target_row/source_row)` in delta merge; removed unused `pytest` import (test_issue_360); `# noqa: SIM114` in optimization_rules
 - **Mypy** - Removed unused `type: ignore` comments and redundant casts in functions base, dataframe grouped base, and SQL executor
+
+### Added
+- **Issue #359 tests** - `tests/test_issue_359_na_drop.py` with 22 tests (8 core + 14 robust)
+  - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
+  - Covers empty DataFrame, `how`/`thresh`/`subset` edge cases, chaining with filter/select, invalid column raise, schema preservation
+
+
 
 ### Changed
 - **PySpark parity** - Removed Sparkless-only APIs to match PySpark behavior:
@@ -160,7 +103,8 @@
 - Follow-up issues for unfixed edge cases: #376 (multi-JOIN SELECT), #377 (GROUP BY with table prefix), #378 (round string with whitespace), #379 (join SELECT with table prefix), #380 (join compound condition row count), #381 (SQL WHERE on join), #382 (self-join row count)
 
 ### Testing
-- All 2,215 tests passing (19 skipped) with `pytest -n 10`
+- All tests passing with `pytest -n 12` (2314+ passed, 20 skipped)
+- `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (501 source files, Python 3.9 and 3.11)
 - New issue tests verified in PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
 
 ## 3.27.1 — 2026-01-26
