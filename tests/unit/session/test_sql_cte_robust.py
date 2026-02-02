@@ -65,9 +65,7 @@ def test_cte_with_join(spark) -> None:
 
 
 def test_cte_with_multiple_joins(spark) -> None:
-    """Test CTE with multiple JOINs and complex column references."""
-    import pytest
-
+    """Test CTE with multiple JOINs and complex column references (issue #376)."""
     try:
         employees = spark.createDataFrame(
             [(1, "Alice", 10, 100), (2, "Bob", 20, 200)],
@@ -87,10 +85,27 @@ def test_cte_with_multiple_joins(spark) -> None:
         )
         projects.write.mode("overwrite").saveAsTable("projects")
 
-        # Multiple JOINs with table-prefixed columns requires advanced SQL parsing
-        pytest.skip(
-            "Multiple JOINs with table-prefixed columns requires advanced SQL parsing"
+        result = spark.sql(
+            """
+            SELECT e.name, d.dept_name, p.project_name
+            FROM employees e
+            JOIN departments d ON e.dept_id = d.id
+            JOIN projects p ON e.project_id = p.id
+            """
         )
+
+        rows = result.collect()
+        assert len(rows) == 2
+
+        def _val(r, *keys):
+            for k in keys:
+                if k in result.columns:
+                    return r[k]
+            return None
+
+        alice = [r for r in rows if _val(r, "e_name", "name") == "Alice"][0]
+        assert _val(alice, "d_dept_name", "dept_name") == "Engineering"
+        assert _val(alice, "p_project_name", "project_name") == "ProjectA"
     finally:
         spark.sql("DROP TABLE IF EXISTS employees")
         spark.sql("DROP TABLE IF EXISTS departments")
@@ -178,9 +193,7 @@ def test_cte_with_where_clause(spark) -> None:
 
 
 def test_cte_with_aggregation_after_join(spark) -> None:
-    """Test CTE with JOIN followed by GROUP BY."""
-    import pytest
-
+    """Test CTE with JOIN followed by GROUP BY (issue #377)."""
     try:
         employees = spark.createDataFrame(
             [(1, "Alice", 10), (2, "Bob", 20), (3, "Carol", 10), (4, "Dave", 20)],
@@ -194,11 +207,29 @@ def test_cte_with_aggregation_after_join(spark) -> None:
         )
         departments.write.mode("overwrite").saveAsTable("departments")
 
-        # GROUP BY with aliased table prefix (d.dept_name) may not resolve correctly
-        # Skip this test as it tests complex SQL semantics
-        pytest.skip(
-            "GROUP BY with table-prefixed columns requires advanced SQL parsing"
+        result = spark.sql(
+            """
+            SELECT d.dept_name, COUNT(*) as emp_count
+            FROM employees e
+            JOIN departments d ON e.dept_id = d.id
+            GROUP BY d.dept_name
+            """
         )
+
+        rows = result.collect()
+        assert len(rows) == 2
+
+        def _val(r, *keys):
+            for k in keys:
+                if k in result.columns:
+                    return r[k]
+            return None
+
+        counts = {
+            _val(r, "d_dept_name", "dept_name"): _val(r, "emp_count") for r in rows
+        }
+        assert counts["Engineering"] == 2
+        assert counts["Sales"] == 2
     finally:
         spark.sql("DROP TABLE IF EXISTS employees")
         spark.sql("DROP TABLE IF EXISTS departments")

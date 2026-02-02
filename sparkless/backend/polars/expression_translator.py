@@ -308,10 +308,14 @@ class PolarsExpressionTranslator:
             col_name = col.name
 
         # Handle nested struct field access (e.g., "Person.name")
+        # Or right-alias.column after join (e.g. "c.name" -> _right_name) (#374, #380)
         if "." in col_name and available_columns:
-            # Split into struct column and field name
             parts = col_name.split(".", 1)
             struct_col = parts[0]
+            field_name = parts[1]
+            right_prefixed = f"_right_{field_name}"
+            if right_prefixed in available_columns:
+                return pl.col(right_prefixed)
 
             # Resolve struct column name case-insensitively
             actual_struct_col = self._find_column(
@@ -2535,9 +2539,28 @@ class PolarsExpressionTranslator:
                 return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "round":
                 # round(col, decimals)
-                # PySpark implicitly casts string columns to numeric; cast to Float64 first
+                # PySpark implicitly casts string columns to numeric; strip whitespace first
+                # (Polars does not strip when casting string to float - issue #378)
                 decimals = op.value if isinstance(op.value, int) else 0
-                numeric_expr = col_expr.cast(pl.Float64)
+                if input_col_dtype == pl.Utf8:
+                    numeric_expr = col_expr.str.strip_chars().cast(pl.Float64)
+                else:
+                    # When dtype unknown, use map_elements so string columns with
+                    # whitespace are stripped before cast (issue #378)
+                    def _round_strip_cast(x: object) -> Optional[float]:
+                        if x is None:
+                            return None
+                        s = str(x).strip()
+                        if not s:
+                            return None
+                        try:
+                            return float(s)
+                        except (ValueError, TypeError):
+                            return None
+
+                    numeric_expr = col_expr.map_elements(
+                        _round_strip_cast, return_dtype=pl.Float64
+                    )
                 if decimals < 0:
                     # Negative decimals: round to nearest 10^|decimals|
                     # e.g., round(12345, -3) = round(12345/1000) * 1000 = 12000

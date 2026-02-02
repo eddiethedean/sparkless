@@ -1811,129 +1811,143 @@ class LazyEvaluationEngine:
                     current = cast("DataFrame", grouped)
                 elif op_name == "join":
                     other_df, on, how = op_val
-                    # Manual join implementation
+                    # Manual join implementation (issues #382, #380: alias prefixing, compound condition)
                     from ..core.condition_evaluator import ConditionEvaluator
 
                     # Materialize other DataFrame if needed
                     if other_df._operations_queue:
                         other_df = other_df._materialize_if_lazy()
 
-                    # Handle join condition
-                    # Extract column names from ColumnOperation if it's a == comparison
-                    join_conditions = []
-                    if hasattr(on, "operation") and on.operation == "==":
-                        # Extract column names from == comparison
-                        # Handle case where left and right columns have different names
+                    left_alias = getattr(current, "_alias", None)
+                    right_alias = getattr(other_df, "_alias", None)
+
+                    # Handle join condition: simple == vs compound (e.g. &)
+                    join_conditions: List[Tuple[str, str]] = []
+                    use_compound_condition = False
+                    if hasattr(on, "operation") and on.operation == "&":
+                        use_compound_condition = True
+                    elif hasattr(on, "operation") and on.operation == "==":
                         left_col = (
                             on.column.name
                             if hasattr(on.column, "name")
                             else str(on.column)
                         )
-                        # Check if the value is a Column (different column names)
                         if hasattr(on, "value") and hasattr(on.value, "name"):
-                            # Different column names: left_col == right_col
                             right_col = on.value.name
-                            join_conditions.append((left_col, right_col))
                         else:
-                            # Same column name in both DataFrames
-                            join_conditions.append((left_col, left_col))
+                            right_col = left_col
+                        left_key = (
+                            f"{left_alias}_{left_col}" if left_alias else left_col
+                        )
+                        right_key = (
+                            f"{right_alias}_{right_col}" if right_alias else right_col
+                        )
+                        join_conditions.append((left_key, right_key))
                     elif isinstance(on, str):
-                        # Single column name (same in both DataFrames)
-                        join_conditions.append((on, on))
+                        key = f"{left_alias}_{on}" if left_alias else on
+                        rkey = f"{right_alias}_{on}" if right_alias else on
+                        join_conditions.append((key, rkey))
                     elif isinstance(on, (list, tuple)):
-                        # List of column names (same in both DataFrames)
                         for col in on:
-                            join_conditions.append((col, col))
+                            key = f"{left_alias}_{col}" if left_alias else col
+                            rkey = f"{right_alias}_{col}" if right_alias else col
+                            join_conditions.append((key, rkey))
                     else:
-                        # Try to extract column name(s) from the object
                         col_name = on.name if hasattr(on, "name") else str(on)
-                        join_conditions.append((col_name, col_name))
+                        key = f"{left_alias}_{col_name}" if left_alias else col_name
+                        rkey = f"{right_alias}_{col_name}" if right_alias else col_name
+                        join_conditions.append((key, rkey))
+
+                    def _prefix_row(
+                        row: Dict[str, Any],
+                        alias: Optional[str],
+                    ) -> Dict[str, Any]:
+                        if not alias:
+                            return dict(row)
+                        return {f"{alias}_{k}": v for k, v in row.items()}
 
                     # Perform the join
                     joined_data = []
                     for left_row in current.data:
                         matched = False
+                        left_row_p = _prefix_row(left_row, left_alias)
                         for right_row in other_df.data:
-                            # Check if join condition is met
-                            join_match = True
-                            for left_col, right_col in join_conditions:
-                                if get_row_value(left_row, left_col) != get_row_value(
-                                    right_row, right_col
-                                ):
-                                    join_match = False
-                                    break
+                            right_row_p = _prefix_row(right_row, right_alias)
+                            if use_compound_condition:
+                                combined = {**left_row_p, **right_row_p}
+                                join_match = (
+                                    ConditionEvaluator.evaluate_condition(combined, on)
+                                    is True
+                                )
+                            else:
+                                join_match = True
+                                for lk, rk in join_conditions:
+                                    if get_row_value(left_row_p, lk) != get_row_value(
+                                        right_row_p, rk
+                                    ):
+                                        join_match = False
+                                        break
 
                             if join_match:
                                 matched = True
-                                # For semi/anti joins, only use left row (no right columns)
                                 if how.lower() in [
                                     "semi",
                                     "left_semi",
                                     "anti",
                                     "left_anti",
                                 ]:
-                                    joined_row = left_row.copy()
-                                    joined_data.append(joined_row)
+                                    joined_data.append(dict(left_row_p))
                                 else:
-                                    # For other joins, combine rows
-                                    joined_row = left_row.copy()
-                                    for key, value in right_row.items():
-                                        # Avoid duplicate column names (Polars deduplicates)
-                                        if key not in joined_row:
-                                            joined_row[key] = value
-                                        # Skip duplicates - Polars automatically deduplicates
-                                    joined_data.append(joined_row)
-
-                                # For inner join, only add matching rows
+                                    joined_data.append({**left_row_p, **right_row_p})
                                 if how.lower() in ["inner", "inner_join"]:
                                     break
 
-                        # For left/outer joins, if no match found, add left row with null values for right columns
                         if not matched and how.lower() in [
                             "left",
                             "outer",
                             "full",
                             "full_outer",
                         ]:
-                            joined_row = left_row.copy()
-                            # Add null values for right DataFrame columns that don't exist in left
-                            existing_left_cols = set(left_row.keys())
-                            for field in other_df.schema.fields:
-                                if (
-                                    field is not None
-                                    and field.name not in existing_left_cols
-                                ):
-                                    joined_row[field.name] = None
-                            joined_data.append(joined_row)
+                            right_null = {
+                                (
+                                    f"{right_alias}_{f.name}" if right_alias else f.name
+                                ): None
+                                for f in other_df.schema.fields
+                                if f is not None
+                            }
+                            joined_data.append({**left_row_p, **right_null})
 
-                    # Create new schema combining both schemas
-                    # For semi/anti joins, only use left DataFrame schema
+                    # Schema: prefix field names when alias is set (#382)
                     if how.lower() in ["semi", "left_semi", "anti", "left_anti"]:
                         new_schema = current.schema
-                        # For semi/anti joins, remove duplicates from joined_data
-                        # by keeping only left columns
                         left_col_names = {f.name for f in current.schema.fields}
+                        if left_alias:
+                            left_col_names = {
+                                f"{left_alias}_{n}" for n in left_col_names
+                            }
                         joined_data = [
                             {k: v for k, v in row.items() if k in left_col_names}
                             for row in joined_data
                         ]
                     else:
-                        # Explicitly import StructField and StructType to avoid UnboundLocalError
                         from ..spark_types import StructField, StructType
 
-                        merged_fields: List[StructField] = [
-                            existing_field
-                            for existing_field in current.schema.fields
-                            if existing_field is not None
-                        ]
-                        for field in other_df.schema.fields:
-                            if field is None:
+                        merged_fields = []
+                        for f in current.schema.fields:
+                            if f is None:
+                                continue  # type: ignore[unreachable]
+                            name = f"{left_alias}_{f.name}" if left_alias else f.name
+                            merged_fields.append(
+                                StructField(name, f.dataType, f.nullable)
+                            )
+                        for f in other_df.schema.fields:
+                            if f is None:
                                 continue
-                            # Avoid duplicate field names (Polars deduplicates automatically)
-                            # So we should match that behavior in schema
-                            if not any(f.name == field.name for f in merged_fields):
-                                merged_fields.append(field)
-                            # Skip duplicates - Polars deduplicates columns automatically
+                            name = f"{right_alias}_{f.name}" if right_alias else f.name
+                            if not any(m.name == name for m in merged_fields):
+                                merged_fields.append(
+                                    StructField(name, f.dataType, f.nullable)
+                                )
                         new_schema = StructType(merged_fields)
                     current = DataFrame(joined_data, new_schema, current.storage)
                     # Update operations_applied_so_far and schema_at_operation after join

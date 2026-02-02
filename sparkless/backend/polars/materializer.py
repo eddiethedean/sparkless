@@ -510,23 +510,38 @@ class PolarsMaterializer:
                         from sparkless.core.column_resolver import ColumnResolver
 
                         # Validate column exists (for error reporting), but keep original name
-                        # Handle nested struct field access (e.g., "Person.name")
+                        # Handle table-prefixed (e.g. "t1.id") or struct field (e.g. "Person.name")
                         if "." in col:
-                            # Split into struct column and field name
-                            parts = col.split(".", 1)
-                            struct_col = parts[0]
-                            # Validate the struct column exists
-                            resolved_struct_col = ColumnResolver.resolve_column_name(
-                                struct_col, available_cols, case_sensitive
+                            # Try full string first - ColumnResolver maps "t1.id" to "id" or "t1_id"
+                            resolved_full = ColumnResolver.resolve_column_name(
+                                col, available_cols, case_sensitive
                             )
-                            if resolved_struct_col is None:
-                                from ...core.exceptions.operation import (
-                                    SparkColumnNotFoundError,
+                            if resolved_full is not None:
+                                # Table-prefixed column (e.g. t1.id -> id or t1_id)
+                                pass  # apply_select will resolve; skip struct validation
+                            else:
+                                # Struct field access, or right-alias.column after join (_right_X)
+                                parts = col.split(".", 1)
+                                struct_col = parts[0]
+                                field_name = parts[1]
+                                resolved_struct_col = (
+                                    ColumnResolver.resolve_column_name(
+                                        struct_col, available_cols, case_sensitive
+                                    )
                                 )
+                                if resolved_struct_col is None:
+                                    # After join with right prefix, "c.name" -> _right_name (#380)
+                                    right_prefixed = f"_right_{field_name}"
+                                    if right_prefixed in available_cols:
+                                        pass  # valid; apply_select will resolve
+                                    else:
+                                        from ...core.exceptions.operation import (
+                                            SparkColumnNotFoundError,
+                                        )
 
-                                raise SparkColumnNotFoundError(
-                                    struct_col, available_cols
-                                )
+                                        raise SparkColumnNotFoundError(
+                                            struct_col, available_cols
+                                        )
                             # Keep original nested column name for output (apply_select will handle resolution)
                             # Validation is done above, now preserve the original requested name for output
                             # apply_select will resolve and alias correctly
@@ -728,6 +743,9 @@ class PolarsMaterializer:
             elif op_name == "join":
                 # Join operation - need to handle separately
                 other_df, on, how = payload
+                right_alias = getattr(
+                    other_df, "_alias", None
+                )  # For compound join resolution
                 # Materialize other_df if it has lazy operations before converting to Polars
                 # This ensures renamed columns and other operations are applied
                 if not isinstance(other_df, pl.DataFrame):
@@ -868,7 +886,7 @@ class PolarsMaterializer:
                 else:
                     df_collected = lazy_df.collect()
                 result_df = self.operation_executor.apply_join(
-                    df_collected, other_df, on=on, how=how
+                    df_collected, other_df, on=on, how=how, right_alias=right_alias
                 )
                 lazy_df = result_df.lazy()
             elif op_name == "union":

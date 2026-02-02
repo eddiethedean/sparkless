@@ -171,6 +171,7 @@ class SQLExecutor:
 
         # Get table name - handle queries without FROM clause
         from_tables = components.get("from_tables", [])
+        df: DataFrame
         if not from_tables:
             # Query without FROM clause (e.g., SELECT 1 as test_col)
             # Create a single row DataFrame with the literal values
@@ -193,213 +194,161 @@ class SQLExecutor:
             table_aliases = components.get("table_aliases", {})
 
             if joins:
-                # Handle JOIN operation
+                # Handle JOIN(s): loop for multiple tables (#376)
+                from ...core.column_resolver import ColumnResolver
+
                 table_name = from_tables[0]
                 try:
-                    df1_any = self.session.table(table_name)
-                    df1: DataFrame
-                    if not isinstance(df1_any, DataFrame):  # type: ignore[unreachable]
+                    df_any = self.session.table(table_name)
+                    if not isinstance(df_any, DataFrame):  # type: ignore[unreachable]
                         from ...spark_types import StructType
 
                         schema = (
-                            StructType(df1_any.schema.fields)  # type: ignore[arg-type]
-                            if hasattr(df1_any.schema, "fields")
+                            StructType(df_any.schema.fields)  # type: ignore[arg-type]
+                            if hasattr(df_any.schema, "fields")
                             else StructType([])
                         )
-                        # DataFrame is imported at module level
-                        df1 = DataFrame(df1_any.collect(), schema)
+                        df = DataFrame(df_any.collect(), schema)
                     else:
-                        df1 = df1_any  # type: ignore[unreachable]
+                        df = df_any  # type: ignore[unreachable]
 
-                    # Get second table
-                    join_info = joins[0]
-                    table2_name = join_info["table"]
-                    df2_any = self.session.table(table2_name)
-                    df2: DataFrame
-                    if not isinstance(df2_any, DataFrame):  # type: ignore[unreachable]
-                        from ...spark_types import StructType
-
-                        schema = (
-                            StructType(df2_any.schema.fields)  # type: ignore[arg-type]
-                            if hasattr(df2_any.schema, "fields")
-                            else StructType([])
+                    case_sensitive_join = False
+                    if hasattr(self.session, "conf"):
+                        case_sensitive_join = (
+                            self.session.conf.get("spark.sql.caseSensitive", "false")
+                            == "true"
                         )
-                        df2 = DataFrame(df2_any.collect(), schema)
-                    else:
-                        df2 = df2_any  # type: ignore[unreachable]
+                    table1_alias = table_aliases.get(table_name, table_name)
 
-                    # Parse join condition (e.g., "e.dept_id = d.id")
-                    join_condition = join_info.get("condition", "")
-                    if join_condition:
-                        # Extract column names from join condition
-                        # Pattern: alias1.col1 = alias2.col2
-                        match = re.search(
-                            r"(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", join_condition
+                    for idx, join_info in enumerate(joins):
+                        table2_name = join_info["table"]
+                        # Use alias from JOIN clause (join_info["alias"]) - critical for self-join
+                        table2_alias = join_info.get(
+                            "alias", table_aliases.get(table2_name, table2_name)
                         )
-                        if match:
-                            alias1, col1, alias2, col2 = match.groups()
-                            # Determine which table each alias refers to
-                            # table_aliases maps table_name -> alias
-                            table1_alias = table_aliases.get(table_name, table_name)
-                            table2_alias = table_aliases.get(table2_name, table2_name)
+                        df2_any = self.session.table(table2_name)
+                        df2: DataFrame
+                        if not isinstance(df2_any, DataFrame):  # type: ignore[unreachable]
+                            from ...spark_types import StructType
 
-                            # Map each alias to its corresponding DataFrame and column
-                            df1_col = None
-                            df2_col = None
+                            schema = (
+                                StructType(df2_any.schema.fields)  # type: ignore[arg-type]
+                                if hasattr(df2_any.schema, "fields")
+                                else StructType([])
+                            )
+                            df2 = DataFrame(df2_any.collect(), schema)
+                        else:
+                            df2 = df2_any  # type: ignore[unreachable]
 
-                            # Check if alias1 refers to table1 (df1)
-                            if alias1 in (table1_alias, table_name):
-                                df1_col = col1
-                            # Check if alias1 refers to table2 (df2)
-                            elif alias1 in (table2_alias, table2_name):
-                                df2_col = col1
-
-                            # Check if alias2 refers to table1 (df1)
-                            if alias2 in (table1_alias, table_name):
-                                df1_col = col2
-                            # Check if alias2 refers to table2 (df2)
-                            elif alias2 in (table2_alias, table2_name):
-                                df2_col = col2
-
-                            if df1_col and df2_col:
-                                # Rename columns to avoid conflicts (prefix with table alias)
-                                # This allows us to distinguish e.name from d.name after the join
-                                df1_renamed = df1
-                                df2_renamed = df2
-
-                                # Rename all columns in df1 with table1 alias prefix
-                                for col in df1.columns:
-                                    df1_renamed = cast(
-                                        "DataFrame",
-                                        df1_renamed.withColumnRenamed(
-                                            col, f"{table1_alias}_{col}"
-                                        ),
-                                    )
-
-                                # Rename all columns in df2 with table2 alias prefix
-                                for col in df2.columns:
-                                    df2_renamed = cast(
-                                        "DataFrame",
-                                        df2_renamed.withColumnRenamed(
-                                            col, f"{table2_alias}_{col}"
-                                        ),
-                                    )
-
-                                # Join column references use the renamed columns
-                                df1_join_col = f"{table1_alias}_{df1_col}"
-                                df2_join_col = f"{table2_alias}_{df2_col}"
-
-                                # Perform join with renamed columns
-                                # Get join type from join_info (default to "inner" if not specified)
-                                join_type = join_info.get("type", "inner")
-
-                                # Materialize the renamed DataFrames to ensure columns exist
-                                # before joining (renames are lazy operations)
-                                df1_renamed = cast(
-                                    "DataFrame", df1_renamed._materialize_if_lazy()
+                        # First join: prefix left (df) with table1_alias; every join: prefix right with table2_alias
+                        df_renamed = df
+                        if idx == 0:
+                            for c in df.columns:
+                                df_renamed = cast(
+                                    "DataFrame",
+                                    df_renamed.withColumnRenamed(
+                                        c, f"{table1_alias}_{c}"
+                                    ),
                                 )
-                                df2_renamed = cast(
-                                    "DataFrame", df2_renamed._materialize_if_lazy()
-                                )
+                        df2_renamed = df2
+                        for c in df2.columns:
+                            df2_renamed = cast(
+                                "DataFrame",
+                                df2_renamed.withColumnRenamed(c, f"{table2_alias}_{c}"),
+                            )
+                        df_renamed = cast(
+                            "DataFrame", df_renamed._materialize_if_lazy()
+                        )
+                        df2_renamed = cast(
+                            "DataFrame", df2_renamed._materialize_if_lazy()
+                        )
 
-                                # Verify the join columns exist in the renamed DataFrames
-                                if df1_join_col not in df1_renamed.columns:
+                        join_condition = join_info.get("condition", "")
+                        if join_condition:
+                            match = re.search(
+                                r"(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)",
+                                join_condition,
+                            )
+                            if match:
+                                alias1, col1, alias2, col2 = match.groups()
+                                left_key = f"{alias1}.{col1}"
+                                df1_join_col = ColumnResolver.resolve_column_name(
+                                    left_key,
+                                    df_renamed.columns,
+                                    case_sensitive_join,
+                                )
+                                if df1_join_col is None:
+                                    df1_join_col = f"{alias1}_{col1}"
+                                df2_join_col = f"{table2_alias}_{col2}"
+                                if df1_join_col not in df_renamed.columns:
                                     raise ValueError(
-                                        f"Join column '{df1_join_col}' not found in left DataFrame. "
-                                        f"Available columns: {df1_renamed.columns}"
+                                        f"Join column '{df1_join_col}' not in left. "
+                                        f"Available: {df_renamed.columns}"
                                     )
                                 if df2_join_col not in df2_renamed.columns:
                                     raise ValueError(
-                                        f"Join column '{df2_join_col}' not found in right DataFrame. "
-                                        f"Available columns: {df2_renamed.columns}"
+                                        f"Join column '{df2_join_col}' not in right. "
+                                        f"Available: {df2_renamed.columns}"
                                     )
-
-                                # Create join condition using ColumnOperation
-                                # We must use ColumnOperation for different column names on left/right
                                 join_col = (
-                                    df1_renamed[df1_join_col]
+                                    df_renamed[df1_join_col]
                                     == df2_renamed[df2_join_col]
                                 )
-                                # join_col is a ColumnOperation (boolean expression)
-
-                                # The column names in the ColumnOperation should match the
-                                # renamed columns in the materialized DataFrames
+                                join_type = join_info.get("type", "inner")
                                 df = cast(
                                     "DataFrame",
-                                    df1_renamed.join(
-                                        cast("SupportsDataFrameOps", df2_renamed),
+                                    df_renamed.join(
+                                        cast(
+                                            "SupportsDataFrameOps",
+                                            df2_renamed,
+                                        ),
                                         cast("ColumnOperation", join_col),
                                         join_type,
                                     ),
                                 )
                             else:
-                                # Fallback: try direct column names (assume col1 is from df1, col2 from df2)
                                 join_type = join_info.get("type", "inner")
-                                if col1 in df1.columns and col2 in df2.columns:
-                                    join_col = df1[col1] == df2[col2]
-
+                                common = set(df_renamed.columns) & set(
+                                    df2_renamed.columns
+                                )
+                                if common:
+                                    jc = list(common)[0]
                                     df = cast(
                                         "DataFrame",
-                                        df1.join(
-                                            cast("SupportsDataFrameOps", df2),
-                                            cast("ColumnOperation", join_col),
-                                            join_type,
-                                        ),
-                                    )
-                                elif col2 in df1.columns and col1 in df2.columns:
-                                    # Try reverse mapping
-                                    join_col = df1[col2] == df2[col1]
-
-                                    df = cast(
-                                        "DataFrame",
-                                        df1.join(
-                                            cast("SupportsDataFrameOps", df2),
-                                            cast("ColumnOperation", join_col),
+                                        df_renamed.join(
+                                            cast(
+                                                "SupportsDataFrameOps",
+                                                df2_renamed,
+                                            ),
+                                            cast(
+                                                "ColumnOperation",
+                                                df_renamed[jc] == df2_renamed[jc],
+                                            ),
                                             join_type,
                                         ),
                                     )
                                 else:
-                                    # Last resort: cross join
                                     df = cast(
                                         "DataFrame",
-                                        df1.crossJoin(
-                                            cast("SupportsDataFrameOps", df2)
+                                        df_renamed.crossJoin(
+                                            cast(
+                                                "SupportsDataFrameOps",
+                                                df2_renamed,
+                                            )
                                         ),
                                     )
                         else:
-                            # Fallback: try to join on common column names
                             join_type = join_info.get("type", "inner")
-                            common_cols = set(df1.columns) & set(df2.columns)
-                            if common_cols:
-                                join_col_name = list(common_cols)[0]
-                                join_condition = (
-                                    df1[join_col_name] == df2[join_col_name]
-                                )
-
-                                df = cast(
-                                    "DataFrame",
-                                    df1.join(
-                                        cast("SupportsDataFrameOps", df2),
-                                        cast("ColumnOperation", join_condition),
-                                        join_type,
-                                    ),
-                                )
-                            else:
-                                # Cast df2 to SupportsDataFrameOps to satisfy type checker
-                                # DataFrame implements the protocol at runtime
-                                df = cast(
-                                    "DataFrame",
-                                    df1.crossJoin(cast("SupportsDataFrameOps", df2)),
-                                )
-                    else:
-                        # No condition - cross join
-                        # Cast df2 to SupportsDataFrameOps to satisfy type checker
-                        df = cast(
-                            "DataFrame",
-                            df1.crossJoin(cast("SupportsDataFrameOps", df2)),
-                        )
+                            df = cast(
+                                "DataFrame",
+                                df_renamed.crossJoin(
+                                    cast(
+                                        "SupportsDataFrameOps",
+                                        df2_renamed,
+                                    )
+                                ),
+                            )
                 except Exception as e:
-                    # Re-raise with more context to debug the issue
                     raise RuntimeError(f"Join execution failed: {e}") from e
             else:
                 # Single table (no JOIN)
@@ -503,10 +452,14 @@ class SQLExecutor:
 
             from ...core.column_resolver import ColumnResolver
 
-            # Try to parse different WHERE condition types
+            # Try to parse different WHERE condition types (issue #381: allow table-prefixed column)
+            # Column can be "col" or "alias.col" (e.g. e.salary)
+            col_pattern = r"\w+(?:\.\w+)?"
             # Check for LIKE clause: column LIKE 'pattern'
             like_match = re.search(
-                r"(\w+)\s+LIKE\s+['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE
+                rf"({col_pattern})\s+LIKE\s+['\"]([^'\"]+)['\"]",
+                where_condition,
+                re.IGNORECASE,
             )
             if like_match:
                 col_name = like_match.group(1)
@@ -520,9 +473,13 @@ class SQLExecutor:
                     )
                     df_ops = cast("SupportsDataFrameOps", df)
             # Check for string equality: column = 'value'
-            elif re.search(r"(\w+)\s*=\s*['\"]", where_condition, re.IGNORECASE):
+            elif re.search(
+                rf"({col_pattern})\s*=\s*['\"]", where_condition, re.IGNORECASE
+            ):
                 eq_match = re.search(
-                    r"(\w+)\s*=\s*['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE
+                    rf"({col_pattern})\s*=\s*['\"]([^'\"]+)['\"]",
+                    where_condition,
+                    re.IGNORECASE,
                 )
                 if eq_match:
                     col_name = eq_match.group(1)
@@ -536,9 +493,13 @@ class SQLExecutor:
                         )
                         df_ops = cast("SupportsDataFrameOps", df)
             # Check for IN clause: column IN (value1, value2, ...)
-            elif re.search(r"(\w+)\s+IN\s*\(", where_condition, re.IGNORECASE):
+            elif re.search(
+                rf"({col_pattern})\s+IN\s*\(", where_condition, re.IGNORECASE
+            ):
                 in_match = re.search(
-                    r"(\w+)\s+IN\s*\((.*?)\)", where_condition, re.IGNORECASE
+                    rf"({col_pattern})\s+IN\s*\((.*?)\)",
+                    where_condition,
+                    re.IGNORECASE,
                 )
                 if in_match:
                     col_name = in_match.group(1)
@@ -566,9 +527,11 @@ class SQLExecutor:
                             "DataFrame", df_ops.filter(F.col(resolved_col).isin(values))
                         )
                         df_ops = cast("SupportsDataFrameOps", df)
-            # Check for comparison operators: column > value, column < value, etc.
+            # Check for comparison operators: column > value (allow e.salary > 55000)
             else:
-                match = re.search(r"(\w+)\s*([><=]+)\s*([0-9.]+)", where_condition)
+                match = re.search(
+                    rf"({col_pattern})\s*([><=]+)\s*([0-9.]+)", where_condition
+                )
                 if match:
                     col_name = match.group(1)
                     operator = match.group(2)
@@ -614,7 +577,15 @@ class SQLExecutor:
 
         if group_by_columns:
             # Parse aggregate functions from SELECT columns
+            from ...core.column_resolver import ColumnResolver
             from ...functions import F
+
+            # Resolve table-prefixed GROUP BY columns (e.g. d.dept_name -> d_dept_name) #377
+            case_sensitive_group = False
+            if hasattr(self.session, "conf"):
+                case_sensitive_group = (
+                    self.session.conf.get("spark.sql.caseSensitive", "false") == "true"
+                )
 
             agg_exprs: List[
                 Union[ColumnOperation, AggregateFunction, CaseWhen, Literal, IColumn]  # noqa: F821
@@ -752,17 +723,24 @@ class SQLExecutor:
                                     temp_col_name, F.col(col_name) <= value
                                 ),
                             )
-                        else:
-                            # Fallback: use as column name
-                            temp_col_name = col_expr
                         group_by_cols.append(temp_col_name)
                         df_ops = cast("SupportsDataFrameOps", temp_df)
                     else:
-                        # Not a comparison, use as column name
-                        group_by_cols.append(col_expr)
+                        # Not a comparison (parenthesized), resolve and use as column name
+                        resolved_gb = ColumnResolver.resolve_column_name(
+                            col_expr, temp_df.columns, case_sensitive_group
+                        )
+                        group_by_cols.append(
+                            resolved_gb if resolved_gb is not None else col_expr
+                        )
                 else:
-                    # Regular column name
-                    group_by_cols.append(col_expr)
+                    # Regular column name (resolve d.dept_name -> d_dept_name)
+                    resolved_gb = ColumnResolver.resolve_column_name(
+                        col_expr, temp_df.columns, case_sensitive_group
+                    )
+                    group_by_cols.append(
+                        resolved_gb if resolved_gb is not None else col_expr
+                    )
 
             grouped = df_ops.groupBy(*group_by_cols)
             if agg_exprs:
@@ -949,29 +927,32 @@ class SQLExecutor:
                         select_aliases.append(alias)
 
                 # Remove temporary group-by columns that aren't in SELECT
+                # Use resolved group_by_cols (e.g. d_dept_name) not group_by_columns (e.g. d.dept_name)
+                # Only keep group-by column when it is referenced in SELECT (e.g. d.dept_name -> dept_name)
                 cols_to_keep = []
                 for col in df_ops.columns:
-                    # Keep if it's in SELECT or if it's a regular group-by column (not temporary)
-                    if (
+                    in_select = col in select_col_names or col in select_aliases
+                    in_group_by = col in group_by_cols
+                    gb_in_select = in_group_by and (
                         col in select_col_names
                         or col in select_aliases
-                        or not col.startswith("_group_by_expr_")
-                    ):
-                        # But only if it's actually in SELECT or is a regular group-by column
-                        if (
-                            col in select_col_names
-                            or col in select_aliases
-                            or col in group_by_columns
-                        ):
-                            cols_to_keep.append(col)
-                    # Always keep aggregate columns (like count, avg_salary) if they're in SELECT
-                    elif any(
-                        agg in col.lower()
-                        for agg in ["count", "sum", "avg", "max", "min"]
-                    ) and any(
-                        agg in sel_col.lower()
-                        for sel_col in select_columns
-                        for agg in ["count", "sum", "avg", "max", "min"]
+                        or any(
+                            col == s or col.endswith("_" + s) for s in select_col_names
+                        )
+                    )
+                    # Keep select columns, group-by columns that are in SELECT, or aggregates
+                    if (
+                        in_select
+                        or gb_in_select
+                        or any(
+                            agg in col.lower()
+                            for agg in ["count", "sum", "avg", "max", "min"]
+                        )
+                        and any(
+                            agg in sel_col.lower()
+                            for sel_col in select_columns
+                            for agg in ["count", "sum", "avg", "max", "min"]
+                        )
                     ):
                         cols_to_keep.append(col)
 
