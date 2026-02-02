@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.28.4 — 2026-02-02
+
+### Fixed
+- **Issue #365** - `F.create_map([])` now returns empty map `{}` (PySpark parity)
+  - When a single argument is an empty list or tuple, treat as empty map
+  - Fixes `ValueError: create_map requires an even number of arguments (key-value pairs)` for `F.create_map([])`
+  - Related to #356 (create_map() with no args already supported)
+
+### Added
+- **Issue #365 test** - `test_create_map_empty_list_returns_empty_map` in `tests/unit/test_create_map.py`
+
 ## 3.28.3 — 2026-02-02
 
 ### Fixed

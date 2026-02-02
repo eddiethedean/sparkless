@@ -110,6 +110,16 @@ class TestCreateMap:
         assert rows[0]["NewMap"] == {}
         assert rows[1]["NewMap"] == {}
 
+    def test_create_map_empty_list_returns_empty_map(self, spark):
+        """Test create_map([]) returns empty map {} (Issue #365 - PySpark parity)."""
+        df = spark.createDataFrame([{"Name": "Alice"}, {"Name": "Bob"}])
+        result = df.withColumn("NewMap", F.create_map([]))
+        rows = result.collect()
+
+        assert len(rows) == 2
+        assert rows[0]["NewMap"] == {}
+        assert rows[1]["NewMap"] == {}
+
     def test_create_map_in_withcolumn(self, spark):
         """Test create_map works with withColumn."""
         df = spark.createDataFrame([{"name": "Alice", "age": 25}])

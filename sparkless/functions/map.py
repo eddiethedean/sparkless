@@ -177,6 +177,16 @@ class MapFunctions:
                 name="map()",
             )
 
+        # Allow create_map([]) - PySpark returns {} when given empty list (Issue #365)
+        if len(cols) == 1 and isinstance(cols[0], (list, tuple)) and len(cols[0]) == 0:
+            base_col = Column("__create_map_base__")
+            return ColumnOperation(
+                base_col,
+                "create_map",
+                value=(),
+                name="map()",
+            )
+
         if len(cols) < 2 or len(cols) % 2 != 0:
             raise ValueError(
                 "create_map requires an even number of arguments (key-value pairs)"
