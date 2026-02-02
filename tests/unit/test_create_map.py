@@ -110,6 +110,16 @@ class TestCreateMap:
         assert rows[0]["NewMap"] == {}
         assert rows[1]["NewMap"] == {}
 
+    def test_create_map_empty_list_returns_empty_map(self, spark):
+        """Test create_map([]) returns empty map {} (Issue #365 - PySpark parity)."""
+        df = spark.createDataFrame([{"Name": "Alice"}, {"Name": "Bob"}])
+        result = df.withColumn("NewMap", F.create_map([]))
+        rows = result.collect()
+
+        assert len(rows) == 2
+        assert rows[0]["NewMap"] == {}
+        assert rows[1]["NewMap"] == {}
+
     def test_create_map_in_withcolumn(self, spark):
         """Test create_map works with withColumn."""
         df = spark.createDataFrame([{"name": "Alice", "age": 25}])
@@ -563,3 +573,137 @@ class TestCreateMap:
         rows = result.collect()
         assert len(rows) == 1
         assert rows[0]["meta"] == {}
+
+    # Additional robust tests for Issue #365 - create_map([]) and create_map(())
+    def test_create_map_empty_tuple_returns_empty_map(self, spark):
+        """Test create_map(()) returns empty map {} (Issue #365 - empty tuple)."""
+        df = spark.createDataFrame([{"Name": "Alice"}, {"Name": "Bob"}])
+        result = df.withColumn("NewMap", F.create_map(()))
+        rows = result.collect()
+        assert len(rows) == 2
+        assert rows[0]["NewMap"] == {}
+        assert rows[1]["NewMap"] == {}
+
+    def test_create_map_empty_list_in_select(self, spark):
+        """Test create_map([]) in select statement (Issue #365)."""
+        df = spark.createDataFrame([{"id": 1}, {"id": 2}, {"id": 3}])
+        result = df.select(F.col("id"), F.create_map([]).alias("empty_map"))
+        rows = result.collect()
+        assert len(rows) == 3
+        for row in rows:
+            assert row["empty_map"] == {}
+            assert "id" in row
+
+    def test_create_map_empty_list_with_different_data_types(self, spark):
+        """Test create_map([]) with DataFrames containing different data types (Issue #365)."""
+        df1 = spark.createDataFrame([{"name": "Alice"}])
+        assert df1.withColumn("meta", F.create_map([])).collect()[0]["meta"] == {}
+
+        df2 = spark.createDataFrame([{"age": 25}])
+        assert df2.withColumn("meta", F.create_map([])).collect()[0]["meta"] == {}
+
+        df3 = spark.createDataFrame([{"active": True}])
+        assert df3.withColumn("meta", F.create_map([])).collect()[0]["meta"] == {}
+
+        # All-null column requires explicit schema for inference
+        from sparkless.spark_types import StructType, StructField, StringType
+
+        schema = StructType([StructField("val", StringType(), True)])
+        df4 = spark.createDataFrame([{"val": None}], schema=schema)
+        assert df4.withColumn("meta", F.create_map([])).collect()[0]["meta"] == {}
+
+    def test_create_map_empty_list_after_filter(self, spark):
+        """Test create_map([]) works correctly after filter operations (Issue #365)."""
+        df = spark.createDataFrame(
+            [
+                {"id": 1, "value": 10},
+                {"id": 2, "value": 20},
+                {"id": 3, "value": 30},
+            ]
+        )
+        result = df.filter(F.col("value") > 15).withColumn(
+            "empty_map", F.create_map([])
+        )
+        rows = result.collect()
+        assert len(rows) == 2
+        for row in rows:
+            assert row["empty_map"] == {}
+            assert row["value"] > 15
+
+    def test_create_map_empty_list_and_create_map_equivalent(self, spark):
+        """Test create_map([]) and create_map() produce identical results (Issue #365)."""
+        df = spark.createDataFrame([{"id": 1}, {"id": 2}])
+        result = df.select(
+            F.col("id"),
+            F.create_map().alias("map_no_args"),
+            F.create_map([]).alias("map_empty_list"),
+        )
+        rows = result.collect()
+        assert len(rows) == 2
+        for row in rows:
+            assert row["map_no_args"] == {}
+            assert row["map_empty_list"] == {}
+            assert row["map_no_args"] == row["map_empty_list"]
+
+    def test_create_map_empty_list_multiple_times(self, spark):
+        """Test multiple create_map([]) in a single DataFrame (Issue #365)."""
+        df = spark.createDataFrame([{"id": 1}])
+        result = df.select(
+            F.col("id"),
+            F.create_map([]).alias("map1"),
+            F.create_map([]).alias("map2"),
+            F.create_map([]).alias("map3"),
+        )
+        rows = result.collect()
+        assert len(rows) == 1
+        assert rows[0]["map1"] == {}
+        assert rows[0]["map2"] == {}
+        assert rows[0]["map3"] == {}
+
+    def test_create_map_empty_list_in_union(self, spark):
+        """Test create_map([]) works with union operations (Issue #365)."""
+        df1 = spark.createDataFrame([{"id": 1, "val": "a"}])
+        df2 = spark.createDataFrame([{"id": 2, "val": "b"}])
+        df1_with_map = df1.withColumn("meta", F.create_map([]))
+        df2_with_map = df2.withColumn("meta", F.create_map([]))
+        result = df1_with_map.union(df2_with_map)
+        rows = result.collect()
+        assert len(rows) == 2
+        for row in rows:
+            assert row["meta"] == {}
+
+    def test_create_map_empty_list_show(self, spark):
+        """Test exact Issue #365 scenario: withColumn + create_map([]) + show()."""
+        df = spark.createDataFrame([{"Name": "Alice"}, {"Name": "Bob"}])
+        df = df.withColumn("NewMap", F.create_map([]))
+        df.show()
+        rows = df.collect()
+        assert len(rows) == 2
+        assert rows[0]["Name"] == "Alice" and rows[0]["NewMap"] == {}
+        assert rows[1]["Name"] == "Bob" and rows[1]["NewMap"] == {}
+
+    def test_create_map_empty_list_with_computed_columns(self, spark):
+        """Test create_map([]) alongside computed columns (Issue #365)."""
+        df = spark.createDataFrame([{"a": 10, "b": 20}])
+        result = df.select(
+            F.col("a"),
+            F.col("b"),
+            (F.col("a") + F.col("b")).alias("sum"),
+            F.create_map([]).alias("meta"),
+        )
+        rows = result.collect()
+        assert len(rows) == 1
+        assert rows[0]["sum"] == 30
+        assert rows[0]["meta"] == {}
+
+    def test_create_map_empty_list_in_join(self, spark):
+        """Test create_map([]) works in join operations (Issue #365)."""
+        df1 = spark.createDataFrame([{"id": 1, "name": "Alice"}])
+        df2 = spark.createDataFrame([{"id": 1, "age": 25}])
+        df1_with_map = df1.withColumn("meta", F.create_map([]))
+        result = df1_with_map.join(df2, "id")
+        rows = result.collect()
+        assert len(rows) == 1
+        assert rows[0]["meta"] == {}
+        assert rows[0]["name"] == "Alice"
+        assert rows[0]["age"] == 25
