@@ -56,7 +56,12 @@ class SparkSession:
         >>> spark = SparkSession("MyApp")
         >>> df = spark.createDataFrame([{"name": "Alice", "age": 25}])
         >>> df.select("name").show()
+        DataFrame[1 rows, 1 columns]
+        <BLANKLINE>
+        name
+        Alice
         >>> spark.sql("CREATE DATABASE test")
+        DataFrame[0 rows, 0 columns]
         >>> spark.stop()
     """
 

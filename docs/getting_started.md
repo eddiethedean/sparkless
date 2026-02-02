@@ -1,7 +1,7 @@
 # Getting Started
 
 
-> **Compatibility Snapshot:** This guide targets Sparkless `3.27.0`, which provides parity with PySpark 3.2–3.5 and ships with 2135+ passing regression tests.
+> **Compatibility Snapshot:** This guide targets Sparkless `3.28.0`, which provides parity with PySpark 3.2–3.5 and ships with 2314+ passing regression tests.
 
 ## Installation
 
@@ -223,9 +223,9 @@ Sparkless provides significant speed improvements:
 
 ## Next Steps
 
-- **[API Reference](api_reference)** - Complete API documentation
-- **[SQL Operations](sql_operations_guide)** - SQL query examples
-- **[Testing Patterns](testing_patterns)** - Test helpers and fixtures
+- **[API Reference](api_reference.md)** - Complete API documentation
+- **[SQL Operations](sql_operations_guide.md)** - SQL query examples
+- **[Testing Patterns](testing_patterns.md)** - Test helpers and fixtures
 - **[Examples](../examples/)** - More code examples
 
 ## Getting Help

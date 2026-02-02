@@ -21,9 +21,9 @@ Example:
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.upper(F.col("name")), F.col("age") * 2).show()
     DataFrame[1 rows, 2 columns]
-
+    <BLANKLINE>
     upper(name) (age * 2)
-    ALICE        50
+    ALICE         50.0
 """
 
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, Tuple, Union

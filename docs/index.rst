@@ -21,7 +21,7 @@ Key Features
 * 📦 **Zero Java** - Pure Python with Polars backend (thread-safe, no SQL required)
 * 🧪 **100% Compatible** - Full PySpark 3.2-3.5 API support
 * 🔄 **Lazy Evaluation** - Mirrors PySpark's execution model
-* 🏭 **Production Ready** - 1309+ passing tests, 100% mypy typed
+* 🏭 **Production Ready** - 2314+ passing tests, 100% mypy typed
 * 🧵 **Thread-Safe** - Polars backend designed for parallel execution
 
 Quick Start

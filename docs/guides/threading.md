@@ -168,7 +168,7 @@ If you're migrating from DuckDB backend and had threading issues:
 
 ## See Also
 
-- [Configuration Guide](configuration) - Configuration options for Sparkless
-- [Pytest Integration Guide](pytest_integration) - Using Sparkless with pytest
-- [Memory Management Guide](memory_management) - Managing memory in parallel contexts
-- [Migration Guide](../migration_from_v2_to_v3) - Migrating from DuckDB to Polars
+- [Configuration Guide](configuration.md) - Configuration options for Sparkless
+- [Pytest Integration Guide](pytest_integration.md) - Using Sparkless with pytest
+- [Memory Management Guide](memory_management.md) - Managing memory in parallel contexts
+- [Migration Guide](../migration_from_v2_to_v3.md) - Migrating from DuckDB to Polars

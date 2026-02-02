@@ -513,10 +513,10 @@ Each PR is considered complete when:
 
 ## Related Documentation
 
-- [PySpark Function Matrix](PYSPARK_FUNCTION_MATRIX.md)
-- [API Reference](api_reference.md)
-- [Testing Patterns](testing_patterns.md)
-- [Migration Guide](migration_from_pyspark.md)
+- [PySpark Function Matrix](../../PYSPARK_FUNCTION_MATRIX.md)
+- [API Reference](../api_reference.md)
+- [Testing Patterns](../testing_patterns.md)
+- [Migration Guide](../migration_from_pyspark.md)
 
 ---
 

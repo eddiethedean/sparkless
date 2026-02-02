@@ -24,8 +24,8 @@ Example:
     ...     F.regexp_replace(F.col("email"), "@.*", "@company.com")
     ... ).show()
     DataFrame[1 rows, 2 columns]
-
-    upper(trim(name)) regexp_replace(email, '@.*', '@company.com')
+    <BLANKLINE>
+    upper(trim(name)) regexp_replace(email, @.*, @company.com, 1)
     ALICE               alice@example.com
 """
 

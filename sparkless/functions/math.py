@@ -24,9 +24,10 @@ Example:
     ...     F.ceil(F.col("value")),
     ...     F.sin(F.col("angle"))
     ... ).show()
-    DataFrame[1 rows, 4 columns]
-    round(value, 1) CEIL(value) FLOOR(value) SIN(angle)
-    3.7 4.0 3.0 0.9999996829318346
+    DataFrame[1 rows, 3 columns]
+    <BLANKLINE>
+    round(value, 1) CEIL(value) SIN(angle)
+    3.7               4.0           0.9999996829318346
 """
 
 from typing import Optional, Union

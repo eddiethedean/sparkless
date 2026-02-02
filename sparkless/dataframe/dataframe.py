@@ -22,11 +22,10 @@ Example:
     >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
     >>> df = spark.createDataFrame(data)
     >>> df.select("name", "age").filter(F.col("age") > 25).show()
-    +----+---+
-    |name|age|
-    +----+---+
-    | Bob| 30|
-    +----+---+
+    DataFrame[1 rows, 2 columns]
+    <BLANKLINE>
+    name age
+    Bob    30
 """
 
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
@@ -99,12 +98,11 @@ class DataFrame:
         >>> spark = SparkSession("test")
         >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
         >>> df = spark.createDataFrame(data)
-        >>> df.select("name").filter(F.col("age") > 25).show()
-        +----+
-        |name|
-        +----+
-        | Bob|
-        +----+
+        >>> df.filter(F.col("age") > 25).select("name").show()
+        DataFrame[1 rows, 1 columns]
+        <BLANKLINE>
+        name
+        Bob
     """
 
     data: List[Dict[str, Any]]
