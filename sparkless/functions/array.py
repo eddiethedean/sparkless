@@ -920,9 +920,28 @@ class ArrayFunctions:
         Example:
             >>> df.select(F.array(F.col("a"), F.col("b"), F.col("c")))
             >>> df.select(F.array(["a", "b", "c"]))  # List format
+            >>> df.select(F.array())  # Returns empty array [] (Issue #367)
+            >>> df.select(F.array([]))  # Returns empty array [] (Issue #367)
         """
+        # Allow 0 arguments (empty array) - PySpark returns [] for F.array() (Issue #367)
         if not cols:
-            raise ValueError("array requires at least one column")
+            base_col = Column("__array_empty_base__")
+            return ColumnOperation(
+                base_col,
+                "array",
+                value=(),
+                name="array()",
+            )
+
+        # Allow F.array([]) - PySpark returns [] when given empty list (Issue #367)
+        if len(cols) == 1 and isinstance(cols[0], list) and len(cols[0]) == 0:
+            base_col = Column("__array_empty_base__")
+            return ColumnOperation(
+                base_col,
+                "array",
+                value=(),
+                name="array()",
+            )
 
         # Handle case where a single list is passed: F.array(["Name", "Type"])
         # Unpack the list if it's the only argument
