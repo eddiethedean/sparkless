@@ -2425,7 +2425,7 @@ class PolarsExpressionTranslator:
                         if result is None:
                             result = pl.when(n_expr == i).then(col)
                         else:
-                            result = result.when(n_expr == i).then(col)
+                            result = result.when(n_expr == i).then(col)  # type: ignore[unreachable]
                     return (
                         result.otherwise(None) if result is not None else pl.lit(None)
                     )
@@ -3678,7 +3678,7 @@ class PolarsExpressionTranslator:
                 raise ValueError("substring_index() requires (delim, count)")
             delim, count = op.value
             if not isinstance(count, int):
-                try:
+                try:  # type: ignore[unreachable]
                     count = int(count)
                 except Exception as e:
                     raise ValueError("substring_index() count must be int") from e
@@ -4232,7 +4232,9 @@ class PolarsExpressionTranslator:
             "json_object_keys": lambda e: e,  # Will be handled in operation-specific code
             "xpath_number": lambda e: e,  # Will be handled in operation-specific code
             "user": lambda e: pl.lit(""),  # Will be handled in operation-specific code
-            "input_file_name": lambda e: pl.lit(""),  # Path of file being read; empty in mock
+            "input_file_name": lambda e: pl.lit(
+                ""
+            ),  # Path of file being read; empty in mock
             "format_string": lambda e: e,  # Will be handled in operation-specific code
             # New math functions (PySpark 3.5+)
             "getbit": lambda e: e,  # Will be handled in operation-specific code

@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.28.2 — 2026-02-02
+
+### Fixed
+- **Issue #360** - Added Polars support for `F.input_file_name()`
+  - Handle `input_file_name` in no-column block and function_map in expression translator
+  - Returns empty string in mock (PySpark returns actual file path when reading from file)
+  - Fixes `ValueError: Unsupported function: input_file_name`
+
+### Added
+- **Issue #360 tests** - `tests/test_issue_360_input_file_name.py` with 12 tests (3 core + 9 robust)
+  - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
+  - Covers withColumn, select, empty DataFrame, filter/select chaining, schema preservation, alias
+
+### Fixed (mypy & ruff)
+- **Mypy** - Test decorator `# type: ignore[misc]` (6 test files); unreachable/arg-type fixes in window_handler, window_execution, lazy, expression_translator, optimization_rules, operation_executor
+- **Ruff** - Removed unused `pytest` import (test_issue_360); `# noqa: SIM114` in optimization_rules to keep split branches for mypy
+
+### Testing
+- All 2,238 tests passing (16 skipped) with `pytest -n 10`
+- Issue #360 tests pass in Sparkless and PySpark mode
+- `mypy sparkless tests` — Success: no issues found in 494 source files
+
 ## 3.28.0 — 2026-02-01
 
 ### Fixed

@@ -9,7 +9,7 @@ def _is_pyspark_mode() -> bool:
     return result
 
 
-@pytest.mark.skipif(  # type: ignore[untyped-decorator]
+@pytest.mark.skipif(  # type: ignore[misc]
     _is_pyspark_mode(),
     reason="CREATE TABLE AS SELECT requires Hive support in PySpark, which is not enabled by default",
 )
