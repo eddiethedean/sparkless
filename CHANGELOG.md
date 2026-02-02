@@ -11,8 +11,13 @@
 
 ### Added
 - **Issue #361 tests** - `tests/test_issue_361_createDataFrame_rdd.py` with 5 tests
-  - Exact issue scenario, show() output, empty DataFrame, single row, schema order preservation
+  - Exact issue scenario, show() output, empty DataFrame (backend-appropriate StructType), single row, schema order preservation
   - Tests use `spark` fixture; run in both Sparkless and PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
+
+### Testing
+- All 2,265 tests passing (16 skipped) with `pytest -n 12`
+- Issue #361 tests pass in Sparkless and PySpark mode
+- `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (496 source files)
 
 ## 3.28.2 — 2026-02-02
 

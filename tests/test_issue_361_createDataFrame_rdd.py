@@ -41,10 +41,14 @@ class TestIssue361CreateDataFrameRdd:
 
     def test_createDataFrame_from_rdd_empty_dataframe(self, spark):
         """createDataFrame(empty_df.rdd, schema=...) with explicit StructType schema."""
-        from sparkless.sql.types import StructType, StructField, StringType, IntegerType
+        from tests.fixtures.spark_imports import get_spark_imports
 
-        schema = StructType(
-            [StructField("Name", StringType()), StructField("Value", IntegerType())]
+        imports = get_spark_imports()
+        schema = imports.StructType(
+            [
+                imports.StructField("Name", imports.StringType()),
+                imports.StructField("Value", imports.IntegerType()),
+            ]
         )
         df = spark.createDataFrame([], schema=schema)
         # Empty data requires StructType (PySpark compatibility)
