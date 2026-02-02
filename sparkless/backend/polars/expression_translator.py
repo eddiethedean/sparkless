@@ -2422,7 +2422,7 @@ class PolarsExpressionTranslator:
                         if result is None:
                             result = pl.when(n_expr == i).then(col)
                         else:
-                            result = result.when(n_expr == i).then(col)
+                            result = result.when(n_expr == i).then(col)  # type: ignore[unreachable]
                     return (
                         result.otherwise(None) if result is not None else pl.lit(None)
                     )
@@ -3675,7 +3675,7 @@ class PolarsExpressionTranslator:
                 raise ValueError("substring_index() requires (delim, count)")
             delim, count = op.value
             if not isinstance(count, int):
-                try:
+                try:  # type: ignore[unreachable]
                     count = int(count)
                 except Exception as e:
                     raise ValueError("substring_index() count must be int") from e

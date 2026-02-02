@@ -70,7 +70,7 @@ class TestIssue260EqNullSafe:
         finally:
             spark.stop()
 
-    @pytest.mark.parametrize(  # type: ignore[untyped-decorator]
+    @pytest.mark.parametrize(  # type: ignore[misc]
         "left,right,expected",
         [
             (None, None, True),

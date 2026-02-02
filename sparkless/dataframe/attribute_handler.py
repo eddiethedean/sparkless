@@ -53,6 +53,37 @@ class NAHandler:
         """
         return self._df.fillna(value, subset)
 
+    def drop(
+        self,
+        how: str = "any",
+        thresh: Optional[int] = None,
+        subset: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
+    ) -> Any:
+        """Drop rows with null values (PySpark DataFrameNaFunctions.drop).
+
+        Args:
+            how: 'any' to drop if any null in row, 'all' to drop only if all null.
+            thresh: Keep rows with at least this many non-null values.
+            subset: Optional column name(s) to consider. If None, all columns.
+
+        Returns:
+            DataFrame with null rows dropped.
+
+        Example:
+            >>> df.na.drop()  # Drop rows with any null
+            >>> df.na.drop(subset=["Value"])  # Drop rows with null in Value
+            >>> df.na.drop(how="all")  # Drop only rows that are all null
+        """
+        subset_list: Optional[List[str]] = None
+        if subset is not None:
+            if isinstance(subset, str):
+                subset_list = [subset]
+            elif isinstance(subset, tuple):
+                subset_list = list(subset)
+            else:
+                subset_list = subset
+        return self._df.dropna(how, thresh, subset_list)
+
     def replace(
         self,
         to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],

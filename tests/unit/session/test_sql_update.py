@@ -9,7 +9,7 @@ def _is_pyspark_mode() -> bool:
     return result
 
 
-@pytest.mark.skipif(  # type: ignore[untyped-decorator]
+@pytest.mark.skipif(  # type: ignore[misc]
     _is_pyspark_mode(),
     reason="UPDATE TABLE is not supported in PySpark - this is a sparkless-specific feature",
 )

@@ -1357,6 +1357,8 @@ class PolarsOperationExecutor:
                         # IMPORTANT: rows_cache must be built from the sorted DataFrame
                         # Rebuild rows_cache from the current (sorted) df to ensure correct order
                         rows_cache = df.to_dicts()
+                        if rows_cache is None:
+                            rows_cache = []
                         if not hasattr(self, "_python_window_functions"):
                             self._python_window_functions: List[Any] = []
 
