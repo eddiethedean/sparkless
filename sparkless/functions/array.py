@@ -933,7 +933,7 @@ class ArrayFunctions:
                 name="array()",
             )
 
-        # Allow F.array([]) - PySpark returns [] when given empty list (Issue #367)
+        # Allow F.array([]) only - PySpark returns [] for empty list; PySpark rejects F.array(()) (Issue #367)
         if len(cols) == 1 and isinstance(cols[0], list) and len(cols[0]) == 0:
             base_col = Column("__array_empty_base__")
             return ColumnOperation(
@@ -941,6 +941,12 @@ class ArrayFunctions:
                 "array",
                 value=(),
                 name="array()",
+            )
+
+        # Reject F.array(()) - PySpark raises for empty tuple; match that behavior (Issue #367)
+        if len(cols) == 1 and isinstance(cols[0], tuple) and len(cols[0]) == 0:  # type: ignore[unreachable]
+            raise ValueError(
+                "array() does not accept an empty tuple; use array() or array([]) for an empty array"
             )
 
         # Handle case where a single list is passed: F.array(["Name", "Type"])

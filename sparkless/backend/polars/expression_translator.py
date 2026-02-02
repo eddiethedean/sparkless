@@ -1784,7 +1784,9 @@ class PolarsExpressionTranslator:
         # array() can have op.value=None for single-column arrays
         if operation == "array":
             # F.array() and F.array([]) return empty array [] (Issue #367)
-            col_name = getattr(op.column, "name", None) if op.column is not None else None
+            col_name = (
+                getattr(op.column, "name", None) if op.column is not None else None
+            )
             if col_name == "__array_empty_base__" and (
                 op.value is None or op.value == ()
             ):
