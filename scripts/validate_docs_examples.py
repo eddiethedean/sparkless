@@ -41,6 +41,7 @@ def test_docstring_examples() -> Tuple[int, int]:
             module = __import__(module_name, fromlist=[""])
             finder = doctest.DocTestFinder()
             tests = finder.find(module, module_name)
+
             # Only run module-level and top-level class docstrings (exclude method
             # docstrings) so we skip examples that need undefined spark/df or have
             # multi-line decorators that break doctest.
