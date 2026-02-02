@@ -64,7 +64,19 @@ class DataFrameFactory:
             Fixed in version 3.23.0 (Issue #229): Pandas DataFrame recognition now uses
             duck typing to properly detect real pandas DataFrames even when mock pandas
             modules are present in the environment.
+            Fixed in version 3.28.3 (Issue #361): RDD-like objects (e.g. df.rdd) are now
+            supported; data is collected via collect() and passed through as a list of rows.
         """
+        # Handle RDD-like objects (e.g. df.rdd from Sparkless or PySpark)
+        # PySpark: spark.createDataFrame(rdd, schema=...) is supported
+        if hasattr(data, "collect") and callable(getattr(data, "collect", None)):
+            try:
+                collected = data.collect()
+                if isinstance(collected, list):
+                    data = collected
+            except Exception:
+                pass
+
         # Handle Pandas DataFrame
         # Use duck typing to detect pandas DataFrame (works for both mock and real pandas)
         # Check for to_dict method with orient parameter, which is characteristic of pandas DataFrame
@@ -86,7 +98,8 @@ class DataFrameFactory:
 
         if not isinstance(data, list):
             raise IllegalArgumentException(
-                "Data must be a list of dictionaries, tuples, lists, Row objects, or a Pandas DataFrame"
+                "Data must be a list of dictionaries, tuples, lists, Row objects, "
+                "a Pandas DataFrame, or an RDD"
             )
 
         # Handle PySpark StructType - convert to StructType
