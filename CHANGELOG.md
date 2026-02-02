@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.28.8 — 2026-02-02
+
+### Fixed
+- **Issue #371** - `F.col("Values").cast("Decimal(10,0)")` no longer raises `ValueError: Unsupported cast type: None`
+  - Polars expression translator now parses string cast types `Decimal(X,Y)` / `decimal(X,Y)` (case insensitive) and maps to DecimalType(precision, scale), then to Polars Float64 (Polars has no exact decimal type)
+
+### Added
+- **Issue #371 tests** - `tests/test_issue_371_cast_decimal.py` with 2 tests
+  - withColumn + cast("Decimal(10,0)") (exact issue scenario), cast("decimal(10,0)") lowercase
+
 ## 3.28.7 — 2026-02-02
 
 ### Fixed

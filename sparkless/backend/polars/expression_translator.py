@@ -1242,6 +1242,8 @@ class PolarsExpressionTranslator:
         Returns:
             Casted Polars expression
         """
+        import re
+
         from .type_mapper import mock_type_to_polars_dtype
         from sparkless.spark_types import (
             StringType,
@@ -1254,29 +1256,38 @@ class PolarsExpressionTranslator:
             TimestampType,
             ShortType,
             ByteType,
+            DecimalType,
         )
 
-        # Handle string type names (e.g., "string", "int", "long")
+        # Handle string type names (e.g., "string", "int", "long", "Decimal(10,0)")
         if isinstance(target_type, str):
-            type_name_map = {
-                "string": StringType(),
-                "str": StringType(),
-                "int": IntegerType(),
-                "integer": IntegerType(),
-                "long": LongType(),
-                "bigint": LongType(),
-                "double": DoubleType(),
-                "float": FloatType(),
-                "boolean": BooleanType(),
-                "bool": BooleanType(),
-                "date": DateType(),
-                "timestamp": TimestampType(),
-                "short": ShortType(),
-                "byte": ByteType(),
-            }
-            target_type = type_name_map.get(target_type.lower())
-            if target_type is None:
-                raise ValueError(f"Unsupported cast type: {target_type}")
+            type_str = target_type.strip()
+            type_str_lower = type_str.lower()
+            # PySpark-style Decimal(precision, scale) - Issue #371
+            decimal_match = re.match(r"decimal\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", type_str_lower)
+            if decimal_match:
+                precision, scale = int(decimal_match.group(1)), int(decimal_match.group(2))
+                target_type = DecimalType(precision, scale)
+            else:
+                type_name_map = {
+                    "string": StringType(),
+                    "str": StringType(),
+                    "int": IntegerType(),
+                    "integer": IntegerType(),
+                    "long": LongType(),
+                    "bigint": LongType(),
+                    "double": DoubleType(),
+                    "float": FloatType(),
+                    "boolean": BooleanType(),
+                    "bool": BooleanType(),
+                    "date": DateType(),
+                    "timestamp": TimestampType(),
+                    "short": ShortType(),
+                    "byte": ByteType(),
+                }
+                target_type = type_name_map.get(type_str_lower)
+                if target_type is None:
+                    raise ValueError(f"Unsupported cast type: {type_str!r}")
 
         # Special handling for casting to StringType
         if isinstance(target_type, StringType):
