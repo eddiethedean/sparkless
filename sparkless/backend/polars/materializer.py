@@ -311,18 +311,29 @@ class PolarsMaterializer:
                     lazy_df = filtered_df.lazy()
                     continue
 
-                # Extract column dtype for isin operations to enable type coercion
+                # Extract column dtype for isin operations to enable type coercion (Issue #369)
+                # Handles both direct isin and ~col.isin([...]) so string column vs int list works
                 input_col_dtype = None
-                if (
-                    isinstance(optimized_condition, ColumnOperation)
-                    and optimized_condition.operation == "isin"
-                    and hasattr(optimized_condition, "column")
-                    and hasattr(optimized_condition.column, "name")
-                ):
-                    # Get the column name from the condition
-                    col_name = optimized_condition.column.name
-                    # Get column dtype from schema if available
-                    if hasattr(lazy_df, "schema") and col_name in lazy_df.schema:
+                isin_op = None
+                if isinstance(optimized_condition, ColumnOperation):
+                    if optimized_condition.operation == "isin":
+                        isin_op = optimized_condition
+                    elif optimized_condition.operation in ["!", "~"] and isinstance(
+                        optimized_condition.column, ColumnOperation
+                    ):
+                        inner = optimized_condition.column
+                        if inner.operation == "isin":
+                            isin_op = inner
+                if isin_op is not None and hasattr(isin_op, "column"):
+                    col_ref = isin_op.column
+                    col_name = getattr(col_ref, "name", None)
+                    if col_name is None and hasattr(col_ref, "_original_column"):
+                        col_name = getattr(col_ref._original_column, "name", None)
+                    if (
+                        col_name
+                        and hasattr(lazy_df, "schema")
+                        and col_name in lazy_df.schema
+                    ):
                         input_col_dtype = lazy_df.schema[col_name]
 
                 try:

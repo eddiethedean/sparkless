@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.28.6 — 2026-02-02
+
+### Fixed
+- **Issue #369** - `~F.col("Values").isin([20, 30])` on a string column no longer raises Polars `InvalidOperationError: 'is_in' cannot check for List(Int64) values in String data`
+  - Materializer now passes column dtype for filter conditions that are negation of isin (`~col.isin([...])`) so the inner isin receives it
+  - Expression translator passes `input_col_dtype` through when translating nested ColumnOperation so nested isin can coerce the list to the column type (string column → coerce int list to string list)
+  - PySpark supports this comparison; Sparkless now matches by coercing the right-hand list to the column's type
+
+### Added
+- **Issue #369 tests** - `tests/test_issue_369_isin_negation.py` with 4 tests
+  - Negation isin string column + int list (exact scenario), show(), positive isin same types, negation isin string-to-string
+
 ## 3.28.5 — 2026-02-02
 
 ### Fixed

@@ -412,9 +412,10 @@ class PolarsExpressionTranslator:
                     "WindowFunction expressions should be handled by OperationExecutor.apply_with_column"
                 )
         elif isinstance(column, ColumnOperation):
+            # Pass input_col_dtype through so nested isin (e.g. ~col.isin([...])) gets it (#369)
             left = self._translate_operation(
                 column,
-                input_col_dtype=None,
+                input_col_dtype=input_col_dtype,
                 available_columns=available_columns,
                 case_sensitive=case_sensitive,
             )
