@@ -5,10 +5,17 @@
 All changes since 3.27.1 are included in this release.
 
 ### Fixed
+- **Issue #392** - `sum()` over window returns wrong value when orderBy cols are subset of partitionBy cols
+  - PySpark uses RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW by default; rows with same ORDER BY value are "peers" and share the same frame
+  - When orderBy columns are a subset of partitionBy columns, all rows in each partition have the same order key (peers) → each row should get the full partition sum, not cumulative sum
+  - PolarsWindowHandler now uses `_order_cols_are_subset_of_partition()` to detect this case and applies partition sum/mean instead of cum_sum; same fix for AVG/MEAN
+  - Example: `partitionBy("Type").orderBy("Type")` with values 10, 20 now correctly returns 30 for both rows (was 10, 30)
 - **Issue #372** - Column order when creating DataFrame from Pandas now matches PySpark
   - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
 
 ### Added
+- **Issue #392 tests** - `tests/test_issue_392_window_sum_peers.py` with 10 tests (both sparkless and PySpark backends)
+  - sum/avg with orderBy subset of partitionBy (peers), orderBy differs (running sum), F.col().desc(), single row, nulls, multiple order cols
 - **Issue #372 tests** - `tests/test_issue_372_pandas_column_order.py` with 3 tests
   - createDataFrame(pandas_df) preserves order (ZZZ, AAA, PPP); createDataFrame(list_of_dicts) alphabetical; show() displays Pandas order
 - **Issue #371** - `F.col("Values").cast("Decimal(10,0)")` no longer raises `ValueError: Unsupported cast type: None`
@@ -103,7 +110,7 @@ All changes since 3.27.1 are included in this release.
 - Follow-up issues for unfixed edge cases: #376 (multi-JOIN SELECT), #377 (GROUP BY with table prefix), #378 (round string with whitespace), #379 (join SELECT with table prefix), #380 (join compound condition row count), #381 (SQL WHERE on join), #382 (self-join row count)
 
 ### Testing
-- All tests passing with `pytest -n 12` (2314+ passed, 20 skipped)
+- All tests passing with `pytest -n 10` (2324 passed, 20 skipped)
 - `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (501 source files, Python 3.9 and 3.11)
 - New issue tests verified in PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
 

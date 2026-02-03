@@ -12,15 +12,15 @@ from sparkless.functions.window_execution import WindowFunction
 
 def _extract_col_name(col: object) -> Optional[str]:
     """Extract base column name from partition/order spec (str or Column-like)."""
+    name: Optional[str] = None
     if isinstance(col, str):
         name = col
     elif hasattr(col, "column"):  # ColumnOperation e.g. F.col("x").desc()
         return _extract_col_name(col.column)
     elif hasattr(col, "name"):
-        name = col.name
-    else:
-        return None
-    if name is None or not isinstance(name, str):
+        val = getattr(col, "name", None)
+        name = val if isinstance(val, str) else None
+    if name is None:
         return None
     # Strip DESC/ASC suffix for order columns
     for suffix in (" DESC", " ASC"):
