@@ -39,15 +39,23 @@ class GroupedData:
     maintaining compatibility with PySpark's GroupedData interface.
     """
 
-    def __init__(self, df: SupportsDataFrameOps, group_columns: List[str]):
+    def __init__(
+        self,
+        df: SupportsDataFrameOps,
+        group_columns: List[str],
+        group_output_names: Optional[List[str]] = None,
+    ):
         """Initialize GroupedData.
 
         Args:
             df: The DataFrame being grouped.
-            group_columns: List of column names to group by.
+            group_columns: List of column names to group by (for reading from rows).
+            group_output_names: Optional output names (e.g. from alias). When provided,
+                used for result row keys instead of group_columns (Issue #397).
         """
         self.df: SupportsDataFrameOps = df
         self.group_columns = group_columns
+        self.group_output_names = group_output_names or group_columns
 
     def agg(
         self,
@@ -160,7 +168,7 @@ class GroupedData:
         # Apply aggregations
         result_data = []
         for group_key, group_rows in groups.items():
-            result_row = dict(zip(self.group_columns, group_key))
+            result_row = dict(zip(self.group_output_names, group_key))
 
             for expr in exprs:
                 if isinstance(expr, str):
@@ -382,11 +390,11 @@ class GroupedData:
 
             # Reorder result_row to match PySpark's column ordering:
             # Group columns first (in their original order), then aggregation columns
-            group_cols_dict = {col: result_row[col] for col in self.group_columns}
+            group_cols_dict = {col: result_row[col] for col in self.group_output_names}
             agg_cols_dict = {
                 col: result_row[col]
                 for col in result_row
-                if col not in self.group_columns
+                if col not in self.group_output_names
             }
 
             # PySpark behavior for column ordering:
@@ -462,11 +470,15 @@ class GroupedData:
             fields = []
 
             for key, value in result_data[0].items():
-                if key in self.group_columns:
-                    # Use existing schema for group columns
+                if key in self.group_output_names:
+                    # Use existing schema for group columns (look up by base col for aliased)
+                    idx = self.group_output_names.index(key)
+                    base_col = self.group_columns[idx]
                     for field in self.df.schema.fields:
-                        if field.name == key:
-                            fields.append(field)
+                        if field.name == base_col:
+                            fields.append(
+                                StructField(key, field.dataType, field.nullable)
+                            )
                             break
                 else:
                     # Determine if this is a literal value
@@ -524,11 +536,14 @@ class GroupedData:
             # Build schema from group columns and aggregation expressions
             fields = []
 
-            # Add group columns from original DataFrame schema
-            for group_col in self.group_columns:
+            # Add group columns from original DataFrame schema (use output names for aliased)
+            for i, group_col in enumerate(self.group_columns):
+                output_name = self.group_output_names[i]
                 for field in self.df.schema.fields:
                     if field.name == group_col:
-                        fields.append(field)
+                        fields.append(
+                            StructField(output_name, field.dataType, field.nullable)
+                        )
                         break
 
             # Infer schema from aggregation expressions

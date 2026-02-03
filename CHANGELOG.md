@@ -5,6 +5,9 @@
 All changes since 3.27.1 are included in this release.
 
 ### Fixed
+- **Issue #397** - `df.groupBy(F.col('Name').alias('Key')).agg(F.sum('Value'))` no longer raises `SparkColumnNotFoundError: cannot resolve 'Key'`
+  - groupBy validated output alias instead of underlying column; now resolves (base_col, output_name) and validates base_col exists
+  - GroupedData accepts group_output_names for aliased group columns
 - **Issue #396** - `F.to_date(F.col('DateNumber').cast('string'), 'yyyyMMdd')` no longer raises `TypeError: to_date() requires StringType...`
   - Validation checked source column type (LongType) and ignored cast-to-string; fix: use `actual_input_type` (StringType after cast) for to_date check, and accept `isinstance(cast_target, StringType)` for StringType() instances
 - **Issue #395** - `df.filter("status == 'Y' and Name is not null")` no longer raises `bitand operation not supported for dtype str`
@@ -25,6 +28,7 @@ All changes since 3.27.1 are included in this release.
   - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
 
 ### Added
+- **Issue #397 tests** - `tests/test_issue_397_groupby_alias.py` with 3 tests (both backends)
 - **Issue #396 tests** - `tests/test_issue_396_to_date_cast.py` with 8 tests (select, nulls, filter, IntegerType, both backends)
 - **Issue #395 tests** - `tests/test_issue_395_filter_and_string_expr.py` with 13 tests (AND inside string literal, OR+is null, F.expr, select, both backends)
 - **Issue #394 tests** - `tests/test_issue_394_like_in_expr.py` with 15 tests (like/not like, AND/OR, prefix/suffix/middle %, multiple _, nulls, F.expr, both backends)

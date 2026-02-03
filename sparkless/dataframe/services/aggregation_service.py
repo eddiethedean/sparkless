@@ -4,7 +4,7 @@ Aggregation service for DataFrame operations.
 This service provides aggregation operations using composition instead of mixin inheritance.
 """
 
-from typing import Any, Dict, List, TYPE_CHECKING, Union, cast
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING, Union, cast
 
 from ...core.exceptions.operation import SparkColumnNotFoundError
 from ...functions import Column, ColumnOperation, AggregateFunction
@@ -13,6 +13,30 @@ from ..grouped import GroupedData
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
     from ..protocols import SupportsDataFrameOps
+
+
+def _resolve_group_column(
+    col: Union[str, Column], case_sensitive: bool = False
+) -> Tuple[str, str]:
+    """Resolve group column to (base_col_name, output_name).
+
+    For F.col('Name').alias('Key'): base='Name', output='Key'.
+    For F.col('Name') or 'Name': base='Name', output='Name'.
+    """
+    if isinstance(col, str):
+        return (col, col)
+    # Column or ColumnOperation with alias
+    output_name = getattr(col, "name", None) or str(col)
+    base_col = col
+    if hasattr(col, "_original_column") and col._original_column is not None:
+        base_col = col._original_column
+    if hasattr(col, "_alias_name") and col._alias_name is not None:
+        output_name = col._alias_name
+    # Recursively get base column name
+    while hasattr(base_col, "column") and base_col.column is not None:
+        base_col = base_col.column
+    base_name = getattr(base_col, "name", None) or str(base_col)
+    return (base_name, output_name)
 
 
 class AggregationService:
@@ -44,33 +68,32 @@ class AggregationService:
             # Unpack list/tuple of columns
             columns = tuple(columns[0])  # type: ignore[unreachable]
 
-        col_names = []
-        for col in columns:
-            if isinstance(col, Column):
-                col_names.append(col.name)
-            else:
-                col_names.append(col)
-
-        # Validate that all columns exist and resolve to actual case-sensitive names
+        # Resolve (base_col, output_name) for each column (Issue #397: alias support)
         from ..validation.column_validator import ColumnValidator
 
         case_sensitive = self._df._is_case_sensitive()
-        resolved_col_names = []
-        for col_name in col_names:
+        group_base_cols: List[str] = []
+        group_output_names: List[str] = []
+        for col_spec in columns:
+            base_name, output_name = _resolve_group_column(col_spec, case_sensitive)
             ColumnValidator.validate_column_exists(
-                self._df.schema, col_name, "groupBy", case_sensitive
+                self._df.schema, base_name, "groupBy", case_sensitive
             )
-            # Resolve column name to actual case-sensitive name
-            actual_col_name = ColumnValidator._find_column(
-                self._df.schema, col_name, case_sensitive
+            actual_base = (
+                ColumnValidator._find_column(self._df.schema, base_name, case_sensitive)
+                or base_name
             )
-            resolved_col_names.append(actual_col_name if actual_col_name else col_name)
-        col_names = resolved_col_names
+            group_base_cols.append(actual_base)
+            group_output_names.append(output_name)
 
         # Cast to SupportsDataFrameOps to satisfy type checker
         # DataFrame implements the protocol at runtime, but mypy can't verify
         # due to minor signature differences (e.g., approxQuantile accepts List[str])
-        return GroupedData(cast("SupportsDataFrameOps", self._df), col_names)
+        return GroupedData(
+            cast("SupportsDataFrameOps", self._df),
+            group_base_cols,
+            group_output_names,
+        )
 
     def groupby(self, *cols: Union[str, Column], **kwargs: Any) -> GroupedData:
         """Lowercase alias for groupBy() (all PySpark versions).
