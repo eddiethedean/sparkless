@@ -78,9 +78,7 @@ class TestIssue396ToDateCast:
         )
         df = df.select(
             F.col("DateNumber"),
-            F.to_date(F.col("DateNumber").cast("string"), "yyyyMMdd").alias(
-                "DateCol"
-            ),
+            F.to_date(F.col("DateNumber").cast("string"), "yyyyMMdd").alias("DateCol"),
         )
         rows = df.collect()
         assert len(rows) == 2
@@ -146,9 +144,7 @@ class TestIssue396ToDateCast:
             imports.StructType,
             imports.StructField,
         )
-        schema = StructType(
-            [StructField("DateNum", IntegerType(), True)]
-        )
+        schema = StructType([StructField("DateNum", IntegerType(), True)])
         df = spark.createDataFrame(
             [{"DateNum": 20260203}, {"DateNum": 20260101}], schema=schema
         )

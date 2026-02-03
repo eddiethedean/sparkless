@@ -76,9 +76,7 @@ class TestIssue397GroupByAlias:
                 {"A": 2, "B": 20, "Val": 300},
             ]
         )
-        df = df.groupBy(
-            F.col("A").alias("X"), F.col("B").alias("Y")
-        ).agg(F.sum("Val"))
+        df = df.groupBy(F.col("A").alias("X"), F.col("B").alias("Y")).agg(F.sum("Val"))
         rows = df.collect()
         assert len(rows) == 2
         cols = list(rows[0].asDict().keys())
@@ -98,9 +96,7 @@ class TestIssue397GroupByAlias:
                 {"k": "y", "v": 5},
             ]
         )
-        df = df.groupBy(F.col("k").alias("key")).agg(
-            F.avg("v"), F.max("v"), F.min("v")
-        )
+        df = df.groupBy(F.col("k").alias("key")).agg(F.avg("v"), F.max("v"), F.min("v"))
         rows = df.collect()
         assert len(rows) == 2
         by_key = {r["key"]: r for r in rows}
@@ -186,7 +182,7 @@ class TestIssue397GroupByAlias:
         )
         rows = df.collect()
         assert len(rows) == 2
-        assert set(r["Key"] for r in rows) == {"Alice", "Bob"}
+        assert {r["Key"] for r in rows} == {"Alice", "Bob"}
         by_key = {r["Key"]: r["SumValue"] for r in rows}
         assert by_key["Alice"] == 3
         assert by_key["Bob"] == 7

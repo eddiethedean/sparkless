@@ -13,7 +13,6 @@ class TestGroupByParity(ParityTestBase):
 
     def test_group_by(self, spark):
         """Test groupBy matches PySpark behavior."""
-        imports = get_spark_imports()
         expected = self.load_expected("dataframe_operations", "group_by")
 
         df = spark.createDataFrame(expected["input_data"])
