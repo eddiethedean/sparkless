@@ -1010,7 +1010,7 @@ class DataFrame:
                 func_name = col.function_name
 
                 # Check if there's a cast operation that converts to string
-                # For to_timestamp, if the column is cast to string, that's acceptable
+                # For to_timestamp/to_date, if the column is cast to string, that's acceptable (Issue #396)
                 actual_input_type = input_type
                 if (
                     hasattr(col, "column")
@@ -1022,10 +1022,7 @@ class DataFrame:
                     if (
                         isinstance(cast_target, str)
                         and cast_target.lower() in ["string", "varchar"]
-                    ) or (
-                        hasattr(cast_target, "__name__")
-                        and cast_target.__name__ == "StringType"
-                    ):
+                    ) or isinstance(cast_target, StringType):
                         actual_input_type = StringType()
 
                 # Import types needed for validation
@@ -1058,8 +1055,9 @@ class DataFrame:
                             f"got {input_type}."
                         )
                 # to_date accepts StringType, TimestampType, or DateType
+                # Use actual_input_type so cast-to-string is accepted (Issue #396)
                 elif func_name == "to_date" and not isinstance(
-                    input_type, (StringType, TimestampType, DateType)
+                    actual_input_type, (StringType, TimestampType, DateType)
                 ):
                     raise TypeError(
                         f"{func_name}() requires StringType, TimestampType, or DateType input, got {input_type}. "
