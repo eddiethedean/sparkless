@@ -329,10 +329,14 @@ class ColumnOperatorMixin:
             If field exists, it will be replaced. If it doesn't exist, it will be added.
         """
         from .literals import Literal
+        from ..window_execution import WindowFunction
 
-        # Convert col to appropriate type
+        # Convert col to appropriate type (Issue #398: don't wrap WindowFunction in Literal)
         if isinstance(col, str):
             col = Column(col)
+        elif isinstance(col, WindowFunction):
+            # Keep WindowFunction as-is for evaluation in withField
+            pass
         elif not isinstance(col, (Column, ColumnOperation, Literal)):
             # Wrap literals in Literal
             col = Literal(col)

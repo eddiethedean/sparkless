@@ -56,14 +56,21 @@ class ExpressionEvaluator:
     - Type casting operations
     """
 
-    def __init__(self, dataframe_context: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        dataframe_context: Optional[Any] = None,
+        full_data: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
         """Initialize evaluator with function registry.
 
         Args:
             dataframe_context: Optional DataFrame context for checking cached state.
+            full_data: Optional full row data for WindowFunction evaluation (Issue #398).
         """
         self._function_registry = self._build_function_registry()
         self._dataframe_context = dataframe_context
+        self._full_data = full_data
+        self._current_row_index: Optional[int] = None
 
         # Initialize specialized evaluators
         from .evaluators.conditional_evaluator import ConditionalEvaluator
@@ -71,15 +78,29 @@ class ExpressionEvaluator:
         self._conditional_evaluator = ConditionalEvaluator(self)
 
     @profiled("expression.evaluate_expression", category="expression")
-    def evaluate_expression(self, row: Dict[str, Any], expression: Any) -> Any:
+    def evaluate_expression(
+        self,
+        row: Dict[str, Any],
+        expression: Any,
+        row_index: Optional[int] = None,
+    ) -> Any:
         """Main entry point for expression evaluation."""
+        # Handle WindowFunction (Issue #398: withField + window function)
+        idx = row_index if row_index is not None else self._current_row_index
+        if (
+            hasattr(expression, "function_name")
+            and hasattr(expression, "window_spec")
+            and self._full_data is not None
+            and idx is not None
+        ):
+            return self._evaluate_window_function(expression, idx)
         # Handle CaseWhen (when/otherwise expressions) - delegate to conditional evaluator
         if isinstance(expression, CaseWhen):
             return self._conditional_evaluator.evaluate_case_when(row, expression)
         # Check for ColumnOperation BEFORE Column, since ColumnOperation is a subclass of Column
         # ColumnOperation has both "operation" and "column" attributes
         elif hasattr(expression, "operation") and hasattr(expression, "column"):
-            return self._evaluate_column_operation(row, expression)
+            return self._evaluate_column_operation(row, expression, row_index=row_index)
         elif isinstance(expression, Column):
             return self._evaluate_mock_column(row, expression)
         elif hasattr(expression, "value") and hasattr(expression, "name"):
@@ -90,6 +111,15 @@ class ExpressionEvaluator:
             return None
         else:
             return self._evaluate_direct_value(expression)
+
+    def _evaluate_window_function(self, window_func: Any, row_index: int) -> Any:
+        """Evaluate a WindowFunction and return the value for the given row (Issue #398)."""
+        if self._full_data is None:
+            return None
+        results = window_func.evaluate(self._full_data)
+        if row_index < len(results):
+            return results[row_index]
+        return None
 
     def evaluate_condition(
         self, row: Dict[str, Any], condition: Union[ColumnOperation, Column]
@@ -229,7 +259,12 @@ class ExpressionEvaluator:
         return current
 
     @profiled("expression.evaluate_column_operation", category="expression")
-    def _evaluate_column_operation(self, row: Dict[str, Any], operation: Any) -> Any:
+    def _evaluate_column_operation(
+        self,
+        row: Dict[str, Any],
+        operation: Any,
+        row_index: Optional[int] = None,
+    ) -> Any:
         """Evaluate a ColumnOperation."""
         op = operation.operation
 
@@ -250,7 +285,7 @@ class ExpressionEvaluator:
 
         # Handle function calls - check if it's a known function
         elif op in self._function_registry:
-            return self._evaluate_function_call(row, operation)
+            return self._evaluate_function_call(row, operation, row_index=row_index)
 
         # Handle unary minus
         elif op == "-" and operation.value is None:
@@ -259,7 +294,7 @@ class ExpressionEvaluator:
         # For unknown operations, try to evaluate as function call
         else:
             try:
-                return self._evaluate_function_call(row, operation)
+                return self._evaluate_function_call(row, operation, row_index=row_index)
             except Exception:
                 # If function call fails, try arithmetic operation as fallback
                 return self._evaluate_arithmetic_operation(row, operation)
@@ -408,7 +443,12 @@ class ExpressionEvaluator:
             return None
 
     @profiled("expression.evaluate_function_call", category="expression")
-    def _evaluate_function_call(self, row: Dict[str, Any], operation: Any) -> Any:
+    def _evaluate_function_call(
+        self,
+        row: Dict[str, Any],
+        operation: Any,
+        row_index: Optional[int] = None,
+    ) -> Any:
         """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
@@ -481,9 +521,10 @@ class ExpressionEvaluator:
             if field_column is None:
                 return None
 
-            # Evaluate the new field's column expression
-            # This may reference nested fields, so use evaluate_expression
-            field_value = self.evaluate_expression(row, field_column)
+            # Evaluate the new field's column expression (Issue #398: pass row_index
+            # for WindowFunction inside withField)
+            idx = row_index if row_index is not None else self._current_row_index
+            field_value = self.evaluate_expression(row, field_column, row_index=idx)
 
             # Create a copy of the struct and add/replace the field
             result = value.copy()
