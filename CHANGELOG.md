@@ -1,10 +1,11 @@
 # Changelog
 
-## 3.28.0 — 2026-02-02
+## 3.28.0 — 2026-02-03
 
 All changes since 3.27.1 are included in this release.
 
 ### Fixed
+- **CI** - Applied ruff format to fix lint-and-type job (expression_translator, operation_executor, error_simulation, test files)
 - **Issue #398** - `withField` with Window function (e.g. `F.count("*").over(Window.partitionBy("id"))`) now evaluates correctly; previously stored `WindowFunction` object and `select(edge.field)` failed
   - Don't wrap WindowFunction in Literal in Column.withField
   - ExpressionEvaluator: evaluate WindowFunction when inside withField (pass full_data, row_index)
@@ -135,7 +136,7 @@ All changes since 3.27.1 are included in this release.
 - Follow-up issues for unfixed edge cases: #376 (multi-JOIN SELECT), #377 (GROUP BY with table prefix), #378 (round string with whitespace), #379 (join SELECT with table prefix), #380 (join compound condition row count), #381 (SQL WHERE on join), #382 (self-join row count)
 
 ### Testing
-- All tests passing with `pytest -n 10` (2324 passed, 20 skipped)
+- All tests passing with `pytest -n 10` (2389 passed, 20 skipped)
 - `ruff format`, `ruff check`, and `mypy sparkless tests` — all pass (501 source files, Python 3.9 and 3.11)
 - New issue tests verified in PySpark mode (`MOCK_SPARK_TEST_BACKEND=pyspark`)
 
