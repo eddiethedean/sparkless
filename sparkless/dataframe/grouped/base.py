@@ -1995,11 +1995,11 @@ class GroupedData:
             DataFrame with count aggregations.
         """
         if not columns:
-            # AggregateFunctions.count() returns ColumnOperation (PySpark-compatible)
-            # which wraps AggregateFunction internally
+            # PySpark GroupedData.count() shorthand produces column "count".
+            # agg(F.count("*")) produces "count(1)"; we alias to match shorthand.
             from ...functions.aggregate import AggregateFunctions
 
-            return self.agg(AggregateFunctions.count())
+            return self.agg(AggregateFunctions.count().alias("count"))
 
         exprs = [
             f"count({col})" if isinstance(col, str) else f"count({col.name})"
