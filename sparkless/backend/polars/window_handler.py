@@ -4,10 +4,55 @@ Window function handler for Polars.
 This module handles window functions using Polars `.over()` expressions.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Set
 import sys
 import polars as pl
 from sparkless.functions.window_execution import WindowFunction
+
+
+def _extract_col_name(col: object) -> Optional[str]:
+    """Extract base column name from partition/order spec (str or Column-like)."""
+    name: Optional[str] = None
+    if isinstance(col, str):
+        name = col
+    elif hasattr(col, "column"):  # ColumnOperation e.g. F.col("x").desc()
+        return _extract_col_name(col.column)
+    elif hasattr(col, "name"):
+        val = getattr(col, "name", None)
+        name = val if isinstance(val, str) else None
+    if name is None:
+        return None
+    # Strip DESC/ASC suffix for order columns
+    for suffix in (" DESC", " ASC"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)].strip()
+    return name.split()[0] if name else None
+
+
+def _order_cols_are_subset_of_partition(
+    window_spec: object,
+) -> bool:
+    """Check if order-by columns are a subset of partition-by columns.
+
+    When true, all rows in each partition have the same order key (peers).
+    PySpark RANGE frame semantics: peers share the same frame = full partition.
+    So we should use partition sum, not cumulative sum.
+    """
+    partition_by = getattr(window_spec, "_partition_by", []) or []
+    order_by = getattr(window_spec, "_order_by", []) or []
+    if not order_by:
+        return True  # No order_by -> use partition sum (existing behavior)
+    partition_names: Set[str] = set()
+    for col in partition_by:
+        name = _extract_col_name(col)
+        if name:
+            partition_names.add(name)
+    order_names: Set[str] = set()
+    for col in order_by:
+        name = _extract_col_name(col)
+        if name:
+            order_names.add(name)
+    return order_names.issubset(partition_names)
 
 
 class PolarsWindowHandler:
@@ -241,9 +286,14 @@ class PolarsWindowHandler:
 
                 if partition_by:
                     if order_by:
-                        # With orderBy, PySpark uses default frame UNBOUNDED PRECEDING AND CURRENT ROW
-                        # So sum() returns a running sum (cumulative sum)
-                        # Use cum_sum() which works on expressions
+                        # PySpark uses RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW by default.
+                        # In RANGE semantics, rows with the same ORDER BY value are "peers" and
+                        # share the same frame. When orderBy cols are a subset of partitionBy cols,
+                        # all rows in each partition have the same order key (peers) -> full partition.
+                        # See: https://github.com/eddiethedean/sparkless/issues/392
+                        if _order_cols_are_subset_of_partition(window_spec):
+                            return column_expr.sum().over(partition_by)
+                        # Otherwise use cumulative sum (running sum)
                         return column_expr.cum_sum().over(
                             partition_by,
                             order_by=order_by,
@@ -265,9 +315,11 @@ class PolarsWindowHandler:
             if column_expr is not None:
                 if partition_by:
                     if order_by:
-                        # With orderBy, PySpark uses default frame UNBOUNDED PRECEDING AND CURRENT ROW
-                        # So avg() returns a running average (cumulative average)
-                        # Use cum_sum() / row_number() to compute running average
+                        # PySpark RANGE semantics: when orderBy cols are subset of partitionBy,
+                        # all rows are peers -> partition average (same as SUM fix #392)
+                        if _order_cols_are_subset_of_partition(window_spec):
+                            return column_expr.mean().over(partition_by)
+                        # Otherwise running average
                         cumsum_expr = column_expr.cum_sum().over(
                             partition_by,
                             order_by=order_by,
