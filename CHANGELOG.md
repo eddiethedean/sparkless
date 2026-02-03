@@ -5,6 +5,9 @@
 All changes since 3.27.1 are included in this release.
 
 ### Fixed
+- **Issue #393** - `sum()`/`avg()` over window on string columns with numeric data no longer raises `InvalidOperationError: cum_sum operation not supported for dtype str`
+  - PySpark coerces string columns to double for sum/avg; Polars requires explicit cast
+  - PolarsWindowHandler now casts Utf8/String columns to Float64 before sum/cum_sum/mean (via `_ensure_numeric_for_agg`)
 - **Issue #392** - `sum()` over window returns wrong value when orderBy cols are subset of partitionBy cols
   - PySpark uses RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW by default; rows with same ORDER BY value are "peers" and share the same frame
   - When orderBy columns are a subset of partitionBy columns, all rows in each partition have the same order key (peers) → each row should get the full partition sum, not cumulative sum
@@ -14,6 +17,7 @@ All changes since 3.27.1 are included in this release.
   - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
 
 ### Added
+- **Issue #393 tests** - `tests/test_issue_393_sum_string_column.py` with 10 tests (sum/avg on string columns, with_show, nulls, running sum, partitions, decimals, select, both backends)
 - **Issue #392 tests** - `tests/test_issue_392_window_sum_peers.py` with 10 tests (both sparkless and PySpark backends)
   - sum/avg with orderBy subset of partitionBy (peers), orderBy differs (running sum), F.col().desc(), single row, nulls, multiple order cols
 - **Issue #372 tests** - `tests/test_issue_372_pandas_column_order.py` with 3 tests
