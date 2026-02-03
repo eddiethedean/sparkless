@@ -152,6 +152,32 @@ class SQLExprParser:
 
             return case_result
 
+        # Parse logical operators: AND, OR (before IS NULL so "a and b is not null"
+        # parses as (a) and (b is not null), not (a and b) is not null - Issue #395)
+        parts_or = SQLExprParser._split_logical_operator(expr, "OR")
+        if len(parts_or) > 1:
+            parsed_parts = [
+                SQLExprParser._parse_expression(p.strip()) for p in parts_or
+            ]
+            or_result: Union[Column, ColumnOperation, CaseWhen, Literal] = parsed_parts[
+                0
+            ]
+            for part in parsed_parts[1:]:
+                or_result = ColumnOperation(or_result, "|", part)
+            return or_result
+
+        parts_and = SQLExprParser._split_logical_operator(expr, "AND")
+        if len(parts_and) > 1:
+            parsed_parts = [
+                SQLExprParser._parse_expression(p.strip()) for p in parts_and
+            ]
+            and_result: Union[Column, ColumnOperation, CaseWhen, Literal] = (
+                parsed_parts[0]
+            )
+            for part in parsed_parts[1:]:
+                and_result = ColumnOperation(and_result, "&", part)
+            return and_result
+
         # Parse IS NULL / IS NOT NULL
         is_null_match = re.match(r"^(.+?)\s+IS\s+(?:NOT\s+)?NULL$", expr, re.IGNORECASE)
         if is_null_match:
@@ -195,34 +221,6 @@ class SQLExprParser:
             inner = SQLExprParser._parse_expression(inner_expr)
             return ColumnOperation(inner, "!", None)
 
-        # Parse logical operators: AND, OR (before comparison operators to avoid incorrect splitting)
-        # AND has higher precedence than OR, so parse OR first (outer level)
-        # Then AND will be parsed in the inner expressions
-        parts_or = SQLExprParser._split_logical_operator(expr, "OR")
-        if len(parts_or) > 1:
-            parsed_parts = [
-                SQLExprParser._parse_expression(p.strip()) for p in parts_or
-            ]
-            or_result: Union[Column, ColumnOperation, CaseWhen, Literal] = parsed_parts[
-                0
-            ]
-            for part in parsed_parts[1:]:
-                or_result = ColumnOperation(or_result, "|", part)
-            return or_result
-
-        # Parse AND (higher precedence, so it's parsed in sub-expressions)
-        parts_and = SQLExprParser._split_logical_operator(expr, "AND")
-        if len(parts_and) > 1:
-            parsed_parts = [
-                SQLExprParser._parse_expression(p.strip()) for p in parts_and
-            ]
-            and_result: Union[Column, ColumnOperation, CaseWhen, Literal] = (
-                parsed_parts[0]
-            )
-            for part in parsed_parts[1:]:
-                and_result = ColumnOperation(and_result, "&", part)
-            return and_result
-
         # Parse arithmetic operators: *, /, %, +, - (before comparison operators)
         # These have higher precedence than comparison operators
         # Handle + and - carefully to avoid matching in numeric literals
@@ -251,12 +249,13 @@ class SQLExprParser:
                 return ColumnOperation(left, op, right)
 
         # Parse comparison operators: =, >, <, >=, <=, !=, <> (after arithmetic operators)
-        # These have lower precedence than arithmetic operators
+        # Use "==" not "=" for equality so "a == 'Y'" splits once (Issue #395)
         comparison_ops = [
             (r">=", ">="),
             (r"<=", "<="),
             (r"!=", "!="),
             (r"<>", "!="),
+            (r"==", "=="),
             (r"=", "=="),
             (r">", ">"),
             (r"<", "<"),
@@ -439,38 +438,51 @@ class SQLExprParser:
 
     @staticmethod
     def _split_logical_operator(expr: str, op_keyword: str) -> List[str]:
-        """Split expression by logical operator (AND/OR), handling parentheses."""
+        """Split expression by logical operator (AND/OR), handling parentheses and strings."""
         parts = []
         current = ""
         depth = 0
+        in_string = False
+        string_char = None
         i = 0
 
         while i < len(expr):
-            if expr[i] == "(":
-                depth += 1
-                current += expr[i]
-            elif expr[i] == ")":
-                depth -= 1
-                current += expr[i]
-            elif (
-                depth == 0
-                and expr[i : i + len(op_keyword)].upper() == op_keyword.upper()
-            ):
-                # Check if it's a word boundary
-                if (i == 0 or not expr[i - 1].isalnum()) and (
-                    i + len(op_keyword) >= len(expr)
-                    or not expr[i + len(op_keyword)].isalnum()
-                ):
-                    if current.strip():
-                        parts.append(current.strip())
-                    current = ""
-                    i += len(op_keyword)
-                    # Skip whitespace
-                    while i < len(expr) and expr[i].isspace():
-                        i += 1
-                    continue
+            char = expr[i]
 
-            current += expr[i] if i < len(expr) else ""
+            # Track string literals so we don't split AND/OR inside '...' or "..."
+            if char in ("'", '"') and (i == 0 or expr[i - 1] != "\\"):
+                if not in_string:
+                    in_string = True
+                    string_char = char
+                elif char == string_char:
+                    in_string = False
+                    string_char = None
+
+            if not in_string:
+                if char == "(":
+                    depth += 1
+                    current += char
+                elif char == ")":
+                    depth -= 1
+                    current += char
+                elif (
+                    depth == 0
+                    and expr[i : i + len(op_keyword)].upper() == op_keyword.upper()
+                ):
+                    # Check word boundary so we don't match "and" in "grand"
+                    if (i == 0 or not expr[i - 1].isalnum()) and (
+                        i + len(op_keyword) >= len(expr)
+                        or not expr[i + len(op_keyword)].isalnum()
+                    ):
+                        if current.strip():
+                            parts.append(current.strip())
+                        current = ""
+                        i += len(op_keyword)
+                        while i < len(expr) and expr[i].isspace():
+                            i += 1
+                        continue
+
+            current += char if i < len(expr) else ""
             i += 1
 
         if current.strip():

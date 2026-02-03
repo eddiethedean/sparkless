@@ -5,6 +5,9 @@
 All changes since 3.27.1 are included in this release.
 
 ### Fixed
+- **Issue #395** - `df.filter("status == 'Y' and Name is not null")` no longer raises `bitand operation not supported for dtype str`
+  - Root cause: operator precedence - IS NULL was parsed before AND, so whole expr matched "X is not null" with X = "status == 'Y' and Name"; also equality used "=" splitting which broke "a == 'Y'"
+  - Fix: parse AND/OR before IS NULL; use "==" for equality split; add string-literal awareness to _split_logical_operator
 - **Issue #394** - `df.filter("Name like '%TEST%'")` and `df.filter("Name not like '%TEST%'")` no longer raise `ParseException: Invalid identifier or literal`
   - PySpark supports LIKE/NOT LIKE in F.expr() and filter string expressions; SQLExprParser now parses these
   - Fixed SQL LIKE semantics: use full-string match (anchor regex with ^ $) so `_` wildcard matches exactly one char (was substring match)
@@ -20,6 +23,7 @@ All changes since 3.27.1 are included in this release.
   - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
 
 ### Added
+- **Issue #395 tests** - `tests/test_issue_395_filter_and_string_expr.py` with 13 tests (AND inside string literal, OR+is null, F.expr, select, both backends)
 - **Issue #394 tests** - `tests/test_issue_394_like_in_expr.py` with 15 tests (like/not like, AND/OR, prefix/suffix/middle %, multiple _, nulls, F.expr, both backends)
 - **Issue #393 tests** - `tests/test_issue_393_sum_string_column.py` with 10 tests (sum/avg on string columns, with_show, nulls, running sum, partitions, decimals, select, both backends)
 - **Issue #392 tests** - `tests/test_issue_392_window_sum_peers.py` with 10 tests (both sparkless and PySpark backends)
