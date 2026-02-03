@@ -33,7 +33,7 @@ All changes since 3.27.1 are included in this release.
   - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
 
 ### Added
-- **Issue #398 tests** - `tests/test_issue_398_withfield_window.py` with 2 tests (both backends)
+- **Issue #398 tests** - `tests/test_issue_398_withfield_window.py` with 9 tests (both backends)
 - **Issue #397 tests** - `tests/test_issue_397_groupby_alias.py` with 10 tests (both backends)
 - **Issue #396 tests** - `tests/test_issue_396_to_date_cast.py` with 8 tests (select, nulls, filter, IntegerType, both backends)
 - **Issue #395 tests** - `tests/test_issue_395_filter_and_string_expr.py` with 13 tests (AND inside string literal, OR+is null, F.expr, select, both backends)

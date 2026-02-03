@@ -3004,9 +3004,7 @@ class PolarsOperationExecutor:
                     for i, row in enumerate(data):
                         evaluator._current_row_index = i
                         results.append(
-                            evaluator.evaluate_expression(
-                                row, expression, row_index=i
-                            )
+                            evaluator.evaluate_expression(row, expression, row_index=i)
                         )
                     # Add results as new column
                     # Polars will automatically infer struct type from dict values
