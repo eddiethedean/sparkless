@@ -270,6 +270,35 @@ class SQLExprParser:
                 right = SQLExprParser._parse_expression(parts[1].strip())
                 return ColumnOperation(left, op, right)
 
+        # Parse NOT LIKE (before LIKE): "col NOT LIKE 'pattern'" (Issue #394)
+        not_like_match = re.search(r"\s+NOT\s+LIKE\s+", expr, re.IGNORECASE)
+        if not_like_match:
+            left_str = expr[: not_like_match.start()].strip()
+            right_str = expr[not_like_match.end() :].strip()
+            left_expr = SQLExprParser._parse_expression(left_str)
+            pattern_val = SQLExprParser._parse_simple_value(right_str)
+            from ...functions.string import StringFunctions
+
+            like_result = StringFunctions.like(
+                left_expr,  # type: ignore[arg-type]
+                str(pattern_val),
+            )
+            return ColumnOperation(like_result, "!", None)
+
+        # Parse LIKE: "col LIKE 'pattern'" (Issue #394)
+        like_match = re.search(r"\s+LIKE\s+", expr, re.IGNORECASE)
+        if like_match:
+            left_str = expr[: like_match.start()].strip()
+            right_str = expr[like_match.end() :].strip()
+            left_expr = SQLExprParser._parse_expression(left_str)
+            pattern_val = SQLExprParser._parse_simple_value(right_str)
+            from ...functions.string import StringFunctions
+
+            return StringFunctions.like(
+                left_expr,  # type: ignore[arg-type]
+                str(pattern_val),
+            )
+
         # Parse IN (literal list): "col IN ('a', 'b')", "col IN (1, 2)" (Issue #370)
         in_match = re.search(r"\s+IN\s*\(", expr, re.IGNORECASE)
         if in_match:

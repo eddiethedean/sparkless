@@ -8,6 +8,7 @@ to Polars expressions (pl.Expr) for DataFrame operations.
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from datetime import datetime, date
 import logging
+import re
 import polars as pl
 import math
 import threading
@@ -28,6 +29,23 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # Helpers for missing functions
 # -----------------------------
+
+
+def _sql_like_to_regex(pattern: str) -> str:
+    """Convert SQL LIKE pattern to regex with full-string match.
+
+    SQL LIKE: % = any sequence, _ = exactly one char. Other chars are literal.
+    Anchors ^ $ ensure full string match (not substring).
+    """
+    result = []
+    for c in pattern:
+        if c == "%":
+            result.append(".*")
+        elif c == "_":
+            result.append(".")
+        else:
+            result.append(re.escape(c))
+    return "^" + "".join(result) + "$"
 
 
 def _xxh64(data: bytes, seed: int = 42) -> int:
@@ -2340,10 +2358,9 @@ class PolarsExpressionTranslator:
                     value_expr = self.translate(op.value)
                     return col_expr.str.ends_with(value_expr)
             elif operation == "like":
-                # like(col, pattern) - SQL LIKE pattern matching
+                # like(col, pattern) - SQL LIKE pattern matching (full string match)
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                # Convert SQL LIKE pattern to regex (simplified: % -> .*, _ -> .)
-                regex_pattern = pattern.replace("%", ".*").replace("_", ".")
+                regex_pattern = _sql_like_to_regex(pattern)
                 return col_expr.str.contains(regex_pattern, literal=False)
             elif operation == "rlike":
                 # rlike(col, pattern) - Regular expression pattern matching - delegate to string translator
@@ -2354,9 +2371,9 @@ class PolarsExpressionTranslator:
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
                 return self._string_translator.translate_rlike(col_expr, pattern)
             elif operation == "ilike":
-                # ilike(col, pattern) - Case-insensitive LIKE
+                # ilike(col, pattern) - Case-insensitive LIKE (full string match)
                 pattern = op.value if isinstance(op.value, str) else str(op.value)
-                regex_pattern = pattern.replace("%", ".*").replace("_", ".")
+                regex_pattern = _sql_like_to_regex(pattern)
                 return col_expr.str.to_lowercase().str.contains(
                     regex_pattern, literal=False
                 )
@@ -2596,10 +2613,9 @@ class PolarsExpressionTranslator:
                 else:
                     raise ValueError("concat_ws requires (sep, [columns]) tuple")
             elif operation == "like":
-                # SQL LIKE pattern - convert to Polars regex
+                # SQL LIKE pattern - full string match
                 pattern = op.value
-                # Convert SQL LIKE to regex: % -> .*, _ -> .
-                regex_pattern = pattern.replace("%", ".*").replace("_", ".")
+                regex_pattern = _sql_like_to_regex(pattern)
                 return col_expr.str.contains(regex_pattern, literal=False)
             elif operation == "rlike":
                 # Regular expression pattern matching - delegate to string translator

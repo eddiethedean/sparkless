@@ -5,6 +5,9 @@
 All changes since 3.27.1 are included in this release.
 
 ### Fixed
+- **Issue #394** - `df.filter("Name like '%TEST%'")` and `df.filter("Name not like '%TEST%'")` no longer raise `ParseException: Invalid identifier or literal`
+  - PySpark supports LIKE/NOT LIKE in F.expr() and filter string expressions; SQLExprParser now parses these
+  - Fixed SQL LIKE semantics: use full-string match (anchor regex with ^ $) so `_` wildcard matches exactly one char (was substring match)
 - **Issue #393** - `sum()`/`avg()` over window on string columns with numeric data no longer raises `InvalidOperationError: cum_sum operation not supported for dtype str`
   - PySpark coerces string columns to double for sum/avg; Polars requires explicit cast
   - PolarsWindowHandler now casts Utf8/String columns to Float64 before sum/cum_sum/mean (via `_ensure_numeric_for_agg`)
@@ -17,6 +20,7 @@ All changes since 3.27.1 are included in this release.
   - PySpark: `createDataFrame(pandas_df)` preserves column order as-given; `createDataFrame(list_of_dicts)` sorts columns alphabetically. Sparkless now does both: DataFrameFactory captures Pandas column order before converting to list of dicts; SchemaInferenceEngine accepts optional `column_order` and uses it for schema and normalized data order.
 
 ### Added
+- **Issue #394 tests** - `tests/test_issue_394_like_in_expr.py` with 15 tests (like/not like, AND/OR, prefix/suffix/middle %, multiple _, nulls, F.expr, both backends)
 - **Issue #393 tests** - `tests/test_issue_393_sum_string_column.py` with 10 tests (sum/avg on string columns, with_show, nulls, running sum, partitions, decimals, select, both backends)
 - **Issue #392 tests** - `tests/test_issue_392_window_sum_peers.py` with 10 tests (both sparkless and PySpark backends)
   - sum/avg with orderBy subset of partitionBy (peers), orderBy differs (running sum), F.col().desc(), single row, nulls, multiple order cols
