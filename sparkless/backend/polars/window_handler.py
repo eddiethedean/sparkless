@@ -69,6 +69,34 @@ class PolarsWindowHandler:
         )
         return resolved if resolved is not None else col_name
 
+    def _ensure_numeric_for_agg(
+        self,
+        column_expr: pl.Expr,
+        col_name: str,
+        df: pl.DataFrame,
+        case_sensitive: bool,
+    ) -> pl.Expr:
+        """Cast string columns to Float64 for sum/avg (PySpark coerces; Polars requires cast).
+
+        PySpark sum()/avg() on string columns with numeric content coerces to double.
+        Polars cum_sum/sum/mean on Utf8 raises InvalidOperationError.
+        See: https://github.com/eddiethedean/sparkless/issues/393
+        """
+        resolved = self._resolve_col(col_name, df, case_sensitive)
+        if resolved not in df.columns:
+            return column_expr
+        schema = getattr(df, "schema", None)
+        if schema is None:
+            return column_expr
+        try:
+            dtype = schema[resolved]
+        except (KeyError, TypeError):
+            return column_expr
+        # Polars Utf8/String - cast to Float64 for numeric aggregation
+        if dtype == pl.Utf8 or (hasattr(pl, "String") and dtype == pl.String):
+            return column_expr.cast(pl.Float64, strict=False)
+        return column_expr
+
     def translate_window_function(
         self,
         window_func: WindowFunction,
@@ -267,6 +295,11 @@ class PolarsWindowHandler:
                         return pl.int_range(pl.len()) + 1
         elif function_name == "SUM":
             if column_expr is not None:
+                agg_col = getattr(window_func, "column_name", None)
+                if agg_col:
+                    column_expr = self._ensure_numeric_for_agg(
+                        column_expr, agg_col, df, case_sensitive
+                    )
                 # Handle rows_between frames
                 # For complex frames like rowsBetween(currentRow, unboundedFollowing),
                 # Polars doesn't support nested window functions, so we raise ValueError
@@ -313,6 +346,11 @@ class PolarsWindowHandler:
                 raise ValueError("SUM window function requires a column")
         elif function_name == "AVG" or function_name == "MEAN":
             if column_expr is not None:
+                agg_col = getattr(window_func, "column_name", None)
+                if agg_col:
+                    column_expr = self._ensure_numeric_for_agg(
+                        column_expr, agg_col, df, case_sensitive
+                    )
                 if partition_by:
                     if order_by:
                         # PySpark RANGE semantics: when orderBy cols are subset of partitionBy,
