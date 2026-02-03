@@ -1312,14 +1312,14 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_like_operation(col_value: Any, pattern: str) -> bool:
-        """Evaluate LIKE operation.
+        """Evaluate LIKE operation (full string match).
 
         Args:
             col_value: Column value.
-            pattern: LIKE pattern.
+            pattern: LIKE pattern (% = any sequence, _ = one char).
 
         Returns:
-            True if pattern matches.
+            True if pattern matches entire string.
         """
         if col_value is None:
             return False
@@ -1327,8 +1327,17 @@ class ConditionEvaluator:
         import re
 
         value = str(col_value)
-        regex_pattern = str(pattern).replace("%", ".*")
-        return bool(re.match(regex_pattern, value))
+        # Convert SQL LIKE to regex: % -> .*, _ -> ., escape others, full match
+        result = []
+        for c in str(pattern):
+            if c == "%":
+                result.append(".*")
+            elif c == "_":
+                result.append(".")
+            else:
+                result.append(re.escape(c))
+        regex_pattern = "^" + "".join(result) + "$"
+        return bool(re.fullmatch(regex_pattern, value))
 
     @staticmethod
     def _evaluate_isin_operation(col_value: Any, values: List[Any]) -> bool:
