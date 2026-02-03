@@ -930,30 +930,37 @@ class ExpectedOutputGenerator:
         chained_tests = [
             (
                 "filter_select_groupby_agg",
-                lambda: df.filter(df.age > 30)
-                .select("name", "salary", "department")
-                .groupBy("department")
-                .agg(F.avg("salary").alias("avg_salary")),
+                lambda: (
+                    df.filter(df.age > 30)
+                    .select("name", "salary", "department")
+                    .groupBy("department")
+                    .agg(F.avg("salary").alias("avg_salary"))
+                ),
             ),
             (
                 "withcolumn_filter_orderby",
-                lambda: df.withColumn("bonus", df.salary * 0.1)
-                .filter((df.salary * 0.1) > 5000)
-                .orderBy((df.salary * 0.1).desc()),
+                lambda: (
+                    df.withColumn("bonus", df.salary * 0.1)
+                    .filter((df.salary * 0.1) > 5000)
+                    .orderBy((df.salary * 0.1).desc())
+                ),
             ),
             (
                 "select_expr_groupby_agg_orderby",
-                lambda: df.selectExpr(
-                    "name",
-                    "salary",
-                    "department",
-                    "CASE WHEN age > 30 THEN 'Senior' ELSE 'Junior' END as level",
-                )
-                .groupBy("level")
-                .agg(
-                    F.count("name").alias("count"), F.avg("salary").alias("avg_salary")
-                )
-                .orderBy("avg_salary"),
+                lambda: (
+                    df.selectExpr(
+                        "name",
+                        "salary",
+                        "department",
+                        "CASE WHEN age > 30 THEN 'Senior' ELSE 'Junior' END as level",
+                    )
+                    .groupBy("level")
+                    .agg(
+                        F.count("name").alias("count"),
+                        F.avg("salary").alias("avg_salary"),
+                    )
+                    .orderBy("avg_salary")
+                ),
             ),
             (
                 "complex_string_operations",

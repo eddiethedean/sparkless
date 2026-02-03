@@ -534,20 +534,22 @@ class PolarsOperationExecutor:
                             # Filter out null fields per row using map_elements
                             # PySpark only includes keys that have non-null values
                             filtered_merged = merged_struct.map_elements(
-                                lambda x: {k: v for k, v in x.items() if v is not None}
-                                if isinstance(x, dict)
-                                else (
-                                    {
-                                        k: getattr(x, k)
-                                        for k in dir(x)
-                                        if not k.startswith("_")
-                                        and getattr(x, k, None) is not None
-                                    }
-                                    if hasattr(x, "__dict__")
+                                lambda x: (
+                                    {k: v for k, v in x.items() if v is not None}
+                                    if isinstance(x, dict)
+                                    else (
+                                        {
+                                            k: getattr(x, k)
+                                            for k in dir(x)
+                                            if not k.startswith("_")
+                                            and getattr(x, k, None) is not None
+                                        }
+                                        if hasattr(x, "__dict__")
+                                        else None
+                                    )
+                                    if x is not None
                                     else None
-                                )
-                                if x is not None
-                                else None,
+                                ),
                                 return_dtype=pl.Object,
                             )
 

@@ -700,16 +700,9 @@ class TestIssue290UdfMultipleArguments:
             df = spark.createDataFrame(data=data)
 
             my_udf = F.udf(
-                lambda a, b, c, d, e, f, g, h, i, j: a
-                + b
-                + c
-                + d
-                + e
-                + f
-                + g
-                + h
-                + i
-                + j,
+                lambda a, b, c, d, e, f, g, h, i, j: (
+                    a + b + c + d + e + f + g + h + i + j
+                ),
                 T.IntegerType(),
             )
             result = df.withColumn(

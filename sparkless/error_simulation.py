@@ -254,9 +254,11 @@ class MockErrorSimulatorBuilder:
         pattern_re = re.compile(pattern.replace("*", ".*"))
         self.error_sim.add_rule(
             "createDataFrame",
-            lambda data, schema=None: schema is not None
-            and hasattr(schema, "fields")
-            and any(pattern_re.match(field.name) for field in schema.fields),
+            lambda data, schema=None: (
+                schema is not None
+                and hasattr(schema, "fields")
+                and any(pattern_re.match(field.name) for field in schema.fields)
+            ),
             AnalysisException(f"Invalid schema: {pattern}"),
         )
         return self

@@ -1939,15 +1939,17 @@ class PolarsExpressionTranslator:
                 # Create a struct with one field, then convert to list
                 struct_expr = pl.struct(**{"_field_0": col_exprs[0]})
                 return struct_expr.map_elements(
-                    lambda s: [s["_field_0"]]
-                    if isinstance(s, dict)
-                    else [getattr(s, "_field_0", None)]
-                    if hasattr(s, "_field_0")
-                    else [
-                        list(s.values())[0]
-                        if hasattr(s, "values") and s.values()
-                        else None
-                    ],
+                    lambda s: (
+                        [s["_field_0"]]
+                        if isinstance(s, dict)
+                        else [getattr(s, "_field_0", None)]
+                        if hasattr(s, "_field_0")
+                        else [
+                            list(s.values())[0]
+                            if hasattr(s, "values") and s.values()
+                            else None
+                        ]
+                    ),
                     return_dtype=pl.Object,  # Object type to handle mixed types
                 )
             else:
@@ -3139,13 +3141,15 @@ class PolarsExpressionTranslator:
                 import hashlib
 
                 return col_expr.map_elements(
-                    lambda x: hashlib.sha1(
-                        x.encode("utf-8")
-                        if isinstance(x, str)
-                        else str(x).encode("utf-8")
-                    ).hexdigest()
-                    if x is not None
-                    else "",
+                    lambda x: (
+                        hashlib.sha1(
+                            x.encode("utf-8")
+                            if isinstance(x, str)
+                            else str(x).encode("utf-8")
+                        ).hexdigest()
+                        if x is not None
+                        else ""
+                    ),
                     return_dtype=pl.Utf8,
                 )
             elif operation == "mask":
@@ -3158,11 +3162,7 @@ class PolarsExpressionTranslator:
                 digit_char = params.get("digitChar", "n")
                 other_char = params.get("otherChar", "-")
                 return col_expr.map_elements(
-                    lambda x,
-                    uc=upper_char,
-                    lc=lower_char,
-                    dc=digit_char,
-                    oc=other_char: (
+                    lambda x, uc=upper_char, lc=lower_char, dc=digit_char, oc=other_char: (
                         "".join(
                             uc
                             if c.isupper()
@@ -3422,9 +3422,9 @@ class PolarsExpressionTranslator:
                         "Array access failed, falling back to map access", exc_info=True
                     )
                     return col_expr.map_elements(
-                        lambda x, idx=index_expr: x.get(idx)
-                        if isinstance(x, dict)
-                        else None,
+                        lambda x, idx=index_expr: (
+                            x.get(idx) if isinstance(x, dict) else None
+                        ),
                         return_dtype=pl.Object,
                     )
             elif operation == "try_to_binary":
@@ -3683,11 +3683,15 @@ class PolarsExpressionTranslator:
             import base64
 
             return col_expr.map_elements(
-                lambda x: base64.b64encode(
-                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
-                ).decode("utf-8")
-                if x is not None
-                else "",
+                lambda x: (
+                    base64.b64encode(
+                        x.encode("utf-8")
+                        if isinstance(x, str)
+                        else str(x).encode("utf-8")
+                    ).decode("utf-8")
+                    if x is not None
+                    else ""
+                ),
                 return_dtype=pl.Utf8,
             )
         elif function_name == "md5":
@@ -3695,11 +3699,15 @@ class PolarsExpressionTranslator:
             import hashlib
 
             return col_expr.map_elements(
-                lambda x: hashlib.md5(
-                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
-                ).hexdigest()
-                if x is not None
-                else "",
+                lambda x: (
+                    hashlib.md5(
+                        x.encode("utf-8")
+                        if isinstance(x, str)
+                        else str(x).encode("utf-8")
+                    ).hexdigest()
+                    if x is not None
+                    else ""
+                ),
                 return_dtype=pl.Utf8,
             )
         elif function_name == "sha1":
@@ -3707,11 +3715,15 @@ class PolarsExpressionTranslator:
             import hashlib
 
             return col_expr.map_elements(
-                lambda x: hashlib.sha1(
-                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
-                ).hexdigest()
-                if x is not None
-                else "",
+                lambda x: (
+                    hashlib.sha1(
+                        x.encode("utf-8")
+                        if isinstance(x, str)
+                        else str(x).encode("utf-8")
+                    ).hexdigest()
+                    if x is not None
+                    else ""
+                ),
                 return_dtype=pl.Utf8,
             )
         elif function_name == "sha2":
@@ -3725,11 +3737,15 @@ class PolarsExpressionTranslator:
                 512: hashlib.sha512,
             }.get(bitLength, hashlib.sha256)
             return col_expr.map_elements(
-                lambda x: hash_func(
-                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
-                ).hexdigest()
-                if x is not None
-                else "",
+                lambda x: (
+                    hash_func(
+                        x.encode("utf-8")
+                        if isinstance(x, str)
+                        else str(x).encode("utf-8")
+                    ).hexdigest()
+                    if x is not None
+                    else ""
+                ),
                 return_dtype=pl.Utf8,
             )
         elif function_name == "translate":
@@ -3991,30 +4007,32 @@ class PolarsExpressionTranslator:
             # Since we can't access dtype at translation time, use map_elements with runtime dtype check
             return col_expr.map_elements(
                 lambda x: (
-                    # If it's a dict, use keys directly
-                    list(x.keys())
-                    if isinstance(x, dict)
-                    # If it's a Polars struct (Row object), get field names from schema
-                    else [
-                        k
-                        for k in getattr(x, "_schema", {})
-                        if getattr(x, k, None) is not None
-                    ]
-                    if hasattr(x, "_schema")
-                    # Try to get struct fields using __struct_fields__
-                    else [
-                        f.name
-                        for f in getattr(x, "__struct_fields__", [])
-                        if getattr(x, f.name, None) is not None
-                    ]
-                    if hasattr(x, "__struct_fields__")
-                    # For dict-like objects, filter by non-null values
-                    else [k for k, v in x.items() if v is not None]
-                    if hasattr(x, "items") and callable(x.items)
+                    (
+                        # If it's a dict, use keys directly
+                        list(x.keys())
+                        if isinstance(x, dict)
+                        # If it's a Polars struct (Row object), get field names from schema
+                        else [
+                            k
+                            for k in getattr(x, "_schema", {})
+                            if getattr(x, k, None) is not None
+                        ]
+                        if hasattr(x, "_schema")
+                        # Try to get struct fields using __struct_fields__
+                        else [
+                            f.name
+                            for f in getattr(x, "__struct_fields__", [])
+                            if getattr(x, f.name, None) is not None
+                        ]
+                        if hasattr(x, "__struct_fields__")
+                        # For dict-like objects, filter by non-null values
+                        else [k for k, v in x.items() if v is not None]
+                        if hasattr(x, "items") and callable(x.items)
+                        else None
+                    )
+                    if x is not None
                     else None
-                )
-                if x is not None
-                else None,
+                ),
                 return_dtype=pl.List(pl.Utf8),
             )
         elif function_name == "map_values":
@@ -4022,20 +4040,22 @@ class PolarsExpressionTranslator:
             # For structs, get only non-null values; for dicts, get values
             return col_expr.map_elements(
                 lambda x: (
-                    list(x.values())
-                    if isinstance(x, dict)
-                    else [x.get(k) for k in x if x.get(k) is not None]
-                    if isinstance(x, dict)
-                    else [
-                        getattr(x, f.name)
-                        for f in x.__struct_fields__
-                        if getattr(x, f.name, None) is not None
-                    ]
-                    if hasattr(x, "__struct_fields__")
+                    (
+                        list(x.values())
+                        if isinstance(x, dict)
+                        else [x.get(k) for k in x if x.get(k) is not None]
+                        if isinstance(x, dict)
+                        else [
+                            getattr(x, f.name)
+                            for f in x.__struct_fields__
+                            if getattr(x, f.name, None) is not None
+                        ]
+                        if hasattr(x, "__struct_fields__")
+                        else None
+                    )
+                    if x is not None
                     else None
-                )
-                if x is not None
-                else None,
+                ),
                 return_dtype=pl.List(None),  # Type will be inferred from values
             )
         elif function_name == "map_entries":
@@ -4043,22 +4063,26 @@ class PolarsExpressionTranslator:
             # PySpark returns array of structs with 'key' and 'value' fields
             return col_expr.map_elements(
                 lambda x: (
-                    [{"key": k, "value": v} for k, v in x.items()]
-                    if isinstance(x, dict)
-                    else [
-                        {"key": k, "value": x.get(k)} for k in x if x.get(k) is not None
-                    ]
-                    if isinstance(x, dict)
-                    else [
-                        {"key": f.name, "value": getattr(x, f.name)}
-                        for f in x.__struct_fields__
-                        if getattr(x, f.name, None) is not None
-                    ]
-                    if hasattr(x, "__struct_fields__")
+                    (
+                        [{"key": k, "value": v} for k, v in x.items()]
+                        if isinstance(x, dict)
+                        else [
+                            {"key": k, "value": x.get(k)}
+                            for k in x
+                            if x.get(k) is not None
+                        ]
+                        if isinstance(x, dict)
+                        else [
+                            {"key": f.name, "value": getattr(x, f.name)}
+                            for f in x.__struct_fields__
+                            if getattr(x, f.name, None) is not None
+                        ]
+                        if hasattr(x, "__struct_fields__")
+                        else None
+                    )
+                    if x is not None
                     else None
-                )
-                if x is not None
-                else None,
+                ),
                 return_dtype=pl.List(None),  # Type will be inferred
             )
         elif function_name == "map_concat":
@@ -4092,13 +4116,15 @@ class PolarsExpressionTranslator:
                 for other_col in all_cols[1:]:
                     # Merge maps using map_elements
                     merged = merged.map_elements(
-                        lambda x, y: {
-                            **(x if isinstance(x, dict) else {}),
-                            **(y if isinstance(y, dict) else {}),
-                        }
-                        if (isinstance(x, dict) or x is None)
-                        and (isinstance(y, dict) or y is None)
-                        else None,
+                        lambda x, y: (
+                            {
+                                **(x if isinstance(x, dict) else {}),
+                                **(y if isinstance(y, dict) else {}),
+                            }
+                            if (isinstance(x, dict) or x is None)
+                            and (isinstance(y, dict) or y is None)
+                            else None
+                        ),
                         return_dtype=pl.Object,
                     )
                 # Actually, Polars doesn't support multi-argument map_elements easily
@@ -4127,7 +4153,9 @@ class PolarsExpressionTranslator:
             "trim": lambda e: e.str.strip_chars(" "),
             "ltrim": lambda e: e.str.strip_chars_start(" "),
             "rtrim": lambda e: e.str.strip_chars_end(" "),
-            "btrim": lambda e: e.str.strip_chars(),  # btrim without trim_string is same as trim
+            "btrim": lambda e: (
+                e.str.strip_chars()
+            ),  # btrim without trim_string is same as trim
             "bit_length": lambda e: (e.str.len_bytes() * 8).cast(
                 pl.Int64
             ),  # Cast to Int64 for PySpark compatibility
@@ -4135,14 +4163,18 @@ class PolarsExpressionTranslator:
                 pl.Int64
             ),  # Byte length (octet = 8 bits, but octet_length is bytes), cast to Int64 for PySpark compatibility
             "char": lambda e: e.map_elements(
-                lambda x: chr(int(x))
-                if x is not None and isinstance(x, (int, float))
-                else None,
+                lambda x: (
+                    chr(int(x))
+                    if x is not None and isinstance(x, (int, float))
+                    else None
+                ),
                 return_dtype=pl.Utf8,
             ),
             "ucase": lambda e: e.str.to_uppercase(),  # Alias for upper
             "lcase": lambda e: e.str.to_lowercase(),  # Alias for lower
-            "initcap": lambda e: e.str.to_titlecase(),  # Capitalize first letter of each word
+            "initcap": lambda e: (
+                e.str.to_titlecase()
+            ),  # Capitalize first letter of each word
             "positive": lambda e: e,  # Identity function
             "negative": lambda e: -e,  # Negate
             "power": lambda e: e,  # Will be handled in operation-specific code below
@@ -4217,22 +4249,26 @@ class PolarsExpressionTranslator:
                 return_dtype=pl.Boolean,
             ),
             "bin": lambda e: e.map_elements(
-                lambda x: bin(int(x))[2:]
-                if isinstance(x, (int, float))
-                and not (isinstance(x, float) and math.isnan(x))
-                and x is not None
-                else "",
+                lambda x: (
+                    bin(int(x))[2:]
+                    if isinstance(x, (int, float))
+                    and not (isinstance(x, float) and math.isnan(x))
+                    and x is not None
+                    else ""
+                ),
                 return_dtype=pl.Utf8,
             ),
             "bround": lambda e: self._bround_expr(e, op),
             "conv": lambda e: self._conv_expr(e, op),
             "factorial": lambda e: e.map_elements(
-                lambda x: math.factorial(int(x))
-                if isinstance(x, (int, float))
-                and x >= 0
-                and x == int(x)
-                and x is not None
-                else None,
+                lambda x: (
+                    math.factorial(int(x))
+                    if isinstance(x, (int, float))
+                    and x >= 0
+                    and x == int(x)
+                    and x is not None
+                    else None
+                ),
                 return_dtype=pl.Int64,
             ),
             "to_date": lambda e: e.str.strptime(pl.Date, strict=False),
@@ -4252,8 +4288,12 @@ class PolarsExpressionTranslator:
             ),
             # Note: explode/explode_outer expressions just return the array column
             # The actual row expansion is handled in operation_executor
-            "explode": lambda e: e,  # Return the array column as-is, will be exploded in operation_executor
-            "explode_outer": lambda e: e,  # Return the array column as-is, will be exploded in operation_executor
+            "explode": lambda e: (
+                e
+            ),  # Return the array column as-is, will be exploded in operation_executor
+            "explode_outer": lambda e: (
+                e
+            ),  # Return the array column as-is, will be exploded in operation_executor
             # New string functions
             "ilike": lambda e: e,  # Will be handled in operation-specific code
             "find_in_set": lambda e: e,  # Will be handled in operation-specific code
@@ -4261,7 +4301,9 @@ class PolarsExpressionTranslator:
             "regexp_like": lambda e: e,  # Will be handled in operation-specific code
             "regexp_substr": lambda e: e,  # Will be handled in operation-specific code
             "regexp_instr": lambda e: e,  # Will be handled in operation-specific code
-            "regexp": lambda e: e,  # Will be handled in operation-specific code (alias for rlike)
+            "regexp": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code (alias for rlike)
             "sentences": lambda e: e,  # Will be handled in operation-specific code
             "printf": lambda e: e,  # Will be handled in operation-specific code
             "to_char": lambda e: e,  # Will be handled in operation-specific code
@@ -4273,7 +4315,9 @@ class PolarsExpressionTranslator:
             "negate": lambda e: -e,  # Alias for negative
             "shiftleft": lambda e: e,  # Will be handled in operation-specific code
             "shiftright": lambda e: e,  # Will be handled in operation-specific code
-            "shiftrightunsigned": lambda e: e,  # Will be handled in operation-specific code
+            "shiftrightunsigned": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             "ln": lambda e: e.log(),  # Natural logarithm
             # New datetime functions
             "years": lambda e: e,  # Interval function - return as-is
@@ -4281,22 +4325,36 @@ class PolarsExpressionTranslator:
             "dateadd": lambda e: e,  # Will be handled in operation-specific code
             "datepart": lambda e: e,  # Will be handled in operation-specific code
             "make_timestamp": lambda e: e,  # Will be handled in operation-specific code
-            "make_timestamp_ltz": lambda e: e,  # Will be handled in operation-specific code
-            "make_timestamp_ntz": lambda e: e,  # Will be handled in operation-specific code
+            "make_timestamp_ltz": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
+            "make_timestamp_ntz": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             "make_interval": lambda e: e,  # Will be handled in operation-specific code
-            "make_dt_interval": lambda e: e,  # Will be handled in operation-specific code
-            "make_ym_interval": lambda e: e,  # Will be handled in operation-specific code
+            "make_dt_interval": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
+            "make_ym_interval": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             "to_number": lambda e: e,  # Will be handled in operation-specific code
             "to_binary": lambda e: e,  # Will be handled in operation-specific code
-            "to_unix_timestamp": lambda e: e,  # Will be handled in operation-specific code
+            "to_unix_timestamp": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             "unix_timestamp": lambda e: e,  # Will be handled in operation-specific code
             "unix_date": lambda e: e,  # Will be handled in operation-specific code
             "unix_seconds": lambda e: e,  # Will be handled in operation-specific code
             "unix_millis": lambda e: e,  # Will be handled in operation-specific code
             "unix_micros": lambda e: e,  # Will be handled in operation-specific code
             # timestamp_seconds removed - handled in operation-specific code to force Python evaluation
-            "timestamp_millis": lambda e: e,  # Will be handled in operation-specific code
-            "timestamp_micros": lambda e: e,  # Will be handled in operation-specific code
+            "timestamp_millis": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
+            "timestamp_micros": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             # New utility functions
             "get": lambda e: e,  # Will be handled in operation-specific code
             "inline": lambda e: e,  # Will be handled in operation-specific code
@@ -4305,12 +4363,20 @@ class PolarsExpressionTranslator:
             # New crypto functions (PySpark 3.5+)
             "aes_encrypt": lambda e: e,  # Will be handled in operation-specific code
             "aes_decrypt": lambda e: e,  # Will be handled in operation-specific code
-            "try_aes_decrypt": lambda e: e,  # Will be handled in operation-specific code
+            "try_aes_decrypt": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             # New string functions (PySpark 3.5+)
-            "sha": lambda e: e,  # Alias for sha1 - will be handled in operation-specific code
+            "sha": lambda e: (
+                e
+            ),  # Alias for sha1 - will be handled in operation-specific code
             "mask": lambda e: e,  # Will be handled in operation-specific code
-            "json_array_length": lambda e: e,  # Will be handled in operation-specific code
-            "json_object_keys": lambda e: e,  # Will be handled in operation-specific code
+            "json_array_length": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
+            "json_object_keys": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             "xpath_number": lambda e: e,  # Will be handled in operation-specific code
             "user": lambda e: pl.lit(""),  # Will be handled in operation-specific code
             "input_file_name": lambda e: pl.lit(
@@ -4321,9 +4387,15 @@ class PolarsExpressionTranslator:
             "getbit": lambda e: e,  # Will be handled in operation-specific code
             "width_bucket": lambda e: e,  # Will be handled in operation-specific code
             # New datetime functions (PySpark 3.5+)
-            "date_from_unix_date": lambda e: e,  # Will be handled in operation-specific code
-            "to_timestamp_ltz": lambda e: e,  # Will be handled in operation-specific code
-            "to_timestamp_ntz": lambda e: e,  # Will be handled in operation-specific code
+            "date_from_unix_date": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
+            "to_timestamp_ltz": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
+            "to_timestamp_ntz": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
             # New null-safe try functions (PySpark 3.5+)
             "try_add": lambda e: e,  # Will be handled in operation-specific code
             "try_subtract": lambda e: e,  # Will be handled in operation-specific code
@@ -4332,7 +4404,9 @@ class PolarsExpressionTranslator:
             "try_element_at": lambda e: e,  # Will be handled in operation-specific code
             "try_to_binary": lambda e: e,  # Will be handled in operation-specific code
             "try_to_number": lambda e: e,  # Will be handled in operation-specific code
-            "try_to_timestamp": lambda e: e,  # Will be handled in operation-specific code
+            "try_to_timestamp": lambda e: (
+                e
+            ),  # Will be handled in operation-specific code
         }
 
         if function_name in function_map:
@@ -4656,8 +4730,9 @@ class PolarsExpressionTranslator:
             "hour": lambda e: e.dt.hour(),
             "minute": lambda e: e.dt.minute(),
             "second": lambda e: e.dt.second(),
-            "dayofweek": lambda e: (e.dt.weekday() % 7)
-            + 1,  # Polars ISO: Mon=1,Sun=7; PySpark: Sun=1,Mon=2,...,Sat=7
+            "dayofweek": lambda e: (
+                (e.dt.weekday() % 7) + 1
+            ),  # Polars ISO: Mon=1,Sun=7; PySpark: Sun=1,Mon=2,...,Sat=7
             "dayofyear": lambda e: e.dt.ordinal_day(),
             "weekofyear": lambda e: e.dt.week(),
             "quarter": lambda e: e.dt.quarter(),
