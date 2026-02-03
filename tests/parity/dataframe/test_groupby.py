@@ -13,12 +13,11 @@ class TestGroupByParity(ParityTestBase):
 
     def test_group_by(self, spark):
         """Test groupBy matches PySpark behavior."""
-        imports = get_spark_imports()
-        F = imports.F
         expected = self.load_expected("dataframe_operations", "group_by")
 
         df = spark.createDataFrame(expected["input_data"])
-        result = df.groupBy("department").agg(F.count("*"))
+        # Use .count() shorthand - expected output was generated from this (column "count")
+        result = df.groupBy("department").count()
 
         self.assert_parity(result, expected)
 

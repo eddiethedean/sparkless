@@ -113,17 +113,16 @@ class AggregateFunction:
             display_name = self.function_name
 
         if self.column is None:
-            # For count(*), PySpark generates just "count", not "count(*)"
+            # For count(*), PySpark agg(F.count("*")) uses "count(1)".
+            # GroupedData.count() shorthand uses alias("count") for cleaner output.
             if self.function_name == "count":
-                return "count"
+                return "count(1)"
             else:
                 return f"{display_name}(*)"
         elif isinstance(self.column, str):
-            # For count(\"*\"), our PySpark parity fixtures expect the
-            # column name \"count\" (not \"count(1)\"), so we normalise
-            # to the same name we use for COUNT(*).
+            # For count("*"), match PySpark agg: use "count(1)".
             if self.function_name == "count" and self.column == "*":
-                return "count"
+                return "count(1)"
             elif self.function_name == "countDistinct":
                 # PySpark uses "count(column)" not "count(DISTINCT column)" for column names
                 return f"count({self.column})"
