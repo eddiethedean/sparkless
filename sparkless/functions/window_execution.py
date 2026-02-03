@@ -422,6 +422,8 @@ class WindowFunction:
             or self.function_name == "countDistinct"
         ):
             return self._evaluate_approx_count_distinct(data)
+        elif self.function_name == "count":
+            return self._evaluate_count(data)
         else:
             return [None] * len(data)
 
@@ -1256,6 +1258,50 @@ class WindowFunction:
                 result.append(None)
 
         return result
+
+    def _evaluate_count(self, data: List[Dict[str, Any]]) -> List[Any]:
+        """Evaluate count() window function with proper partitioning.
+
+        For count(*), counts all rows in each partition.
+        For count(col), counts non-null values in each partition.
+        """
+        if not data:
+            return []
+
+        col_name = self.column_name
+        # count(*) uses None or "*" - count all rows
+        count_all = col_name in (None, "*") or not col_name
+
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+
+        partition_groups: Dict[Any, List[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    get_row_value(row, col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        results: List[Any] = [None] * len(data)
+        for partition_indices in partition_groups.values():
+            # Default frame: all rows in partition (no rowsBetween = full partition)
+            partition_count = len(partition_indices)
+            if count_all:
+                cnt = partition_count
+            else:
+                cnt = sum(
+                    1
+                    for idx in partition_indices
+                    if data[idx].get(col_name) is not None
+                )
+            for idx in partition_indices:
+                results[idx] = cnt
+        return results
 
     def _evaluate_approx_count_distinct(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate approx_count_distinct() window function with proper partitioning."""

@@ -2981,7 +2981,8 @@ class PolarsOperationExecutor:
                 ):
                     # Convert Polars DataFrame to list of dicts for Python evaluation
                     data = df.to_dicts()
-                    # Evaluate using ExpressionEvaluator
+                    # Evaluate using ExpressionEvaluator (Issue #398: pass full_data
+                    # and row_index for WindowFunction inside withField)
                     from sparkless.dataframe.evaluation.expression_evaluator import (
                         ExpressionEvaluator,
                     )
@@ -2995,10 +2996,16 @@ class PolarsOperationExecutor:
                     ):
                         dataframe_context = expression.column._dataframe_context
 
-                    evaluator = ExpressionEvaluator(dataframe_context=dataframe_context)
-                    results = [
-                        evaluator.evaluate_expression(row, expression) for row in data
-                    ]
+                    evaluator = ExpressionEvaluator(
+                        dataframe_context=dataframe_context,
+                        full_data=data,
+                    )
+                    results = []
+                    for i, row in enumerate(data):
+                        evaluator._current_row_index = i
+                        results.append(
+                            evaluator.evaluate_expression(row, expression, row_index=i)
+                        )
                     # Add results as new column
                     # Polars will automatically infer struct type from dict values
                     # Create Series - use strict=False if available to handle mixed types
