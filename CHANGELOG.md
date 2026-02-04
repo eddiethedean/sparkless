@@ -17,6 +17,7 @@
   - Type mapper now maps Sparkless `DecimalType` to Polars `pl.Decimal(precision, scale)` and handles `pl.Decimal` when converting Polars schema back to Sparkless types.
 - **Issue #407** - `F.stddev("col").over(Window.partitionBy(...))` no longer returns `None` for every row
   - Polars window handler now implements STDDEV, STDDEV_SAMP, STD (sample std) and STDDEV_POP (population std) via `column_expr.std().over(partition_by)`.
+- **Issue #408** - `MockRDD` now supports `flatMap()`; `df.rdd.flatMap(lambda row: row["line"].split())` no longer raises `AttributeError: 'MockRDD' object has no attribute 'flatMap'`.
 
 ---
 
