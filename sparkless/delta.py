@@ -20,10 +20,12 @@ For real Delta operations (MERGE, time travel, etc.), use real PySpark + delta-s
 """
 
 from __future__ import annotations
+
+import logging
 import re
+from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
-from collections import defaultdict
 
 if TYPE_CHECKING:
     from .dataframe import DataFrame
@@ -32,6 +34,11 @@ if TYPE_CHECKING:
 from .functions import Column
 from .core.safe_evaluator import SafeExpressionEvaluator
 from .spark_types import get_row_value
+
+logger = logging.getLogger(__name__)
+
+# Exceptions that indicate expression evaluation failed; fall back to literal.
+_EVALUATION_FAILURE_EXCEPTIONS = (ValueError, SyntaxError, KeyError, TypeError)
 
 
 def _normalize_boolean_expression(expression: str) -> str:
@@ -368,7 +375,7 @@ class DeltaTable:
             return SafeExpressionEvaluator.evaluate_boolean(
                 normalized_expression, context
             )
-        except Exception:
+        except _EVALUATION_FAILURE_EXCEPTIONS:
             return False
 
     def _evaluate_update_expression(
@@ -391,7 +398,12 @@ class DeltaTable:
             try:
                 result = SafeExpressionEvaluator.evaluate(normalized, context)
                 return result if result is not None else expr
-            except Exception:
+            except _EVALUATION_FAILURE_EXCEPTIONS as e:
+                logger.debug(
+                    "Delta update expression evaluation failed, using literal: %s",
+                    e,
+                    extra={"expression": expr},
+                )
                 return expr
         return expression
 

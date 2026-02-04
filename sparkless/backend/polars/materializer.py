@@ -63,7 +63,7 @@ class PolarsMaterializer:
                 session = active_sessions[-1]
                 if hasattr(session, "conf"):
                     return bool(session.conf.is_case_sensitive())
-        except Exception:
+        except (AttributeError, TypeError):
             pass
         return False  # Default to case-insensitive (matching PySpark)
 
@@ -827,7 +827,7 @@ class PolarsMaterializer:
                                             )
                                             if i < len(values)
                                         }
-                                    except Exception:
+                                    except (TypeError, IndexError, KeyError):
                                         pass
                                 # Fallback: iterables of (k, v) pairs
                                 return cast("Dict[str, Any]", dict(row))

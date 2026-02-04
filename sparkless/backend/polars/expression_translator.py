@@ -20,7 +20,7 @@ from sparkless.functions.window_execution import WindowFunction
 
 try:  # pragma: no cover - optional dependency
     from pandas import Timestamp as PandasTimestamp
-except Exception:  # pragma: no cover - pandas is optional
+except ImportError:  # pragma: no cover - pandas is optional
     PandasTimestamp = None
 
 logger = logging.getLogger(__name__)

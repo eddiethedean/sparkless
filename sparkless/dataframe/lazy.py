@@ -6,22 +6,35 @@ This module handles lazy evaluation, operation queuing, and materialization
 for DataFrame. Extracted from dataframe.py to improve organization.
 """
 
+import ast
 import contextlib
-from typing import Sequence
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, cast
+import logging
+from typing import Any, Dict, List, Optional, Sequence, Set, TYPE_CHECKING, Tuple, cast
+
+from ..optimizer.query_optimizer import OperationType
 from ..spark_types import (
-    StringType,
-    StructField,
-    DoubleType,
-    LongType,
-    IntegerType,
+    ArrayType,
     BooleanType,
     DataType,
+    DoubleType,
+    IntegerType,
+    LongType,
+    StructField,
     StructType,
-    ArrayType,
+    StringType,
     get_row_value,
 )
-from ..optimizer.query_optimizer import OperationType
+
+logger = logging.getLogger(__name__)
+
+# Exceptions that indicate evaluation/transform fallback (set to None); re-raise others.
+_EVALUATION_FAILURE_EXCEPTIONS = (
+    TypeError,
+    ValueError,
+    KeyError,
+    AttributeError,
+    ZeroDivisionError,
+)
 
 if TYPE_CHECKING:
     from sparkless.dataframe import DataFrame
@@ -383,7 +396,7 @@ class LazyEvaluationEngine:
 
             # Convert back to original format
             return self._convert_from_optimizer_operations(optimized_ops)
-        except Exception:
+        except _EVALUATION_FAILURE_EXCEPTIONS:
             # If optimization fails, return original operations
             return operations
 
@@ -509,7 +522,7 @@ class LazyEvaluationEngine:
                             else "false"
                         )
                         use_plan_flag = str(conf_val).lower() in ("true", "1", "yes")
-                    except Exception:
+                    except (AttributeError, TypeError):
                         use_plan_flag = False
                     if use_plan_flag or backend_type == "robin":
                         from ..dataframe.logical_plan import to_logical_plan
@@ -980,11 +993,9 @@ class LazyEvaluationEngine:
                         # Try different array formats
                         if value.startswith("[") and value.endswith("]"):
                             # Parse string representation of list: "['a', 'b']"
-                            import ast
-
                             try:
                                 converted_dict[field.name] = ast.literal_eval(value)
-                            except Exception:  # noqa: E722
+                            except (ValueError, SyntaxError):
                                 # If parsing fails, split manually
                                 converted_dict[field.name] = value[1:-1].split(",")
                         elif value.startswith("{") and value.endswith("}"):
@@ -1198,7 +1209,7 @@ class LazyEvaluationEngine:
                                         new_row[col_name] = None
                                     new_data.append(new_row)
 
-                            except Exception:
+                            except _EVALUATION_FAILURE_EXCEPTIONS:
                                 # If window function evaluation fails, set all to None
                                 new_data = []
                                 for row in current.data:
@@ -1217,7 +1228,7 @@ class LazyEvaluationEngine:
                                     # Evaluate the column expression
                                     col_value = evaluator.evaluate_expression(row, col)
                                     new_row[col_name] = col_value
-                                except Exception:
+                                except _EVALUATION_FAILURE_EXCEPTIONS:
                                     # If evaluation fails, set to None
                                     new_row[col_name] = None
                                 new_data.append(new_row)
@@ -1431,7 +1442,7 @@ class LazyEvaluationEngine:
                                         StructField(col_name, col_type, True)
                                     )
                                     continue  # Skip to next column
-                                except Exception:
+                                except _EVALUATION_FAILURE_EXCEPTIONS:
                                     # If window function evaluation fails, treat as regular ColumnOperation
                                     pass  # Fall through to regular ColumnOperation handling
 
@@ -1461,9 +1472,9 @@ class LazyEvaluationEngine:
                                         if hasattr(parser_any, "parse")
                                         else None
                                     )
-                                except Exception as e:
-                                    print(
-                                        f"Warning: Failed to parse lambda for transform: {e}"
+                                except (ValueError, SyntaxError, AttributeError) as e:
+                                    logger.debug(
+                                        "Failed to parse lambda for transform: %s", e
                                     )
                                     lambda_expr = None
 
@@ -1633,9 +1644,10 @@ class LazyEvaluationEngine:
                                         )
                                         if i < len(new_fields):
                                             new_row[new_fields[i].name] = result
-                                    except Exception as e:
-                                        print(
-                                            f"Warning: Failed to evaluate transform operation: {e}"
+                                    except _EVALUATION_FAILURE_EXCEPTIONS as e:
+                                        logger.debug(
+                                            "Failed to evaluate transform operation: %s",
+                                            e,
                                         )
                                         if i < len(new_fields):
                                             new_row[new_fields[i].name] = None
@@ -1670,7 +1682,9 @@ class LazyEvaluationEngine:
                                                             new_row[
                                                                 new_fields[i].name
                                                             ] = int(dt.timestamp())
-                                                    except Exception:
+                                                    except (
+                                                        _EVALUATION_FAILURE_EXCEPTIONS
+                                                    ):
                                                         if i < len(new_fields):
                                                             new_row[
                                                                 new_fields[i].name
@@ -1732,7 +1746,7 @@ class LazyEvaluationEngine:
                                                 new_row[new_fields[i].name] = (
                                                     source_value
                                                 )
-                                    except Exception:
+                                    except _EVALUATION_FAILURE_EXCEPTIONS:
                                         if i < len(new_fields):
                                             new_row[new_fields[i].name] = None
                                 else:
@@ -1753,7 +1767,7 @@ class LazyEvaluationEngine:
                                         )
                                         if i < len(new_fields):
                                             new_row[new_fields[i].name] = result
-                                    except Exception:
+                                    except _EVALUATION_FAILURE_EXCEPTIONS:
                                         if i < len(new_fields):
                                             new_row[new_fields[i].name] = None
                             elif hasattr(col, "evaluate") and hasattr(
@@ -1764,7 +1778,7 @@ class LazyEvaluationEngine:
                                     result = col.evaluate(row)
                                     if i < len(new_fields):
                                         new_row[new_fields[i].name] = result
-                                except Exception:
+                                except _EVALUATION_FAILURE_EXCEPTIONS:
                                     if i < len(new_fields):
                                         new_row[new_fields[i].name] = None
                             elif isinstance(col, Literal):
@@ -1799,8 +1813,8 @@ class LazyEvaluationEngine:
                                         ]
                                     elif i < len(new_fields):
                                         new_row[new_fields[i].name] = None
-                                except Exception:
-                                    # Silently handle errors
+                                except _EVALUATION_FAILURE_EXCEPTIONS:
+                                    # Evaluation failed; set to None
                                     if i < len(new_fields):
                                         new_row[new_fields[i].name] = None
                             else:
@@ -2053,9 +2067,9 @@ class LazyEvaluationEngine:
                                 if hasattr(parser_any, "parse")
                                 else None
                             )
-                        except Exception as e:
+                        except (ValueError, SyntaxError, AttributeError) as e:
                             # If lambda parsing fails, skip the transform
-                            print(f"Warning: Failed to parse lambda for transform: {e}")
+                            logger.debug("Failed to parse lambda for transform: %s", e)
                             continue
 
                         # Apply the transform to each row
@@ -2078,10 +2092,10 @@ class LazyEvaluationEngine:
                                     else:
                                         # If lambda parsing failed, keep original array
                                         pass
-                                except Exception as e:
+                                except _EVALUATION_FAILURE_EXCEPTIONS as e:
                                     # If lambda evaluation fails, skip the transform
-                                    print(
-                                        f"Warning: Failed to evaluate transform lambda: {e}"
+                                    logger.debug(
+                                        "Failed to evaluate transform lambda: %s", e
                                     )
                                     pass
                             new_data.append(new_row)
@@ -2090,7 +2104,7 @@ class LazyEvaluationEngine:
                 else:
                     # Unknown ops ignored for now
                     continue
-            except Exception as e:
+            except (KeyError, AttributeError, ValueError) as e:
                 # If an operation fails due to column not found,
                 # it might be because the operation was queued but the column
                 # was removed by a previous operation. Skip this operation.

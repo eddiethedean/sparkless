@@ -141,7 +141,7 @@ class PolarsOperationExecutor:
                 session = active_sessions[-1]
                 if hasattr(session, "conf"):
                     return bool(session.conf.is_case_sensitive())
-        except Exception:
+        except (AttributeError, TypeError):
             pass
         return False  # Default to case-insensitive (matching PySpark)
 
@@ -663,7 +663,7 @@ class PolarsOperationExecutor:
                         val = str(val)
                     try:
                         obj = _json.loads(val)
-                    except Exception:
+                    except (ValueError, TypeError):
                         return None
                     if not isinstance(obj, dict):
                         return None

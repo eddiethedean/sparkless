@@ -20,6 +20,7 @@ Configuration and Setup
    :maxdepth: 1
 
    configuration
+   troubleshooting
    pytest_integration
 
 Performance and Optimization

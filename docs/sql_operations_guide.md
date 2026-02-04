@@ -6,7 +6,7 @@ This guide provides comprehensive documentation for Sparkless's SQL operations, 
 
 ## Overview
 
-Sparkless provides a complete SQL processing pipeline that mirrors PySpark's SQL capabilities:
+Sparkless provides a complete SQL processing pipeline that mirrors PySpark's SQL capabilities. Session-aware literals and schema tracking (see [Getting started](getting_started.md)) apply to SQL execution: the active session’s current database and catalog are used when resolving table names and running queries.
 
 - **SQL Parser** - Converts SQL queries into Abstract Syntax Trees (AST)
 - **SQL Validator** - Validates query syntax and semantics

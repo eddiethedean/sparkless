@@ -21,6 +21,16 @@ from sparkless.sql import SparkSession, functions as F
 from sparkless.sql.types import *
 ```
 
+### Module structure (PySpark compatibility)
+
+Sparkless mirrors PySpark’s module layout for drop-in compatibility:
+
+- **`sparkless.sql`** – `SparkSession`, `functions` (as `F`), and SQL entry points.
+- **`sparkless.sql.types`** – `StructType`, `StructField`, `StringType`, `IntegerType`, and other types (re-exports from `sparkless.spark_types` where applicable).
+- **`sparkless.sql.utils`** – Exceptions such as `AnalysisException`, `ParseException`, `IllegalArgumentException` for parity with `pyspark.sql.utils`.
+
+The `functions` object is a module (e.g. `import sparkless.sql.functions as F`), so `isinstance(F, ModuleType)` is true as in PySpark. Use `from sparkless.sql import SparkSession, functions as F` and `from sparkless.sql.types import *` (or explicit type imports) for minimal code changes when migrating.
+
 ### Session Creation
 
 ```python

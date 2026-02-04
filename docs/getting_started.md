@@ -221,6 +221,12 @@ Sparkless provides significant speed improvements:
 | Simple Query | 2-5s | 0.01s | 200x |
 | Full Test Suite | 5-10min | 30-60s | 10x |
 
+## Advanced: Session-aware literals and schema tracking
+
+Sparkless tracks the **active SparkSession** for functions that depend on it (e.g. `F.col`, `F.lit`, `F.expr`). When you call these, the engine uses the current session for catalog and configuration (e.g. case sensitivity, current database).
+
+**Session-aware helpers** (e.g. `current_catalog`, `current_database`, `current_schema`, `current_user`) and **schema tracking** in the Polars storage backend ensure that operations like `setCurrentDatabase` take effect for subsequent SQL and DataFrame operations. Create the session before using `F.col`/`F.lit` and set the current database with `spark.catalog.setCurrentDatabase("db_name")` when using multiple databases. See [Configuration](guides/configuration.md) and [Troubleshooting](guides/troubleshooting.md).
+
 ## Next Steps
 
 - **[API Reference](api_reference.md)** - Complete API documentation

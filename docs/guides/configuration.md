@@ -107,3 +107,12 @@ spark = SparkSession.builder \
 - `spark.sparkless.backend.allowDiskSpillover`: Allow disk spillover when memory is full
 
 **Note**: `maxMemory` and `allowDiskSpillover` options are ignored for Polars backend.
+
+## Performance knobs
+
+You can tune mock behaviour per pipeline using the following.
+
+- **Lazy vs eager evaluation** – `SparkSession(..., enable_lazy_evaluation=True)` (default) defers execution until an action (`collect`, `show`, `count`, etc.). Set to `False` for legacy eager behaviour.
+- **Logical plan path** – Set `spark.conf.set("spark.sparkless.useLogicalPlan", "true")` (or builder config) to use the serialized logical plan path when the backend supports it (e.g. Robin). This can change execution strategy and performance.
+- **Backend selection** – The Polars backend is the default and is optimized for in-memory pipelines. For very large or I/O-bound workloads, consider splitting data or using the appropriate backend (see [Backend selection](../backend_selection.md)).
+- **Profiling** – Optional profiling utilities are documented in [Profiling](../performance/profiling.md). Use them to identify hot paths before tuning.

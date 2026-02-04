@@ -23,7 +23,7 @@ Command: `mypy sparkless tests` (captured in `mypy-baseline.log`)
 1. Normalize aliases and helper annotations.
 2. Align interface and mixin signatures with their abstractions.
 3. Harden optional handling hotspots.
-4. Iterate on residual errors and wire mypy into CI.
+4. ~~Iterate on residual errors and wire mypy into CI.~~ **Done** – CI runs `mypy sparkless tests` in `.github/workflows/ci.yml` (lint-and-type job).
 
 Status will be updated as each theme is addressed.
 
@@ -34,4 +34,7 @@ Status will be updated as each theme is addressed.
   `tests/tools/` and `sparkless/backend/polars/{schema_registry,storage}.py`.
   Refreshed `mypy-baseline.log` after changes (still pending interface/optional
   work).
+- **2026-02** — Mypy confirmed wired into CI; exception-handling narrowing in
+  `lazy.py`, `delta.py`, and Polars backend (no new type ignores). Further
+  reduction of `# type: ignore` remains incremental (interface/optional themes).
 

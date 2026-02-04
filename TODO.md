@@ -61,8 +61,8 @@
 - [x] Harden documentation example harness to fail fast when dependencies (e.g. pandas stub) are missing or stale. (`tests/documentation/test_examples.py` now enforces optional dependency versions and skips with guidance when absent.)
 
 ## Documentation & Community
-- [ ] Document new session-aware literals and schema tracking in guides (`docs/sql_operations_guide.md`, `docs/getting_started.md` advanced section).
-- [ ] Publish troubleshooting guide for native dependency crashes, referencing the pure-Python percentile/covariance fallbacks.
-- [ ] Draft migration notes for upcoming performance knobs to help users tune mock behaviour per pipeline.
-- [ ] Document PySpark compatibility improvements and module structure changes in migration guide.
+- [x] Document new session-aware literals and schema tracking in guides (`docs/sql_operations_guide.md`, `docs/getting_started.md` advanced section).
+- [x] Publish troubleshooting guide for native dependency crashes, referencing the pure-Python percentile/covariance fallbacks (`docs/guides/troubleshooting.md`).
+- [x] Draft migration notes for upcoming performance knobs to help users tune mock behaviour per pipeline (`docs/guides/configuration.md` – Performance knobs section).
+- [x] Document PySpark compatibility improvements and module structure changes in migration guide (`docs/migration_from_pyspark.md` – Module structure subsection).
 

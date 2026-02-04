@@ -43,6 +43,11 @@ class ArrayFunctions:
     def array_distinct(column: Union[Column, str]) -> ColumnOperation:
         """Remove duplicate elements from an array.
 
+        .. note::
+            **Not supported in Polars backend.** This function is available for API
+            compatibility but is not supported for general use in Sparkless; it may
+            use a Python fallback or behave inconsistently. See docs/known_issues.md.
+
         Args:
             column: The array column to process.
 
