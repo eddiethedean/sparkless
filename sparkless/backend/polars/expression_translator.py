@@ -3152,11 +3152,7 @@ class PolarsExpressionTranslator:
                 digit_char = params.get("digitChar", "n")
                 other_char = params.get("otherChar", "-")
                 return col_expr.map_elements(
-                    lambda x,
-                    uc=upper_char,
-                    lc=lower_char,
-                    dc=digit_char,
-                    oc=other_char: (
+                    lambda x, uc=upper_char, lc=lower_char, dc=digit_char, oc=other_char: (
                         "".join(
                             uc
                             if c.isupper()

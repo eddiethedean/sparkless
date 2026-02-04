@@ -1,5 +1,4 @@
 """
-from __future__ import annotations
 Lazy Evaluation Engine for DataFrames
 
 This module handles lazy evaluation, operation queuing, and materialization
