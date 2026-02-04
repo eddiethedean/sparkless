@@ -18,6 +18,19 @@
 - **Issue #407** - `F.stddev("col").over(Window.partitionBy(...))` no longer returns `None` for every row
   - Polars window handler now implements STDDEV, STDDEV_SAMP, STD (sample std) and STDDEV_POP (population std) via `column_expr.std().over(partition_by)`.
 - **Issue #408** - `MockRDD` now supports `flatMap()`; `df.rdd.flatMap(lambda row: row["line"].split())` no longer raises `AttributeError: 'MockRDD' object has no attribute 'flatMap'`.
+- Delta mock: narrowed exception handling in `_evaluate_update_expression` and `_evaluate_row_condition` so evaluation failures use specific exception types; other errors are re-raised instead of being hidden.
+- Lazy and Polars backends: replaced broad `except Exception` with `_EVALUATION_FAILURE_EXCEPTIONS` or specific types (e.g. `ValueError`, `SyntaxError`) in evaluation/transform fallbacks so real bugs are not swallowed.
+
+### Changed
+- **array_distinct**: Documented as unsupported in Polars backend in `docs/known_issues.md` and function docstring; API retained for compatibility.
+- CI: lint-and-type job now runs `python -m ruff` and `python -m mypy` so project dev dependencies are used; ruff pinned to `>=0.15.0,<0.16` for consistent formatting.
+
+### Documentation
+- New troubleshooting guide (`docs/guides/troubleshooting.md`): native dependency crashes, pure-Python fallbacks, session/catalog, test backends.
+- Getting started: added "Advanced: Session-aware literals and schema tracking"; SQL operations guide references session-aware execution.
+- Configuration guide: added "Performance knobs" (lazy/eager, logical plan, backend, profiling).
+- Migration from PySpark: added "Module structure (PySpark compatibility)" subsection.
+- Roadmap: `docs/roadmap/3.27.1.md` marked completed; typing_fixes.md notes mypy in CI.
 
 ---
 

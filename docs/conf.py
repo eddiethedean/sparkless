@@ -24,8 +24,8 @@ try:
     version = __version__
     release = __version__
 except ImportError:
-    version = "3.28.0"
-    release = "3.28.0"
+    version = "3.29.0"
+    release = "3.29.0"
 
 # -- General configuration ----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
