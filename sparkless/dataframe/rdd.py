@@ -7,8 +7,7 @@ compatibility with PySpark's RDD interface while working with mock data.
 
 from __future__ import annotations
 
-from typing import Iterator
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, Iterable, Iterator, List
 
 
 class MockRDD:
@@ -80,6 +79,20 @@ class MockRDD:
             New MockRDD with transformed elements.
         """
         return MockRDD([func(item) for item in self.data])
+
+    def flatMap(self, func: Callable[[Any], Iterable[Any]]) -> MockRDD:
+        """FlatMap function over RDD elements; each element maps to an iterable, then flattened.
+
+        Args:
+            func: Function that returns an iterable for each element.
+
+        Returns:
+            New MockRDD with flattened results.
+        """
+        result: List[Any] = []
+        for item in self.data:
+            result.extend(func(item))
+        return MockRDD(result)
 
     def filter(self, func: Callable[[Any], bool]) -> MockRDD:
         """Filter RDD elements.
