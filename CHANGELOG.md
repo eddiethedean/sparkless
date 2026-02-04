@@ -13,6 +13,8 @@
 
 ### Fixed
 - Plan interpreter no longer treats unknown unary ops (e.g. UDF) as pass-through; raises so materializer fallback runs (fixes `test_udf_empty_string` under parallel tests).
+- **Issue #406** - Combining aggregate + cast to `DecimalType` + drop no longer raises `ValueError: Unsupported Polars dtype: Decimal(...)`
+  - Type mapper now maps Sparkless `DecimalType` to Polars `pl.Decimal(precision, scale)` and handles `pl.Decimal` when converting Polars schema back to Sparkless types.
 
 ---
 
