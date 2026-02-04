@@ -59,8 +59,8 @@ def mock_type_to_polars_dtype(mock_type: DataType) -> pl.DataType:
     elif isinstance(mock_type, TimestampNTZType):
         return pl.Datetime(time_unit="us", time_zone=None)
     elif isinstance(mock_type, DecimalType):
-        # Polars doesn't have exact decimal type, use Float64
-        return pl.Float64
+        # Polars supports Decimal(precision, scale) - use it for round-trip (Issue #406)
+        return pl.Decimal(mock_type.precision, mock_type.scale)
     elif isinstance(mock_type, BinaryType):
         return pl.Binary
     elif isinstance(mock_type, ArrayType):
@@ -160,5 +160,10 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
         return ByteType()
     elif polars_dtype == pl.Null:
         return NullType()
+    elif isinstance(polars_dtype, pl.Decimal):
+        # Polars Decimal(precision, scale) -> Sparkless DecimalType (Issue #406)
+        precision = getattr(polars_dtype, "precision", None) or 38
+        scale = getattr(polars_dtype, "scale", None) or 0
+        return DecimalType(precision=precision, scale=scale)
     else:
         raise ValueError(f"Unsupported Polars dtype: {polars_dtype}")
