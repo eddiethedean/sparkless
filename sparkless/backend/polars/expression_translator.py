@@ -1935,22 +1935,12 @@ class PolarsExpressionTranslator:
                 # No columns - return empty array literal
                 return pl.lit([])
             elif len(col_exprs) == 1:
-                # Single column - wrap in array using struct approach for consistency
-                # Create a struct with one field, then convert to list
-                struct_expr = pl.struct(**{"_field_0": col_exprs[0]})
-                return struct_expr.map_elements(
-                    lambda s: (
-                        [s["_field_0"]]
-                        if isinstance(s, dict)
-                        else [getattr(s, "_field_0", None)]
-                        if hasattr(s, "_field_0")
-                        else [
-                            list(s.values())[0]
-                            if hasattr(s, "values") and s.values()
-                            else None
-                        ]
-                    ),
-                    return_dtype=pl.Object,  # Object type to handle mixed types
+                # Single column - wrap each value in a list so F.array("x") -> [x_val]
+                # Use map_elements to ensure we always get a list (fixes join/union
+                # where struct-based approach could yield scalar in some Polars paths)
+                return col_exprs[0].map_elements(
+                    lambda x: [x] if not isinstance(x, (list, tuple)) else x,
+                    return_dtype=pl.Object,
                 )
             else:
                 # Multiple columns - create array from all values
@@ -3162,7 +3152,11 @@ class PolarsExpressionTranslator:
                 digit_char = params.get("digitChar", "n")
                 other_char = params.get("otherChar", "-")
                 return col_expr.map_elements(
-                    lambda x, uc=upper_char, lc=lower_char, dc=digit_char, oc=other_char: (
+                    lambda x,
+                    uc=upper_char,
+                    lc=lower_char,
+                    dc=digit_char,
+                    oc=other_char: (
                         "".join(
                             uc
                             if c.isupper()

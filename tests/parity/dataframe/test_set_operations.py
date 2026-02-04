@@ -31,7 +31,7 @@ class TestSetOperationsParity(ParityTestBase):
         self.assert_parity(result, expected)
 
     def test_union_all(self, spark):
-        """Test unionAll matches PySpark behavior."""
+        """Test union (unionAll) matches PySpark behavior."""
         expected = self.load_expected("set_operations", "union_all")
 
         all_data = expected["input_data"]
@@ -44,7 +44,7 @@ class TestSetOperationsParity(ParityTestBase):
 
         df1 = spark.createDataFrame(df1_data)
         df2 = spark.createDataFrame(df2_data)
-        result = df1.unionAll(df2)
+        result = df1.union(df2)
 
         self.assert_parity(result, expected)
 

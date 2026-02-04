@@ -3451,14 +3451,14 @@ class PolarsOperationExecutor:
         else:
             raise ValueError("Join keys must be column name(s) or a ColumnOperation")
 
-        # Map join types
+        # Map join types (Polars 0.20.29+ uses "full" instead of deprecated "outer")
         join_type_map = {
             "inner": "inner",
             "left": "left",
             "right": "right",
-            "outer": "outer",
-            "full": "outer",
-            "full_outer": "outer",
+            "outer": "full",
+            "full": "full",
+            "full_outer": "full",
             "cross": "cross",
         }
 

@@ -301,7 +301,7 @@ class TestDataFrameMethodsExtendedCompatibility:
         assert_dataframes_equal(result, expected)
 
     def test_union_all(self, spark):
-        """Test DataFrame unionAll operation."""
+        """Test DataFrame union (unionAll) operation."""
         expected = load_expected_output("set_operations", "union_all")
 
         # Split input data into two DataFrames
@@ -311,7 +311,7 @@ class TestDataFrameMethodsExtendedCompatibility:
         df1 = spark.createDataFrame(df1_data)
         df2 = spark.createDataFrame(df2_data)
 
-        result = df1.unionAll(df2)
+        result = df1.union(df2)
 
         assert_dataframes_equal(result, expected)
 

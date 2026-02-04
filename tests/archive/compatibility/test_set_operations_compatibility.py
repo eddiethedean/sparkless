@@ -36,7 +36,7 @@ class TestSetOperationsCompatibility:
         assert_dataframes_equal(result, expected)
 
     def test_union_all_operation(self, mock_spark_session):
-        """Test unionAll operation against expected output."""
+        """Test union (unionAll) operation against expected output."""
         df1_data = [
             {"id": 1, "name": "Alice", "age": 25},
             {"id": 2, "name": "Bob", "age": 30},
@@ -51,7 +51,7 @@ class TestSetOperationsCompatibility:
 
         df1 = mock_spark_session.createDataFrame(df1_data)
         df2 = mock_spark_session.createDataFrame(df2_data)
-        result = df1.unionAll(df2)
+        result = df1.union(df2)
 
         expected = load_expected_output("set_operations", "union_all")
         assert_dataframes_equal(result, expected)

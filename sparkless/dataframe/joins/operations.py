@@ -239,11 +239,6 @@ class JoinOperations(Generic[SupportsDF]):
         Note:
             Deprecated in PySpark 2.0+, use union() instead
         """
-        import warnings
-
-        warnings.warn(
-            "unionAll is deprecated. Use union instead.", FutureWarning, stacklevel=2
-        )
         return cast("SupportsDF", self.union(other))  # type: ignore[redundant-cast,unused-ignore]
 
     def intersect(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:

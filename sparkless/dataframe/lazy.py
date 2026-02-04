@@ -494,10 +494,42 @@ class LazyEvaluationEngine:
                     df.schema, df._operations_queue
                 )
 
-                # Let materializer optimize and execute the operations
-                rows = materializer.materialize(
-                    df.data, df.schema, df._operations_queue
-                )
+                # Optional plan-based path: use materialize_from_plan when backend supports it
+                # and session is configured (spark.sparkless.useLogicalPlan=true) or backend is robin
+                use_plan = getattr(materializer, "materialize_from_plan", None)
+                if use_plan is not None:
+                    try:
+                        from sparkless.session.core.session import SparkSession as SS
+
+                        active = getattr(SS, "_active_sessions", [])
+                        session = active[-1] if active else None
+                        conf_val = (
+                            session.conf.get("spark.sparkless.useLogicalPlan", "false")
+                            if session and hasattr(session, "conf")
+                            else "false"
+                        )
+                        use_plan_flag = str(conf_val).lower() in ("true", "1", "yes")
+                    except Exception:
+                        use_plan_flag = False
+                    if use_plan_flag or backend_type == "robin":
+                        from ..dataframe.logical_plan import to_logical_plan
+
+                        try:
+                            logical_plan = to_logical_plan(df)
+                            rows = use_plan(df.data, df.schema, logical_plan)
+                        except (ValueError, TypeError):
+                            # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
+                            rows = materializer.materialize(
+                                df.data, df.schema, df._operations_queue
+                            )
+                    else:
+                        rows = materializer.materialize(
+                            df.data, df.schema, df._operations_queue
+                        )
+                else:
+                    rows = materializer.materialize(
+                        df.data, df.schema, df._operations_queue
+                    )
 
                 # Convert rows back to data format using final schema
                 materialized_data = LazyEvaluationEngine._convert_materialized_rows(

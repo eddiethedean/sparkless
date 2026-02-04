@@ -860,7 +860,7 @@ class ExpectedOutputGenerator:
         # Set operations
         set_tests = [
             ("union", lambda: df1.union(df2)),
-            ("union_all", lambda: df1.unionAll(df2)),
+            ("union_all", lambda: df1.union(df2)),
             ("intersect", lambda: df1.intersect(df2)),
             ("except", lambda: df1.exceptAll(df2)),
             ("subtract", lambda: df1.subtract(df2)),

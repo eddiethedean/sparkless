@@ -282,7 +282,9 @@ class PolarsMaterializer:
                 )
                 # Get available columns from lazy DataFrame schema for case-insensitive matching
                 available_columns = (
-                    list(lazy_df.schema.keys()) if hasattr(lazy_df, "schema") else []
+                    list(lazy_df.collect_schema().names())
+                    if hasattr(lazy_df, "collect_schema")
+                    else []
                 )
 
                 # Check if condition contains struct field paths that need special handling
@@ -329,10 +331,10 @@ class PolarsMaterializer:
                     col_name = getattr(col_ref, "name", None)
                     if col_name is None and hasattr(col_ref, "_original_column"):
                         col_name = getattr(col_ref._original_column, "name", None)
-                    if col_name and hasattr(lazy_df, "schema"):
+                    if col_name and hasattr(lazy_df, "collect_schema"):
                         from ...core.column_resolver import ColumnResolver
 
-                        polars_schema = lazy_df.schema
+                        polars_schema = lazy_df.collect_schema()
                         schema_names: List[str] = (
                             list(polars_schema.names())
                             if hasattr(polars_schema, "names")
@@ -442,10 +444,11 @@ class PolarsMaterializer:
                             lazy_df = pl.DataFrame(filtered_data).lazy()
                         else:
                             # Empty result - create empty DataFrame with same schema
-                            if hasattr(lazy_df, "schema"):
+                            if hasattr(lazy_df, "collect_schema"):
+                                schema = lazy_df.collect_schema()
                                 schema_dict = {
-                                    col: pl.Series(col, [], dtype=lazy_df.schema[col])
-                                    for col in lazy_df.schema
+                                    col: pl.Series(col, [], dtype=schema[col])
+                                    for col in schema.names()
                                 }
                                 lazy_df = pl.DataFrame(schema_dict).lazy()
                             else:
@@ -1144,7 +1147,9 @@ class PolarsMaterializer:
                 # - nulls_last: list of bools for nulls handling
                 # Get available columns from lazy DataFrame schema for case-insensitive matching
                 available_columns = (
-                    list(lazy_df.schema.keys()) if hasattr(lazy_df, "schema") else []
+                    list(lazy_df.collect_schema().names())
+                    if hasattr(lazy_df, "collect_schema")
+                    else []
                 )
                 sort_by = []
                 descending_flags = []
@@ -1766,6 +1771,17 @@ class PolarsMaterializer:
 
         can_handle_all = len(unsupported_operations) == 0
         return (can_handle_all, unsupported_operations)
+
+    def materialize_from_plan(
+        self,
+        data: List[Dict[str, Any]],
+        schema: StructType,
+        logical_plan: List[Dict[str, Any]],
+    ) -> List[Row]:
+        """Materialize from a serialized logical plan using the Polars plan interpreter."""
+        from .plan_interpreter import execute_plan
+
+        return execute_plan(data, schema, logical_plan)
 
     def close(self) -> None:
         """Close the materializer and clean up resources."""

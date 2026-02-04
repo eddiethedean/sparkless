@@ -76,6 +76,10 @@ class BackendFactory:
 
             base_path = kwargs.get("base_path", "sparkless_storage")
             return FileStorageManager(base_path)
+        elif backend_type == "robin":
+            from .robin.storage import RobinStorageManager
+
+            return cast("StorageBackend", RobinStorageManager(db_path=db_path))
         else:
             raise ValueError(f"Unsupported backend type: {backend_type}")
 
@@ -124,6 +128,10 @@ class BackendFactory:
             from .polars.materializer import PolarsMaterializer
 
             return PolarsMaterializer()
+        elif backend_type == "robin":
+            from .robin.materializer import RobinMaterializer
+
+            return RobinMaterializer()
         else:
             raise ValueError(f"Unsupported materializer type: {backend_type}")
 
@@ -164,6 +172,10 @@ class BackendFactory:
             from .polars.export import PolarsExporter
 
             return PolarsExporter()
+        elif backend_type == "robin":
+            from .robin.export import RobinExporter
+
+            return RobinExporter()
         else:
             raise ValueError(f"Unsupported export backend type: {backend_type}")
 
@@ -183,8 +195,12 @@ class BackendFactory:
         # Use module path inspection to detect backend type
         module_name = type(storage).__module__
 
-        if "polars" in module_name:
+        if "robin" in module_name:
+            return "robin"
+        elif "polars" in module_name:
             return "polars"
+        elif "duckdb" in module_name:
+            return "duckdb"
         elif "memory" in module_name:
             return "memory"
         elif "file" in module_name:
@@ -192,8 +208,12 @@ class BackendFactory:
         else:
             # Fallback: try to match class name
             class_name = type(storage).__name__.lower()
-            if "polars" in class_name:
+            if "robin" in class_name:
+                return "robin"
+            elif "polars" in class_name:
                 return "polars"
+            elif "duckdb" in class_name:
+                return "duckdb"
             elif "memory" in class_name:
                 return "memory"
             elif "file" in class_name:
@@ -208,7 +228,7 @@ class BackendFactory:
         Returns:
             List of supported backend type strings
         """
-        backends = ["polars", "memory", "file"]
+        backends: list[str] = ["polars", "memory", "file", "robin"]
         if BackendFactory._duckdb_available():
             backends.append("duckdb")
         return backends

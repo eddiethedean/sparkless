@@ -421,7 +421,7 @@ class DataFrame:
 
     def unionAll(self, other: SupportsDataFrameOps) -> "SupportsDataFrameOps":
         """Deprecated alias for union() - Use union() instead."""
-        return self._joins.unionAll(other)
+        return self.union(other)
 
     def intersect(self, other: SupportsDataFrameOps) -> "SupportsDataFrameOps":
         """Intersect with another DataFrame."""

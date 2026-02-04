@@ -51,6 +51,10 @@ class DataMaterializer(Protocol):
 
     This protocol defines the interface for materializing queued operations
     on DataFrames. Implementations can use different execution engines.
+
+    Optional: backends may implement materialize_from_plan(self, data, schema, logical_plan)
+    to execute from a serialized logical plan. When spark.sparkless.useLogicalPlan is true
+    or backend is robin, the engine will call it when present instead of materialize().
     """
 
     def materialize(
