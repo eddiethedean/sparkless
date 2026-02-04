@@ -38,9 +38,7 @@ class TestIssue406AggregateCastDecimalDrop:
                 {"Name": "Bob", "Value": 2.345},
             ]
         )
-        df = df.groupBy("Name").agg(
-            F.sum("Value").cast(DecimalType(38, 6))
-        )
+        df = df.groupBy("Name").agg(F.sum("Value").cast(DecimalType(38, 6)))
         df = df.drop("Name")
         df.show()
         rows = df.collect()
@@ -89,9 +87,7 @@ class TestIssue406AggregateCastDecimalDrop:
                 {"name": "y", "val": 2.0},
             ]
         )
-        df = df.groupBy("name").agg(
-            F.sum("val").cast(DecimalType(38, 2))
-        )
+        df = df.groupBy("name").agg(F.sum("val").cast(DecimalType(38, 2)))
         df = df.drop("name")
         rows = df.collect()
         assert len(rows) == 2
@@ -114,9 +110,7 @@ class TestIssue406AggregateCastDecimalDrop:
                 {"g": "B", "x": 5.0},
             ]
         )
-        df = df.groupBy("g").agg(
-            F.avg("x").cast(DecimalType(10, 2))
-        )
+        df = df.groupBy("g").agg(F.avg("x").cast(DecimalType(10, 2)))
         df = df.drop("g")
         rows = df.collect()
         assert len(rows) == 2
@@ -144,10 +138,7 @@ class TestIssue406AggregateCastDecimalDrop:
         row_dicts = [_row_dict(r) for r in rows]
         cols = sorted(row_dicts[0].keys())
         # Column order may be min then max or max then min; collect pairs
-        pairs = [
-            tuple(sorted(_decimal_value(d[c]) for c in cols))
-            for d in row_dicts
-        ]
+        pairs = [tuple(sorted(_decimal_value(d[c]) for c in cols)) for d in row_dicts]
         # (5, 15) for group a, (10, 10) for group b
         assert set(pairs) == {(5.0, 15.0), (10.0, 10.0)}
 
