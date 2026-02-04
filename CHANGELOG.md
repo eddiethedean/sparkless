@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.29.0 — 2026-02-04
+
+### Added
+- Logical plan serialization and Polars plan interpreter; optional `materialize_from_plan` backend contract and Robin backend stub.
+- Documentation for logical plan format in `docs/internal/logical_plan_format.md`.
+
+### Changed
+- `unionAll` is a deprecated alias for `union` (no FutureWarning); call sites in tests/tools use `union()`.
+- Polars LazyFrame schema access uses `collect_schema()` to avoid PerformanceWarning.
+- Polars join uses `how='full'` instead of deprecated `how='outer'`.
+
+### Fixed
+- Plan interpreter no longer treats unknown unary ops (e.g. UDF) as pass-through; raises so materializer fallback runs (fixes `test_udf_empty_string` under parallel tests).
+
+---
+
 ## 3.28.0 — 2026-02-03
 
 All changes since 3.27.1 are included in this release.
