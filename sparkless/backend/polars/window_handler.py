@@ -413,6 +413,26 @@ class PolarsWindowHandler:
                     return column_expr.min()
             else:
                 raise ValueError("MIN window function requires a column")
+        elif function_name in ("STDDEV", "STDDEV_SAMP", "STD"):
+            # Sample standard deviation (ddof=1); PySpark stddev() is sample std
+            if column_expr is not None:
+                if partition_by:
+                    return column_expr.std().over(partition_by)
+                else:
+                    return column_expr.std()
+            else:
+                raise ValueError(
+                    "STDDEV/STDDEV_SAMP/STD window function requires a column"
+                )
+        elif function_name == "STDDEV_POP":
+            # Population standard deviation (ddof=0)
+            if column_expr is not None:
+                if partition_by:
+                    return column_expr.std(ddof=0).over(partition_by)
+                else:
+                    return column_expr.std(ddof=0)
+            else:
+                raise ValueError("STDDEV_POP window function requires a column")
         elif (
             function_name == "COUNTDISTINCT" or function_name == "APPROX_COUNT_DISTINCT"
         ):
