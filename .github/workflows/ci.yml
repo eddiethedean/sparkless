@@ -18,11 +18,11 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Ruff format check
-        run: ruff format --check .
+        run: python -m ruff format --check .
       - name: Ruff lint
-        run: ruff check .
+        run: python -m ruff check .
       - name: Type check
-        run: mypy sparkless tests
+        run: python -m mypy sparkless tests
 
   test-unit:
     runs-on: ubuntu-latest
