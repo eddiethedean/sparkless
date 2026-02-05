@@ -9,6 +9,21 @@ import sys
 import polars as pl
 from sparkless.functions.window_execution import WindowFunction
 
+from ._over_compat import polars_over_supports_descending
+
+
+def _over_order_kwargs(order_by: List[pl.Expr], order_descending: bool) -> dict:
+    """Build kwargs for Polars over() when order_by is present.
+
+    Only includes descending when the installed Polars supports it (1.22+).
+    """
+    if not order_by:
+        return {}
+    kw: dict = {"order_by": order_by}
+    if polars_over_supports_descending():
+        kw["descending"] = order_descending
+    return kw
+
 
 def _extract_col_name(col: object) -> Optional[str]:
     """Extract base column name from partition/order spec (str or Column-like)."""
@@ -213,8 +228,7 @@ class PolarsWindowHandler:
                 if order_by:
                     return (pl.int_range(pl.len()) + 1).over(
                         partition_by,
-                        order_by=order_by,
-                        descending=order_descending,
+                        **_over_order_kwargs(order_by, order_descending),
                     )
                 else:
                     return (pl.int_range(pl.len()) + 1).over(partition_by)
@@ -329,8 +343,7 @@ class PolarsWindowHandler:
                         # Otherwise use cumulative sum (running sum)
                         return column_expr.cum_sum().over(
                             partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            **_over_order_kwargs(order_by, order_descending),
                         )
                     else:
                         return column_expr.sum().over(partition_by)
@@ -338,7 +351,7 @@ class PolarsWindowHandler:
                     if order_by:
                         # Running sum without partition
                         return column_expr.cum_sum().over(
-                            order_by=order_by, descending=order_descending
+                            **_over_order_kwargs(order_by, order_descending)
                         )
                     else:
                         return column_expr.sum()
@@ -358,15 +371,12 @@ class PolarsWindowHandler:
                         if _order_cols_are_subset_of_partition(window_spec):
                             return column_expr.mean().over(partition_by)
                         # Otherwise running average
+                        order_kw = _over_order_kwargs(order_by, order_descending)
                         cumsum_expr = column_expr.cum_sum().over(
-                            partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            partition_by, **order_kw
                         )
                         row_num_expr = (pl.int_range(pl.len()) + 1).over(
-                            partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            partition_by, **order_kw
                         )
                         return cumsum_expr / row_num_expr
                     else:
@@ -374,12 +384,9 @@ class PolarsWindowHandler:
                 else:
                     if order_by:
                         # Running average without partition
-                        cumsum_expr = column_expr.cum_sum().over(
-                            order_by=order_by, descending=order_descending
-                        )
-                        row_num_expr = (pl.int_range(pl.len()) + 1).over(
-                            order_by=order_by, descending=order_descending
-                        )
+                        order_kw = _over_order_kwargs(order_by, order_descending)
+                        cumsum_expr = column_expr.cum_sum().over(**order_kw)
+                        row_num_expr = (pl.int_range(pl.len()) + 1).over(**order_kw)
                         return cumsum_expr / row_num_expr
                     else:
                         return column_expr.mean()
@@ -460,8 +467,7 @@ class PolarsWindowHandler:
                     if order_by:
                         return shift_expr.over(
                             partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            **_over_order_kwargs(order_by, order_descending),
                         )
                     else:
                         return shift_expr.over(partition_by)
@@ -484,8 +490,7 @@ class PolarsWindowHandler:
                     if order_by:
                         return shift_expr.over(
                             partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            **_over_order_kwargs(order_by, order_descending),
                         )
                     else:
                         return shift_expr.over(partition_by)
@@ -499,8 +504,7 @@ class PolarsWindowHandler:
                     if order_by:
                         return column_expr.first().over(
                             partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            **_over_order_kwargs(order_by, order_descending),
                         )
                     else:
                         return column_expr.first().over(partition_by)
@@ -523,8 +527,7 @@ class PolarsWindowHandler:
                         # when orderBy is present, as that's what PySpark does with default frame
                         return column_expr.over(
                             partition_by,
-                            order_by=order_by,
-                            descending=order_descending,
+                            **_over_order_kwargs(order_by, order_descending),
                         )
                     else:
                         return column_expr.last().over(partition_by)
@@ -532,7 +535,7 @@ class PolarsWindowHandler:
                     if order_by:
                         # With orderBy but no partition, return current row value
                         return column_expr.over(
-                            order_by=order_by, descending=order_descending
+                            **_over_order_kwargs(order_by, order_descending)
                         )
                     else:
                         return column_expr.last()

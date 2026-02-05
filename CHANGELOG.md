@@ -3,6 +3,9 @@
 ## 3.30.0 — Unreleased
 
 ### Fixed
+- **Issue #414** - `row_number().over(Window.partitionBy(...).orderBy(F.desc(...)))` no longer raises `TypeError: over() got an unexpected keyword argument 'descending'`.
+  - Polars `Expr.over()` expects `descending: bool` (single bool) and supports it only from Polars 1.22+; Sparkless supports `polars>=0.20.0`.
+  - Added `_over_compat` module to detect Polars API support and convert per-column descending lists to a single bool; `plan_interpreter` and `window_handler` now pass `descending` only when supported.
 - **Issue #412** - `SparkSession.builder()` (callable form) no longer raises `TypeError: 'SparkSessionBuilder' object is not callable`; `builder()` now returns the same builder instance for drop-in compatibility with code that uses `builder()` as a factory.
 - **Issue #413** - `union()` with `createDataFrame(data, column_names)` no longer raises `AnalysisException` due to column order mismatch. PySpark's `union()` matches by position; Sparkless now does the same.
   - Polars materializer: use `pl.from_dicts` with schema only for tuple data when union is present (preserves column order); dict data uses `pl.DataFrame` to avoid schema/data mismatch (e.g. select+union with struct fields).
