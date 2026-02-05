@@ -122,7 +122,7 @@ class RobinMaterializer:
         if not _robin_available():
             raise RuntimeError(
                 "robin_sparkless is not installed. "
-                "Install with: pip install robin_sparkless (or build from robin-sparkless with maturin develop --features pyo3)"
+                "Install with: pip install sparkless[robin] (or pip install robin-sparkless)."
             )
         F = robin_sparkless  # type: ignore[union-attr]
         # PoC: only 3-column schema

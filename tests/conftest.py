@@ -68,6 +68,13 @@ def mock_spark_session():
     from sparkless import SparkSession
 
     session = SparkSession("test_app")
+    # When robin mode is requested, ensure we did not silently get polars
+    if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
+        if getattr(session, "backend_type", None) != "robin":
+            raise RuntimeError(
+                "Robin mode was requested but mock_spark_session has backend_type=%r. "
+                "SPARKLESS_BACKEND should be set by conftest." % getattr(session, "backend_type", None)
+            )
     yield session
     # Explicitly clean up
     with contextlib.suppress(BaseException):
@@ -84,6 +91,12 @@ def isolated_session():
     # Use unique name to ensure isolation
     session_name = f"test_isolated_{uuid.uuid4().hex[:8]}"
     session = SparkSession(session_name)
+    if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
+        if getattr(session, "backend_type", None) != "robin":
+            raise RuntimeError(
+                "Robin mode was requested but isolated_session has backend_type=%r."
+                % getattr(session, "backend_type", None)
+            )
     yield session
     with contextlib.suppress(BaseException):
         session.stop()
@@ -95,8 +108,8 @@ def spark(request):
     """Unified SparkSession fixture that works with both mock-spark and PySpark.
 
     Backend selection priority:
-    1. pytest marker: @pytest.mark.backend('mock'|'pyspark'|'both')
-    2. Environment variable: MOCK_SPARK_TEST_BACKEND
+    1. pytest marker: @pytest.mark.backend('mock'|'pyspark'|'both'|'robin')
+    2. Environment variable: MOCK_SPARK_TEST_BACKEND or SPARKLESS_TEST_BACKEND
     3. Default: mock-spark
 
     Examples:
@@ -149,6 +162,18 @@ def spark(request):
             request=request if hasattr(request, "node") else None,
             **kwargs,
         )
+        # Ensure we never silently run in wrong backend when robin was requested
+        if backend == BackendType.ROBIN:
+            actual = getattr(session, "backend_type", None)
+            if actual != "robin":
+                raise RuntimeError(
+                    f"Robin mode was requested but session has backend_type={actual!r}. "
+                    "Tests must not silently run in polars/mock when SPARKLESS_TEST_BACKEND=robin."
+                )
+    except ValueError as e:
+        # When Robin is requested but not available, do not skip: let the test fail so we never
+        # silently run in the wrong backend.
+        raise
     except (ImportError, RuntimeError) as e:
         # Skip test if PySpark session creation fails
         # This handles known Python 3.11/PySpark 3.2.4 compatibility issues
@@ -213,6 +238,12 @@ def mock_spark():
     from sparkless import SparkSession
 
     session = SparkSession("test_app")
+    if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
+        if getattr(session, "backend_type", None) != "robin":
+            raise RuntimeError(
+                "Robin mode was requested but mock_spark has backend_type=%r."
+                % getattr(session, "backend_type", None)
+            )
     yield session
     with contextlib.suppress(BaseException):
         session.stop()
@@ -238,7 +269,14 @@ def temp_file_storage_path():
 
 
 def pytest_configure(config):
-    """Configure pytest with custom markers."""
+    """Configure pytest with custom markers and enforce robin mode when requested."""
+    # When robin mode is requested, sync SPARKLESS_BACKEND so no test silently runs in polars/mock.
+    # If robin is not installed, we do not exit: all tests run and those that need a session will
+    # fail (no silent skip or fallback to polars).
+    _test_backend = (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower()
+    if _test_backend == "robin":
+        os.environ["SPARKLESS_BACKEND"] = "robin"
+
     config.addinivalue_line(
         "markers", "delta: mark test as requiring Delta Lake (may be skipped)"
     )
@@ -257,5 +295,5 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
-        "backend(mock|pyspark|both): mark test to run with specific backend(s)",
+        "backend(mock|pyspark|both|robin): mark test to run with specific backend(s)",
     )

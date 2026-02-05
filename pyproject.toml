@@ -79,6 +79,9 @@ docs = [
     "myst-parser>=1.0.0",
     "sphinx-autodoc-typehints>=1.19.0",
 ]
+robin = [
+    "robin-sparkless>=0.1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/sparkless"
