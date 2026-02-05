@@ -13,6 +13,8 @@ import polars as pl
 
 from sparkless.spark_types import Row, StructType, get_row_value
 
+from ._over_compat import polars_over_supports_descending, to_descending_bool
+
 
 def _literal_value(expr: Any) -> Any:
     """Extract scalar value from a serialized literal expr dict, or return expr."""
@@ -49,13 +51,27 @@ def _window_over(
     order_by: List[pl.Expr],
     descending: List[bool],
 ) -> pl.Expr:
-    """Apply .over() with optional partition and order."""
+    """Apply .over() with optional partition and order.
+
+    Polars over() expects descending: bool (single bool), not List[bool].
+    The descending param was added in Polars 1.22; we only pass it when supported.
+    """
+    desc_bool = to_descending_bool(descending)
+    over_kwargs: dict = {}
+    if order_by and polars_over_supports_descending():
+        over_kwargs["order_by"] = order_by
+        over_kwargs["descending"] = desc_bool
+
     if partition_by and order_by:
-        return base.over(*partition_by, order_by=order_by, descending=descending)
+        if over_kwargs:
+            return base.over(*partition_by, **over_kwargs)
+        return base.over(*partition_by, order_by=order_by)
     if partition_by:
         return base.over(*partition_by)
     if order_by:
-        return base.over(order_by=order_by, descending=descending)
+        if over_kwargs:
+            return base.over(**over_kwargs)
+        return base.over(order_by=order_by)
     return base
 
 
