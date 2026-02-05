@@ -94,7 +94,7 @@ class TestUnifiedInfrastructure:
         # Can check which backend is being used if needed
         # (though usually tests should be backend-agnostic)
         backend_name = spark_backend.value
-        assert backend_name in ["mock", "pyspark"]
+        assert backend_name in ["mock", "pyspark", "robin"]
 
 
 class TestUnifiedImports:
