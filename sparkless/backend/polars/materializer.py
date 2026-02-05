@@ -127,20 +127,21 @@ class PolarsMaterializer:
                             )
                         else:
                             converted_data.append(row_any)
-                    df = pl.from_dicts(converted_data, schema=field_names)
+                    # Issue #413: tuple path - use pl.from_dicts with schema when union present
+                    # (pl.DataFrame can reorder, breaking position-based union).
+                    # Dict path uses pl.DataFrame - schema may be projected (post-select)
+                    # and would drop columns like StructValue needed for select expressions.
+                    df = (
+                        pl.from_dicts(converted_data, schema=field_names)
+                        if has_union_operation
+                        else pl.DataFrame(converted_data)
+                    )
                 else:
-                    # Preserve schema column order (Issue #413); pl.DataFrame sorts dict keys
-                    schema_names = [f.name for f in schema.fields]
-                    df = pl.from_dicts(data, schema=schema_names)
+                    # Dict data: always use pl.DataFrame - passed-in schema may be
+                    # final/projected (e.g. after select) and would mismatch base data
+                    df = pl.DataFrame(data)
             else:
-                order_cols: Optional[List[str]] = (
-                    [f.name for f in schema.fields] if schema.fields else None
-                )
-                df = (
-                    pl.from_dicts(data, schema=order_cols)
-                    if order_cols
-                    else pl.DataFrame(data)
-                )
+                df = pl.DataFrame(data)
 
             # Only enforce schema types if we have a union operation (to prevent type mismatches)
             # For other operations, let Polars infer types naturally
@@ -188,14 +189,21 @@ class PolarsMaterializer:
                 data_keys = set(getattr(first_row, "keys", lambda: [])())
 
             schema_keys = {field.name for field in schema.fields}
-            # If we have operations (e.g. union), use passed-in schema; do NOT overwrite
-            # with infer_from_data (Issue #413: infer_from_data sorts columns alphabetically).
-            has_union = any(op_name == "union" for op_name, _ in operations)
-            if data and operations and is_dict_format and not has_union:
+            # If we have operations, infer base schema from data for the op loop.
+            # Issue #413: pass column_order to preserve data key order (infer_from_data
+            # sorts alphabetically by default, which breaks union position semantics).
+            if data and operations and is_dict_format:
                 from ...core.schema_inference import SchemaInferenceEngine
 
                 try:
-                    inferred_schema, _ = SchemaInferenceEngine.infer_from_data(data)
+                    column_order = (
+                        list(data[0].keys())
+                        if data and isinstance(data[0], dict)
+                        else None
+                    )
+                    inferred_schema, _ = SchemaInferenceEngine.infer_from_data(
+                        data, column_order=column_order
+                    )
                     original_schema = inferred_schema
                 except (ValueError, Exception):
                     pass
