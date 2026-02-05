@@ -268,8 +268,8 @@ class ExpressionEvaluator:
         """Evaluate a ColumnOperation."""
         op = operation.operation
 
-        # Handle arithmetic operations
-        if op in ["+", "-", "*", "/", "%"]:
+        # Handle arithmetic operations (include ** for power)
+        if op in ["+", "-", "*", "/", "%", "**"]:
             return self._evaluate_arithmetic_operation(row, operation)
 
         # Handle comparison operations
@@ -407,6 +407,11 @@ class ExpressionEvaluator:
                 return left_coerced / right_coerced if right_coerced != 0 else None
             elif operation.operation == "%":
                 return left_coerced % right_coerced if right_coerced != 0 else None
+            elif operation.operation == "**":
+                try:
+                    return left_coerced**right_coerced
+                except (ValueError, ZeroDivisionError, OverflowError):
+                    return None
             else:
                 return None
 

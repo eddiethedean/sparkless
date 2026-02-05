@@ -831,14 +831,18 @@ class PolarsExpressionTranslator:
 
         # Handle unary operations
         if value is None:
+            # Unary minus (-col) must be handled before binary_operators pass (Issue #291)
+            if operation == "-":
+                return self._arithmetic_translator.translate_unary_arithmetic(left, "-")
+            # Binary op with None RHS (e.g. col <= None) - fall through to Translate right side (Issue #420)
+            if operation in binary_operators:
+                pass
             # Handle operators first (before function calls)
-            if operation in ["!", "~"]:
+            elif operation in ["!", "~"]:
                 op_str = str(operation)  # Ensure it's a string for type checking
                 return self._arithmetic_translator.translate_unary_arithmetic(
                     left, op_str
                 )
-            elif operation == "-":
-                return self._arithmetic_translator.translate_unary_arithmetic(left, "-")
             elif operation in ["isnull", "isNull"]:
                 return left.is_null()
             elif operation in ["isnotnull", "isNotNull"]:
