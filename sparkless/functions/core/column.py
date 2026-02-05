@@ -5,7 +5,7 @@ This module provides the Column class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
 from ...core.interfaces.functions import IColumn
 from ...spark_types import DataType, StringType
@@ -660,6 +660,7 @@ class ColumnOperation(Column):
 
         # Dynamic attributes for aggregate functions, UDFs, and window operations
         # These are set dynamically and may not always be present
+        self._alias_names: Optional[Tuple[str, ...]] = None
         self._aggregate_function: Optional[AggregateFunction] = None
         self._udf_func: Optional[Any] = None
         self._udf_return_type: Optional[Any] = None

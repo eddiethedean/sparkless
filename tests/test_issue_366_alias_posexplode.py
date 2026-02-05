@@ -136,9 +136,7 @@ class TestIssue366AliasPosexplode:
     def test_posexplode_alias_two_names_empty_array(self, spark, spark_backend):
         """Row with empty array: 0 rows from that row; row with values explodes. PySpark strict."""
         F_backend = get_spark_imports(spark_backend).F
-        df = spark.createDataFrame(
-            [{"id": 1, "arr": []}, {"id": 2, "arr": [10, 20]}]
-        )
+        df = spark.createDataFrame([{"id": 1, "arr": []}, {"id": 2, "arr": [10, 20]}])
         result = df.select("id", F_backend.posexplode("arr").alias("pos", "val"))
         rows = result.collect()
         if spark_backend == BackendType.PYSPARK:
@@ -159,9 +157,7 @@ class TestIssue366AliasPosexplode:
         df = spark.createDataFrame(
             [(1, [10, 20]), (2, None)], schema="id: int, arr: array<int>"
         )
-        result = df.select(
-            "id", F_backend.posexplode_outer("arr").alias("pos", "val")
-        )
+        result = df.select("id", F_backend.posexplode_outer("arr").alias("pos", "val"))
         rows = result.collect()
         assert len(rows) >= 1
         keys = list(rows[0].asDict().keys()) if rows else []

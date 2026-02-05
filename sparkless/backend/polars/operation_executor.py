@@ -585,7 +585,12 @@ class PolarsOperationExecutor:
             ):
                 # posexplode produces two columns (pos, val); alias("Name1", "Name2") names them
                 if col.operation == "alias":
-                    posexplode_col = col.column if getattr(col.column, "operation", None) in ("posexplode", "posexplode_outer") else col
+                    posexplode_col = (
+                        col.column
+                        if getattr(col.column, "operation", None)
+                        in ("posexplode", "posexplode_outer")
+                        else col
+                    )
                     alias_names_tuple = getattr(col, "_alias_names", None)
                 else:
                     posexplode_col = col
@@ -774,19 +779,19 @@ class PolarsOperationExecutor:
                     )
                     select_names.append(name)
             elif (
-                (isinstance(col, ColumnOperation) or (hasattr(col, "operation") and hasattr(col, "column")))
-                and (
-                    col.operation in ("posexplode", "posexplode_outer")
-                    or (
-                        col.operation == "alias"
-                        and (
-                            getattr(col.column, "operation", None)
-                            in ("posexplode", "posexplode_outer")
-                            or (
-                                getattr(col, "_alias_names", None)
-                                and len(getattr(col, "_alias_names", ())) >= 2
-                                and getattr(col.column, "name", None)
-                            )
+                isinstance(col, ColumnOperation)
+                or (hasattr(col, "operation") and hasattr(col, "column"))
+            ) and (
+                col.operation in ("posexplode", "posexplode_outer")
+                or (
+                    col.operation == "alias"
+                    and (
+                        getattr(col.column, "operation", None)
+                        in ("posexplode", "posexplode_outer")
+                        or (
+                            getattr(col, "_alias_names", None)
+                            and len(getattr(col, "_alias_names", ())) >= 2
+                            and getattr(col.column, "name", None)
                         )
                     )
                 )
@@ -794,7 +799,12 @@ class PolarsOperationExecutor:
                 # posexplode produces two columns (pos, val); alias("Name1", "Name2") names them
                 # Unwrap alias(posexplode(...)) so we use the inner posexplode and alias names
                 if col.operation == "alias":
-                    posexplode_col = col.column if getattr(col.column, "operation", None) in ("posexplode", "posexplode_outer") else col
+                    posexplode_col = (
+                        col.column
+                        if getattr(col.column, "operation", None)
+                        in ("posexplode", "posexplode_outer")
+                        else col
+                    )
                     alias_names_tuple = getattr(col, "_alias_names", None)
                 else:
                     posexplode_col = col
@@ -1747,7 +1757,9 @@ class PolarsOperationExecutor:
                                 )
                             temp_dtype = result[temp_name].dtype
                             # map_elements may return List(Struct) or Struct; only explode if list
-                            if hasattr(temp_dtype, "inner") or str(temp_dtype).startswith("List"):
+                            if hasattr(temp_dtype, "inner") or str(
+                                temp_dtype
+                            ).startswith("List"):
                                 result = result.explode(temp_name)
                             result = result.unnest(temp_name)
                             result = result.rename({"pos": name0, "val": name1})
