@@ -709,6 +709,10 @@ class TransformationService:
         Returns:
             DataFrame sorted by the specified columns
         """
+        # PySpark compatibility: if a single list/tuple is passed, unpack it
+        # df.orderBy(["col1", "col2"]) is equivalent to df.orderBy("col1", "col2")
+        if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
+            columns = tuple(columns[0])  # type: ignore[unreachable]
         # Pass columns and ascending as a tuple: (columns, ascending)
         return self._df._queue_op("orderBy", (columns, ascending))
 

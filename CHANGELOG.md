@@ -3,6 +3,8 @@
 ## 3.30.0 — Unreleased
 
 ### Fixed
+- **Issue #415** - `df.orderBy(["col1", "col2"])` no longer raises `ColumnNotFoundError`; a single list/tuple argument is now unpacked to multiple columns, matching PySpark behavior.
+  - Added robust tests: df.columns, string columns, 3+ columns, orderBy+limit/filter/select, empty DataFrame.
 - **Issue #414** - `row_number().over(Window.partitionBy(...).orderBy(F.desc(...)))` no longer raises `TypeError: over() got an unexpected keyword argument 'descending'`.
   - Polars `Expr.over()` expects `descending: bool` (single bool) and supports it only from Polars 1.22+; Sparkless supports `polars>=0.20.0`.
   - Added `_over_compat` module to detect Polars API support and convert per-column descending lists to a single bool; `plan_interpreter` and `window_handler` now pass `descending` only when supported.
