@@ -3202,6 +3202,68 @@ class PolarsOperationExecutor:
                     # Re-raise if it's not a case sensitivity issue
                     raise
 
+    def _add_missing_join_key_columns(
+        self,
+        joined: pl.DataFrame,
+        df1: pl.DataFrame,
+        df2: pl.DataFrame,
+        resolved_left_on: List[str],
+        resolved_right_on: List[str],
+        polars_how: str,
+    ) -> pl.DataFrame:
+        """Add join key columns dropped by Polars to match PySpark semantics.
+
+        Polars drops right_on for left/inner join, drops left_on for right join.
+        PySpark keeps both. For unmatched rows, dropped keys should be null.
+        """
+        right_non_key_cols = [c for c in df2.columns if c not in resolved_right_on]
+        left_non_key_cols = [c for c in df1.columns if c not in resolved_left_on]
+        # Match indicator: for left join use right-side cols; for right join use left-side
+        if polars_how == "left":
+            indicator_cols = [c for c in right_non_key_cols if c in joined.columns]
+        else:
+            indicator_cols = [c for c in left_non_key_cols if c in joined.columns]
+        has_match_indicator = bool(indicator_cols)
+        if has_match_indicator:
+            is_matched = pl.col(indicator_cols[0]).is_not_null()
+            for c in indicator_cols[1:]:
+                is_matched = is_matched | pl.col(c).is_not_null()
+
+        # Left/inner join: Polars drops right_on
+        if polars_how in ("left", "inner"):
+            for right_col in resolved_right_on:
+                if right_col not in joined.columns:
+                    left_col = resolved_left_on[resolved_right_on.index(right_col)]
+                    if has_match_indicator and polars_how == "left":
+                        left_dtype = joined[left_col].dtype
+                        joined = joined.with_columns(
+                            pl.when(is_matched)
+                            .then(pl.col(left_col))
+                            .otherwise(pl.lit(None).cast(left_dtype))
+                            .alias(right_col)
+                        )
+                    else:
+                        # Inner: all matched, or no indicator
+                        joined = joined.with_columns(pl.col(left_col).alias(right_col))
+
+        # Right join: Polars drops left_on
+        elif polars_how == "right":
+            for left_col in resolved_left_on:
+                if left_col not in joined.columns:
+                    right_col = resolved_right_on[resolved_left_on.index(left_col)]
+                    if has_match_indicator:
+                        right_dtype = joined[right_col].dtype
+                        joined = joined.with_columns(
+                            pl.when(is_matched)
+                            .then(pl.col(right_col))
+                            .otherwise(pl.lit(None).cast(right_dtype))
+                            .alias(left_col)
+                        )
+                    else:
+                        joined = joined.with_columns(pl.col(right_col).alias(left_col))
+
+        return joined
+
     def _coerce_join_key_types(
         self,
         df1: pl.DataFrame,
@@ -3641,12 +3703,9 @@ class PolarsOperationExecutor:
                     right_on=resolved_right_on,
                     how=polars_how,
                 )
-                # Add the right_on column back if it's not already present (PySpark includes both)
-                for right_col in resolved_right_on:
-                    if right_col not in joined.columns:
-                        # Get the corresponding left column value (they should be equal after join)
-                        left_col = resolved_left_on[resolved_right_on.index(right_col)]
-                        joined = joined.with_columns(pl.col(left_col).alias(right_col))
+                joined = self._add_missing_join_key_columns(
+                    joined, df1, df2, resolved_left_on, resolved_right_on, polars_how
+                )
                 return joined
             else:
                 # Verify columns exist in both DataFrames using ColumnResolver
@@ -3659,13 +3718,9 @@ class PolarsOperationExecutor:
                         right_on=right_on_keys,
                         how=polars_how,
                     )
-                    # Add the right_on columns back if needed (PySpark includes both)
-                    for right_col in right_on_keys:
-                        if right_col not in joined.columns:
-                            left_col = left_on_keys[right_on_keys.index(right_col)]
-                            joined = joined.with_columns(
-                                pl.col(left_col).alias(right_col)
-                            )
+                    joined = self._add_missing_join_key_columns(
+                        joined, df1, df2, left_on_keys, right_on_keys, polars_how
+                    )
                     return joined
                 elif resolved_join_keys and len(resolved_join_keys) > 0:
                     # Use resolved_join_keys from earlier resolution

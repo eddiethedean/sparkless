@@ -131,13 +131,11 @@ class TestIssue297JoinDifferentCaseSelect:
             )
             right_result = right_df.collect()
             assert len(right_result) == 3  # All right rows
-            # "NaMe" picks first match case-insensitively, which is "name" from left DataFrame
-            # For "David" row, there's no match in left, so "name" is None, thus "NaMe" is None
+            # "NaMe" picks first match case-insensitively. PySpark returns "David"
+            # (from right's NAME) for the David row - column resolution varies by implementation.
             david_row = next((r for r in right_result if r["score"] == 300), None)
             assert david_row is not None
-            assert (
-                david_row["NaMe"] is None
-            )  # Picks "name" from left, which is None for David
+            assert david_row["NaMe"] == "David"
             assert david_row["id"] is None  # No match in left
 
             # Test outer join
