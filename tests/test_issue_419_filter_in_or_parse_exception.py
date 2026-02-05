@@ -34,6 +34,20 @@ class TestIssue419FilterInOrParseException:
         expr = F.expr("Value in ('1234') or (Name == 'Alice')")
         assert expr is not None
 
+    def test_filter_in_or_string_literal_type_coercion_exact_issue(self, spark):
+        """Exact issue scenario: int column + string literal in IN + OR (type coercion)."""
+        df = spark.createDataFrame(
+            [
+                {"Name": "Alice", "Value": 1234},
+                {"Name": "Bob", "Value": 5678},
+            ]
+        )
+        df = df.filter("Value in ('1234') or (Name == 'Alice')")
+        rows = df.collect()
+        assert len(rows) == 1
+        assert rows[0]["Name"] == "Alice"
+        assert rows[0]["Value"] == 1234
+
     def test_filter_in_or_workaround_still_works(self, spark):
         """Workaround from issue (IN only) still works."""
         df = spark.createDataFrame(

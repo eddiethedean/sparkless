@@ -67,6 +67,43 @@ class PolarsMaterializer:
             pass
         return False  # Default to case-insensitive (matching PySpark)
 
+    @staticmethod
+    def _extract_isin_column_dtypes(
+        condition: Any, polars_schema: Any
+    ) -> Dict[str, Any]:
+        """Recursively extract column dtypes for isin ops in OR/AND trees (Issue #419)."""
+        from ...core.column_resolver import ColumnResolver
+
+        result: Dict[str, Any] = {}
+        polars_col_names = (
+            list(polars_schema.names())
+            if hasattr(polars_schema, "names")
+            else list(polars_schema.keys())
+        )
+
+        def _walk(expr: Any) -> None:
+            if isinstance(expr, ColumnOperation):
+                if expr.operation == "isin" and hasattr(expr, "column"):
+                    col_ref = expr.column
+                    col_name = getattr(col_ref, "name", None)
+                    if col_name is None and hasattr(col_ref, "_original_column"):
+                        col_name = getattr(col_ref._original_column, "name", None)
+                    if col_name:
+                        resolved = ColumnResolver.resolve_column_name(
+                            col_name, polars_col_names, case_sensitive=False
+                        )
+                        if resolved and resolved not in result:
+                            result[resolved] = polars_schema[resolved]
+                elif expr.operation in ("|", "&"):
+                    _walk(expr.column)
+                    if hasattr(expr, "value"):
+                        _walk(expr.value)
+                elif expr.operation in ("!", "~") and hasattr(expr, "column"):
+                    _walk(expr.column)
+
+        _walk(condition)
+        return result
+
     def materialize(
         self,
         data: List[Dict[str, Any]],
@@ -331,10 +368,12 @@ class PolarsMaterializer:
                     lazy_df = filtered_df.lazy()
                     continue
 
-                # Extract column dtype for isin operations to enable type coercion (Issue #369)
+                # Extract column dtype for isin operations to enable type coercion (Issue #369, #419)
                 # Handles both direct isin and ~col.isin([...]) so string column vs int list works
+                # For OR/AND, recursively find nested isin ops and build column_dtypes map
                 input_col_dtype = None
                 isin_op = None
+                column_dtypes: Dict[str, Any] = {}
                 if isinstance(optimized_condition, ColumnOperation):
                     if optimized_condition.operation == "isin":
                         isin_op = optimized_condition
@@ -363,6 +402,11 @@ class PolarsMaterializer:
                         )
                         if resolved_name is not None:
                             input_col_dtype = polars_schema[resolved_name]
+                # Recursively extract isin column dtypes for OR/AND (Issue #419)
+                if hasattr(lazy_df, "collect_schema"):
+                    column_dtypes = PolarsMaterializer._extract_isin_column_dtypes(
+                        optimized_condition, lazy_df.collect_schema()
+                    )
 
                 # Issue #370: isin with numeric literals on string column - apply on eager
                 # DataFrame so cast(Utf8).is_in([...]) is evaluated correctly (LazyFrame
@@ -392,6 +436,7 @@ class PolarsMaterializer:
                         optimized_condition,
                         input_col_dtype=input_col_dtype,
                         available_columns=available_columns,
+                        column_dtypes=column_dtypes,
                     )
                 except ValueError as e:
                     # Check if this is a WindowFunction comparison that should be handled

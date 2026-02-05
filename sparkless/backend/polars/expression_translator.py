@@ -216,6 +216,7 @@ class PolarsExpressionTranslator:
         input_col_dtype: Any = None,
         available_columns: Optional[List[str]] = None,
         case_sensitive: Optional[bool] = None,
+        column_dtypes: Optional[Dict[str, Any]] = None,
     ) -> pl.Expr:
         """Translate Column expression to Polars expression.
 
@@ -261,6 +262,7 @@ class PolarsExpressionTranslator:
                 input_col_dtype=input_col_dtype,
                 available_columns=available_columns,
                 case_sensitive=case_sensitive,
+                column_dtypes=column_dtypes,
             )
         elif isinstance(expr, Column):
             result = self._translate_column(
@@ -399,6 +401,7 @@ class PolarsExpressionTranslator:
         input_col_dtype: Any = None,
         available_columns: Optional[List[str]] = None,
         case_sensitive: bool = False,
+        column_dtypes: Optional[Dict[str, Any]] = None,
     ) -> pl.Expr:
         """Translate ColumnOperation to Polars expression.
 
@@ -430,12 +433,13 @@ class PolarsExpressionTranslator:
                     "WindowFunction expressions should be handled by OperationExecutor.apply_with_column"
                 )
         elif isinstance(column, ColumnOperation):
-            # Pass input_col_dtype through so nested isin (e.g. ~col.isin([...])) gets it (#369)
+            # Pass input_col_dtype and column_dtypes through so nested isin (e.g. ~col.isin([...]), OR) gets it (#369, #419)
             left = self._translate_operation(
                 column,
                 input_col_dtype=input_col_dtype,
                 available_columns=available_columns,
                 case_sensitive=case_sensitive,
+                column_dtypes=column_dtypes,
             )
         elif isinstance(column, Column):
             left = self._translate_column(
@@ -486,7 +490,21 @@ class PolarsExpressionTranslator:
         # Need to handle type coercion for mixed types (e.g., checking int values in string column)
         if operation == "isin":
             # Get the column's dtype; fallback: numeric list/value -> assume string column (Issue #370, PySpark coercion)
+            # For OR/AND, use column_dtypes map when input_col_dtype is None (Issue #419)
             isin_col_dtype = input_col_dtype
+            if isin_col_dtype is None and column_dtypes and isinstance(column, Column):
+                col_name = getattr(column, "name", None)
+                if col_name is None and hasattr(column, "_original_column"):
+                    orig = getattr(column, "_original_column", None)
+                    if orig is not None:
+                        col_name = getattr(orig, "name", None)
+                if col_name and available_columns:
+                    actual_name = self._find_column(
+                        available_columns, col_name, case_sensitive
+                    )
+                    key = actual_name if actual_name else col_name
+                    if key in column_dtypes:
+                        isin_col_dtype = column_dtypes[key]
             values_are_all_numeric = (
                 isinstance(value, list)
                 and value
@@ -905,6 +923,7 @@ class PolarsExpressionTranslator:
                 input_col_dtype=None,
                 available_columns=available_columns,
                 case_sensitive=case_sensitive,
+                column_dtypes=column_dtypes,
             )
         elif isinstance(value, Column):
             right = self._translate_column(

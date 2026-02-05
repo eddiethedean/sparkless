@@ -6,6 +6,7 @@
 - **Issue #419** - `df.filter("Value in ('1234') or (Name == 'Alice')")` no longer raises `ParseException: Invalid identifier or literal: ('1234')`
   - Root cause: `_split_logical_operator` added parentheses twice (in the paren branch and at the end of the loop), producing malformed OR parts like `Value in (('1234'))`.
   - Fix: remove duplicate `current += char` for `(` and `)` so each paren is appended only once.
+  - Type coercion: int column with string literals in IN (e.g. `Value in ('1234')`) now coerces correctly when combined with OR/AND; materializer recursively extracts isin column dtypes and passes `column_dtypes` to the expression translator.
 - **Issue #415** - `df.orderBy(["col1", "col2"])` no longer raises `ColumnNotFoundError`; a single list/tuple argument is now unpacked to multiple columns, matching PySpark behavior.
   - Added robust tests: df.columns, string columns, 3+ columns, orderBy+limit/filter/select, empty DataFrame.
 - **Issue #414** - `row_number().over(Window.partitionBy(...).orderBy(F.desc(...)))` no longer raises `TypeError: over() got an unexpected keyword argument 'descending'`.
