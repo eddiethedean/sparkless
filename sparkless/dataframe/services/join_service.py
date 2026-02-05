@@ -117,16 +117,11 @@ class JoinService:
                 f"the second table has {len(other_schema.fields)} columns"
             )
 
-        # Check column names and types
+        # PySpark union() matches by position, not by name (Issue #413).
+        # Only check type compatibility at each position; column names may differ.
         for i, (field1, field2) in enumerate(
             zip(self_schema.fields, other_schema.fields)
         ):
-            if field1.name != field2.name:
-                raise AnalysisException(
-                    f"Union can only be performed on tables with compatible column names. "
-                    f"Column {i} name mismatch: '{field1.name}' vs '{field2.name}'"
-                )
-
             # Type compatibility check
             if not SetOperations._are_types_compatible(
                 field1.dataType, field2.dataType

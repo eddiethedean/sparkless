@@ -4,6 +4,11 @@
 
 ### Fixed
 - **Issue #412** - `SparkSession.builder()` (callable form) no longer raises `TypeError: 'SparkSessionBuilder' object is not callable`; `builder()` now returns the same builder instance for drop-in compatibility with code that uses `builder()` as a factory.
+- **Issue #413** - `union()` with `createDataFrame(data, column_names)` no longer raises `AnalysisException` due to column order mismatch. PySpark's `union()` matches by position; Sparkless now does the same.
+  - Polars materializer: use `pl.from_dicts` with schema only for tuple data when union is present (preserves column order); dict data uses `pl.DataFrame` to avoid schema/data mismatch (e.g. select+union with struct fields).
+  - Schema inference: pass `column_order` to `infer_from_data` to preserve data key order instead of alphabetical sort.
+  - Regression fix: narrowed `pl.from_dicts` scope to avoid breaking select+union with aliased struct fields (`test_struct_field_with_alias_with_union`).
+  - Added robust tests: chained union, empty DataFrames, nulls, unionAll, select/orderBy/filter after union.
 
 ---
 
