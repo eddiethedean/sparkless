@@ -3420,21 +3420,40 @@ class PolarsOperationExecutor:
                 )
                 left_col_str = str(left_col)
                 right_col_str = str(right_col)
+                case_sensitive_early = self._get_case_sensitive()
+                col_in_df1_left = self._find_column(
+                    df1, left_col_str, case_sensitive_early
+                )
+                col_in_df2_left = self._find_column(
+                    df2, left_col_str, case_sensitive_early
+                )
+                col_in_df1_right = self._find_column(
+                    df1, right_col_str, case_sensitive_early
+                )
+                col_in_df2_right = self._find_column(
+                    df2, right_col_str, case_sensitive_early
+                )
 
-                # Always use left_on/right_on for different column names
-                # This ensures proper column matching when columns have different names
+                # Same column name - check if it exists in both DataFrames
                 if left_col_str == right_col_str:
-                    # Same column name - check if it exists in both DataFrames
-                    if left_col_str in df1.columns and left_col_str in df2.columns:
-                        join_keys = [left_col_str]
+                    if col_in_df1_left and col_in_df2_left:
+                        join_keys = [col_in_df1_left]
                     else:
-                        # Column name doesn't match - use left_on/right_on anyway
+                        left_on = [col_in_df1_left or left_col_str]
+                        right_on = [col_in_df2_left or right_col_str]
+                else:
+                    # Different column names - assign each to the DataFrame that has it (Issue #421)
+                    # F.col("Key") == F.col("Name"): Key may be in df2, Name in df1
+                    if col_in_df1_left and col_in_df2_right:
+                        left_on = [col_in_df1_left]
+                        right_on = [col_in_df2_right]
+                    elif col_in_df2_left and col_in_df1_right:
+                        left_on = [col_in_df1_right]
+                        right_on = [col_in_df2_left]
+                    else:
+                        # Fallback: assume left side of == is from df1, right from df2
                         left_on = [left_col_str]
                         right_on = [right_col_str]
-                else:
-                    # Different column names - always use left_on and right_on
-                    left_on = [left_col_str]
-                    right_on = [right_col_str]
             else:
                 # Expression-based join (e.g., array_contains, other expressions)
                 # Store the expression for evaluation after cross join
