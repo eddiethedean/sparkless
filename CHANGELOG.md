@@ -1,6 +1,12 @@
 # Changelog
 
-## 3.30.0 — Unreleased
+## Unreleased
+
+_No changes yet._
+
+---
+
+## 3.30.0 — 2026-02-05
 
 ### Fixed
 - **Issue #424** - `ColumnOperation.alias()` now accepts multiple positional arguments (e.g. `F.posexplode("Values").alias("Value1", "Value2")`), matching PySpark. Previously raised `TypeError: ... takes 2 positional arguments but 3 were given`.
@@ -25,6 +31,15 @@
   - Schema inference: pass `column_order` to `infer_from_data` to preserve data key order instead of alphabetical sort.
   - Regression fix: narrowed `pl.from_dicts` scope to avoid breaking select+union with aliased struct fields (`test_struct_field_with_alias_with_union`).
   - Added robust tests: chained union, empty DataFrames, nulls, unionAll, select/orderBy/filter after union.
+
+### Changed
+- Exception handling: added DEBUG logging for broad `except Exception` fallbacks in `expression_translator` (case sensitivity) and `operation_executor` (parse_ddl_schema, cast/to_date fallbacks, join row evaluation) to aid debugging.
+- SQL executor: use `catalog.get_storage_backend()` instead of `catalog._storage` (removes 6 `type: ignore`); transformations: narrowed redundant-cast type ignores.
+
+### Documentation
+- **known_issues.md**: Documented Delta Table unsupported operations (NotImplementedError paths), `DataFrame.explain()` codegen/cost not implemented, and Deprecations list (errors module, Functions(), LazyEvaluationEngine heuristics, function aliases).
+- **testing_patterns.md**: Added "Test layout and skips" (PySpark-only, Delta, optional deps, backend-specific).
+- **TODO.md**: Added "Current focus" backlog (array_distinct, exception handling, type-ignore reduction).
 
 ---
 
