@@ -60,9 +60,7 @@ class MiscService:
         # PySpark allows fillna(0.0) to fill integer columns (coerces); we accept int or float for numeric columns.
         if isinstance(column_type, StringType):
             return isinstance(value, str)
-        elif isinstance(column_type, (IntegerType, LongType)):
-            return isinstance(value, (int, float))
-        elif isinstance(column_type, (FloatType, DoubleType)):
+        elif isinstance(column_type, (IntegerType, LongType, FloatType, DoubleType)):
             return isinstance(value, (int, float))
         elif isinstance(column_type, BooleanType):
             return isinstance(value, bool)
