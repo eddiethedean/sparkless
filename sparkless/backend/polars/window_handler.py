@@ -12,9 +12,7 @@ from sparkless.functions.window_execution import WindowFunction
 from ._over_compat import polars_over_supports_descending
 
 
-def _over_order_kwargs(
-    order_by: List[pl.Expr], order_descending: bool
-) -> dict:
+def _over_order_kwargs(order_by: List[pl.Expr], order_descending: bool) -> dict:
     """Build kwargs for Polars over() when order_by is present.
 
     Only includes descending when the installed Polars supports it (1.22+).
