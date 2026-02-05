@@ -3,6 +3,10 @@
 ## 3.30.0 — Unreleased
 
 ### Fixed
+- **Issue #422** - `fillna(0.0)` now correctly replaces `None` in integer columns and in calculated numeric columns (e.g. `V3 = V1 / V2`).
+  - `_is_value_compatible_with_type` was rejecting float fill values for `IntegerType`/`LongType`; PySpark allows `fillna(0.0)` to fill int/long columns (coerces). Sparkless now accepts `(int, float)` for integer/long columns.
+  - When filling a subset column that is not in the materialized schema (e.g. calculated column from `withColumn`), fill is now applied when the value is numeric.
+  - Added `tests/test_issue_422_fillna_float.py` with regression tests for both scenarios.
 - **Issue #419** - `df.filter("Value in ('1234') or (Name == 'Alice')")` no longer raises `ParseException: Invalid identifier or literal: ('1234')`
   - Root cause: `_split_logical_operator` added parentheses twice (in the paren branch and at the end of the loop), producing malformed OR parts like `Value in (('1234'))`.
   - Fix: remove duplicate `current += char` for `(` and `)` so each paren is appended only once.

@@ -56,12 +56,11 @@ class MiscService:
         if value is None:
             return True
 
-        # Check type compatibility based on column type
+        # Check type compatibility based on column type.
+        # PySpark allows fillna(0.0) to fill integer columns (coerces); we accept int or float for numeric columns.
         if isinstance(column_type, StringType):
             return isinstance(value, str)
-        elif isinstance(column_type, (IntegerType, LongType)):
-            return isinstance(value, int)
-        elif isinstance(column_type, (FloatType, DoubleType)):
+        elif isinstance(column_type, (IntegerType, LongType, FloatType, DoubleType)):
             return isinstance(value, (int, float))
         elif isinstance(column_type, BooleanType):
             return isinstance(value, bool)
@@ -242,9 +241,15 @@ class MiscService:
                         if get_row_value(row, col) is None:
                             # Check type compatibility (PySpark silently ignores mismatches)
                             col_type = column_types.get(col)
-                            if col_type and self._is_value_compatible_with_type(
-                                value, col_type
-                            ):
+                            if col_type is not None:
+                                compatible = self._is_value_compatible_with_type(
+                                    value, col_type
+                                )
+                            else:
+                                # Column in subset but not in schema (e.g. calculated column
+                                # from withColumn); allow numeric fill for numeric-like values
+                                compatible = isinstance(value, (int, float))
+                            if compatible:
                                 new_row[col] = value
                             # If not compatible, leave as None (PySpark behavior)
                 else:
