@@ -3,6 +3,8 @@
 This module tests the first() method which returns the first row of a DataFrame.
 """
 
+import uuid
+
 import pytest
 
 from sparkless import SparkSession
@@ -11,8 +13,11 @@ from sparkless.spark_types import StructType, StructField, StringType
 
 @pytest.fixture
 def spark():
-    """Create a SparkSession for testing."""
-    return SparkSession.builder.appName("test_first").getOrCreate()
+    """Create a SparkSession for testing with unique app name for parallel isolation."""
+    app_name = f"test_first_{uuid.uuid4().hex[:8]}"
+    session = SparkSession.builder.appName(app_name).getOrCreate()
+    yield session
+    session.stop()
 
 
 class TestDataFrameFirst:
