@@ -168,7 +168,8 @@ class SetOperations:
                 f"the second table has {len(schema2.fields)} columns"
             )
 
-        # Check column names and types, and determine coercion targets
+        # PySpark union() matches by position, not by name (Issue #413).
+        # Only check type compatibility at each position; column names may differ.
         from ...dataframe.casting.type_converter import TypeConverter
 
         coerced_data1 = data1.copy()
@@ -176,12 +177,6 @@ class SetOperations:
         result_fields = []
 
         for i, (field1, field2) in enumerate(zip(schema1.fields, schema2.fields)):
-            if field1.name != field2.name:
-                raise AnalysisException(
-                    f"Union can only be performed on tables with compatible column names. "
-                    f"Column {i} name mismatch: '{field1.name}' vs '{field2.name}'"
-                )
-
             # Type compatibility check
             if not SetOperations._are_types_compatible(
                 field1.dataType, field2.dataType
@@ -226,23 +221,35 @@ class SetOperations:
 
             result_fields.append(StructField(field1.name, target_type, nullable=True))
 
-            # Coerce data if types differ
+            # Coerce data if types differ (union is position-based: use field1 for data1, field2 for data2)
             if target_type != field1.dataType or target_type != field2.dataType:
-                col_name = field1.name
+                col1_name = field1.name
+                col2_name = field2.name
                 # Coerce data1 values if needed
                 if target_type != field1.dataType:
                     for row in coerced_data1:
-                        if col_name in row:
-                            row[col_name] = TypeConverter.cast_to_type(
-                                row[col_name], target_type
+                        if col1_name in row:
+                            row[col1_name] = TypeConverter.cast_to_type(
+                                row[col1_name], target_type
                             )
-                # Coerce data2 values if needed
+                # Coerce data2 values if needed (data2 uses schema2 column names)
                 if target_type != field2.dataType:
                     for row in coerced_data2:
-                        if col_name in row:
-                            row[col_name] = TypeConverter.cast_to_type(
-                                row[col_name], target_type
+                        if col2_name in row:
+                            row[col2_name] = TypeConverter.cast_to_type(
+                                row[col2_name], target_type
                             )
+
+        # Position-based union: reorder data2 rows to use schema1's column names
+        # (data2 may have different column order/names)
+        reordered_data2: List[Dict[str, Any]] = []
+        for row in coerced_data2:
+            new_row = {
+                result_fields[i].name: row.get(schema2.fields[i].name)
+                for i in range(len(result_fields))
+            }
+            reordered_data2.append(new_row)
+        coerced_data2 = reordered_data2
 
         # Convert data to Row objects for union
         rows1 = [Row(row) for row in coerced_data1]

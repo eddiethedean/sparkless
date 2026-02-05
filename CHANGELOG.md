@@ -4,6 +4,7 @@
 
 ### Fixed
 - **Issue #412** - `SparkSession.builder()` (callable form) no longer raises `TypeError: 'SparkSessionBuilder' object is not callable`; `builder()` now returns the same builder instance for drop-in compatibility with code that uses `builder()` as a factory.
+- **Issue #413** - `union()` with `createDataFrame(data, column_names)` no longer raises `AnalysisException` due to column order mismatch. PySpark's `union()` matches by position; Sparkless now does the same. Polars materializer preserves schema column order via `pl.from_dicts`, and union skips schema overwrite with infer_from_data (which sorts alphabetically).
 
 ---
 

@@ -127,11 +127,20 @@ class PolarsMaterializer:
                             )
                         else:
                             converted_data.append(row_any)
-                    df = pl.DataFrame(converted_data)
+                    df = pl.from_dicts(converted_data, schema=field_names)
                 else:
-                    df = pl.DataFrame(data)
+                    # Preserve schema column order (Issue #413); pl.DataFrame sorts dict keys
+                    schema_names = [f.name for f in schema.fields]
+                    df = pl.from_dicts(data, schema=schema_names)
             else:
-                df = pl.DataFrame(data)
+                order_cols: Optional[List[str]] = (
+                    [f.name for f in schema.fields] if schema.fields else None
+                )
+                df = (
+                    pl.from_dicts(data, schema=order_cols)
+                    if order_cols
+                    else pl.DataFrame(data)
+                )
 
             # Only enforce schema types if we have a union operation (to prevent type mismatches)
             # For other operations, let Polars infer types naturally
@@ -179,9 +188,10 @@ class PolarsMaterializer:
                 data_keys = set(getattr(first_row, "keys", lambda: [])())
 
             schema_keys = {field.name for field in schema.fields}
-            # If we have operations, use base schema from data for the op loop
-            # (e.g. union compares current_schema vs other; current_schema must be base, not projected).
-            if data and operations and is_dict_format:
+            # If we have operations (e.g. union), use passed-in schema; do NOT overwrite
+            # with infer_from_data (Issue #413: infer_from_data sorts columns alphabetically).
+            has_union = any(op_name == "union" for op_name, _ in operations)
+            if data and operations and is_dict_format and not has_union:
                 from ...core.schema_inference import SchemaInferenceEngine
 
                 try:
@@ -335,13 +345,13 @@ class PolarsMaterializer:
                         from ...core.column_resolver import ColumnResolver
 
                         polars_schema = lazy_df.collect_schema()
-                        schema_names: List[str] = (
+                        polars_col_names: List[str] = (
                             list(polars_schema.names())
                             if hasattr(polars_schema, "names")
                             else list(polars_schema.keys())
                         )
                         resolved_name = ColumnResolver.resolve_column_name(
-                            col_name, schema_names, case_sensitive=False
+                            col_name, polars_col_names, case_sensitive=False
                         )
                         if resolved_name is not None:
                             input_col_dtype = polars_schema[resolved_name]
@@ -965,23 +975,17 @@ class PolarsMaterializer:
                             f"the second table has {len(other_schema.fields)} columns"
                         )
 
-                    # Check column names and types
+                    # PySpark union() matches by position, not by name (Issue #413).
+                    # Only check type compatibility at each position.
                     for i, (field1, field2) in enumerate(
                         zip(current_schema.fields, other_schema.fields)
                     ):
-                        if field1.name != field2.name:
-                            raise AnalysisException(
-                                f"Union can only be performed on tables with compatible column names. "
-                                f"Column {i} name mismatch: '{field1.name}' vs '{field2.name}'"
-                            )
-
-                        # Type compatibility check
                         if not SetOperations._are_types_compatible(
                             field1.dataType, field2.dataType
                         ):
                             raise AnalysisException(
                                 f"Union can only be performed on tables with compatible column types. "
-                                f"Column '{field1.name}' type mismatch: "
+                                f"Column {i} type mismatch: "
                                 f"{field1.dataType} vs {field2.dataType}"
                             )
 
@@ -1048,9 +1052,31 @@ class PolarsMaterializer:
                         else:
                             other_df = pl.DataFrame()
                     else:
-                        # Create DataFrame from data
-                        # Only enforce schema types for union operations to prevent type mismatches
-                        other_df = pl.DataFrame(other_data)
+                        # Create DataFrame from data with explicit schema order (Issue #413)
+                        # Ensure column order matches other_schema for position-based union
+                        other_schema_obj = (
+                            other_schema
+                            if other_schema is not None
+                            else getattr(other_df_payload, "schema", None)
+                        )
+                        if other_schema_obj is not None:
+                            # Build dicts in schema order; use from_dicts with schema to
+                            # preserve column order (pl.DataFrame sorts dict keys)
+                            ordered_data = [
+                                {
+                                    f.name: (
+                                        row.get(f.name)
+                                        if isinstance(row, dict)
+                                        else get_row_value(row, f.name)
+                                    )
+                                    for f in other_schema_obj.fields
+                                }
+                                for row in other_data
+                            ]
+                            schema_names = [f.name for f in other_schema_obj.fields]
+                            other_df = pl.from_dicts(ordered_data, schema=schema_names)
+                        else:
+                            other_df = pl.DataFrame(other_data)
                         if (
                             hasattr(other_df_payload, "schema")
                             and other_df_payload.schema.fields
@@ -1078,6 +1104,25 @@ class PolarsMaterializer:
                                 other_df = other_df.with_columns(cast_exprs)
                 else:
                     other_df = other_df_payload
+
+                # Position-based union (Issue #413): reorder other_df when column order differs
+                # (union matches by position, not name)
+                if (
+                    other_schema is not None
+                    and isinstance(other_df, pl.DataFrame)
+                    and other_df.width > 0
+                ):
+                    left_cols = [f.name for f in current_schema.fields]
+                    right_cols = list(other_df.columns)
+                    if right_cols != left_cols:
+                        other_df = pl.DataFrame(
+                            {
+                                current_schema.fields[i].name: other_df[
+                                    other_schema.fields[i].name
+                                ]
+                                for i in range(len(current_schema.fields))
+                            }
+                        )
 
                 result_df = self.operation_executor.apply_union(df_collected, other_df)
                 # Schema may change after union if type coercion occurred
