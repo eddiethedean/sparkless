@@ -461,26 +461,24 @@ class SQLExprParser:
             if not in_string:
                 if char == "(":
                     depth += 1
-                    current += char
                 elif char == ")":
                     depth -= 1
-                    current += char
                 elif (
                     depth == 0
                     and expr[i : i + len(op_keyword)].upper() == op_keyword.upper()
-                ):
-                    # Check word boundary so we don't match "and" in "grand"
-                    if (i == 0 or not expr[i - 1].isalnum()) and (
+                    and (i == 0 or not expr[i - 1].isalnum())
+                    and (
                         i + len(op_keyword) >= len(expr)
                         or not expr[i + len(op_keyword)].isalnum()
-                    ):
-                        if current.strip():
-                            parts.append(current.strip())
-                        current = ""
-                        i += len(op_keyword)
-                        while i < len(expr) and expr[i].isspace():
-                            i += 1
-                        continue
+                    )
+                ):
+                    if current.strip():
+                        parts.append(current.strip())
+                    current = ""
+                    i += len(op_keyword)
+                    while i < len(expr) and expr[i].isspace():
+                        i += 1
+                    continue
 
             current += char if i < len(expr) else ""
             i += 1
