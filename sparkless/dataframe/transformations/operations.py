@@ -127,9 +127,9 @@ class TransformationOperations(Generic[SupportsDF]):
                     self._validate_expression_columns(col, "select")
 
             # Always use lazy evaluation
-            return cast("SupportsDF", self._queue_op("select", columns))  # type: ignore[redundant-cast,unused-ignore]
+            return cast("SupportsDF", self._queue_op("select", columns))  # type: ignore[redundant-cast]
         # If there are pending joins, skip validation and go directly to lazy evaluation
-        return cast("SupportsDF", self._queue_op("select", columns))  # type: ignore[redundant-cast,unused-ignore]
+        return cast("SupportsDF", self._queue_op("select", columns))  # type: ignore[redundant-cast]
 
     def selectExpr(self: SupportsDF, *exprs: str) -> SupportsDF:
         """Select columns or expressions using SQL-like syntax.

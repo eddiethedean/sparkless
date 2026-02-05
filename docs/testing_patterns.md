@@ -667,4 +667,27 @@ def test_error_conditions(spark, sample_data):
         df.withColumn("rank", F.rank().over(invalid_window)).collect()
 ```
 
+## Test layout and skips
+
+The test suite includes a number of tests that are skipped under certain conditions.
+Understanding when and why tests are skipped helps when running tests locally or in CI.
+
+- **PySpark-only tests**: Some parity or compatibility tests require a real PySpark
+  session (e.g. `MOCK_SPARK_TEST_BACKEND=pyspark`). Without that backend, those tests
+  are skipped (e.g. in `tests/conftest.py` when PySpark session creation fails, or
+  via `@pytest.mark.skipif` in parity tests).
+- **Delta Lake**: Tests that require Delta Lake (e.g. `test_sql_describe_detail.py`,
+  `test_delta_lake_schema_evolution.py`) may skip if Delta is not installed or
+  not available in the environment.
+- **Optional dependencies**: Documentation or example tests may skip when optional
+  dependencies (e.g. pandas) are missing; see `tests/documentation/test_examples.py`
+  for `skipif` conditions and guidance.
+- **Backend-specific**: Some tests are written to run in both Sparkless (mock) and
+  PySpark mode; they may relax assertions or skip branches depending on the active
+  backend (see e.g. `tests/test_issue_366_alias_posexplode.py`).
+
+Run the full suite with `pytest -n 10`; skipped tests are summarized in the report.
+To run only tests that do not require PySpark, use the default (mock) backend and
+avoid `MOCK_SPARK_TEST_BACKEND=pyspark`.
+
 This testing patterns guide provides comprehensive coverage of testing with Sparkless. For more examples and advanced patterns, see the test files in the `tests/` directory.

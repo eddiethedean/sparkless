@@ -207,7 +207,10 @@ class PolarsExpressionTranslator:
                 if hasattr(session, "conf"):
                     return bool(session.conf.is_case_sensitive())
         except Exception:
-            pass
+            logger.debug(
+                "Could not get case sensitivity from session, using default",
+                exc_info=True,
+            )
         return False  # Default to case-insensitive (matching PySpark)
 
     def translate(

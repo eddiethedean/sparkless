@@ -1551,7 +1551,7 @@ class SQLExecutor:
         # Access storage through catalog (ISession protocol doesn't expose _storage)
         storage = getattr(self.session, "_storage", None)
         if storage is None:
-            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            storage = self.session.catalog.get_storage_backend()
         if schema_name is None:
             schema_name = storage.get_current_schema()
 
@@ -1655,7 +1655,7 @@ class SQLExecutor:
         # Access storage through catalog (ISession protocol doesn't expose _storage)
         storage = getattr(self.session, "_storage", None)
         if storage is None:
-            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            storage = self.session.catalog.get_storage_backend()
         if data:
             storage.insert_data(schema_name, table_name, data)
 
@@ -1726,7 +1726,7 @@ class SQLExecutor:
         # Access storage through catalog (ISession protocol doesn't expose _storage)
         storage = getattr(self.session, "_storage", None)
         if storage is None:
-            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            storage = self.session.catalog.get_storage_backend()
         if schema_name is None:
             schema_name = storage.get_current_schema()
 
@@ -1903,7 +1903,7 @@ class SQLExecutor:
         # Access storage through catalog (ISession protocol doesn't expose _storage)
         storage = getattr(self.session, "_storage", None)
         if storage is None:
-            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            storage = self.session.catalog.get_storage_backend()
         if schema_name is None:
             schema_name = storage.get_current_schema()
 
@@ -2008,7 +2008,7 @@ class SQLExecutor:
         # Access storage through catalog
         storage = getattr(self.session, "_storage", None)
         if storage is None:
-            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            storage = self.session.catalog.get_storage_backend()
         if schema_name is None:
             schema_name = storage.get_current_schema()
 
@@ -2634,7 +2634,7 @@ class SQLExecutor:
         # Write merged data back to target table
         storage = getattr(self.session, "_storage", None)
         if storage is None:
-            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            storage = self.session.catalog.get_storage_backend()
         storage.drop_table(target_schema, target_name)
         storage.create_table(target_schema, target_name, target_df.schema.fields)
         if updated_rows:

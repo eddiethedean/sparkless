@@ -66,3 +66,9 @@
 - [x] Draft migration notes for upcoming performance knobs to help users tune mock behaviour per pipeline (`docs/guides/configuration.md` – Performance knobs section).
 - [x] Document PySpark compatibility improvements and module structure changes in migration guide (`docs/migration_from_pyspark.md` – Module structure subsection).
 
+## Current focus (backlog)
+
+- [ ] **array_distinct** – Polars backend does not support `array_distinct`; consider implementing or documenting workarounds (see `docs/known_issues.md`).
+- [ ] **Exception handling** – Continue narrowing broad `except Exception: pass` in materializer, expression_evaluator, and schema_manager; add DEBUG logging where fallbacks are used.
+- [ ] **Type safety** – Incrementally reduce remaining `type: ignore` in `session/sql/executor.py`, `dataframe/transformations/operations.py`, and `spark_types.py` when touching those files.
+

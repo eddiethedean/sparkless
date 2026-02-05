@@ -5,6 +5,7 @@ from __future__ import annotations
 # using the Polars DataFrame API.
 
 import json
+import logging
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple, Union, cast
 import polars as pl
 from .window_handler import PolarsWindowHandler
@@ -20,6 +21,8 @@ if TYPE_CHECKING:
     from sparkless.dataframe.evaluation.expression_evaluator import (
         ExpressionEvaluator,
     )
+
+logger = logging.getLogger(__name__)
 
 
 class PolarsOperationExecutor:
@@ -2135,6 +2138,10 @@ class PolarsOperationExecutor:
             try:
                 return parse_ddl_schema(schema_spec)
             except Exception:
+                logger.debug(
+                    "parse_ddl_schema failed, returning empty StructType",
+                    exc_info=True,
+                )
                 return StructType([])
 
         return None
@@ -3238,7 +3245,10 @@ class PolarsOperationExecutor:
                         result = df.with_columns([cast_expr.alias(column_name)])
                         return result
                     except Exception:
-                        pass  # Fall through to with_columns
+                        logger.debug(
+                            "Cast with_columns path failed, falling through",
+                            exc_info=True,
+                        )
 
             # For to_date() operations on datetime columns, use .dt.date() directly
             # This avoids schema validation issues that map_elements can cause
@@ -3285,7 +3295,10 @@ class PolarsOperationExecutor:
                                     result = df.select(all_exprs)
                                     return result
                             except Exception:
-                                pass  # Fall back to with_columns
+                                logger.debug(
+                                    "to_date .dt.date() path failed, falling back",
+                                    exc_info=True,
+                                )
 
                 # For complex expressions or string columns, try using select to avoid validation
                 try:
@@ -3297,7 +3310,10 @@ class PolarsOperationExecutor:
                     result = df.select(all_exprs)
                     return result
                 except Exception:
-                    pass  # Fall through to with_columns
+                    logger.debug(
+                        "to_date select path failed, falling through to with_columns",
+                        exc_info=True,
+                    )
 
             # Try to execute with Polars, but catch ColumnNotFoundError for Python evaluation fallback
             try:
@@ -4163,8 +4179,10 @@ class PolarsOperationExecutor:
                     if result is True:
                         filtered_rows.append(row)
                 except Exception:
-                    # If evaluation fails, skip this row
-                    pass
+                    logger.debug(
+                        "Row evaluation failed for join condition, skipping row",
+                        exc_info=True,
+                    )
 
             if not filtered_rows:
                 # No matches
