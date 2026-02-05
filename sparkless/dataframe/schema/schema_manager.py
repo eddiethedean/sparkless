@@ -321,11 +321,6 @@ class SchemaManager:
                 if col_name == "*":
                     # Add all existing fields
                     new_fields_map.update(fields_map)
-                elif col_name in fields_map:
-                    new_fields_map[col_name] = fields_map[col_name]
-                elif isinstance(col, Literal):
-                    # For Literal objects - literals are never nullable
-                    new_fields_map[col_name] = SchemaManager._create_literal_field(col)
                 elif isinstance(col, ColumnOperation) and col.operation == "json_tuple":
                     # json_tuple(col, *fields) expands into multiple string columns (c0, c1, ...)
                     fields = (
@@ -334,6 +329,36 @@ class SchemaManager:
                     for i in range(len(fields)):
                         name = f"c{i}"
                         new_fields_map[name] = StructField(name, StringType(), True)
+                elif (
+                    isinstance(col, ColumnOperation)
+                    and col.operation in ("posexplode", "posexplode_outer")
+                    and len(getattr(col, "_alias_names", ())) >= 2
+                ):
+                    # posexplode/posexplode_outer with alias("Name1", "Name2") yields two columns
+                    # Check before col_name in fields_map so we always add both columns even when
+                    # re-projecting an already projected schema (e.g. in materialize).
+                    alias_names = getattr(col, "_alias_names", (None, None))
+                    name0, name1 = alias_names[0], alias_names[1]
+                    new_fields_map[name0] = StructField(name0, LongType(), True)
+                    # Infer second column type from array element type if available
+                    val_type = StringType()
+                    source_col = getattr(col, "column", None)
+                    if source_col is not None:
+                        source_name = getattr(source_col, "name", None)
+                        if source_name:
+                            resolved = ColumnResolver.resolve_column_name(
+                                source_name, list(fields_map.keys()), case_sensitive
+                            )
+                            if resolved and resolved in fields_map:
+                                field_type = fields_map[resolved].dataType
+                                if isinstance(field_type, ArrayType):
+                                    val_type = field_type.element_type
+                    new_fields_map[name1] = StructField(name1, val_type, True)
+                elif col_name in fields_map:
+                    new_fields_map[col_name] = fields_map[col_name]
+                elif isinstance(col, Literal):
+                    # For Literal objects - literals are never nullable
+                    new_fields_map[col_name] = SchemaManager._create_literal_field(col)
                 else:
                     # New column from expression - infer type based on operation
                     new_fields_map[col_name] = SchemaManager._infer_expression_type(col)

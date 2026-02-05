@@ -561,6 +561,100 @@ class PolarsOperationExecutor:
         for i, col in enumerate(columns):
             if i in map_op_indices:
                 continue  # Skip map operations already handled
+            # Check posexplode first (PySpark: posexplode().alias("A","B") yields two columns)
+            _has_op = hasattr(col, "operation")
+            _has_col = hasattr(col, "column")
+            if (
+                _has_op
+                and _has_col
+                and (
+                    col.operation in ("posexplode", "posexplode_outer")
+                    or (
+                        col.operation == "alias"
+                        and (
+                            getattr(col.column, "operation", None)
+                            in ("posexplode", "posexplode_outer")
+                            or (
+                                getattr(col, "_alias_names", None)
+                                and len(getattr(col, "_alias_names", ())) >= 2
+                                and getattr(col.column, "name", None)
+                            )
+                        )
+                    )
+                )
+            ):
+                # posexplode produces two columns (pos, val); alias("Name1", "Name2") names them
+                if col.operation == "alias":
+                    posexplode_col = col.column if getattr(col.column, "operation", None) in ("posexplode", "posexplode_outer") else col
+                    alias_names_tuple = getattr(col, "_alias_names", None)
+                else:
+                    posexplode_col = col
+                    alias_names_tuple = None
+                from sparkless.functions import Column as ColumnType
+
+                source_col = posexplode_col.column
+                if isinstance(source_col, ColumnType):
+                    source_col_name = source_col.name
+                elif isinstance(source_col, str):
+                    source_col_name = source_col
+                else:
+                    source_col_name = str(getattr(source_col, "name", ""))
+                if not source_col_name:
+                    raise ValueError(
+                        f"Cannot determine source column for posexplode: {posexplode_col}"
+                    )
+                from ...core.column_resolver import ColumnResolver
+
+                case_sensitive = self._get_case_sensitive()
+                resolved_col_name = ColumnResolver.resolve_column_name(
+                    source_col_name, list(df.columns), case_sensitive
+                )
+                if resolved_col_name is None:
+                    raise ValueError(
+                        f"Column '{source_col_name}' not found for posexplode"
+                    )
+                _alias_names = alias_names_tuple or getattr(
+                    posexplode_col, "_alias_names", None
+                )
+                if _alias_names and len(_alias_names) >= 2:
+                    alias_names = (_alias_names[0], _alias_names[1])
+                else:
+                    _first = (
+                        getattr(col, "_alias_name", None)
+                        or getattr(posexplode_col, "_alias_name", None)
+                        or "pos"
+                    )
+                    alias_names = (_first, "col")
+                temp_name = "__posexplode_struct"
+
+                def _posexplode_list(arr: Any) -> Any:
+                    if arr is None:
+                        return []
+                    if not isinstance(arr, (list, tuple)):
+                        return []
+                    return [{"pos": i, "val": v} for i, v in enumerate(arr)]
+
+                list_dtype = df[resolved_col_name].dtype
+                val_dtype = (
+                    list_dtype.inner
+                    if hasattr(list_dtype, "inner") and list_dtype.inner is not None
+                    else pl.Int64
+                )
+                posexplode_dtype = pl.List(
+                    pl.Struct([pl.Field("pos", pl.Int64), pl.Field("val", val_dtype)])
+                )
+                posexplode_expr = (
+                    pl.col(resolved_col_name)
+                    .map_elements(
+                        _posexplode_list,
+                        return_dtype=posexplode_dtype,
+                    )
+                    .alias(temp_name)
+                )
+                select_exprs.append(posexplode_expr)
+                select_names.append(temp_name)
+                posexplode_pending.append((temp_name, alias_names[0], alias_names[1]))
+                continue
             if isinstance(col, str):
                 if col == "*":
                     # Select all columns - return original DataFrame
@@ -679,14 +773,35 @@ class PolarsOperationExecutor:
                         ).alias(name)
                     )
                     select_names.append(name)
-            elif isinstance(col, ColumnOperation) and col.operation in (
-                "posexplode",
-                "posexplode_outer",
+            elif (
+                (isinstance(col, ColumnOperation) or (hasattr(col, "operation") and hasattr(col, "column")))
+                and (
+                    col.operation in ("posexplode", "posexplode_outer")
+                    or (
+                        col.operation == "alias"
+                        and (
+                            getattr(col.column, "operation", None)
+                            in ("posexplode", "posexplode_outer")
+                            or (
+                                getattr(col, "_alias_names", None)
+                                and len(getattr(col, "_alias_names", ())) >= 2
+                                and getattr(col.column, "name", None)
+                            )
+                        )
+                    )
+                )
             ):
                 # posexplode produces two columns (pos, val); alias("Name1", "Name2") names them
+                # Unwrap alias(posexplode(...)) so we use the inner posexplode and alias names
+                if col.operation == "alias":
+                    posexplode_col = col.column if getattr(col.column, "operation", None) in ("posexplode", "posexplode_outer") else col
+                    alias_names_tuple = getattr(col, "_alias_names", None)
+                else:
+                    posexplode_col = col
+                    alias_names_tuple = None
                 from sparkless.functions import Column as ColumnType
 
-                source_col = col.column
+                source_col = posexplode_col.column
                 if isinstance(source_col, ColumnType):
                     source_col_name = source_col.name
                 elif isinstance(source_col, str):
@@ -695,7 +810,7 @@ class PolarsOperationExecutor:
                     source_col_name = str(getattr(source_col, "name", ""))
                 if not source_col_name:
                     raise ValueError(
-                        f"Cannot determine source column for posexplode: {col}"
+                        f"Cannot determine source column for posexplode: {posexplode_col}"
                     )
                 from ...core.column_resolver import ColumnResolver
 
@@ -707,9 +822,19 @@ class PolarsOperationExecutor:
                     raise ValueError(
                         f"Column '{source_col_name}' not found for posexplode"
                     )
-                # PySpark alias() takes single name; posexplode output columns are (pos, col)
-                _first = getattr(col, "_alias_name", None) or "pos"
-                alias_names = (_first, "col")
+                # PySpark alias(*names) supports multiple names; posexplode output columns (pos, val)
+                _alias_names = alias_names_tuple or getattr(
+                    posexplode_col, "_alias_names", None
+                )
+                if _alias_names and len(_alias_names) >= 2:
+                    alias_names = (_alias_names[0], _alias_names[1])
+                else:
+                    _first = (
+                        getattr(col, "_alias_name", None)
+                        or getattr(posexplode_col, "_alias_name", None)
+                        or "pos"
+                    )
+                    alias_names = (_first, "col")
                 temp_name = "__posexplode_struct"
 
                 def _posexplode_list(arr: Any) -> Any:
@@ -1613,10 +1738,26 @@ class PolarsOperationExecutor:
                         result = result.explode(exploded_col_name)
                 elif posexplode_pending:
                     result = df.select(select_exprs)
+                    try:
+                        for temp_name, name0, name1 in posexplode_pending:
+                            if temp_name not in result.columns:
+                                raise ValueError(
+                                    f"posexplode temp column '{temp_name}' not in result; "
+                                    f"columns={result.columns}"
+                                )
+                            temp_dtype = result[temp_name].dtype
+                            # map_elements may return List(Struct) or Struct; only explode if list
+                            if hasattr(temp_dtype, "inner") or str(temp_dtype).startswith("List"):
+                                result = result.explode(temp_name)
+                            result = result.unnest(temp_name)
+                            result = result.rename({"pos": name0, "val": name1})
+                    except Exception as _posex_err:
+                        raise
+                    # Update select_names so downstream reorder logic sees final column names
                     for temp_name, name0, name1 in posexplode_pending:
-                        result = result.explode(temp_name)
-                        result = result.unnest(temp_name)
-                        result = result.rename({"pos": name0, "val": name1})
+                        if temp_name in select_names:
+                            idx = select_names.index(temp_name)
+                            select_names[idx : idx + 1] = [name0, name1]
                 else:
                     result = df.select(select_exprs)
             except Exception as e:

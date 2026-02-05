@@ -3,6 +3,9 @@
 ## 3.30.0 — Unreleased
 
 ### Fixed
+- **Issue #424** - `ColumnOperation.alias()` now accepts multiple positional arguments (e.g. `F.posexplode("Values").alias("Value1", "Value2")`), matching PySpark. Previously raised `TypeError: ... takes 2 positional arguments but 3 were given`.
+  - `ColumnOperation.alias(*alias_names)` stores `_alias_name` (first) and `_alias_names` (tuple); Polars operation executor uses `_alias_names` when present to name both posexplode output columns.
+  - Added `test_posexplode_alias_two_names_select` and related tests in `tests/test_issue_366_alias_posexplode.py`.
 - **Issue #422** - `fillna(0.0)` now correctly replaces `None` in integer columns and in calculated numeric columns (e.g. `V3 = V1 / V2`).
   - `_is_value_compatible_with_type` was rejecting float fill values for `IntegerType`/`LongType`; PySpark allows `fillna(0.0)` to fill int/long columns (coerces). Sparkless now accepts `(int, float)` for integer/long columns.
   - When filling a subset column that is not in the materialized schema (e.g. calculated column from `withColumn`), fill is now applied when the value is numeric.
