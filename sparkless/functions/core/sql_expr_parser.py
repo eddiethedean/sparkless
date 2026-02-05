@@ -461,10 +461,8 @@ class SQLExprParser:
             if not in_string:
                 if char == "(":
                     depth += 1
-                    current += char
                 elif char == ")":
                     depth -= 1
-                    current += char
                 elif (
                     depth == 0
                     and expr[i : i + len(op_keyword)].upper() == op_keyword.upper()
