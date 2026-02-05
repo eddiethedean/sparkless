@@ -21,6 +21,15 @@ class SparkSessionBuilder:
         self._app_name = "SparklessApp"
         self._config: Dict[str, Any] = {}
 
+    def __call__(self) -> "SparkSessionBuilder":
+        """Return self for drop-in compatibility with SparkSession.builder().
+
+        PySpark documents builder as a property, but some code or generators use
+        builder() as a factory. Calling builder() returns the same builder instance
+        so both forms work identically.
+        """
+        return self
+
     def appName(self, name: str) -> "SparkSessionBuilder":
         """Set app name.
 

@@ -20,6 +20,7 @@
 - **Issue #408** - `MockRDD` now supports `flatMap()`; `df.rdd.flatMap(lambda row: row["line"].split())` no longer raises `AttributeError: 'MockRDD' object has no attribute 'flatMap'`.
 - Delta mock: narrowed exception handling in `_evaluate_update_expression` and `_evaluate_row_condition` so evaluation failures use specific exception types; other errors are re-raised instead of being hidden.
 - Lazy and Polars backends: replaced broad `except Exception` with `_EVALUATION_FAILURE_EXCEPTIONS` or specific types (e.g. `ValueError`, `SyntaxError`) in evaluation/transform fallbacks so real bugs are not swallowed.
+- **Issue #412** - `SparkSession.builder()` (callable form) no longer raises `TypeError: 'SparkSessionBuilder' object is not callable`; `builder()` now returns the same builder instance for drop-in compatibility with code that uses `builder()` as a factory.
 
 ### Changed
 - **array_distinct**: Documented as unsupported in Polars backend in `docs/known_issues.md` and function docstring; API retained for compatibility.
