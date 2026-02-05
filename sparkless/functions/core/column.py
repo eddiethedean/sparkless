@@ -5,7 +5,7 @@ This module provides the Column class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
 from ...core.interfaces.functions import IColumn
 from ...spark_types import DataType, StringType
@@ -660,6 +660,7 @@ class ColumnOperation(Column):
 
         # Dynamic attributes for aggregate functions, UDFs, and window operations
         # These are set dynamically and may not always be present
+        self._alias_names: Optional[Tuple[str, ...]] = None
         self._aggregate_function: Optional[AggregateFunction] = None
         self._udf_func: Optional[Any] = None
         self._udf_return_type: Optional[Any] = None
@@ -1021,14 +1022,18 @@ class ColumnOperation(Column):
         """
         return self._generate_name_early()
 
-    def alias(self, name: str) -> "ColumnOperation":
-        """Create an alias for this operation (PySpark: single name only)."""
+    def alias(self, *alias_names: str) -> "ColumnOperation":
+        """Create an alias for this operation (PySpark: one or more names, e.g. posexplode)."""
+        if not alias_names:
+            raise ValueError("alias() requires at least one name")
         # self.operation is guaranteed to be a string in ColumnOperation
         op_str: str = self.operation  # type: ignore[assignment]
+        first_name = alias_names[0]
         aliased_operation = ColumnOperation(
             self.column, op_str, self.value, name=self._name
         )
-        aliased_operation._alias_name = name
+        aliased_operation._alias_name = first_name
+        aliased_operation._alias_names = tuple(alias_names)
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)
         if hasattr(self, "_aggregate_function"):
             aliased_operation._aggregate_function = self._aggregate_function
