@@ -22,6 +22,7 @@ from sparkless.spark_types import (
     ArrayType,
     MapType,
     StructType,
+    StructField,
     ShortType,
     ByteType,
     NullType,
@@ -88,6 +89,9 @@ def mock_type_to_polars_dtype(mock_type: DataType) -> pl.DataType:
         return pl.Int8
     elif isinstance(mock_type, NullType):
         return pl.Null
+    elif isinstance(mock_type, StructField):
+        # StructField was passed instead of DataType (e.g. from _infer_expression_type)
+        return mock_type_to_polars_dtype(mock_type.dataType)
     else:
         raise ValueError(f"Unsupported Sparkless type: {type(mock_type)}")
 
