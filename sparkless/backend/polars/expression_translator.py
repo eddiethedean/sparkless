@@ -602,6 +602,47 @@ class PolarsExpressionTranslator:
                 )
             lower, upper = value
 
+            # Issue #445: PySpark implicitly casts string column to numeric when bounds are numeric.
+            # Polars is_between requires matching types. Cast string col to Float64 when bounds numeric.
+            def _is_numeric_bound(b: Any) -> bool:
+                if isinstance(b, (int, float)) and not isinstance(b, bool):
+                    return True
+                if isinstance(b, Literal):
+                    v = (
+                        b._resolve_lazy_value()
+                        if getattr(b, "_is_lazy", False)
+                        else b.value
+                    )
+                    return isinstance(v, (int, float)) and not isinstance(v, bool)
+                return False
+
+            bounds_are_numeric = _is_numeric_bound(lower) and _is_numeric_bound(upper)
+            between_col_dtype = input_col_dtype
+            if (
+                between_col_dtype is None
+                and column_dtypes
+                and isinstance(column, Column)
+            ):
+                col_name = getattr(column, "name", None)
+                if col_name is None and hasattr(column, "_original_column"):
+                    orig = getattr(column, "_original_column", None)
+                    if orig is not None:
+                        col_name = getattr(orig, "name", None)
+                if col_name and available_columns:
+                    actual_name = self._find_column(
+                        available_columns, col_name, case_sensitive
+                    )
+                    key = actual_name if actual_name else col_name
+                    if key in column_dtypes:
+                        between_col_dtype = column_dtypes[key]
+            col_is_string = between_col_dtype is not None and (
+                between_col_dtype == pl.Utf8
+                or str(getattr(between_col_dtype, "name", "")).lower()
+                in ("string", "utf8")
+            )
+            if bounds_are_numeric and col_is_string:
+                left = left.cast(pl.Float64, strict=False)
+
             # Translate lower bound
             if isinstance(lower, ColumnOperation):
                 lower_expr = self._translate_operation(
