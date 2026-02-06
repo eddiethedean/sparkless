@@ -329,32 +329,33 @@ class SchemaManager:
                     for i in range(len(fields)):
                         name = f"c{i}"
                         new_fields_map[name] = StructField(name, StringType(), True)
-                elif (
-                    isinstance(col, ColumnOperation)
-                    and col.operation in ("posexplode", "posexplode_outer")
-                    and len(getattr(col, "_alias_names", ())) >= 2
+                elif isinstance(col, ColumnOperation) and col.operation in (
+                    "posexplode",
+                    "posexplode_outer",
                 ):
-                    # posexplode/posexplode_outer with alias("Name1", "Name2") yields two columns
-                    # Check before col_name in fields_map so we always add both columns even when
-                    # re-projecting an already projected schema (e.g. in materialize).
-                    alias_names = getattr(col, "_alias_names", (None, None))
-                    name0, name1 = alias_names[0], alias_names[1]
-                    if name0 is not None and name1 is not None:
-                        new_fields_map[name0] = StructField(name0, LongType(), True)
-                        # Infer second column type from array element type if available
-                        val_type = StringType()
-                        source_col = getattr(col, "column", None)
-                        if source_col is not None:
-                            source_name = getattr(source_col, "name", None)
-                            if source_name:
-                                resolved = ColumnResolver.resolve_column_name(
-                                    source_name, list(fields_map.keys()), case_sensitive
-                                )
-                                if resolved and resolved in fields_map:
-                                    field_type = fields_map[resolved].dataType
-                                    if isinstance(field_type, ArrayType):
-                                        val_type = field_type.element_type
-                        new_fields_map[name1] = StructField(name1, val_type, True)
+                    # posexplode/posexplode_outer yields two columns: pos (index) and col (value).
+                    # PySpark default names are "pos" and "col"; alias("Name1", "Name2") overrides.
+                    # _alias_names can be None when used without alias (fixes #429).
+                    alias_names = getattr(col, "_alias_names", None)
+                    if alias_names is not None and len(alias_names) >= 2:
+                        name0, name1 = alias_names[0], alias_names[1]
+                    else:
+                        name0, name1 = "pos", "col"
+                    new_fields_map[name0] = StructField(name0, LongType(), True)
+                    # Infer second column type from array element type if available
+                    val_type = StringType()
+                    source_col = getattr(col, "column", None)
+                    if source_col is not None:
+                        source_name = getattr(source_col, "name", None)
+                        if source_name:
+                            resolved = ColumnResolver.resolve_column_name(
+                                source_name, list(fields_map.keys()), case_sensitive
+                            )
+                            if resolved and resolved in fields_map:
+                                field_type = fields_map[resolved].dataType
+                                if isinstance(field_type, ArrayType):
+                                    val_type = field_type.element_type
+                    new_fields_map[name1] = StructField(name1, val_type, True)
                 elif col_name in fields_map:
                     new_fields_map[col_name] = fields_map[col_name]
                 elif isinstance(col, Literal):
