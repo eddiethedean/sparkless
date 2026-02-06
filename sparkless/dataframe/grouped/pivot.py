@@ -420,7 +420,7 @@ class PivotGroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
@@ -435,7 +435,7 @@ class PivotGroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
@@ -536,7 +536,7 @@ class PivotGroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
