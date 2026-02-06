@@ -83,3 +83,118 @@ def test_alias_cast_multiple_columns(spark, spark_backend):
     rows = result.collect()
     assert len(rows) == 1
     assert rows[0]["A_int"] == 1 and rows[0]["B_int"] == 2 and rows[0]["C_int"] == 3
+
+
+# --- Robust edge-case tests ---
+
+
+def test_alias_cast_double_type(spark, spark_backend):
+    """alias().cast(DoubleType()) in select."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.DoubleType
+    df = spark.createDataFrame([{"s": "3.14"}])
+    result = df.select(F.col("s").alias("dbl").cast(T()))
+    rows = result.collect()
+    assert len(rows) == 1
+    assert rows[0]["dbl"] == 3.14
+
+
+def test_alias_cast_with_nulls(spark, spark_backend):
+    """alias().cast() with null values in column."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.IntegerType
+    df = spark.createDataFrame(
+        [
+            {"a": "1"},
+            {"a": None},
+            {"a": "3"},
+        ]
+    )
+    result = df.select(F.col("a").alias("a_int").cast(T()))
+    rows = result.collect()
+    assert len(rows) == 3
+    assert rows[0]["a_int"] == 1
+    assert rows[1]["a_int"] is None
+    assert rows[2]["a_int"] == 3
+
+
+def test_alias_cast_then_filter(spark, spark_backend):
+    """alias().cast() in select then filter on new column."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.IntegerType
+    df = spark.createDataFrame(
+        [
+            {"name": "a", "val": "1"},
+            {"name": "b", "val": "2"},
+            {"name": "c", "val": "3"},
+        ]
+    )
+    result = df.select(
+        F.col("name"),
+        F.col("val").alias("val_int").cast(T()),
+    ).filter(F.col("val_int") > 1)
+    rows = result.collect()
+    assert len(rows) == 2
+    names = {r["name"] for r in rows}
+    assert names == {"b", "c"}
+
+
+def test_alias_cast_column_with_underscore(spark, spark_backend):
+    """alias().cast() on column with underscore in name."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.IntegerType
+    df = spark.createDataFrame([{"my_column": "42"}])
+    result = df.select(F.col("my_column").alias("mc_int").cast(T()))
+    rows = result.collect()
+    assert len(rows) == 1
+    assert rows[0]["mc_int"] == 42
+
+
+def test_alias_cast_then_select_subset(spark, spark_backend):
+    """alias().cast() then select subset of columns."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.IntegerType
+    df = spark.createDataFrame([{"a": "1", "b": "2", "c": "3"}])
+    result = df.select(
+        F.col("a").alias("A").cast(T()),
+        F.col("b").alias("B").cast(T()),
+        F.col("c").alias("C").cast(T()),
+    ).select("A", "C")
+    rows = result.collect()
+    assert len(rows) == 1
+    assert rows[0]["A"] == 1 and rows[0]["C"] == 3
+
+
+def test_alias_cast_long_type(spark, spark_backend):
+    """alias().cast(LongType()) in select."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.LongType
+    df = spark.createDataFrame([{"s": "9999999999"}])
+    result = df.select(F.col("s").alias("lng").cast(T()))
+    rows = result.collect()
+    assert len(rows) == 1
+    assert rows[0]["lng"] == 9999999999
+
+
+def test_alias_cast_mixed_with_plain_select(spark, spark_backend):
+    """alias().cast() mixed with plain column select."""
+    imports = get_spark_imports(spark_backend)
+    F = imports.F
+    T = imports.IntegerType
+    df = spark.createDataFrame([{"id": 1, "score": "100", "name": "Alice"}])
+    result = df.select(
+        F.col("id"),
+        F.col("score").alias("score_int").cast(T()),
+        F.col("name"),
+    )
+    rows = result.collect()
+    assert len(rows) == 1
+    assert rows[0]["id"] == 1
+    assert rows[0]["score_int"] == 100
+    assert rows[0]["name"] == "Alice"
