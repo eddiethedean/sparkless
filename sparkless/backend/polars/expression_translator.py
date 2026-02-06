@@ -298,7 +298,12 @@ class PolarsExpressionTranslator:
         elif expr is None:
             result = pl.lit(None)
         elif _is_mock_case_when(expr):
-            result = self._translate_case_when(expr)
+            result = self._translate_case_when(
+                expr,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+                column_dtypes=column_dtypes,
+            )
         else:
             raise ValueError(f"Unsupported expression type: {type(expr)}")
 
@@ -591,6 +596,18 @@ class PolarsExpressionTranslator:
                     coerced_value = str(value)
                 return left.is_in([coerced_value])
 
+        # Special handling for alias - translate inner expression and apply .alias(name)
+        if operation == "alias":
+            inner_expr = self._translate_operation(
+                column,
+                input_col_dtype=input_col_dtype,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+                column_dtypes=column_dtypes,
+            )
+            alias_name = value if isinstance(value, str) else str(value)
+            return inner_expr.alias(alias_name)
+
         # Special handling for between - value is a tuple (lower, upper), don't translate it as a whole
         # Need to handle type coercion and translate lower/upper bounds separately
         if operation == "between":
@@ -640,7 +657,10 @@ class PolarsExpressionTranslator:
                 or str(getattr(between_col_dtype, "name", "")).lower()
                 in ("string", "utf8")
             )
-            if bounds_are_numeric and col_is_string:
+            # When bounds numeric but column type unknown (e.g. select path), cast - PySpark
+            # treats string col + numeric bounds as numeric comparison (Issue #445).
+            col_unknown = between_col_dtype is None
+            if bounds_are_numeric and (col_is_string or col_unknown):
                 left = left.cast(pl.Float64, strict=False)
 
             # Translate lower bound
@@ -5081,11 +5101,20 @@ class PolarsExpressionTranslator:
             lambda x: convert_base(x, from_base, to_base), return_dtype=pl.Utf8
         )
 
-    def _translate_case_when(self, case_when: Any) -> pl.Expr:
+    def _translate_case_when(
+        self,
+        case_when: Any,
+        available_columns: Optional[List[str]] = None,
+        case_sensitive: Optional[bool] = None,
+        column_dtypes: Optional[Dict[str, Any]] = None,
+    ) -> pl.Expr:
         """Translate CaseWhen to Polars expression.
 
         Args:
             case_when: CaseWhen instance
+            available_columns: Optional list of column names for resolution
+            case_sensitive: Optional case sensitivity flag
+            column_dtypes: Optional column dtype map for nested between/isin (Issue #445)
 
         Returns:
             Polars expression using pl.when().then().otherwise() chain
@@ -5098,13 +5127,23 @@ class PolarsExpressionTranslator:
         if not case_when.conditions:
             # No conditions - return default value or None
             if case_when.default_value is not None:
-                return self.translate(case_when.default_value)
+                return self.translate(
+                    case_when.default_value,
+                    available_columns=available_columns,
+                    case_sensitive=case_sensitive,
+                    column_dtypes=column_dtypes,
+                )
             return pl.lit(None)
 
         # Build chained when/then/otherwise expression
         # Start with the first condition
         condition, value = case_when.conditions[0]
-        condition_expr = self.translate(condition)
+        condition_expr = self.translate(
+            condition,
+            available_columns=available_columns,
+            case_sensitive=case_sensitive,
+            column_dtypes=column_dtypes,
+        )
         value_expr = self._translate_value_to_expr(value)
 
         # Start the chain
@@ -5112,7 +5151,12 @@ class PolarsExpressionTranslator:
 
         # Add additional when/then pairs
         for condition, value in case_when.conditions[1:]:
-            condition_expr = self.translate(condition)
+            condition_expr = self.translate(
+                condition,
+                available_columns=available_columns,
+                case_sensitive=case_sensitive,
+                column_dtypes=column_dtypes,
+            )
             value_expr = self._translate_value_to_expr(value)
             result = result.when(condition_expr).then(value_expr)
 
