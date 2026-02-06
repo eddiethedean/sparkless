@@ -296,7 +296,9 @@ class RobinMaterializer:
             "outer",
             "full",
             "left_semi",
+            "leftsemi",
             "left_anti",
+            "leftanti",
             "semi",
             "anti",
         )
@@ -395,8 +397,8 @@ class RobinMaterializer:
                     other_robin_data, other_robin_schema
                 )
                 how_str = "outer" if how == "full" else how
-                if how_str in ("left_semi", "left_anti"):
-                    pass  # pass through; robin may support or raise at runtime
+                if how_str in ("left_semi", "leftsemi", "left_anti", "leftanti"):
+                    how_str = "left_semi" if how_str in ("left_semi", "leftsemi") else "left_anti"
                 elif how in ("semi", "anti"):
                     how_str = "left_semi" if how == "semi" else "left_anti"
                 on_names = _join_on_to_column_names(on)

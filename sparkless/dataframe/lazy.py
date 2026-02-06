@@ -1937,8 +1937,7 @@ class LazyEvaluationEngine:
                                 if how.lower() in [
                                     "semi",
                                     "left_semi",
-                                    "anti",
-                                    "left_anti",
+                                    "leftsemi",
                                 ]:
                                     joined_data.append(dict(left_row_p))
                                 else:
@@ -1947,6 +1946,12 @@ class LazyEvaluationEngine:
                                     break
 
                         if not matched and how.lower() in [
+                            "anti",
+                            "left_anti",
+                            "leftanti",
+                        ]:
+                            joined_data.append(dict(left_row_p))
+                        elif not matched and how.lower() in [
                             "left",
                             "outer",
                             "full",
@@ -1962,7 +1967,7 @@ class LazyEvaluationEngine:
                             joined_data.append({**left_row_p, **right_null})
 
                     # Schema: prefix field names when alias is set (#382)
-                    if how.lower() in ["semi", "left_semi", "anti", "left_anti"]:
+                    if how.lower() in ["semi", "left_semi", "leftsemi", "anti", "left_anti", "leftanti"]:
                         new_schema = current.schema
                         left_col_names = {f.name for f in current.schema.fields}
                         if left_alias:

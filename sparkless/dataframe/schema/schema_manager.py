@@ -119,7 +119,7 @@ class SchemaManager:
             elif op_name == "join":
                 other_df, on, how = op_val
                 # For semi/anti joins, only return left DataFrame columns (don't add right columns)
-                if how and how.lower() in ("semi", "anti", "left_semi", "left_anti"):
+                if how and how.lower() in ("semi", "anti", "left_semi", "leftsemi", "left_anti", "leftanti"):
                     # For semi/anti joins, don't add right-side columns
                     # If using list, keep the list as-is (only left columns)
                     # If using dict, keep the dict as-is (only left columns)
@@ -646,7 +646,7 @@ class SchemaManager:
     ) -> Dict[str, StructField]:
         """Handle join operation schema changes."""
         # For semi/anti joins, only return left DataFrame columns
-        if how and how.lower() in ["semi", "anti", "left_semi", "left_anti"]:
+        if how and how.lower() in ["semi", "anti", "left_semi", "leftsemi", "left_anti", "leftanti"]:
             # Don't add right DataFrame fields for semi/anti joins
             return fields_map
 
