@@ -1003,10 +1003,18 @@ class PolarsOperationExecutor:
                                     continue
                     try:
                         case_sensitive = self._get_case_sensitive()
+                        # Get schema: DataFrame has .schema, LazyFrame has .collect_schema()
+                        if hasattr(df, "schema") and df.schema:
+                            column_dtypes = dict(df.schema)
+                        elif hasattr(df, "collect_schema"):
+                            column_dtypes = dict(df.collect_schema())
+                        else:
+                            column_dtypes = {}
                         expr = self.translator.translate(
                             col,
                             available_columns=list(df.columns),
                             case_sensitive=case_sensitive,
+                            column_dtypes=column_dtypes,
                         )
                         if alias_name:
                             expr = expr.alias(alias_name)
@@ -2880,12 +2888,18 @@ class PolarsOperationExecutor:
                     new_case_when.conditions = new_conditions
                     new_case_when.default_value = expression.default_value
 
-                    # Translate the new CaseWhen
+                    # Translate the new CaseWhen (pass column_dtypes for nested between - Issue #445)
                     case_sensitive = self._get_case_sensitive()
+                    column_dtypes = (
+                        dict(current_df.schema)
+                        if hasattr(current_df, "schema") and current_df.schema
+                        else {}
+                    )
                     expr = self.translator.translate(
                         new_case_when,
                         available_columns=list(current_df.columns),
                         case_sensitive=case_sensitive,
+                        column_dtypes=column_dtypes,
                     )
 
                     # Apply the expression and drop temporary columns
@@ -2930,12 +2944,17 @@ class PolarsOperationExecutor:
 
             try:
                 # Pass case sensitivity for column resolution
+                # Build column_dtypes from df schema for between/isin type coercion (Issue #445)
                 case_sensitive = self._get_case_sensitive()
+                column_dtypes = (
+                    dict(df.schema) if hasattr(df, "schema") and df.schema else {}
+                )
                 expr = self.translator.translate(
                     expression,
                     input_col_dtype=input_col_dtype,
                     available_columns=list(df.columns),
                     case_sensitive=case_sensitive,
+                    column_dtypes=column_dtypes,
                 )
             except ValueError as e:
                 # Fallback to Python evaluation for unsupported operations (e.g., withField, + with strings, WindowFunction)

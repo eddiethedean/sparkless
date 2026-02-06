@@ -83,7 +83,7 @@ class PolarsMaterializer:
 
         def _walk(expr: Any) -> None:
             if isinstance(expr, ColumnOperation):
-                if expr.operation == "isin" and hasattr(expr, "column"):
+                if expr.operation in ("isin", "between") and hasattr(expr, "column"):
                     col_ref = expr.column
                     col_name = getattr(col_ref, "name", None)
                     if col_name is None and hasattr(col_ref, "_original_column"):
