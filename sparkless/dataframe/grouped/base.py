@@ -800,14 +800,10 @@ class GroupedData:
                             # Coerce booleans to ints to mirror Spark when user casts
                             if isinstance(expr_result, bool):
                                 expr_result = 1 if expr_result else 0
-                            # Convert numeric-looking strings
+                            # Convert numeric-looking strings (PySpark parity: cast to double)
                             if isinstance(expr_result, str):
                                 try:
-                                    expr_result = (
-                                        float(expr_result)
-                                        if "." in expr_result
-                                        else int(expr_result)
-                                    )
+                                    expr_result = float(expr_result)
                                 except ValueError:
                                     continue
                             values.append(expr_result)
@@ -855,7 +851,7 @@ class GroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
@@ -877,11 +873,7 @@ class GroupedData:
                                 expr_result = 1 if expr_result else 0
                             if isinstance(expr_result, str):
                                 try:
-                                    expr_result = (
-                                        float(expr_result)
-                                        if "." in expr_result
-                                        else int(expr_result)
-                                    )
+                                    expr_result = float(expr_result)
                                 except ValueError:
                                     continue
                             values.append(expr_result)
@@ -929,7 +921,7 @@ class GroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
@@ -1063,7 +1055,7 @@ class GroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
@@ -1086,7 +1078,7 @@ class GroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     # Only add if not seen before
@@ -1275,7 +1267,7 @@ class GroupedData:
                         val = 1 if val else 0
                     if isinstance(val, str):
                         try:
-                            val = float(val) if "." in val else int(val)
+                            val = float(val)
                         except ValueError:
                             continue
                     values.append(val)
