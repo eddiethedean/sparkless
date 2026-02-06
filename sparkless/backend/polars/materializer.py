@@ -1649,9 +1649,28 @@ class PolarsMaterializer:
                 rows.append(Row({}, schema=None))
             return rows
 
-        # For joins with duplicate columns, Polars uses _right suffix
-        # We need to convert these to match PySpark's duplicate column handling
+        # For joins with duplicate columns, Polars uses _right suffix.
+        # Build schema->polars column mapping so we produce Rows matching PySpark order.
         rows = []
+
+        # Build mapping: schema field -> polars column (handles _right suffix for duplicates)
+        schema_to_polars: List[Tuple[str, str]] = []
+        name_occurrence: Dict[str, int] = {}
+        schema_has_duplicates = len(current_schema.fields) != len(
+            {f.name for f in current_schema.fields}
+        )
+        for field in current_schema.fields:
+            name = field.name
+            occ = name_occurrence.get(name, 0)
+            name_occurrence[name] = occ + 1
+            if occ == 0 and name in result_df.columns:
+                schema_to_polars.append((name, name))
+            elif f"{name}_right" in result_df.columns:
+                schema_to_polars.append((name, f"{name}_right"))
+            elif name in result_df.columns:
+                schema_to_polars.append((name, name))
+            else:
+                schema_to_polars.append((name, name))
 
         # Convert Polars DataFrame to dicts and preserve date/timestamp types
         # Polars to_dicts() converts dates to strings, we need to convert them back
@@ -1667,6 +1686,31 @@ class PolarsMaterializer:
         }
 
         for row_dict in result_df.to_dicts():
+            # When schema has duplicates, build Row from schema order so dict uses last-wins
+            if schema_has_duplicates and schema_to_polars:
+                ordered_pairs: List[Tuple[str, Any]] = []
+                for field_name, polars_col in schema_to_polars:
+                    value = row_dict.get(polars_col)
+                    col_type = column_types.get(polars_col)
+                    if isinstance(value, dict):
+                        ordered_pairs.append((field_name, value))
+                        continue
+                    if col_type is not None and isinstance(col_type, DateType) and isinstance(value, str):
+                        try:
+                            value = dt_module.date.fromisoformat(value)
+                        except (ValueError, AttributeError):
+                            pass
+                    elif col_type is not None and isinstance(col_type, TimestampType) and isinstance(value, str):
+                        try:
+                            value = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00") if "T" in value else value
+                            )
+                        except (ValueError, AttributeError):
+                            pass
+                    ordered_pairs.append((field_name, value))
+                rows.append(Row(ordered_pairs, schema=None))
+                continue
+
             # Convert date/timestamp strings back to date/datetime objects
             # Polars to_dicts() converts dates to ISO format strings
             converted_row_dict: Dict[str, Any] = {}

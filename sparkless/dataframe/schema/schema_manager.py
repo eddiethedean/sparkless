@@ -165,35 +165,27 @@ class SchemaManager:
                     fields_list = list(fields_map.values())
                     using_list = True
 
-                # Determine if join is on column name(s) (string / list of strings)
-                # vs a column expression join.
-                #
-                # Sparkless cannot represent duplicate column names reliably (many operations
-                # assume uniqueness). For joins using column names, we therefore deduplicate
-                # *all* right-side columns whose names already exist on the left. This also
-                # matches the long-standing behavior relied on by parity tests (e.g. issue #128).
-                #
-                # Also treat ColumnOperation(==, col, col) with same-named columns as column-name
-                # join (e.g. df1.col == df2.col) so we deduplicate join keys - needed for backends
-                # like robin-sparkless that use join(on=[...]) with same-named columns.
-                is_column_name_join = isinstance(on, str) or (
+                # PySpark join behavior differs by condition form:
+                # - join(on="col") or join(on=["a","b"]): join keys appear ONCE (deduplicated)
+                # - join(on=df1.col == df2.col): both sides' columns appear (duplicates allowed)
+                is_string_or_list_join = isinstance(on, str) or (
                     isinstance(on, list) and all(isinstance(c, str) for c in on)
                 )
-                if not is_column_name_join and isinstance(on, ColumnOperation):
-                    join_keys = SchemaManager._join_on_to_column_names(on)
-                    if join_keys is not None:
-                        is_column_name_join = True
 
                 # Add fields from right DataFrame
                 if fields_list is not None:
-                    existing_field_names = {f.name for f in fields_list}
-                    for field in other_df.schema.fields:
-                        if is_column_name_join and field.name in existing_field_names:
-                            # Deduplicate any right-side column that already exists on the left.
-                            continue
-                        # For column expression joins or non-duplicate columns, add the field
-                        fields_list.append(field)
-                        existing_field_names.add(field.name)
+                    if is_string_or_list_join:
+                        # String/list join: deduplicate all overlapping columns (PySpark keeps unique names)
+                        existing = {f.name for f in fields_list}
+                        for field in other_df.schema.fields:
+                            if field.name in existing:
+                                continue
+                            fields_list.append(field)
+                            existing.add(field.name)
+                    else:
+                        # Column expression join: add all right fields including duplicates
+                        for field in other_df.schema.fields:
+                            fields_list.append(field)
             elif op_name == "union":
                 # Union operation - handle type coercion
                 other_df = op_val
