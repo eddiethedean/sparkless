@@ -374,6 +374,23 @@ class ColumnValidator:
                     ):
                         return
 
+                    # For aliased columns (alias().cast()), validate _original_column not the
+                    # alias name - alias is output; input columns are [x, y], not y_int (#453)
+                    if (
+                        hasattr(expression.column, "_alias_name")
+                        and expression.column._alias_name
+                        and hasattr(expression.column, "_original_column")
+                        and expression.column._original_column
+                    ):
+                        ColumnValidator.validate_expression_columns(
+                            schema,
+                            expression.column._original_column,
+                            operation,
+                            in_lazy_materialization,
+                            case_sensitive,
+                        )
+                        return
+
                     # Check if the column name is actually a Literal (string representation)
                     col_name = expression.column.name
                     if (
