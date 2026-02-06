@@ -6,6 +6,26 @@ _No changes yet._
 
 ---
 
+## 3.31.0 — 2026-02-05
+
+### Added
+- **Robin (robin-sparkless) optional backend** — Use the Rust/Polars engine as an optional Sparkless backend.
+  - Optional dependency: `pip install sparkless[robin]` or `pip install robin-sparkless`; `BackendFactory` only lists and creates the robin backend when the package is installed.
+  - `BackendFactory._robin_available()` (cached); robin included in `list_available_backends()` only when available; `create_storage_backend` / `create_materializer` / `create_export_backend` raise a clear `ValueError` with install instructions when robin is selected but not installed.
+  - Robin materializer and docs use consistent install message: `sparkless[robin]` or `robin-sparkless`.
+- **Robin test mode** — Run the full test suite with the Robin backend.
+  - `SPARKLESS_TEST_BACKEND=robin` (and optionally `SPARKLESS_BACKEND=robin`); `run_all_tests.sh` exports both when `BACKEND=robin`.
+  - `BackendType.ROBIN` and `get_backend_from_env()` support for `MOCK_SPARK_TEST_BACKEND` / `SPARKLESS_TEST_BACKEND`; `SparkBackend.create_session(backend=ROBIN)` creates a session with `backend_type="robin"`.
+  - Conftest: when robin mode is requested, `SPARKLESS_BACKEND=robin` is set so all `SparkSession(...)` and builder paths use robin; no early exit when robin is unavailable (tests that need a session fail instead of skipping).
+  - Fixtures `spark`, `mock_spark_session`, `mock_spark`, `isolated_session` assert `session.backend_type == "robin"` when in robin mode so no test silently runs on the polars backend.
+- **Tests** — `tests/unit/backend/test_robin_optional.py`: when robin is not available, `list_available_backends()` excludes robin and `create_*("robin")` raise `ValueError` with install hint.
+
+### Documentation
+- **backend_selection.md** — Robin optional backend, install steps, and "Running tests with a specific backend" (e.g. `SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh`).
+- **pytest_integration.md** — "Running tests with the Robin backend" and env vars; note that missing robin causes test failures (no silent skip).
+
+---
+
 ## 3.30.0 — 2026-02-05
 
 ### Fixed

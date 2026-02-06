@@ -20,7 +20,13 @@ class RobinStorageManager:
     def __init__(self, db_path: Optional[str] = None) -> None:
         from sparkless.backend.polars.storage import PolarsStorageManager
 
+        self._db_path = db_path or ":memory:"
         self._polars = PolarsStorageManager(db_path=db_path)
+
+    @property
+    def db_path(self) -> str:
+        """Database path for persistence; ':memory:' for in-memory storage."""
+        return self._db_path
 
     def create_schema(self, schema_name: str) -> None:
         self._polars.create_schema(schema_name)

@@ -22,6 +22,7 @@ class BackendFactory:
     """
 
     _duckdb_available_cache: Optional[bool] = None
+    _robin_available_cache: Optional[bool] = None
 
     @staticmethod
     def create_storage_backend(
@@ -77,6 +78,11 @@ class BackendFactory:
             base_path = kwargs.get("base_path", "sparkless_storage")
             return FileStorageManager(base_path)
         elif backend_type == "robin":
+            if not BackendFactory._robin_available():
+                raise ValueError(
+                    "Robin backend is not available. Install with: pip install sparkless[robin] "
+                    "(or pip install robin-sparkless)."
+                )
             from .robin.storage import RobinStorageManager
 
             return cast("StorageBackend", RobinStorageManager(db_path=db_path))
@@ -129,6 +135,11 @@ class BackendFactory:
 
             return PolarsMaterializer()
         elif backend_type == "robin":
+            if not BackendFactory._robin_available():
+                raise ValueError(
+                    "Robin backend is not available. Install with: pip install sparkless[robin] "
+                    "(or pip install robin-sparkless)."
+                )
             from .robin.materializer import RobinMaterializer
 
             return RobinMaterializer()
@@ -173,6 +184,11 @@ class BackendFactory:
 
             return PolarsExporter()
         elif backend_type == "robin":
+            if not BackendFactory._robin_available():
+                raise ValueError(
+                    "Robin backend is not available. Install with: pip install sparkless[robin] "
+                    "(or pip install robin-sparkless)."
+                )
             from .robin.export import RobinExporter
 
             return RobinExporter()
@@ -228,9 +244,11 @@ class BackendFactory:
         Returns:
             List of supported backend type strings
         """
-        backends: list[str] = ["polars", "memory", "file", "robin"]
+        backends: list[str] = ["polars", "memory", "file"]
         if BackendFactory._duckdb_available():
             backends.append("duckdb")
+        if BackendFactory._robin_available():
+            backends.append("robin")
         return backends
 
     @staticmethod
@@ -265,3 +283,19 @@ class BackendFactory:
             BackendFactory._duckdb_available_cache = spec is not None
 
         return BackendFactory._duckdb_available_cache
+
+    @staticmethod
+    def _robin_available() -> bool:
+        """Check whether the optional Robin (robin-sparkless) backend is available."""
+
+        if BackendFactory._robin_available_cache is not None:
+            return BackendFactory._robin_available_cache
+
+        try:
+            spec = importlib.util.find_spec("robin_sparkless")
+        except ModuleNotFoundError:
+            BackendFactory._robin_available_cache = False
+        else:
+            BackendFactory._robin_available_cache = spec is not None
+
+        return BackendFactory._robin_available_cache

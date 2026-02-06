@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-cov lint format type-check clean build publish
+.PHONY: help install install-dev test test-cov lint format type-check clean build publish robin-parity-sql-internal
 
 help: ## Show this help message
 	@echo "Sparkless Package Management"
@@ -51,5 +51,8 @@ docs-validate: ## Validate documentation accuracy
 	python scripts/validate_docs_examples.py
 	python scripts/verify_api_signatures.py
 	python scripts/check_doc_accuracy.py
+
+robin-parity-sql-internal: ## Run parity/sql + parity/internal in Robin; save to tests/robin_parity_sql_internal_results.txt
+	SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/parity/sql/ tests/parity/internal/ -v --tb=line -q 2>&1 | tee tests/robin_parity_sql_internal_results.txt
 
 all: clean format type-check test build ## Run all checks and build

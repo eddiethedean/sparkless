@@ -86,24 +86,23 @@ class TestFilterParity(ParityTestBase):
         checks for Column before ColumnOperation incorrectly handled comparison
         operations as simple column existence checks.
         """
-        from sparkless.spark_types import (
-            StructType,
-            StructField,
-            StringType,
-            TimestampType,
-            FloatType,
-            IntegerType,
-        )
         from datetime import datetime
 
         imports = get_spark_imports()
         F = imports.F
+        StructType = imports.StructType
+        StructField = imports.StructField
+        StringType = imports.StringType
+        TimestampType = imports.TimestampType
+        FloatType = imports.FloatType
+        IntegerType = imports.IntegerType
 
         # Create schema
         schema_name = "test_schema"
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
         # Create DataFrame with complex schema (29 fields)
+        # Use backend-specific types (PySpark or Sparkless) so createDataFrame accepts the schema
         complex_schema = StructType(
             [
                 StructField("run_id", StringType(), False),
@@ -238,11 +237,14 @@ class TestFilterParity(ParityTestBase):
         df = spark.createDataFrame(data, complex_schema)
         assert df.count() == 3, "Original DataFrame should have 3 rows"
 
-        # Write to table using Delta format
+        # Write to table (Delta when available, else Parquet for PySpark without Delta)
         table_fqn = f"{schema_name}.test_table"
-        df.write.format("delta").mode("overwrite").option(
-            "overwriteSchema", "true"
-        ).saveAsTable(table_fqn)
+        try:
+            df.write.format("delta").mode("overwrite").option(
+                "overwriteSchema", "true"
+            ).saveAsTable(table_fqn)
+        except Exception:
+            df.write.format("parquet").mode("overwrite").saveAsTable(table_fqn)
 
         # Read back
         read_df = spark.table(table_fqn)

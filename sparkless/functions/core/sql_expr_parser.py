@@ -43,9 +43,13 @@ class SQLExprParser:
         "FALSE",
         "LENGTH",
         "TRIM",
+        "LTRIM",
+        "RTRIM",
         "UPPER",
         "LOWER",
         "SUBSTRING",
+        "REGEXP",
+        "RLIKE",
     }
 
     @staticmethod
@@ -298,6 +302,20 @@ class SQLExprParser:
                 str(pattern_val),
             )
 
+        # Parse REGEXP / RLIKE: "col REGEXP 'pattern'", "col RLIKE 'pattern'" (Issue #433)
+        regexp_match = re.search(r"\s+(?:REGEXP|RLIKE)\s+", expr, re.IGNORECASE)
+        if regexp_match:
+            left_str = expr[: regexp_match.start()].strip()
+            right_str = expr[regexp_match.end() :].strip()
+            left_expr = SQLExprParser._parse_expression(left_str)
+            pattern_val = SQLExprParser._parse_simple_value(right_str)
+            from ...functions.string import StringFunctions
+
+            return StringFunctions.regexp(
+                left_expr,  # type: ignore[arg-type]
+                str(pattern_val),
+            )
+
         # Parse IN (literal list): "col IN ('a', 'b')", "col IN (1, 2)" (Issue #370)
         in_match = re.search(r"\s+IN\s*\(", expr, re.IGNORECASE)
         if in_match:
@@ -342,6 +360,14 @@ class SQLExprParser:
                 from ...functions.string import StringFunctions
 
                 return StringFunctions.trim(args[0])
+            elif func_name == "LTRIM" and len(args) == 1:
+                from ...functions.string import StringFunctions
+
+                return StringFunctions.ltrim(args[0])
+            elif func_name == "RTRIM" and len(args) == 1:
+                from ...functions.string import StringFunctions
+
+                return StringFunctions.rtrim(args[0])
             elif func_name == "UPPER" and len(args) == 1:
                 from ...functions.string import StringFunctions
 
@@ -513,13 +539,13 @@ class SQLExprParser:
                     depth -= 1
                 elif char == "," and depth == 0:
                     if current.strip():
-                        args.append(SQLExprParser._parse_simple_value(current.strip()))
+                        args.append(SQLExprParser._parse_expression(current.strip()))
                     current = ""
                     continue
 
             current += char
 
         if current.strip():
-            args.append(SQLExprParser._parse_simple_value(current.strip()))
+            args.append(SQLExprParser._parse_expression(current.strip()))
 
         return args

@@ -94,8 +94,8 @@ def update_matrix_file(
                 # Update the Sparkless column (last column)
                 parts = line.split("|")
                 if len(parts) >= 8:  # Function name + 6 versions + Sparkless
-                    # Replace last column
-                    parts[-2] = " ✅ |" if is_implemented else " ❌ |"
+                    # Replace last column (no trailing | - join adds it)
+                    parts[-2] = " ✅ " if is_implemented else " ❌ "
                     new_line = "|".join(parts)
                     new_lines.append(new_line)
                     if is_implemented:
@@ -114,8 +114,8 @@ def update_matrix_file(
                 # Update the Sparkless column (last column)
                 parts = line.split("|")
                 if len(parts) >= 8:  # Method name + 6 versions + Sparkless
-                    # Replace last column
-                    parts[-2] = " ✅ |" if is_implemented else " ❌ |"
+                    # Replace last column (no trailing | - join adds it)
+                    parts[-2] = " ✅ " if is_implemented else " ❌ "
                     new_line = "|".join(parts)
                     new_lines.append(new_line)
                     if is_implemented:

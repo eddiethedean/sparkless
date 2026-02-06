@@ -21,3 +21,21 @@ def test_basic(spark):
     assert df.filter(F.col("x") > 1).count() == 1
 ```
 
+## Running tests with the Robin backend
+
+To run the suite using the Robin (robin-sparkless) backend, set the environment before invoking pytest or the test script:
+
+```bash
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -v
+# or
+SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
+```
+
+For parallel runs (`-n 10`), use `--no-cov` and `--dist loadfile` to avoid stall at 99%:
+
+```bash
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -n 10 --dist loadfile -v --no-cov
+```
+
+Install the optional dependency first: `pip install sparkless[robin]` or `pip install robin-sparkless`. If Robin is selected but not installed, tests that use the `spark` fixture are skipped with a clear message.
+

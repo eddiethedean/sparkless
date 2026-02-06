@@ -21,6 +21,10 @@ if [ "$BACKEND" = "pyspark" ]; then
     echo "⚠️  Running with PySpark (slower)"
 elif [ "$BACKEND" = "both" ]; then
     echo "⚠️  Running with both backends (comparison mode - slowest)"
+elif [ "$BACKEND" = "robin" ]; then
+    echo "Running with Robin backend (Sparkless + robin-sparkless)"
+    export SPARKLESS_BACKEND=robin
+    export SPARKLESS_TEST_BACKEND=robin
 fi
 echo ""
 

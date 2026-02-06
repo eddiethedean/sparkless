@@ -53,15 +53,26 @@ class BackendType(Enum):
     MOCK = "mock"
     PYSPARK = "pyspark"
     BOTH = "both"
+    ROBIN = "robin"
 
 
 def get_backend_from_env() -> Optional[BackendType]:
     """Get backend type from environment variable.
 
+    Reads MOCK_SPARK_TEST_BACKEND or SPARKLESS_TEST_BACKEND (e.g. mock, pyspark, robin).
+
     Returns:
         BackendType if set, None otherwise.
     """
-    backend_str = os.getenv("MOCK_SPARK_TEST_BACKEND", "").lower()
+    backend_str = (
+        (
+            os.getenv("MOCK_SPARK_TEST_BACKEND")
+            or os.getenv("SPARKLESS_TEST_BACKEND")
+            or ""
+        )
+        .strip()
+        .lower()
+    )
     if not backend_str:
         return None
 
@@ -636,6 +647,10 @@ class SparkBackend:
             enable_delta = kwargs.pop("enable_delta", True)
             return SparkBackend.create_pyspark_session(
                 app_name, enable_delta=enable_delta, **kwargs
+            )
+        elif backend == BackendType.ROBIN:
+            return SparkBackend.create_mock_spark_session(
+                app_name, backend_type="robin", **kwargs
             )
         else:
             return SparkBackend.create_mock_spark_session(app_name, **kwargs)

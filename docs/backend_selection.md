@@ -17,6 +17,10 @@ benchmarks favour alternative engines.
 - `duckdb` (optional) – legacy SQL-backed engine. Requires the
   `sparkless.backend.duckdb` modules to be installed (available in the 2.x
   releases) alongside `duckdb`/`duckdb-engine` Python packages.
+- `robin` (optional) – Rust/Polars engine via the `robin-sparkless` package.
+  Install with `pip install sparkless[robin]` or `pip install robin-sparkless`.
+  If the package is not installed, selecting `robin` raises a `ValueError`
+  with install instructions.
 
 Call `sparkless.backend.factory.BackendFactory.list_available_backends()` to see
 which backends are currently importable in your environment.
@@ -61,6 +65,28 @@ spark = SparkSession(backend_type="polars")
   feature-complete and skips several optimisations.
 - DuckDB support is best-effort. If the optional modules are missing, selecting
   `duckdb` raises a clear `ValueError` suggesting the required packages.
+- Robin support is optional. If `robin-sparkless` is not installed, `robin` does
+  not appear in `list_available_backends()` and selecting it raises a
+  `ValueError` with install instructions.
+
+## Running tests with a specific backend
+
+To run the full test suite using the Robin backend (requires `pip install sparkless[robin]`):
+
+```bash
+SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
+```
+
+Or with pytest directly. For parallel runs (`-n 10`), use `--no-cov` and `--dist loadfile` to avoid stall at 99%:
+
+```bash
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -n 10 --dist loadfile -v --no-cov
+# Without parallelism:
+SPARKLESS_BACKEND=robin python -m pytest tests/ -v
+```
+
+Individual tests can request the Robin backend via the marker:
+`@pytest.mark.backend('robin')`.
 
 ## Troubleshooting
 
@@ -69,6 +95,9 @@ spark = SparkSession(backend_type="polars")
 - **DuckDB import errors** – install Sparkless 2.x (which includes the DuckDB
   modules) or vendor the legacy backend into your project. You also need the
   `duckdb` and `duckdb-engine` pip packages.
+- **Robin backend not available** – install with `pip install sparkless[robin]`
+  or `pip install robin-sparkless`; then `robin` will appear in
+  `list_available_backends()`.
 - **Permission issues with `file` backend** – adjust the base path by passing
   `SparkSession.builder.config("spark.sparkless.backend.basePath", "/tmp/mock")` and
   ensure the process can read/write there.

@@ -60,7 +60,7 @@ Total functions cataloged: 430
 | `array_append` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `array_compact` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `array_contains` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `array_distinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `array_distinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `array_except` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `array_insert` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `array_intersect` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -108,7 +108,7 @@ Total functions cataloged: 430
 | `bround` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `btrim` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `bucket` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `call_function` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `call_function` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `call_udf` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `cardinality` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `cast` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
@@ -144,13 +144,13 @@ Total functions cataloged: 430
 | `csc` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `cume_dist` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `curdate` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `current_catalog` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `current_database` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `current_catalog` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| `current_database` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `current_date` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `current_schema` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `current_schema` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `current_timestamp` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `current_timezone` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `current_user` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `current_user` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `date_add` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `date_diff` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `date_format` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -584,7 +584,7 @@ Total methods cataloged: 94
 - **PySpark 3.3.4**: 252 functions, 88 DataFrame methods
 - **PySpark 3.4.3**: 267 functions, 92 DataFrame methods
 - **PySpark 3.5.2**: 428 functions, 94 DataFrame methods
-- **Sparkless**: 403 functions, 85 DataFrame methods
+- **Sparkless**: 417 functions, 86 DataFrame methods
 
 **All sparkless features are available to everyone** - there is no version gating or compatibility restrictions.
 This provides comprehensive PySpark compatibility across all supported versions!

@@ -59,6 +59,16 @@ class TransformationService:
             if hasattr(col, "value") and col.value and isinstance(col.value, Column):
                 self._validate_column_reference(col.value)
         elif isinstance(col, Column):
+            # For aliased columns (alias().cast()), validate _original_column not the alias name
+            # alias name is output; input columns are [Name, ValueOld], not ValueNew (#435)
+            if (
+                hasattr(col, "_alias_name")
+                and col._alias_name
+                and hasattr(col, "_original_column")
+                and col._original_column
+            ):
+                self._validate_column_reference(col._original_column)
+                return
             # For simple Column, validate the column name exists
             col_name = col.name if hasattr(col, "name") else str(col)
             # Skip validation for dummy columns used by special operations

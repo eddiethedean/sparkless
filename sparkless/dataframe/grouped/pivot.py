@@ -527,11 +527,19 @@ class PivotGroupedData:
                 return result_key, None
             return result_key, statistics.variance(values)
         elif func_name == "mean":
-            values = [
-                get_row_value(row, col_name)
-                for row in group_rows
-                if get_row_value(row, col_name) is not None
-            ]
+            # Coerce string columns to numeric (PySpark parity #437)
+            values = []
+            for row in group_rows:
+                val = get_row_value(row, col_name)
+                if val is not None:
+                    if isinstance(val, bool):
+                        val = 1 if val else 0
+                    if isinstance(val, str):
+                        try:
+                            val = float(val) if "." in val else int(val)
+                        except ValueError:
+                            continue
+                    values.append(val)
             result_key = alias_name if alias_name else f"avg({col_name})"
             return result_key, statistics.mean(values) if values else None
         elif func_name == "approx_count_distinct":

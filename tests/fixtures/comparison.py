@@ -141,6 +141,18 @@ def compare_dataframes(
     except Exception as e:
         return False, f"Failed to count rows: {e}"
 
+    # Guard: count() must return a number (e.g. int); some backends may return Column-like by mistake
+    if not isinstance(mock_count, (int, float)):
+        return (
+            False,
+            f"Failed to count rows: mock count returned {type(mock_count).__name__}, expected int",
+        )
+    if not isinstance(pyspark_count, (int, float)):
+        return (
+            False,
+            f"Failed to count rows: pyspark count returned {type(pyspark_count).__name__}, expected int",
+        )
+
     if mock_count != pyspark_count:
         return False, f"Row count mismatch: {mock_count} vs {pyspark_count}"
 
@@ -216,6 +228,14 @@ def _get_row_value(row: Any, column: str) -> Any:
         return None
 
 
+def _is_column_like(val: Any) -> bool:
+    """True if value looks like an unresolved Column (should not be compared with > or ==)."""
+    if val is None:
+        return False
+    name = getattr(type(val), "__name__", "")
+    return name == "Column" or (hasattr(val, "name") and "column" in name.lower())
+
+
 def _compare_values(mock_val: Any, pyspark_val: Any, tolerance: float = 1e-6) -> bool:
     """Compare two values with appropriate handling for different types.
 
@@ -231,6 +251,10 @@ def _compare_values(mock_val: Any, pyspark_val: Any, tolerance: float = 1e-6) ->
     if mock_val is None and pyspark_val is None:
         return True
     if mock_val is None or pyspark_val is None:
+        return False
+
+    # Avoid comparing Column-like objects (e.g. unresolved expressions)
+    if _is_column_like(mock_val) or _is_column_like(pyspark_val):
         return False
 
     # Handle floating point
@@ -276,6 +300,8 @@ def _sort_rows(rows: List[Any], columns: List[str]) -> List[Any]:
             # Convert None to sortable value
             if val is None:
                 values.append("")
+            elif _is_column_like(val):
+                values.append("")  # Column-like: avoid comparison in sorted()
             elif isinstance(val, (int, float)):
                 values.append(
                     str(val)

@@ -1,23 +1,13 @@
 """Tests for DataFrame.first() method.
 
 This module tests the first() method which returns the first row of a DataFrame.
+Uses conftest's spark fixture for backend-aware execution (mock/PySpark).
 """
-
-import uuid
 
 import pytest
 
-from sparkless import SparkSession
+from sparkless import functions as F
 from sparkless.spark_types import StructType, StructField, StringType
-
-
-@pytest.fixture
-def spark():
-    """Create a SparkSession for testing with unique app name for parallel isolation."""
-    app_name = f"test_first_{uuid.uuid4().hex[:8]}"
-    session = SparkSession.builder.appName(app_name).getOrCreate()
-    yield session
-    session.stop()
 
 
 class TestDataFrameFirst:
@@ -241,7 +231,12 @@ class TestDataFrameFirst:
             {"name": "Charlie", "age": 35, "score": 75},
         ]
         df = spark.createDataFrame(data)
-        result = df.filter("age > 25").select("name", "score").orderBy("score").first()
+        result = (
+            df.filter(F.col("age") > 25)
+            .select("name", "score")
+            .orderBy("score")
+            .first()
+        )
 
         assert result is not None
         # After ordering by score ascending, first should be the lowest score (75 = Charlie)

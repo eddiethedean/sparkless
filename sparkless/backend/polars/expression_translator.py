@@ -1155,6 +1155,16 @@ class PolarsExpressionTranslator:
                 right_dt = _to_python_datetime(right_val)
                 return compare_fn(parsed_dt, right_dt)
 
+            # Date vs datetime: coerce date to datetime at midnight (PySpark parity, #431)
+            if _is_date_like(left_val) and _is_datetime_like(right_val):
+                left_dt = datetime.combine(left_val, datetime.min.time())
+                right_dt = _to_python_datetime(right_val)
+                return compare_fn(left_dt, right_dt)
+            elif _is_datetime_like(left_val) and _is_date_like(right_val):
+                left_dt = _to_python_datetime(left_val)
+                right_dt = datetime.combine(right_val, datetime.min.time())
+                return compare_fn(left_dt, right_dt)
+
             # Default comparison (same types or other combinations)
             return compare_fn(left_val, right_val)
 
@@ -1382,39 +1392,38 @@ class PolarsExpressionTranslator:
             # For other types, direct cast is fine
             return expr.cast(pl.Float64, strict=False).cast(polars_dtype, strict=False)
 
-        # For string to date/timestamp casting
+        # For date/timestamp casting - handle both string and already date/datetime (PySpark parity, #432)
+        # str.strptime expects String and fails on datetime columns; use map_elements for all inputs
         if isinstance(target_type, (DateType, TimestampType)):
-            # Try to parse string to date/timestamp
-            # Use map_elements to handle both string and non-string inputs
             if isinstance(target_type, DateType):
-                # Parse date string
+
                 def parse_date(val: Any) -> Any:
                     if val is None:
                         return None
-                    from datetime import datetime
-
+                    # Already date (PySpark no-op for date.cast("date"))
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return val
+                    # datetime -> date
+                    if isinstance(val, datetime):
+                        return val.date()
                     val_str = str(val)
                     try:
                         return datetime.strptime(val_str, "%Y-%m-%d").date()
                     except ValueError:
                         return None
 
-                # Try strptime first (works for string columns), fall back to map_elements
-                try:
-                    return expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
-                except Exception:
-                    logger.debug(
-                        "strptime failed for date parsing, using map_elements fallback",
-                        exc_info=True,
-                    )
-                    return expr.map_elements(parse_date, return_dtype=pl.Date)
+                return expr.map_elements(parse_date, return_dtype=pl.Date)
             else:  # TimestampType
-                # Parse timestamp string
+
                 def parse_timestamp(val: Any) -> Any:
                     if val is None:
                         return None
-                    from datetime import datetime
-
+                    # Already datetime (PySpark no-op for timestamp.cast("timestamp"))
+                    if isinstance(val, datetime):
+                        return val
+                    # date -> datetime at midnight
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return datetime.combine(val, datetime.min.time())
                     val_str = str(val)
                     try:
                         return datetime.strptime(val_str, "%Y-%m-%d %H:%M:%S")
@@ -1424,19 +1433,9 @@ class PolarsExpressionTranslator:
                         except ValueError:
                             return None
 
-                # Try strptime first (works for string columns), fall back to map_elements
-                try:
-                    return expr.str.strptime(
-                        pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False
-                    )
-                except Exception:
-                    logger.debug(
-                        "strptime failed for timestamp parsing, using map_elements fallback",
-                        exc_info=True,
-                    )
-                    return expr.map_elements(
-                        parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
-                    )
+                return expr.map_elements(
+                    parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
+                )
 
         # Special handling for string to boolean casting - Polars doesn't support this directly
         # Raise ValueError to trigger Python fallback evaluation
@@ -2554,6 +2553,10 @@ class PolarsExpressionTranslator:
                 if op.value and (
                     isinstance(op.value, (list, tuple)) and len(op.value) > 0
                 ):
+                    # Import Literal here - _translate_function_call has local imports
+                    # elsewhere that can shadow the module-level Literal (#436)
+                    from sparkless.functions import Literal as Lit
+
                     # Translate all columns/literals
                     all_cols = [col_expr]  # Start with the first column
                     for col in op.value:
@@ -2580,14 +2583,18 @@ class PolarsExpressionTranslator:
                                         exc_info=True,
                                     )
                                     all_cols.append(pl.lit(col))
-                        elif hasattr(col, "value"):  # Literal
-                            # Resolve lazy literals before translating
+                        elif isinstance(col, (Column, ColumnOperation)):
+                            # Column or expression (e.g. cast, round) - translate, don't use pl.lit
+                            # ColumnOperation has .value (e.g. StringType for cast) - must not treat as literal (#436)
+                            all_cols.append(self.translate(col))
+                        elif isinstance(col, Lit):
+                            # Literal - use pl.lit (Literal.value is the actual value)
                             if hasattr(col, "_is_lazy") and col._is_lazy:
                                 all_cols.append(pl.lit(col._resolve_lazy_value()))
                             else:
                                 all_cols.append(pl.lit(col.value))
                         else:
-                            # Column or expression
+                            # Fallback: translate as expression
                             all_cols.append(self.translate(col))
                     # Cast all to string and concatenate
                     str_cols = [col.cast(pl.Utf8) for col in all_cols]
@@ -3178,7 +3185,11 @@ class PolarsExpressionTranslator:
                 digit_char = params.get("digitChar", "n")
                 other_char = params.get("otherChar", "-")
                 return col_expr.map_elements(
-                    lambda x, uc=upper_char, lc=lower_char, dc=digit_char, oc=other_char: (
+                    lambda x,
+                    uc=upper_char,
+                    lc=lower_char,
+                    dc=digit_char,
+                    oc=other_char: (
                         "".join(
                             uc
                             if c.isupper()
