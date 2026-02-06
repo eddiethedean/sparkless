@@ -685,9 +685,7 @@ class TransformationService:
         for row in self._df.data:
             row_tuple = tuple(
                 sorted(
-                    (k, _make_hashable(v))
-                    for k, v in row.items()
-                    if k in actual_subset
+                    (k, _make_hashable(v)) for k, v in row.items() if k in actual_subset
                 )
             )
             if row_tuple not in seen:
