@@ -46,6 +46,8 @@ class SQLExprParser:
         "UPPER",
         "LOWER",
         "SUBSTRING",
+        "REGEXP",
+        "RLIKE",
     }
 
     @staticmethod
@@ -294,6 +296,20 @@ class SQLExprParser:
             from ...functions.string import StringFunctions
 
             return StringFunctions.like(
+                left_expr,  # type: ignore[arg-type]
+                str(pattern_val),
+            )
+
+        # Parse REGEXP / RLIKE: "col REGEXP 'pattern'", "col RLIKE 'pattern'" (Issue #433)
+        regexp_match = re.search(r"\s+(?:REGEXP|RLIKE)\s+", expr, re.IGNORECASE)
+        if regexp_match:
+            left_str = expr[: regexp_match.start()].strip()
+            right_str = expr[regexp_match.end() :].strip()
+            left_expr = SQLExprParser._parse_expression(left_str)
+            pattern_val = SQLExprParser._parse_simple_value(right_str)
+            from ...functions.string import StringFunctions
+
+            return StringFunctions.regexp(
                 left_expr,  # type: ignore[arg-type]
                 str(pattern_val),
             )
