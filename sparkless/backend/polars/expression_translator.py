@@ -2553,6 +2553,10 @@ class PolarsExpressionTranslator:
                 if op.value and (
                     isinstance(op.value, (list, tuple)) and len(op.value) > 0
                 ):
+                    # Import Literal here - _translate_function_call has local imports
+                    # elsewhere that can shadow the module-level Literal (#436)
+                    from sparkless.functions import Literal as Lit
+
                     # Translate all columns/literals
                     all_cols = [col_expr]  # Start with the first column
                     for col in op.value:
@@ -2579,14 +2583,18 @@ class PolarsExpressionTranslator:
                                         exc_info=True,
                                     )
                                     all_cols.append(pl.lit(col))
-                        elif hasattr(col, "value"):  # Literal
-                            # Resolve lazy literals before translating
+                        elif isinstance(col, (Column, ColumnOperation)):
+                            # Column or expression (e.g. cast, round) - translate, don't use pl.lit
+                            # ColumnOperation has .value (e.g. StringType for cast) - must not treat as literal (#436)
+                            all_cols.append(self.translate(col))
+                        elif isinstance(col, Lit):
+                            # Literal - use pl.lit (Literal.value is the actual value)
                             if hasattr(col, "_is_lazy") and col._is_lazy:
                                 all_cols.append(pl.lit(col._resolve_lazy_value()))
                             else:
                                 all_cols.append(pl.lit(col.value))
                         else:
-                            # Column or expression
+                            # Fallback: translate as expression
                             all_cols.append(self.translate(col))
                     # Cast all to string and concatenate
                     str_cols = [col.cast(pl.Utf8) for col in all_cols]
