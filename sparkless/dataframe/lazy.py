@@ -22,6 +22,7 @@ from ..spark_types import (
     StructType,
     StringType,
     get_row_value,
+    _make_hashable,
 )
 
 logger = logging.getLogger(__name__)
@@ -1830,13 +1831,15 @@ class LazyEvaluationEngine:
                         base_schema, operations_applied_so_far
                     )
                 elif op_name == "distinct":
-                    # Deduplicate current.data by schema order (matches eager distinct)
+                    # Deduplicate current.data by schema order (matches eager distinct);
+                    # use _make_hashable to handle unhashable column types - see issue #448
                     field_names = [f.name for f in current.schema.fields]
                     seen: Set[Tuple[Any, ...]] = set()
                     distinct_data: List[Dict[str, Any]] = []
                     for row in current.data:
                         row_tuple = tuple(
-                            get_row_value(row, name) for name in field_names
+                            _make_hashable(get_row_value(row, name))
+                            for name in field_names
                         )
                         if row_tuple not in seen:
                             seen.add(row_tuple)

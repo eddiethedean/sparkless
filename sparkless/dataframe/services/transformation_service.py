@@ -7,7 +7,7 @@ This service provides transformation operations using composition instead of mix
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, overload
 
 from ...functions import Column, ColumnOperation, Literal
-from ...spark_types import StructType, StructField, get_row_value
+from ...spark_types import StructType, StructField, get_row_value, _make_hashable
 from ...core.exceptions import PySparkValueError
 from ...core.column_resolver import ColumnResolver
 
@@ -647,8 +647,11 @@ class TransformationService:
         field_names = [f.name for f in self._df.schema.fields]
 
         for row in self._df.data:
-            # Create tuple in schema order for consistent hashing
-            row_tuple = tuple(get_row_value(row, name) for name in field_names)
+            # Create tuple in schema order for consistent hashing; use _make_hashable
+            # to handle unhashable column types (e.g. list, dict) - see issue #448
+            row_tuple = tuple(
+                _make_hashable(get_row_value(row, name)) for name in field_names
+            )
             if row_tuple not in seen:
                 seen.add(row_tuple)
                 distinct_data.append(row)
@@ -681,7 +684,9 @@ class TransformationService:
         distinct_data = []
         for row in self._df.data:
             row_tuple = tuple(
-                sorted((k, v) for k, v in row.items() if k in actual_subset)
+                sorted(
+                    (k, _make_hashable(v)) for k, v in row.items() if k in actual_subset
+                )
             )
             if row_tuple not in seen:
                 seen.add(row_tuple)
