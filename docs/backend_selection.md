@@ -77,9 +77,11 @@ To run the full test suite using the Robin backend (requires `pip install sparkl
 SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
 ```
 
-Or with pytest directly:
+Or with pytest directly. For parallel runs (`-n 10`), use `--no-cov` and `--dist loadfile` to avoid stall at 99%:
 
 ```bash
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -n 10 --dist loadfile -v --no-cov
+# Without parallelism:
 SPARKLESS_BACKEND=robin python -m pytest tests/ -v
 ```
 

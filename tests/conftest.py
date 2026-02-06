@@ -69,12 +69,13 @@ def mock_spark_session():
 
     session = SparkSession("test_app")
     # When robin mode is requested, ensure we did not silently get polars
-    if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
-        if getattr(session, "backend_type", None) != "robin":
-            raise RuntimeError(
-                "Robin mode was requested but mock_spark_session has backend_type=%r. "
-                "SPARKLESS_BACKEND should be set by conftest." % getattr(session, "backend_type", None)
-            )
+    if (
+        os.environ.get("SPARKLESS_TEST_BACKEND") or ""
+    ).strip().lower() == "robin" and getattr(session, "backend_type", None) != "robin":
+        raise RuntimeError(
+            f"Robin mode was requested but mock_spark_session has backend_type={getattr(session, 'backend_type', None)!r}. "
+            "SPARKLESS_BACKEND should be set by conftest."
+        )
     yield session
     # Explicitly clean up
     with contextlib.suppress(BaseException):
@@ -91,12 +92,12 @@ def isolated_session():
     # Use unique name to ensure isolation
     session_name = f"test_isolated_{uuid.uuid4().hex[:8]}"
     session = SparkSession(session_name)
-    if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
-        if getattr(session, "backend_type", None) != "robin":
-            raise RuntimeError(
-                "Robin mode was requested but isolated_session has backend_type=%r."
-                % getattr(session, "backend_type", None)
-            )
+    if (
+        os.environ.get("SPARKLESS_TEST_BACKEND") or ""
+    ).strip().lower() == "robin" and getattr(session, "backend_type", None) != "robin":
+        raise RuntimeError(
+            f"Robin mode was requested but isolated_session has backend_type={getattr(session, 'backend_type', None)!r}."
+        )
     yield session
     with contextlib.suppress(BaseException):
         session.stop()
@@ -170,7 +171,7 @@ def spark(request):
                     f"Robin mode was requested but session has backend_type={actual!r}. "
                     "Tests must not silently run in polars/mock when SPARKLESS_TEST_BACKEND=robin."
                 )
-    except ValueError as e:
+    except ValueError:
         # When Robin is requested but not available, do not skip: let the test fail so we never
         # silently run in the wrong backend.
         raise
@@ -238,12 +239,12 @@ def mock_spark():
     from sparkless import SparkSession
 
     session = SparkSession("test_app")
-    if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
-        if getattr(session, "backend_type", None) != "robin":
-            raise RuntimeError(
-                "Robin mode was requested but mock_spark has backend_type=%r."
-                % getattr(session, "backend_type", None)
-            )
+    if (
+        os.environ.get("SPARKLESS_TEST_BACKEND") or ""
+    ).strip().lower() == "robin" and getattr(session, "backend_type", None) != "robin":
+        raise RuntimeError(
+            f"Robin mode was requested but mock_spark has backend_type={getattr(session, 'backend_type', None)!r}."
+        )
     yield session
     with contextlib.suppress(BaseException):
         session.stop()

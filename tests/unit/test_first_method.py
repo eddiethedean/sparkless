@@ -7,7 +7,7 @@ import uuid
 
 import pytest
 
-from sparkless import SparkSession
+from sparkless import SparkSession, functions as F
 from sparkless.spark_types import StructType, StructField, StringType
 
 
@@ -241,7 +241,12 @@ class TestDataFrameFirst:
             {"name": "Charlie", "age": 35, "score": 75},
         ]
         df = spark.createDataFrame(data)
-        result = df.filter("age > 25").select("name", "score").orderBy("score").first()
+        result = (
+            df.filter(F.col("age") > 25)
+            .select("name", "score")
+            .orderBy("score")
+            .first()
+        )
 
         assert result is not None
         # After ordering by score ascending, first should be the lowest score (75 = Charlie)

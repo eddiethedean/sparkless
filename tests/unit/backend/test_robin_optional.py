@@ -23,18 +23,21 @@ class TestRobinBackendOptional:
 
     def test_create_storage_backend_robin_raises_when_not_available(self) -> None:
         """create_storage_backend('robin') raises ValueError with install hint when not available."""
-        with patch.object(BackendFactory, "_robin_available", return_value=False):
-            with pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
-                BackendFactory.create_storage_backend("robin")
+        with patch.object(
+            BackendFactory, "_robin_available", return_value=False
+        ), pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
+            BackendFactory.create_storage_backend("robin")
 
     def test_create_materializer_robin_raises_when_not_available(self) -> None:
         """create_materializer('robin') raises ValueError with install hint when not available."""
-        with patch.object(BackendFactory, "_robin_available", return_value=False):
-            with pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
-                BackendFactory.create_materializer("robin")
+        with patch.object(
+            BackendFactory, "_robin_available", return_value=False
+        ), pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
+            BackendFactory.create_materializer("robin")
 
     def test_create_export_backend_robin_raises_when_not_available(self) -> None:
         """create_export_backend('robin') raises ValueError with install hint when not available."""
-        with patch.object(BackendFactory, "_robin_available", return_value=False):
-            with pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
-                BackendFactory.create_export_backend("robin")
+        with patch.object(
+            BackendFactory, "_robin_available", return_value=False
+        ), pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
+            BackendFactory.create_export_backend("robin")

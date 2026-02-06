@@ -56,6 +56,7 @@ def _data_to_robin_rows(data: List[Any], names: List[str]) -> List[dict]:
             rows.append({n: getattr(row, n, None) for n in names})
     return rows
 
+
 # Optional import; materializer is only used when backend_type="robin" and robin_sparkless is installed
 try:
     import robin_sparkless  # noqa: F401
@@ -68,11 +69,11 @@ def _robin_available() -> bool:
 
 
 def _simple_filter_to_robin(condition: Any) -> Any:
-    """Translate a simple Sparkless filter to robin_sparkless Column expression.
+    """Translate a Sparkless filter to robin_sparkless Column expression.
 
-    Only supports: ColumnOperation with op in (>, <, >=, <=, ==, !=),
-    column = Column(name), value = scalar or Literal.
-    Returns None if not supported.
+    Supports: ColumnOperation with op in (>, <, >=, <=, ==, !=), column = Column(name),
+    value = scalar or Literal; and ColumnOperation("&", left, right) / ("|", left, right)
+    recursively. Returns None if not supported.
     """
     from sparkless.functions import ColumnOperation
     from sparkless.functions.core.column import Column
@@ -86,6 +87,19 @@ def _simple_filter_to_robin(condition: Any) -> Any:
         op = getattr(condition, "operation", None)
         col_side = getattr(condition, "column", None)
         val_side = getattr(condition, "value", None)
+        # AND/OR: recurse
+        if op == "&":
+            left_expr = _simple_filter_to_robin(col_side)
+            right_expr = _simple_filter_to_robin(val_side)
+            if left_expr is not None and right_expr is not None:
+                return left_expr & right_expr
+            return None
+        if op == "|":
+            left_expr = _simple_filter_to_robin(col_side)
+            right_expr = _simple_filter_to_robin(val_side)
+            if left_expr is not None and right_expr is not None:
+                return left_expr | right_expr
+            return None
         if op not in (">", "<", ">=", "<=", "==", "!="):
             return None
         # Left side: Column (col name) or ColumnOperation (nested, not supported here)
@@ -100,7 +114,7 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             val = getattr(val_side, "value", val_side)
         else:
             val = val_side
-        robin_lit = F.lit(val)
+        robin_lit = F.lit(val)  # type: ignore[arg-type]
         if op == ">":
             return robin_col > robin_lit
         if op == "<":
@@ -113,6 +127,50 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             return robin_col == robin_lit
         if op == "!=":
             return robin_col != robin_lit
+    return None
+
+
+def _join_on_to_column_names(on: Any) -> List[str] | None:
+    """Extract join column names from Sparkless join condition for robin_sparkless join(on=...).
+
+    Supports: str -> [str]; list/tuple of str -> list; ColumnOperation(==, col, col) when
+    both sides have .name (same name -> one key); ColumnOperation(&, left, right) when both
+    sides return lists of same names. Returns None if not supported.
+    """
+    from sparkless.functions import ColumnOperation
+    from sparkless.functions.core.column import Column
+
+    if isinstance(on, str):
+        return [on]
+    if isinstance(on, (list, tuple)):
+        if all(isinstance(x, str) for x in on):
+            return list(on)
+        return None
+    if isinstance(on, ColumnOperation):
+        op = getattr(on, "operation", None)
+        col_side = getattr(on, "column", None)
+        val_side = getattr(on, "value", None)
+        if op == "==":
+            if isinstance(col_side, Column) and isinstance(val_side, Column):
+                left_name = getattr(col_side, "name", None)
+                right_name = getattr(val_side, "name", None)
+                if isinstance(left_name, str) and isinstance(right_name, str):
+                    # Robin join(on=[...]) expects same-named columns in both DFs
+                    if left_name == right_name:
+                        return [left_name]
+                    # Different names: robin may need left_on/right_on; for now only same name
+                    return None
+            return None
+        if op == "&":
+            left_list = _join_on_to_column_names(col_side) if col_side else None
+            right_list = _join_on_to_column_names(val_side) if val_side else None
+            if (
+                left_list is not None
+                and right_list is not None
+                and left_list == right_list
+            ):
+                return left_list
+            return None
     return None
 
 
@@ -137,7 +195,7 @@ def _expression_to_robin(expr: Any) -> Any:
         return None
     if isinstance(expr, Literal):
         val = getattr(expr, "value", expr)
-        return F.lit(val)
+        return F.lit(val)  # type: ignore[arg-type]
     if isinstance(expr, ColumnOperation):
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
@@ -224,14 +282,24 @@ class RobinMaterializer:
         if not isinstance(payload, (list, tuple)) or len(payload) < 3:
             return False
         _other, on, how = payload[0], payload[1], payload[2]
-        if isinstance(on, str):
+        if _join_on_to_column_names(on) is not None or isinstance(on, str):
             pass
         elif isinstance(on, (list, tuple)):
             if not all(isinstance(x, str) for x in on):
                 return False
         else:
             return False
-        return how in ("inner", "left", "right", "outer", "full")
+        return how in (
+            "inner",
+            "left",
+            "right",
+            "outer",
+            "full",
+            "left_semi",
+            "left_anti",
+            "semi",
+            "anti",
+        )
 
     def can_handle_operation(self, op_name: str, op_payload: Any) -> bool:
         if op_name not in self.SUPPORTED_OPERATIONS:
@@ -250,9 +318,7 @@ class RobinMaterializer:
             return self._can_handle_with_column(op_payload)
         if op_name == "join":
             return self._can_handle_join(op_payload)
-        if op_name == "union":
-            return True
-        return False
+        return op_name == "union"
 
     def can_handle_operations(
         self, operations: List[Tuple[str, Any]]
@@ -299,8 +365,13 @@ class RobinMaterializer:
             elif op_name == "limit":
                 df = df.limit(payload)
             elif op_name == "orderBy":
-                columns, ascending = payload[0], payload[1] if len(payload) > 1 else True
-                col_names = list(columns) if isinstance(columns, (list, tuple)) else [columns]
+                columns, ascending = (
+                    payload[0],
+                    payload[1] if len(payload) > 1 else True,
+                )
+                col_names = (
+                    list(columns) if isinstance(columns, (list, tuple)) else [columns]
+                )
                 if isinstance(ascending, bool):
                     asc_list = [ascending] * len(col_names)
                 else:
@@ -324,8 +395,18 @@ class RobinMaterializer:
                     other_robin_data, other_robin_schema
                 )
                 how_str = "outer" if how == "full" else how
-                on_arg = [on] if isinstance(on, str) else list(on)
-                df = df.join(other_robin_df, on=on_arg, how=how_str)
+                if how_str in ("left_semi", "left_anti"):
+                    pass  # pass through; robin may support or raise at runtime
+                elif how in ("semi", "anti"):
+                    how_str = "left_semi" if how == "semi" else "left_anti"
+                on_names = _join_on_to_column_names(on)
+                if on_names is not None:
+                    on_arg = on_names
+                else:
+                    on_arg = [on] if isinstance(on, str) else list(on)
+                # Some APIs expect a single string when one key
+                on_param = on_arg[0] if len(on_arg) == 1 else on_arg
+                df = df.join(other_robin_df, on=on_param, how=how_str)
             elif op_name == "union":
                 other_df = payload
                 other_eager = other_df._materialize_if_lazy()
@@ -341,7 +422,13 @@ class RobinMaterializer:
                 df = df.union(other_robin_df)
 
         collected = df.collect()
-        return [Row(d, schema=None) for d in collected]
+        # Use projected schema so column order and duplicate names (e.g. after join) are correct
+        from sparkless.dataframe.schema.schema_manager import SchemaManager
+
+        final_schema = SchemaManager.project_schema_with_operations(schema, operations)
+        return [Row(d, schema=final_schema) for d in collected]
 
     def close(self) -> None:
+        """Release resources. robin_sparkless SparkSession does not expose stop();
+        the session is process-scoped and cleaned up on process exit."""
         pass

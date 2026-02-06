@@ -143,9 +143,15 @@ def compare_dataframes(
 
     # Guard: count() must return a number (e.g. int); some backends may return Column-like by mistake
     if not isinstance(mock_count, (int, float)):
-        return False, f"Failed to count rows: mock count returned {type(mock_count).__name__}, expected int"
+        return (
+            False,
+            f"Failed to count rows: mock count returned {type(mock_count).__name__}, expected int",
+        )
     if not isinstance(pyspark_count, (int, float)):
-        return False, f"Failed to count rows: pyspark count returned {type(pyspark_count).__name__}, expected int"
+        return (
+            False,
+            f"Failed to count rows: pyspark count returned {type(pyspark_count).__name__}, expected int",
+        )
 
     if mock_count != pyspark_count:
         return False, f"Row count mismatch: {mock_count} vs {pyspark_count}"

@@ -11,36 +11,26 @@
 
 | Result  | Count |
 |---------|-------|
-| **PASSED**  | 867 |
-| **FAILED**  | 1,640 |
+| **PASSED**  | 1,005 |
+| **FAILED**  | 1,505 |
 | **SKIPPED** | 21 |
-| **ERROR**   | 7 |
-| **Total recorded** | **2,535** |
+| **ERROR**   | 0 |
+| **Total recorded** | **2,531** |
 
-**Note:** The run was interrupted by a timeout before the full suite completed (2,545 tests were scheduled). The counts above are from the captured output; a small number of tests may not have finished.
-
----
-
-## Result file
-
-Full verbose output is stored in:
-
-- **`tests/robin_mode_test_results.txt`** (5,077 lines)
+**Note:** The run was interrupted by a 10-minute timeout before the full suite completed (2,545 tests scheduled). Counts are from the captured output; the last ~14 tests may not have finished. Join parity tests use `@pytest.mark.timeout(60)` so they no longer stall the run; the interrupt occurred after test_outer_join and remaining tests were not executed.
 
 ---
 
-## Errors (7)
+## Result files
 
-All ERROR outcomes were in one file (setup or teardown failure):
+- **`tests/robin_mode_test_results.txt`** — Full verbose pytest output (tee of stdout/stderr).
+- **`tests/robin_mode_failed_tests.txt`** — One line per failed test (unique test IDs).
 
-- `tests/parity/dataframe/test_parquet_format_table_append.py`
-  - `test_parquet_format_append_detached_df_visible_to_active_session`
-  - `test_parquet_format_append_detached_df_visible_to_multiple_sessions`
-  - `test_parquet_format_append_to_existing_table`
-  - `test_parquet_format_append_to_new_table`
-  - `test_parquet_format_multiple_append_operations`
-  - `test_pipeline_logs_like_write_visible_immediately`
-  - `test_storage_manager_detached_write_visible_to_session`
+---
+
+## Errors
+
+This run had **0** ERRORs. Previously, seven parquet teardown ERRORs were fixed (Robin storage `db_path`).
 
 ---
 
@@ -74,14 +64,16 @@ Tests that passed include:
 # Ensure robin-sparkless is installed
 pip install robin-sparkless
 
-# Run all tests in Robin mode with 10 workers, verbose
-SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 -v --tb=short 2>&1 | tee tests/robin_mode_test_results.txt
+# Recommended: use --no-cov and --dist loadfile to avoid stall at 99% with parallel workers
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 --dist loadfile -v --tb=short --no-cov 2>&1 | tee tests/robin_mode_test_results.txt
 ```
+
+**Note:** Without `--no-cov`, the run can stall at ~99% when pytest-cov combines coverage from workers. Use `--no-cov` for reliable completion. For runs with coverage, use a process timeout (e.g. `bash tests/run_with_timeout.sh 1800 python -m pytest ...`).
 
 ---
 
 ## Conclusion
 
 - Robin mode is active for the run: session creation uses the Robin backend and fixtures assert `backend_type == "robin"`, so no tests silently used the Polars backend.
-- A large proportion of tests fail or error under Robin, consistent with the current Robin backend supporting only a subset of operations (e.g. simple filter/select/limit in the PoC materializer); the rest either hit unsupported paths or fall back in ways that don’t match test expectations.
-- Next steps for improving Robin mode pass rate: extend the Robin materializer and backend to support more operations and align behavior with the Polars backend where appropriate.
+- A large proportion of tests fail under Robin, consistent with the current Robin backend supporting only a subset of operations; the rest hit unsupported paths or fall back in ways that don’t match test expectations.
+- This run had no ERRORs (parquet teardown fixed). Next steps for improving Robin mode pass rate: extend the Robin materializer and backend to support more operations and align behavior with the Polars backend where appropriate.

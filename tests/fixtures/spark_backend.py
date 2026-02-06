@@ -65,8 +65,14 @@ def get_backend_from_env() -> Optional[BackendType]:
         BackendType if set, None otherwise.
     """
     backend_str = (
-        os.getenv("MOCK_SPARK_TEST_BACKEND") or os.getenv("SPARKLESS_TEST_BACKEND") or ""
-    ).strip().lower()
+        (
+            os.getenv("MOCK_SPARK_TEST_BACKEND")
+            or os.getenv("SPARKLESS_TEST_BACKEND")
+            or ""
+        )
+        .strip()
+        .lower()
+    )
     if not backend_str:
         return None
 

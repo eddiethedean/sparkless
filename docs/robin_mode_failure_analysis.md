@@ -5,6 +5,29 @@ This document summarizes failure reasons when running the Sparkless test suite w
 **Reference run:** Full suite (see [robin_mode_test_report.md](robin_mode_test_report.md)): **1,640 FAILED**, **867 PASSED**, **21 SKIPPED**, **7 ERROR**.  
 **Sample run:** A subset of failing tests plus all 7 parquet ERROR tests was run with `--tb=long`; output is in `tests/robin_failures_sample.txt`.
 
+**Stall after join parity:** A full Robin run with `-n 10` (parallel workers) can stall at ~99% when coverage is enabled. Root cause: pytest-cov + xdist combine phase waits for worker shutdown; Robin + coverage in workers can cause workers to hang during teardown. **Fix:** Run with `--no-cov` to avoid the stall:
+
+```bash
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 --dist loadfile -v --tb=short --no-cov
+```
+
+With dev deps (`pip install -e ".[dev]"`), add `--timeout-method=thread` for better xdist compatibility.
+
+Additional mitigations: `TestJoinParity` is marked with `@pytest.mark.timeout(60)`. pyproject.toml sets `--timeout=300` and `--timeout-method=thread` for better xdist compatibility. Use `--dist loadfile` to align with CI. For runs with coverage, use a process timeout (e.g. `bash tests/run_with_timeout.sh 1800 pytest ...`).
+
+### Investigation findings (2026-02-05)
+
+| Configuration | Result |
+|---------------|--------|
+| Polars + `-n 10` + coverage | Completes in ~59s (no stall) |
+| Robin + `-n 10` + `--no-cov` | Completes in ~48s (no stall) |
+| Robin + `-n 10` + coverage | Stall at ~99%, timeout after 120s |
+| Robin + `-n 10` + `--dist loadfile` + coverage | Stall, timeout |
+| Robin + `-n 1` + coverage (small subset) | Completes in ~9s (no stall) |
+| Robin + `-n 1` + coverage (full suite) | Slow (~14% in 180s), timeout before finish |
+
+**Conclusion:** The stall is Robin-specific and occurs when coverage is enabled with multiple workers (`-n 10`). Polars + coverage + xdist completes fine. With Robin, one or more workers appear to hang during shutdown when coverage writes data; the master waits for workers to exit before combining coverage. The robin-sparkless (Rust) native session/state likely blocks during Python interpreter teardown when combined with pytest-cov's atexit handlers.
+
 ---
 
 ## 1. Counts by bucket and exception type
@@ -40,14 +63,13 @@ From the sampled FAILED tests and the 7 ERROR tests:
 
 ### Bucket A – SparkUnsupportedOperationError / "does not support these operations"
 
-- **Cause:** Robin materializer’s `can_handle_operations()` returns False for the op set; Sparkless raises and does **not** fall back to Polars.
-- **Owner:** **Sparkless** (current fail-fast policy).
+- **Cause:** Robin materializer’s `can_handle_operations()` returns False for the op set; Sparkless raises (fail-fast).
+- **Owner:** **Sparkless** (fail-fast policy).
 - **Sample ops seen:** `select`, `union`, `filter`, `join`, `orderBy`, and combinations.
 
 **Options for Sparkless:**  
 (1) Keep fail-fast and document;  
-(2) Add optional “Robin + Polars fallback” so unsupported ops run with Polars (hybrid mode);  
-(3) Extend the Robin materializer to support more ops (limited by what robin_sparkless exposes).
+(2) Extend the Robin materializer to support more ops (limited by what robin_sparkless exposes).
 
 ---
 
@@ -78,8 +100,7 @@ From the sampled FAILED tests and the 7 ERROR tests:
 ## 3. Sparkless-fixable items
 
 1. **Robin storage delegate:** Add `db_path` to `RobinStorageManager` (e.g. `self._db_path = db_path or ":memory:"` and a `db_path` property) so tests/fixtures that use `spark._storage.db_path` do not raise in teardown. This clears the 7 ERRORs.
-2. **Optional Polars fallback:** When Robin cannot handle the op set, optionally run with Polars instead of raising (hybrid Robin + Polars mode). Document the current fail-fast behavior if we keep it.
-3. **Use robin_sparkless arbitrary schema:** Robin-sparkless already provides `create_dataframe_from_rows(data, schema)` for arbitrary column names and types. Extend the Robin materializer to use it (instead of only `create_dataframe` for 3 columns) so we support any schema.
+2. **Use robin_sparkless arbitrary schema:** Robin-sparkless already provides `create_dataframe_from_rows(data, schema)` for arbitrary column names and types. Extend the Robin materializer to use it (instead of only `create_dataframe` for 3 columns) so we support any schema.
 4. **Extend Robin materializer to more operations:** Robin-sparkless already exposes `with_column`, `order_by`, `group_by`, `join`, `union`, and `GroupedData` aggregations. Extend the Sparkless materializer to translate and call these (in addition to filter/select/limit) so more workloads run on the Robin backend.
 5. **Parquet/table append semantics:** If append/visibility behavior under Robin storage is wrong, fix storage/session logic for the Robin delegate.
 6. **Test/fixture expectations:** Update tests that assume only `['mock', 'pyspark']` (e.g. include `'robin'` where appropriate).
@@ -105,10 +126,10 @@ So **no upstream feature requests are needed** for “more operations” or “f
 
 ## 5. How to re-run this analysis
 
-1. **Full Robin run (summary):**
+1. **Full Robin run (summary):** Use `--no-cov` to avoid stall at 99% with `-n 10`:
    ```bash
    pip install robin-sparkless  # if needed
-   SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 -v --tb=short 2>&1 | tee tests/robin_mode_test_results.txt
+   SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 -v --tb=short --no-cov 2>&1 | tee tests/robin_mode_test_results.txt
    ```
 
 2. **Sample of failing tests with long tracebacks:**

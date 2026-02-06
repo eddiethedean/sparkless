@@ -488,7 +488,6 @@ class LazyEvaluationEngine:
                 )
 
                 if not can_handle_all:
-                    # Fail fast with clear error message
                     from ..core.exceptions.operation import (
                         SparkUnsupportedOperationError,
                     )

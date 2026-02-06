@@ -2,6 +2,23 @@
 
 The following text can be copied into the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) GitHub repo when opening issues. **Do not open issues automatically;** these are for maintainers to paste and adapt as needed.
 
+## Sparkless parity issues created
+
+- **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.
+- **104 additional issues:** Created from broad parity run: same tests run in Robin mode (`tests/robin_parity_broad_results.txt`) and PySpark mode (`tests/pyspark_parity_failed_results.txt`); issues opened only for tests that **fail with Robin** and **pass with PySpark**, excluding the 17 above. Script: `scripts/create_robin_github_issues_from_results.py` (uses `--dry-run` to preview).
+- **Second batch (19 issues):** From `tests/parity/sql/` and `tests/parity/internal/`. Robin run saved to `tests/robin_parity_sql_internal_results.txt` (23 failed, 32 passed). Those 23 run in PySpark → 19 passed, 4 skipped. Issues created for the 19 parity gaps. Command to reproduce results:
+  ```bash
+  SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/parity/sql/ tests/parity/internal/ -v --tb=line -q 2>&1 | tee tests/robin_parity_sql_internal_results.txt
+  ```
+  Then run failed IDs in PySpark and create issues:
+  ```bash
+  python scripts/create_robin_github_issues_from_results.py \
+    --robin-results tests/robin_parity_sql_internal_results.txt \
+    --pyspark-results tests/pyspark_parity_sql_internal_results.txt \
+    --no-already-filed
+  ```
+  Use `--dry-run` to preview before creating issues.
+
 ---
 
 ## Sparkless integration note (no upstream feature request needed)
