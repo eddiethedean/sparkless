@@ -43,6 +43,8 @@ class SQLExprParser:
         "FALSE",
         "LENGTH",
         "TRIM",
+        "LTRIM",
+        "RTRIM",
         "UPPER",
         "LOWER",
         "SUBSTRING",
@@ -358,6 +360,14 @@ class SQLExprParser:
                 from ...functions.string import StringFunctions
 
                 return StringFunctions.trim(args[0])
+            elif func_name == "LTRIM" and len(args) == 1:
+                from ...functions.string import StringFunctions
+
+                return StringFunctions.ltrim(args[0])
+            elif func_name == "RTRIM" and len(args) == 1:
+                from ...functions.string import StringFunctions
+
+                return StringFunctions.rtrim(args[0])
             elif func_name == "UPPER" and len(args) == 1:
                 from ...functions.string import StringFunctions
 
@@ -529,13 +539,13 @@ class SQLExprParser:
                     depth -= 1
                 elif char == "," and depth == 0:
                     if current.strip():
-                        args.append(SQLExprParser._parse_simple_value(current.strip()))
+                        args.append(SQLExprParser._parse_expression(current.strip()))
                     current = ""
                     continue
 
             current += char
 
         if current.strip():
-            args.append(SQLExprParser._parse_simple_value(current.strip()))
+            args.append(SQLExprParser._parse_expression(current.strip()))
 
         return args
