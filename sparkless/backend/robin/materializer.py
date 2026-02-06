@@ -398,7 +398,11 @@ class RobinMaterializer:
                 )
                 how_str = "outer" if how == "full" else how
                 if how_str in ("left_semi", "leftsemi", "left_anti", "leftanti"):
-                    how_str = "left_semi" if how_str in ("left_semi", "leftsemi") else "left_anti"
+                    how_str = (
+                        "left_semi"
+                        if how_str in ("left_semi", "leftsemi")
+                        else "left_anti"
+                    )
                 elif how in ("semi", "anti"):
                     how_str = "left_semi" if how == "semi" else "left_anti"
                 on_names = _join_on_to_column_names(on)

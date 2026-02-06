@@ -1967,7 +1967,14 @@ class LazyEvaluationEngine:
                             joined_data.append({**left_row_p, **right_null})
 
                     # Schema: prefix field names when alias is set (#382)
-                    if how.lower() in ["semi", "left_semi", "leftsemi", "anti", "left_anti", "leftanti"]:
+                    if how.lower() in [
+                        "semi",
+                        "left_semi",
+                        "leftsemi",
+                        "anti",
+                        "left_anti",
+                        "leftanti",
+                    ]:
                         new_schema = current.schema
                         left_col_names = {f.name for f in current.schema.fields}
                         if left_alias:
