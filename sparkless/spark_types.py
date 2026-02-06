@@ -746,6 +746,27 @@ def get_row_value(row: Any, key: str, default: Any = None) -> Any:
     return default
 
 
+def _make_hashable(value: Any) -> Any:
+    """Convert a value to a hashable form for use in set membership (e.g. distinct/dropDuplicates).
+
+    Handles list, dict, tuple, set, and Row-like objects that contain unhashable types.
+    Used when deduplicating rows that may have array (list) or struct (dict) columns.
+    """
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return tuple(_make_hashable(x) for x in value)
+    if isinstance(value, tuple):
+        return tuple(_make_hashable(x) for x in value)
+    if isinstance(value, (set, frozenset)):
+        return frozenset(_make_hashable(x) for x in value)
+    if isinstance(value, dict):
+        return tuple(sorted((k, _make_hashable(v)) for k, v in value.items()))
+    if hasattr(value, "asDict"):
+        return _make_hashable(value.asDict())
+    return value
+
+
 class Row:
     """Mock Row object providing PySpark-compatible row interface.
 
