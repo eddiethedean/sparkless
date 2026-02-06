@@ -187,6 +187,10 @@ class MapFunctions:
                 name="map()",
             )
 
+        # Allow create_map([k1, v1, k2, v2, ...]) - PySpark accepts single list (Issue #440)
+        if len(cols) == 1 and isinstance(cols[0], (list, tuple)):
+            cols = tuple(cols[0])
+
         if len(cols) < 2 or len(cols) % 2 != 0:
             raise ValueError(
                 "create_map requires an even number of arguments (key-value pairs)"

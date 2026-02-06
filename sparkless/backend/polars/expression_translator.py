@@ -688,6 +688,13 @@ class PolarsExpressionTranslator:
         # Special handling for getItem/getField - extract element from array or character from string
         if operation in ("getItem", "getField"):
             index = value
+            # Map lookup with Column key: map_col[key_col] - requires Python evaluation
+            # (Polars struct+map_elements fails with nested Object/dict - Issue #440)
+            if isinstance(index, (Column, ColumnOperation)):
+                raise ValueError(
+                    "getItem with Column key (map lookup) requires Python evaluation - "
+                    "handled by ExpressionEvaluator"
+                )
             try:
                 idx = int(index)
                 # For array/list columns, we need to handle out-of-bounds gracefully

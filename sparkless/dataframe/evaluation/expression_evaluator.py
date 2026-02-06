@@ -501,6 +501,24 @@ class ExpressionEvaluator:
 
         func_name = operation.operation
 
+        # Handle getItem/getField with Column key - map lookup by dynamic key (Issue #440)
+        if func_name in ("getItem", "getField"):
+            key = operation.value
+            if hasattr(key, "operation") or hasattr(key, "name"):
+                # Key is Column/ColumnOperation - evaluate it from row to get actual key
+                key_val = self.evaluate_expression(row, key, row_index=row_index)
+                if value is None:
+                    return None
+                if isinstance(value, (list, tuple)):
+                    try:
+                        idx = int(key_val)
+                        return value[idx] if 0 <= idx < len(value) else None
+                    except (ValueError, TypeError, IndexError):
+                        return None
+                if isinstance(value, dict):
+                    return value.get(key_val)
+                return None
+
         # Handle withField function - add or replace field in struct
         if func_name == "withField":
             # value is the struct (dict) from the base column
@@ -528,8 +546,10 @@ class ExpressionEvaluator:
 
             # Evaluate the new field's column expression (Issue #398: pass row_index
             # for WindowFunction inside withField)
-            idx = row_index if row_index is not None else self._current_row_index
-            field_value = self.evaluate_expression(row, field_column, row_index=idx)
+            row_idx: Optional[int] = (
+                row_index if row_index is not None else self._current_row_index
+            )
+            field_value = self.evaluate_expression(row, field_column, row_index=row_idx)
 
             # Create a copy of the struct and add/replace the field
             result = value.copy()
