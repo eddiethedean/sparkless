@@ -1392,39 +1392,38 @@ class PolarsExpressionTranslator:
             # For other types, direct cast is fine
             return expr.cast(pl.Float64, strict=False).cast(polars_dtype, strict=False)
 
-        # For string to date/timestamp casting
+        # For date/timestamp casting - handle both string and already date/datetime (PySpark parity, #432)
+        # str.strptime expects String and fails on datetime columns; use map_elements for all inputs
         if isinstance(target_type, (DateType, TimestampType)):
-            # Try to parse string to date/timestamp
-            # Use map_elements to handle both string and non-string inputs
             if isinstance(target_type, DateType):
-                # Parse date string
+
                 def parse_date(val: Any) -> Any:
                     if val is None:
                         return None
-                    from datetime import datetime
-
+                    # Already date (PySpark no-op for date.cast("date"))
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return val
+                    # datetime -> date
+                    if isinstance(val, datetime):
+                        return val.date()
                     val_str = str(val)
                     try:
                         return datetime.strptime(val_str, "%Y-%m-%d").date()
                     except ValueError:
                         return None
 
-                # Try strptime first (works for string columns), fall back to map_elements
-                try:
-                    return expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
-                except Exception:
-                    logger.debug(
-                        "strptime failed for date parsing, using map_elements fallback",
-                        exc_info=True,
-                    )
-                    return expr.map_elements(parse_date, return_dtype=pl.Date)
+                return expr.map_elements(parse_date, return_dtype=pl.Date)
             else:  # TimestampType
-                # Parse timestamp string
+
                 def parse_timestamp(val: Any) -> Any:
                     if val is None:
                         return None
-                    from datetime import datetime
-
+                    # Already datetime (PySpark no-op for timestamp.cast("timestamp"))
+                    if isinstance(val, datetime):
+                        return val
+                    # date -> datetime at midnight
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return datetime.combine(val, datetime.min.time())
                     val_str = str(val)
                     try:
                         return datetime.strptime(val_str, "%Y-%m-%d %H:%M:%S")
@@ -1434,19 +1433,9 @@ class PolarsExpressionTranslator:
                         except ValueError:
                             return None
 
-                # Try strptime first (works for string columns), fall back to map_elements
-                try:
-                    return expr.str.strptime(
-                        pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False
-                    )
-                except Exception:
-                    logger.debug(
-                        "strptime failed for timestamp parsing, using map_elements fallback",
-                        exc_info=True,
-                    )
-                    return expr.map_elements(
-                        parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
-                    )
+                return expr.map_elements(
+                    parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
+                )
 
         # Special handling for string to boolean casting - Polars doesn't support this directly
         # Raise ValueError to trigger Python fallback evaluation
