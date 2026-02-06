@@ -1155,6 +1155,16 @@ class PolarsExpressionTranslator:
                 right_dt = _to_python_datetime(right_val)
                 return compare_fn(parsed_dt, right_dt)
 
+            # Date vs datetime: coerce date to datetime at midnight (PySpark parity, #431)
+            if _is_date_like(left_val) and _is_datetime_like(right_val):
+                left_dt = datetime.combine(left_val, datetime.min.time())
+                right_dt = _to_python_datetime(right_val)
+                return compare_fn(left_dt, right_dt)
+            elif _is_datetime_like(left_val) and _is_date_like(right_val):
+                left_dt = _to_python_datetime(left_val)
+                right_dt = datetime.combine(right_val, datetime.min.time())
+                return compare_fn(left_dt, right_dt)
+
             # Default comparison (same types or other combinations)
             return compare_fn(left_val, right_val)
 
