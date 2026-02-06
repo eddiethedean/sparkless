@@ -82,3 +82,144 @@ def test_expr_regexp_no_match(spark, spark_backend):
     df = df.filter(F_backend.expr("Name REGEXP 'xyz'"))
     rows = df.collect()
     assert len(rows) == 0
+
+
+# --- Robust edge-case tests ---
+
+
+def test_expr_regexp_case_insensitive_keyword(spark, spark_backend):
+    """REGEXP and rlike keywords are case-insensitive."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame([{"s": "hello"}, {"s": "world"}])
+    df = df.filter(F_backend.expr("s regexp 'hello'"))
+    rows = df.collect()
+    assert len(rows) == 1
+    assert rows[0]["s"] == "hello"
+
+
+def test_expr_regexp_with_nulls(spark, spark_backend):
+    """REGEXP with null values - null does not match."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame(
+        [
+            {"Name": "Alice", "Value": "sales"},
+            {"Name": "Bob", "Value": None},
+            {"Name": "Charlie", "Value": "tech"},
+        ]
+    )
+    df = df.filter(F_backend.expr("Value REGEXP 'sales|tech'"))
+    rows = df.collect()
+    assert len(rows) == 2
+    names = {r["Name"] for r in rows}
+    assert names == {"Alice", "Charlie"}
+
+
+def test_expr_regexp_select(spark, spark_backend):
+    """select with F.expr REGEXP."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame(
+        [{"Name": "Alice", "Value": "sales"}, {"Name": "Bob", "Value": "ceo"}]
+    )
+    result = df.select(
+        F_backend.col("Name"),
+        F_backend.expr("Value REGEXP 'sales'").alias("is_sales"),
+    )
+    rows = result.collect()
+    assert len(rows) == 2
+    alice = next(r for r in rows if r["Name"] == "Alice")
+    bob = next(r for r in rows if r["Name"] == "Bob")
+    assert alice["is_sales"] is True
+    assert bob["is_sales"] is False
+
+
+def test_expr_regexp_regex_special_chars(spark, spark_backend):
+    """REGEXP with regex special characters (character class, quantifier)."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame([{"s": "abc123"}, {"s": "xyz"}, {"s": "abc"}])
+    df = df.filter(F_backend.expr("s REGEXP '[0-9]+'"))
+    rows = df.collect()
+    assert len(rows) == 1
+    assert rows[0]["s"] == "abc123"
+
+
+def test_expr_regexp_combined_with_and(spark, spark_backend):
+    """REGEXP combined with AND."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame(
+        [
+            {"Name": "Alice", "Value": "sales dept"},
+            {"Name": "Bob", "Value": "tech dept"},
+            {"Name": "Charlie", "Value": "sales tech"},
+        ]
+    )
+    df = df.filter(F_backend.expr("Value REGEXP 'sales' AND Value REGEXP 'dept'"))
+    rows = df.collect()
+    assert len(rows) == 1
+    assert rows[0]["Name"] == "Alice"
+
+
+def test_expr_regexp_combined_with_or(spark, spark_backend):
+    """REGEXP combined with OR."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame(
+        [
+            {"Name": "Alice", "Value": "sales"},
+            {"Name": "Bob", "Value": "ceo"},
+            {"Name": "Charlie", "Value": "tech"},
+        ]
+    )
+    df = df.filter(F_backend.expr("Value REGEXP 'sales' OR Value REGEXP 'tech'"))
+    rows = df.collect()
+    assert len(rows) == 2
+    names = {r["Name"] for r in rows}
+    assert names == {"Alice", "Charlie"}
+
+
+def test_expr_regexp_column_with_underscore(spark, spark_backend):
+    """REGEXP with column name containing underscore."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame([{"user_name": "alice"}, {"user_name": "bob"}])
+    df = df.filter(F_backend.expr("user_name REGEXP 'alice'"))
+    rows = df.collect()
+    assert len(rows) == 1
+    assert rows[0]["user_name"] == "alice"
+
+
+def test_expr_regexp_empty_string_does_not_match(spark, spark_backend):
+    """Empty string does not match non-empty pattern."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame([{"s": ""}, {"s": "hello"}])
+    df = df.filter(F_backend.expr("s REGEXP 'hello'"))
+    rows = df.collect()
+    assert len(rows) == 1
+    assert rows[0]["s"] == "hello"
+
+
+def test_expr_regexp_filter_after_with_column(spark, spark_backend):
+    """Chain filter(REGEXP) after withColumn."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame(
+        [
+            {"id": 1, "Value": "sales"},
+            {"id": 2, "Value": "tech"},
+            {"id": 3, "Value": "ceo"},
+        ]
+    )
+    df = df.withColumn("doubled", F_backend.col("id") * 2).filter(
+        F_backend.expr("Value REGEXP 'sales|tech'")
+    )
+    rows = df.collect()
+    assert len(rows) == 2
+    ids = {r["id"] for r in rows}
+    assert ids == {1, 2}
+
+
+def test_expr_rlike_with_column_chain(spark, spark_backend):
+    """RLIKE in filter then select."""
+    F_backend = get_spark_imports(spark_backend).F
+    df = spark.createDataFrame([{"a": "x1y"}, {"a": "x2y"}, {"a": "z"}])
+    result = df.filter(F_backend.expr("a RLIKE 'x[0-9]y'")).select(F_backend.col("a"))
+    rows = result.collect()
+    assert len(rows) == 2
+    values = {r["a"] for r in rows}
+    assert values == {"x1y", "x2y"}
