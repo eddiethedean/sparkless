@@ -1,21 +1,6 @@
 # Known Issues
 
 
-## array_distinct Function (Unsupported in Polars Backend)
-
-The ``array_distinct`` function is present in the API for PySpark compatibility but is
-**not supported** in the Polars backend for general use. It was removed from the
-supported operation set due to complex materialization issues with chained operations.
-
-- **Status**: Marked as not implemented (❌) in the PySpark function matrix.
-- **Code**: The function and some evaluator paths still exist for backward compatibility
-  and condition evaluation; using it in DataFrame pipelines (e.g. ``df.select(F.array_distinct("col"))``)
-  may hit Python fallback or inconsistent behavior.
-- **Recommendation**: Avoid ``array_distinct`` in new code when using the Polars backend;
-  use ``array_except``, ``array_intersect``, or post-process arrays in Python if needed.
-  For parity tests, the corresponding parity test may be skipped when running with Sparkless.
-
-
 ## Delta Schema Evolution with the Polars Backend
 
 Sparkless 3.0.0 introduced the Polars backend, which enforces strict column dtypes

@@ -180,23 +180,31 @@ class PolarsMaterializer:
             else:
                 df = pl.DataFrame(data)
 
-            # Only enforce schema types if we have a union operation (to prevent type mismatches)
-            # For other operations, let Polars infer types naturally
-            if has_union_operation and schema.fields:
+            # Enforce schema types when:
+            # 1. Union operation (to prevent type mismatches), or
+            # 2. Column inferred as Null but schema expects List/Array (e.g. [{"a": None}]
+            #    with ArrayType - Polars infers Null, but array_distinct needs List type)
+            if schema.fields:
                 from .type_mapper import mock_type_to_polars_dtype
 
                 cast_exprs = []
                 for field in schema.fields:
+                    if field.name not in df.columns:
+                        continue
                     polars_dtype = mock_type_to_polars_dtype(field.dataType)
-                    # Only cast if column exists and type doesn't match
-                    # Only cast numeric types to prevent Int32/Int64 mismatches
-                    if (
-                        field.name in df.columns
-                        and df[field.name].dtype != polars_dtype
-                        and polars_dtype in (pl.Int32, pl.Int64, pl.Float32, pl.Float64)
+                    inferred = df[field.name].dtype
+                    if inferred == polars_dtype:
+                        continue
+                    # Cast when: union (numeric types only), or Null->List for array_distinct
+                    if has_union_operation and polars_dtype in (
+                        pl.Int32,
+                        pl.Int64,
+                        pl.Float32,
+                        pl.Float64,
                     ):
-                        # Only cast numeric types (Int32/Int64) to prevent union issues
-                        # Don't cast string/datetime types as they can cause schema errors
+                        cast_exprs.append(pl.col(field.name).cast(polars_dtype))
+                    elif inferred == pl.Null and str(polars_dtype).startswith("List"):
+                        # All-null column: Polars infers Null, but schema expects List(X)
                         cast_exprs.append(pl.col(field.name).cast(polars_dtype))
 
                 if cast_exprs:

@@ -545,10 +545,11 @@ class SchemaManager:
                                     )
                                 elif hasattr(field_column, "operation"):
                                     # ColumnOperation - infer type from operation
+                                    # _infer_expression_type returns StructField; extract .dataType
                                     field_data_type = (
                                         SchemaManager._infer_expression_type(
                                             field_column
-                                        )
+                                        ).dataType
                                     )
                                 else:
                                     # Simple column reference - get type from schema

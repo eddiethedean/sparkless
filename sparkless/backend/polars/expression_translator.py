@@ -4309,10 +4309,9 @@ class PolarsExpressionTranslator:
             # which handles both arrays and maps correctly. Do not duplicate here.
             "array_max": lambda e: e.list.max(),
             "array_min": lambda e: e.list.min(),
-            "array_distinct": lambda e: e.map_elements(
-                lambda arr: list(dict.fromkeys(arr)) if isinstance(arr, list) else arr,
-                return_dtype=pl.List(pl.Utf8),
-            ),
+            "array_distinct": lambda e: pl.when(e.is_null())
+            .then(pl.lit(None))
+            .otherwise(e.list.unique(maintain_order=True)),
             # Note: explode/explode_outer expressions just return the array column
             # The actual row expansion is handled in operation_executor
             "explode": lambda e: (
