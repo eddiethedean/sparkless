@@ -1,8 +1,17 @@
 # Issue Templates for robin-sparkless (Upstream)
 
-The following text can be copied into the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) GitHub repo when opening issues. **Do not open issues automatically;** these are for maintainers to paste and adapt as needed.
+The following text can be copied into the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) GitHub repo when opening issues.
 
-## Sparkless parity issues created
+## Issues created 2026-02-06 (from ownership analysis)
+
+| # | Title | Link |
+|---|-------|------|
+| 174 | [Enhancement] Add Python operator overloads to Column for PySpark compatibility | https://github.com/eddiethedean/robin-sparkless/issues/174 |
+| 175 | [Enhancement] Join on= parameter: accept string for single column (PySpark compatibility) | https://github.com/eddiethedean/robin-sparkless/issues/175 |
+
+Created via `python scripts/create_robin_github_issues_2026_02.py`
+
+## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.
 - **104 additional issues:** Created from broad parity run: same tests run in Robin mode (`tests/robin_parity_broad_results.txt`) and PySpark mode (`tests/pyspark_parity_failed_results.txt`); issues opened only for tests that **fail with Robin** and **pass with PySpark**, excluding the 17 above. Script: `scripts/create_robin_github_issues_from_results.py` (uses `--dry-run` to preview).

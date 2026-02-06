@@ -1,5 +1,12 @@
 #!/bin/bash
 # Test runner for overhauled test suite
+#
+# Usage:
+#   bash tests/run_all_tests.sh
+#   SPARKLESS_TEST_WORKERS=12 bash tests/run_all_tests.sh
+#   bash tests/run_all_tests.sh -n 12
+#
+# For Robin mode: SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh -n 12
 
 # Activate virtual environment if it exists
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,6 +17,20 @@ fi
 
 # Ensure project root is the first entry on PYTHONPATH so the local package is exercised
 export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH}"
+
+# Parse -n N from arguments (e.g. -n 12)
+WORKERS=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n)
+            WORKERS="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 echo "Running Sparkless Test Suite (Overhauled)"
 echo "=========================================="
@@ -28,16 +49,24 @@ elif [ "$BACKEND" = "robin" ]; then
 fi
 echo ""
 
-# Check if pytest-xdist is available for parallel execution
-if python3 -c "import xdist" 2>/dev/null; then
-    # Allow override of worker count via SPARKLESS_TEST_WORKERS, default to 8
-    WORKERS="${SPARKLESS_TEST_WORKERS:-8}"
-    echo "✅ pytest-xdist available - using parallel execution (${WORKERS} workers)"
-    PARALLEL_FLAGS="-n ${WORKERS}"
+# Determine worker count: -n arg > SPARKLESS_TEST_WORKERS > default 8
+if [ -n "$WORKERS" ]; then
+    # User explicitly passed -n N
+    WORKER_COUNT="$WORKERS"
+elif [ -n "${SPARKLESS_TEST_WORKERS:-}" ]; then
+    WORKER_COUNT="${SPARKLESS_TEST_WORKERS}"
+else
+    WORKER_COUNT="8"
+fi
+
+# Check if pytest-xdist works by doing a minimal collect with -n
+PARALLEL_FLAGS=""
+if python3 -m pytest --co -n 1 -q tests/unit/ >/dev/null 2>&1; then
+    echo "✅ pytest-xdist available - using parallel execution (${WORKER_COUNT} workers)"
+    PARALLEL_FLAGS="-n ${WORKER_COUNT} --dist loadfile"
 else
     echo "⚠️  pytest-xdist not available - running serially"
     echo "   Install with: pip install pytest-xdist"
-    PARALLEL_FLAGS=""
 fi
 
 # Step 1: Unit tests - run in parallel

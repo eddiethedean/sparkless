@@ -76,9 +76,9 @@ Many failures are `SparkUnsupportedOperationError` for filter.
 
 ## 5. How to validate
 
-- Run full suite in Robin mode and compare pass/fail counts to the last report. Use `--no-cov` and `--dist loadfile` to avoid stall at 99% with parallel workers:
+- Run full suite in Robin mode and compare pass/fail counts to the last report:
   ```bash
-  SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin pytest tests/ --ignore=tests/archive -n 10 --dist loadfile -v --tb=short --no-cov 2>&1 | tee tests/robin_mode_test_results.txt
+  SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin pytest tests/ --ignore=tests/archive -n 10 --dist loadfile -v --tb=short 2>&1 | tee tests/robin_mode_test_results.txt
   ```
 - Run only parity join tests to confirm join path and row counts:
   ```bash

@@ -115,18 +115,19 @@ def _simple_filter_to_robin(condition: Any) -> Any:
         else:
             val = val_side
         robin_lit = F.lit(val)  # type: ignore[arg-type]
+        # robin-sparkless Column uses method-based API (gt, lt, etc.), not Python operators
         if op == ">":
-            return robin_col > robin_lit
+            return robin_col.gt(robin_lit)
         if op == "<":
-            return robin_col < robin_lit
+            return robin_col.lt(robin_lit)
         if op == ">=":
-            return robin_col >= robin_lit
+            return robin_col.ge(robin_lit)
         if op == "<=":
-            return robin_col <= robin_lit
+            return robin_col.le(robin_lit)
         if op == "==":
-            return robin_col == robin_lit
+            return robin_col.eq(robin_lit)
         if op == "!=":
-            return robin_col != robin_lit
+            return robin_col.ne(robin_lit)
     return None
 
 
@@ -204,19 +205,20 @@ def _expression_to_robin(expr: Any) -> Any:
         right = _expression_to_robin(val_side) if val_side is not None else None
         if left is None or right is None:
             return None
+        # robin-sparkless Column uses method-based API (gt, lt, etc.), not Python operators
         if op in (">", "<", ">=", "<=", "==", "!="):
             if op == ">":
-                return left > right
+                return left.gt(right)
             if op == "<":
-                return left < right
+                return left.lt(right)
             if op == ">=":
-                return left >= right
+                return left.ge(right)
             if op == "<=":
-                return left <= right
+                return left.le(right)
             if op == "==":
-                return left == right
+                return left.eq(right)
             if op == "!=":
-                return left != right
+                return left.ne(right)
         if op == "+":
             return left + right
         if op == "-":
@@ -345,11 +347,24 @@ class RobinMaterializer:
         F = robin_sparkless  # type: ignore[union-attr]
         if not schema.fields:
             raise ValueError("RobinMaterializer requires a non-empty schema")
-        names = [f.name for f in schema.fields]
+        # For initial creation, use only columns present in data. The passed schema may be
+        # the fully projected schema (e.g. after join) which can include right-side columns
+        # not yet in the left data. robin create_dataframe_from_rows rejects duplicate
+        # column names, so we must match schema to data.
+        if data:
+            init_names = list(data[0].keys()) if isinstance(data[0], dict) else []
+            name_to_field = {f.name: f for f in schema.fields}
+            init_fields = [name_to_field[n] for n in init_names if n in name_to_field]
+            if not init_fields:
+                init_fields = schema.fields
+                init_names = [f.name for f in schema.fields]
+        else:
+            init_names = [f.name for f in schema.fields]
+            init_fields = schema.fields
         robin_schema = [
-            (f.name, _spark_type_to_robin_dtype(f.dataType)) for f in schema.fields
+            (f.name, _spark_type_to_robin_dtype(f.dataType)) for f in init_fields
         ]
-        robin_data = _data_to_robin_rows(data, names)
+        robin_data = _data_to_robin_rows(data, init_names)
 
         spark = F.SparkSession.builder().app_name("sparkless-robin-poc").get_or_create()
         df = spark.create_dataframe_from_rows(robin_data, robin_schema)
@@ -410,9 +425,8 @@ class RobinMaterializer:
                     on_arg = on_names
                 else:
                     on_arg = [on] if isinstance(on, str) else list(on)
-                # Some APIs expect a single string when one key
-                on_param = on_arg[0] if len(on_arg) == 1 else on_arg
-                df = df.join(other_robin_df, on=on_param, how=how_str)
+                # robin-sparkless expects on= as list (Vec), not string
+                df = df.join(other_robin_df, on=on_arg, how=how_str)
             elif op_name == "union":
                 other_df = payload
                 other_eager = other_df._materialize_if_lazy()
@@ -432,7 +446,21 @@ class RobinMaterializer:
         from sparkless.dataframe.schema.schema_manager import SchemaManager
 
         final_schema = SchemaManager.project_schema_with_operations(schema, operations)
-        return [Row(d, schema=final_schema) for d in collected]
+        # Robin join renames duplicate columns with _right suffix (e.g. name_right).
+        # Merge _right values into base column names to match PySpark's last-wins behavior.
+        merged: List[dict] = []
+        for d in collected:
+            if isinstance(d, dict):
+                row = dict(d)
+                for k in list(row.keys()):
+                    if k.endswith("_right"):
+                        base = k[:-6]  # remove "_right"
+                        row[base] = row[k]
+                        del row[k]
+                merged.append(row)
+            else:
+                merged.append(d)
+        return [Row(d, schema=final_schema) for d in merged]
 
     def close(self) -> None:
         """Release resources. robin_sparkless SparkSession does not expose stop();

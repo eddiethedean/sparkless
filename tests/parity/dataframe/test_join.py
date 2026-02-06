@@ -9,7 +9,6 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 
 
-@pytest.mark.timeout(60)  # Prevent stall in Robin mode (e.g. after test_outer_join)
 class TestJoinParity(ParityTestBase):
     """Test DataFrame join operations parity with PySpark."""
 

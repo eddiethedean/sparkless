@@ -57,7 +57,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.0.0",  # Parallel test execution
-    "pytest-timeout>=2.0.0",  # Prevent Robin/join parity tests from stalling
+    "pytest-timeout>=2.0.0",  # Prevent test hangs
     "mypy>=1.19.0",
     "ruff>=0.15.0,<0.16",
     "pandas>=1.3.0,<3",
@@ -228,6 +228,7 @@ addopts = [
     "--tb=short",
     "--strict-markers",
     "--ignore=tests/archive",
+    "-n", "auto",  # Parallel execution (requires pytest-xdist); use -n 0 for serial
     "--cov=sparkless",
     "--cov-report=term-missing",
     "--cov-report=html",

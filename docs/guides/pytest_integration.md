@@ -31,10 +31,10 @@ SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -v
 SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
 ```
 
-For parallel runs (`-n 10`), use `--no-cov` and `--dist loadfile` to avoid stall at 99%:
+For parallel runs (`-n 10`):
 
 ```bash
-SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -n 10 --dist loadfile -v --no-cov
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -n 10 --dist loadfile -v
 ```
 
 Install the optional dependency first: `pip install sparkless[robin]` or `pip install robin-sparkless`. If Robin is selected but not installed, tests that use the `spark` fixture are skipped with a clear message.

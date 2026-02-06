@@ -40,6 +40,34 @@ class SchemaManager:
     """
 
     @staticmethod
+    def _join_on_to_column_names(on: Any) -> Optional[List[str]]:
+        """Extract join column names from join condition for deduplication logic.
+
+        Returns list of column names when condition is ColumnOperation(==, col, col)
+        with same-named columns, or ColumnOperation(&, left, right) of such. Otherwise None.
+        """
+        if isinstance(on, str):
+            return [on]
+        if isinstance(on, (list, tuple)) and all(isinstance(x, str) for x in on):
+            return list(on)
+        if isinstance(on, ColumnOperation):
+            op = getattr(on, "operation", None)
+            col_side = getattr(on, "column", None)
+            val_side = getattr(on, "value", None)
+            if op == "==":
+                if isinstance(col_side, Column) and isinstance(val_side, Column):
+                    left_name = getattr(col_side, "name", None)
+                    right_name = getattr(val_side, "name", None)
+                    if isinstance(left_name, str) and left_name == right_name:
+                        return [left_name]
+            if op == "&":
+                left_list = SchemaManager._join_on_to_column_names(col_side)
+                right_list = SchemaManager._join_on_to_column_names(val_side)
+                if left_list is not None and right_list is not None and left_list == right_list:
+                    return left_list
+        return None
+
+    @staticmethod
     def project_schema_with_operations(
         base_schema: StructType,
         operations_queue: List[Tuple[str, Any]],
@@ -144,9 +172,17 @@ class SchemaManager:
                 # assume uniqueness). For joins using column names, we therefore deduplicate
                 # *all* right-side columns whose names already exist on the left. This also
                 # matches the long-standing behavior relied on by parity tests (e.g. issue #128).
+                #
+                # Also treat ColumnOperation(==, col, col) with same-named columns as column-name
+                # join (e.g. df1.col == df2.col) so we deduplicate join keys - needed for backends
+                # like robin-sparkless that use join(on=[...]) with same-named columns.
                 is_column_name_join = isinstance(on, str) or (
                     isinstance(on, list) and all(isinstance(c, str) for c in on)
                 )
+                if not is_column_name_join and isinstance(on, ColumnOperation):
+                    join_keys = SchemaManager._join_on_to_column_names(on)
+                    if join_keys is not None:
+                        is_column_name_join = True
 
                 # Add fields from right DataFrame
                 if fields_list is not None:

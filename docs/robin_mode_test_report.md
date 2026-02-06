@@ -17,7 +17,7 @@
 | **ERROR**   | 0 |
 | **Total recorded** | **2,531** |
 
-**Note:** The run was interrupted by a 10-minute timeout before the full suite completed (2,545 tests scheduled). Counts are from the captured output; the last ~14 tests may not have finished. Join parity tests use `@pytest.mark.timeout(60)` so they no longer stall the run; the interrupt occurred after test_outer_join and remaining tests were not executed.
+**Note:** The run was interrupted by a 10-minute timeout before the full suite completed (2,545 tests scheduled). Counts are from the captured output; the last ~14 tests may not have finished.
 
 ---
 
@@ -64,11 +64,8 @@ Tests that passed include:
 # Ensure robin-sparkless is installed
 pip install robin-sparkless
 
-# Recommended: use --no-cov and --dist loadfile to avoid stall at 99% with parallel workers
-SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 --dist loadfile -v --tb=short --no-cov 2>&1 | tee tests/robin_mode_test_results.txt
+SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ --ignore=tests/archive -n 10 --dist loadfile -v --tb=short 2>&1 | tee tests/robin_mode_test_results.txt
 ```
-
-**Note:** Without `--no-cov`, the run can stall at ~99% when pytest-cov combines coverage from workers. Use `--no-cov` for reliable completion. For runs with coverage, use a process timeout (e.g. `bash tests/run_with_timeout.sh 1800 python -m pytest ...`).
 
 ---
 
