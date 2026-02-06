@@ -92,7 +92,8 @@ def main() -> int:
         *test_ids,
         "-v",
         "--tb=long",
-        "-p", "no:cacheprovider",
+        "-p",
+        "no:cacheprovider",
     ]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "a") as out:

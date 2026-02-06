@@ -6,6 +6,7 @@ Sparkless parity test when run with Robin backend. Uses `gh` CLI.
 Run from repo root:
   python scripts/create_robin_github_issues.py
 """
+
 from __future__ import annotations
 
 import subprocess
