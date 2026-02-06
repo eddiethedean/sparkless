@@ -42,5 +42,5 @@ If you rely on these and see crashes, ensure you are on a supported Polars versi
 
 ## Getting help
 
-- **Known issues**: [Known issues](../known_issues.md) documents limitations (e.g. Delta schema evolution, `array_distinct`).
+- **Known issues**: [Known issues](../known_issues.md) documents limitations (e.g. Delta schema evolution).
 - **GitHub issues**: [github.com/eddiethedean/sparkless/issues](https://github.com/eddiethedean/sparkless/issues) for bugs and feature requests.

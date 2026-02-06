@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Issue #439** - `F.array_distinct()` now returns deduplicated arrays with the original element type preserved, matching PySpark. Previously returned strings (e.g. `['1', '2', '3']`) instead of integers (e.g. `[1, 2, 3]`) due to incorrect `return_dtype=pl.List(pl.Utf8)` in the Polars expression translator. Switched to Polars native `list.unique(maintain_order=True)`.
 - **Issue #437** - `F.mean()` on string columns no longer raises `TypeError: can't convert type 'str' to numerator/denominator`. PySpark interprets string columns as numeric for mean/avg; Sparkless now coerces string values to float (including scientific notation, e.g. `"1e2"`), matching PySpark behavior.
 - **Issue #438** - `leftsemi` join (e.g. `df.join(other, on="Name", how="leftsemi")`) no longer incorrectly includes columns from the right DataFrame. PySpark accepts both `leftsemi` and `left_semi`; Sparkless now recognizes both and returns only left-side columns for semi/anti joins.
   - Added `leftsemi` and `leftanti` to semi/anti join checks in lazy.py, schema_manager, Polars operation executor, and Robin materializer.
