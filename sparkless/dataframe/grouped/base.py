@@ -1266,12 +1266,19 @@ class GroupedData:
             result_key = alias_name if alias_name else f"any_value({col_name})"
             return result_key, values[0] if values else None
         elif func_name == "mean":
-            # mean(col) - alias for avg
-            values = [
-                get_row_value(row, col_name)
-                for row in group_rows
-                if get_row_value(row, col_name) is not None
-            ]
+            # mean(col) - alias for avg; coerce string columns to numeric (PySpark parity #437)
+            values = []
+            for row in group_rows:
+                val = get_row_value(row, col_name)
+                if val is not None:
+                    if isinstance(val, bool):
+                        val = 1 if val else 0
+                    if isinstance(val, str):
+                        try:
+                            val = float(val) if "." in val else int(val)
+                        except ValueError:
+                            continue
+                    values.append(val)
             result_key = (
                 alias_name  # Use the name from expr.name (already set correctly)
             )
