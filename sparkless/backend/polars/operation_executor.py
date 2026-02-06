@@ -638,7 +638,12 @@ class PolarsOperationExecutor:
                 def _posexplode_list(arr: Any) -> Any:
                     if arr is None:
                         return []
-                    if not isinstance(arr, (list, tuple)):
+                    # Polars 1.x passes Series or other iterables to map_elements for List cols
+                    if hasattr(arr, "to_list"):
+                        arr = arr.to_list()
+                    elif hasattr(arr, "tolist"):
+                        arr = arr.tolist()
+                    elif not isinstance(arr, (list, tuple)):
                         return []
                     return [{"pos": i, "val": v} for i, v in enumerate(arr)]
 
@@ -853,7 +858,12 @@ class PolarsOperationExecutor:
                 def _posexplode_list(arr: Any) -> Any:
                     if arr is None:
                         return []
-                    if not isinstance(arr, (list, tuple)):
+                    # Polars 1.x passes Series or other iterables to map_elements for List cols
+                    if hasattr(arr, "to_list"):
+                        arr = arr.to_list()
+                    elif hasattr(arr, "tolist"):
+                        arr = arr.tolist()
+                    elif not isinstance(arr, (list, tuple)):
                         return []
                     return [{"pos": i, "val": v} for i, v in enumerate(arr)]
 
