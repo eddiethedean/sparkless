@@ -47,30 +47,29 @@ class TestIssue366AliasPosexplode:
         with pytest.raises(ValueError, match="at least one name"):
             F.posexplode("Values").alias()
 
-    def test_posexplode_alias_select(self):
-        """Select with posexplode().alias('Value1') runs; columns are Value1 and col."""
-        import inspect
+    def test_posexplode_alias_select(self, spark, spark_backend):
+        """Select with posexplode().alias('Value1') runs; columns are Value1 and col.
 
-        test_name = inspect.stack()[1].function
-        spark = SparkSession.builder.appName(
-            self._get_unique_app_name(test_name)
-        ).getOrCreate()
-        try:
-            df = spark.createDataFrame(
-                [
-                    {"Name": "Alice", "Values": [10, 20]},
-                    {"Name": "Bob", "Values": [30, 40]},
-                ]
+        PySpark requires 2 aliases for posexplode; Sparkless accepts 1 (second defaults to 'col').
+        """
+        F_backend = get_spark_imports(spark_backend).F
+        df = spark.createDataFrame(
+            [
+                {"Name": "Alice", "Values": [10, 20]},
+                {"Name": "Bob", "Values": [30, 40]},
+            ]
+        )
+        if spark_backend == BackendType.PYSPARK:
+            result = df.select(
+                "Name", F_backend.posexplode("Values").alias("Value1", "col")
             )
-            result = df.select("Name", F.posexplode("Values").alias("Value1"))
-            rows = result.collect()
-            assert len(rows) >= 1
-            keys = list(rows[0].asDict().keys()) if rows else []
-            assert "Name" in keys
-            assert "Value1" in keys
-            # Second posexplode column may be "col" or folded into struct depending on backend
-        finally:
-            spark.stop()
+        else:
+            result = df.select("Name", F_backend.posexplode("Values").alias("Value1"))
+        rows = result.collect()
+        assert len(rows) >= 1
+        keys = list(rows[0].asDict().keys()) if rows else []
+        assert "Name" in keys
+        assert "Value1" in keys
 
     def test_posexplode_alias_two_names_select(self, spark, spark_backend):
         """Select with posexplode().alias('Value1', 'Value2') names both columns (issue #424)."""
@@ -208,23 +207,21 @@ class TestIssue366AliasPosexplode:
         finally:
             spark.stop()
 
-    def test_posexplode_nested_arrays(self):
-        """Test posexplode on nested array; single alias for first column."""
-        import inspect
+    def test_posexplode_nested_arrays(self, spark, spark_backend):
+        """Test posexplode on nested array; single alias for first column.
 
-        test_name = inspect.stack()[1].function
-        spark = SparkSession.builder.appName(
-            self._get_unique_app_name(test_name)
-        ).getOrCreate()
-        try:
-            df = spark.createDataFrame([{"nested": [[1, 2], [3, 4]]}])
-            result = df.select(F.posexplode("nested").alias("idx"))
-            rows = result.collect()
-            # At least one row; structure may vary by backend
-            assert len(rows) >= 1
-            assert "idx" in (rows[0].asDict().keys() if rows else [])
-        finally:
-            spark.stop()
+        PySpark requires 2 aliases for posexplode; Sparkless accepts 1 (second defaults to 'col').
+        """
+        F_backend = get_spark_imports(spark_backend).F
+        df = spark.createDataFrame([{"nested": [[1, 2], [3, 4]]}])
+        if spark_backend == BackendType.PYSPARK:
+            result = df.select(F_backend.posexplode("nested").alias("idx", "col"))
+        else:
+            result = df.select(F_backend.posexplode("nested").alias("idx"))
+        rows = result.collect()
+        # At least one row; structure may vary by backend
+        assert len(rows) >= 1
+        assert "idx" in (rows[0].asDict().keys() if rows else [])
 
     def test_posexplode_outer_null_handling(self):
         """Test posexplode_outer with null arrays; single alias for pos."""

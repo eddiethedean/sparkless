@@ -269,8 +269,6 @@ class SchemaManager:
                         struct_type = struct_field.dataType
                         if isinstance(struct_type, StructType):
                             # Try case-insensitive match
-                            from ...core.column_resolver import ColumnResolver
-
                             field_names = [f.name for f in struct_type.fields]
                             resolved_field = ColumnResolver.resolve_column_name(
                                 field_name, field_names, False
@@ -290,8 +288,6 @@ class SchemaManager:
                     # PySpark behavior:
                     # - If there's only one match: use the original column name
                     # - If there are multiple matches (different cases): use the requested column name
-                    from ...core.column_resolver import ColumnResolver
-
                     resolved_col_name = ColumnResolver.resolve_column_name(
                         col, list(fields_map.keys()), case_sensitive
                     )
@@ -334,13 +330,18 @@ class SchemaManager:
                     "posexplode_outer",
                 ):
                     # posexplode/posexplode_outer yields two columns: pos (index) and col (value).
-                    # PySpark default names are "pos" and "col"; alias("Name1", "Name2") overrides.
+                    # PySpark default names are "pos" and "col".
+                    # alias("Name1", "Name2") overrides both; alias("Name1") overrides first only (fixes #366).
                     # _alias_names can be None when used without alias (fixes #429).
                     alias_names = getattr(col, "_alias_names", None)
                     if alias_names is not None and len(alias_names) >= 2:
                         name0, name1 = alias_names[0], alias_names[1]
+                    elif alias_names is not None and len(alias_names) == 1:
+                        name0, name1 = alias_names[0], "col"
                     else:
-                        name0, name1 = "pos", "col"
+                        alias_name = getattr(col, "_alias_name", None)
+                        name0 = alias_name if alias_name else "pos"
+                        name1 = "col"
                     new_fields_map[name0] = StructField(name0, LongType(), True)
                     # Infer second column type from array element type if available
                     val_type = StringType()

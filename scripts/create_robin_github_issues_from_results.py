@@ -15,6 +15,7 @@ Run from repo root:
     --pyspark-results tests/pyspark_parity_sql_internal_results.txt \\
     [--no-already-filed]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,16 +52,16 @@ def parse_robin_failures(robin_results_path: Path) -> dict[str, str]:
     """Parse FAILED lines from Robin run; map test_id -> first line of error."""
     text = robin_results_path.read_text(encoding="utf-8")
     out: dict[str, str] = {}
-    for m in re.finditer(
-        r"^FAILED (tests/parity/[^\s]+) - (.+)$", text, re.MULTILINE
-    ):
+    for m in re.finditer(r"^FAILED (tests/parity/[^\s]+) - (.+)$", text, re.MULTILINE):
         test_id, err_first = m.group(1).strip(), m.group(2).strip()
         # Optionally add next line if it's a short continuation (e.g. Row count mismatch)
         rest = text[m.end() : m.end() + 200]
         next_line = rest.split("\n")[0].strip() if rest else ""
-        if next_line.startswith("Row count mismatch") or next_line.startswith("assert "):
+        if next_line.startswith("Row count mismatch") or next_line.startswith(
+            "assert "
+        ):
             err_first = err_first + "\n" + next_line
-        out[test_id] = err_first[: 500]  # cap length
+        out[test_id] = err_first[:500]  # cap length
     return out
 
 
@@ -68,18 +69,12 @@ def parse_pyspark_passed(pyspark_results_path: Path) -> set[str]:
     """Collect test IDs that show PASSED in PySpark run."""
     text = pyspark_results_path.read_text(encoding="utf-8")
     passed = set()
-    for m in re.finditer(
-        r"^(tests/parity/[^\s]+) PASSED ", text, re.MULTILINE
-    ):
+    for m in re.finditer(r"^(tests/parity/[^\s]+) PASSED ", text, re.MULTILINE):
         passed.add(m.group(1).strip())
     return passed
 
 
 def make_body(test_path: str, error: str) -> str:
-    parts = test_path.split("::")
-    file_part = parts[0]
-    class_part = parts[1] if len(parts) > 1 else ""
-    method_part = parts[2] if len(parts) > 2 else ""
     repro_path = test_path
     return f"""## Summary
 
@@ -123,8 +118,12 @@ Sparkless uses robin-sparkless as an optional execution backend. This failure in
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Create Robin parity issues from result files.")
-    parser.add_argument("--dry-run", action="store_true", help="Print issues only, do not call gh")
+    parser = argparse.ArgumentParser(
+        description="Create Robin parity issues from result files."
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print issues only, do not call gh"
+    )
     parser.add_argument(
         "--robin-results",
         type=Path,
@@ -144,8 +143,12 @@ def main() -> int:
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
-    robin_path = args.robin_results or (root / "tests" / "robin_parity_broad_results.txt")
-    pyspark_path = args.pyspark_results or (root / "tests" / "pyspark_parity_failed_results.txt")
+    robin_path = args.robin_results or (
+        root / "tests" / "robin_parity_broad_results.txt"
+    )
+    pyspark_path = args.pyspark_results or (
+        root / "tests" / "pyspark_parity_failed_results.txt"
+    )
     if not robin_path.exists():
         print(f"Missing {robin_path}", file=sys.stderr)
         return 1
@@ -157,10 +160,14 @@ def main() -> int:
     pyspark_passed = parse_pyspark_passed(pyspark_path)
     if args.no_already_filed:
         new_tests = sorted(pyspark_passed)
-        print(f"PySpark passed: {len(pyspark_passed)}, new (no already-filed filter): {len(new_tests)}")
+        print(
+            f"PySpark passed: {len(pyspark_passed)}, new (no already-filed filter): {len(new_tests)}"
+        )
     else:
         new_tests = sorted(pyspark_passed - ALREADY_FILED)
-        print(f"PySpark passed: {len(pyspark_passed)}, already filed: {len(ALREADY_FILED)}, new: {len(new_tests)}")
+        print(
+            f"PySpark passed: {len(pyspark_passed)}, already filed: {len(ALREADY_FILED)}, new: {len(new_tests)}"
+        )
 
     body_file = root / "tests" / ".robin_issue_body.txt"
     body_file.parent.mkdir(parents=True, exist_ok=True)
