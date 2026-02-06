@@ -398,23 +398,25 @@ class Column(ColumnOperatorMixin, IColumn):
         """Hash method to make Column hashable."""
         return hash((self.name, self.column_type))
 
-    def __getitem__(self, key: Any) -> "Column":
-        """Support subscript notation for struct field access.
+    def __getitem__(self, key: Any) -> Union["Column", "ColumnOperation"]:
+        """Support subscript notation for struct field access and map lookup.
 
         Args:
-            key: Field name (string) for struct field access.
+            key: Field name (string) for struct field access, or Column for map lookup.
 
         Returns:
-            New Column with the struct field path (e.g., "StructVal.E1").
+            For struct: New Column with the struct field path (e.g., "StructVal.E1").
+            For map: ColumnOperation getItem for map[key_column] lookup.
 
         Example:
             >>> F.col("StructVal")["E1"]  # Returns Column("StructVal.E1")
-            >>> df.select(F.col("Person")["name"])
-
-        Note:
-            This enables PySpark-compatible subscript notation for accessing
-            struct fields, matching the behavior of F.col("StructVal.E1").
+            >>> F.col("map_col")[F.col("key_col")]  # Map lookup by column (Issue #440)
         """
+        # Map lookup: map_col[other_col] -> getItem (Issue #440). Do NOT route int here -
+        # struct columns use string keys only; struct[int] should raise TypeError.
+        if isinstance(key, Column):
+            return self.getItem(key)
+
         if not isinstance(key, str):
             raise TypeError(
                 f"Column subscript access only supports string keys for struct fields, got {type(key).__name__}"
