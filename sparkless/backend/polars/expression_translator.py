@@ -4076,13 +4076,14 @@ class PolarsExpressionTranslator:
 
             import re
 
-            regex = re.compile(pattern)
-
+            # Compile inside the closure so we only capture (pattern, idx). Using a
+            # compiled regex from the parent in a pytest-xdist forked worker can hang.
             def _extract_all(val: Any) -> Any:
                 if val is None:
                     return None
                 if not isinstance(val, str):
                     val = str(val)
+                regex = re.compile(pattern)
                 out: List[str] = []
                 for m in regex.finditer(val):
                     try:

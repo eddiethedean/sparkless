@@ -49,14 +49,19 @@ elif [ "$BACKEND" = "robin" ]; then
 fi
 echo ""
 
-# Determine worker count: -n arg > SPARKLESS_TEST_WORKERS > default 8
+# Determine worker count: -n arg > SPARKLESS_TEST_WORKERS > default (8, or 4 for Robin to reduce worker crashes)
 if [ -n "$WORKERS" ]; then
     # User explicitly passed -n N
     WORKER_COUNT="$WORKERS"
 elif [ -n "${SPARKLESS_TEST_WORKERS:-}" ]; then
     WORKER_COUNT="${SPARKLESS_TEST_WORKERS}"
 else
-    WORKER_COUNT="8"
+    if [ "$BACKEND" = "robin" ]; then
+        # Robin mode: use fewer workers by default to reduce "node down" crashes and xdist KeyError (see docs/robin_mode_worker_crash_investigation.md)
+        WORKER_COUNT="4"
+    else
+        WORKER_COUNT="8"
+    fi
 fi
 
 # Check if pytest-xdist works by doing a minimal collect with -n

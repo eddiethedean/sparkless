@@ -69,6 +69,18 @@ spark = SparkSession(backend_type="polars")
   not appear in `list_available_backends()` and selecting it raises a
   `ValueError` with install instructions.
 
+## Robin backend (optional)
+
+When using `backend_type="robin"`, the Robin materializer supports: **filter**
+(simple conditions and AND/OR), **select** (column names only), **limit**,
+**orderBy**, **withColumn** (simple expressions), **join**, and **union**.
+**groupBy** + agg and **select with Column expressions** (e.g. `F.regexp_extract_all(...)`) are not yet supported and will raise `SparkUnsupportedOperationError`. For a full list and recommended Sparkless improvements, see [robin_compatibility_recommendations.md](robin_compatibility_recommendations.md).
+
+When running tests in Robin mode with many parallel workers, you may see worker
+crashes ("node down: Not properly terminated") or an INTERNALERROR. Use fewer
+workers (e.g. `-n 4`) or run serially (`-n 0`); the test runner defaults to 4
+workers for Robin. See [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).
+
 ## Running tests with a specific backend
 
 To run the full test suite using the Robin backend (requires `pip install sparkless[robin]`):
@@ -98,6 +110,9 @@ Individual tests can request the Robin backend via the marker:
 - **Robin backend not available** – install with `pip install sparkless[robin]`
   or `pip install robin-sparkless`; then `robin` will appear in
   `list_available_backends()`.
+- **Robin: worker crashes or INTERNALERROR** – when using pytest-xdist with
+  Robin, use fewer workers (e.g. `-n 4`) or serial (`-n 0`). See
+  [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).
 - **Permission issues with `file` backend** – adjust the base path by passing
   `SparkSession.builder.config("spark.sparkless.backend.basePath", "/tmp/mock")` and
   ensure the process can read/write there.
