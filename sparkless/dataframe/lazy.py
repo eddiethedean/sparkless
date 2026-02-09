@@ -496,7 +496,7 @@ class LazyEvaluationEngine:
                     raise SparkUnsupportedOperationError(
                         operation=f"Operations: {', '.join(unsupported_ops)}",
                         reason=f"Backend '{backend_type}' does not support these operations",
-                        alternative="Consider using _materialize_manual() or a different backend",
+                        alternative="Consider using a different backend (e.g. polars)",
                     )
 
                 # Compute final schema after all operations

@@ -1,7 +1,7 @@
 """
 Robin (robin-sparkless) materializer.
 
-Implements DataMaterializer using robin_sparkless: create_dataframe_from_rows
+Implements DataMaterializer using robin_sparkless: _create_dataframe_from_rows (0.3.0+)
 for arbitrary schema, then filter, select, limit (and optionally orderBy, withColumn,
 join, union). Unsupported operations cause can_handle_operations -> False so the
 caller may raise SparkUnsupportedOperationError or use another backend.
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, List, Tuple
 
-from sparkless.spark_types import Row, StructType
+from sparkless.spark_types import Row, StringType, StructField, StructType
 
 # Map Sparkless DataType.typeName() to robin_sparkless create_dataframe_from_rows dtype strings.
 # Robin supports: bigint, int, long, double, float, string, str, varchar, boolean, bool, date, timestamp, datetime.
@@ -100,6 +100,25 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             if left_expr is not None and right_expr is not None:
                 return left_expr | right_expr
             return None
+        # isin: ColumnOperation("isin", column=Column, value=list)
+        # Robin doesn't have col.isin([...]); translate to (col==v1) | (col==v2) | ...
+        if op == "isin":
+            if not isinstance(col_side, Column):
+                return None
+            col_name = getattr(col_side, "name", None)
+            if not isinstance(col_name, str):
+                return None
+            values = val_side if isinstance(val_side, (list, tuple)) else []
+            if not values:
+                return None
+            robin_col = F.col(col_name)
+            # Build OR chain: (col==v1) | (col==v2) | ...
+            result: Any = None
+            for v in values:
+                lit_val = F.lit(v)  # type: ignore[arg-type]
+                eq_expr = robin_col.eq(lit_val)
+                result = eq_expr if result is None else (result | eq_expr)
+            return result
         if op not in (">", "<", ">=", "<=", "==", "!="):
             return None
         # Left side: Column (col name) or ColumnOperation (nested, not supported here)
@@ -178,7 +197,7 @@ def _join_on_to_column_names(on: Any) -> List[str] | None:
 def _expression_to_robin(expr: Any) -> Any:
     """Translate a Sparkless Column expression to robin_sparkless Column for withColumn.
 
-    Supports: Column (name ref), Literal, and ColumnOperation with op in
+    Supports: Column (name ref), Literal, alias, and ColumnOperation with op in
     (+, -, *, /, >, <, >=, <=, ==, !=). Returns None if not supported.
     """
     from sparkless.functions import ColumnOperation
@@ -201,10 +220,22 @@ def _expression_to_robin(expr: Any) -> Any:
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
         val_side = getattr(expr, "value", None)
+        # Alias: column.alias("name") -> translate column and add alias if robin supports it
+        if op == "alias":
+            inner = _expression_to_robin(col_side) if col_side is not None else None
+            if inner is None:
+                return None
+            alias_name = val_side if isinstance(val_side, str) else None
+            if alias_name is not None and hasattr(inner, "alias"):
+                return inner.alias(alias_name)
+            return inner
         left = _expression_to_robin(col_side) if col_side is not None else None
         right = _expression_to_robin(val_side) if val_side is not None else None
         if left is None or right is None:
             return None
+        # Commutative ops: allow Literal on left (e.g. lit(2) + col("x")) by swapping
+        if isinstance(col_side, Literal) and op in ("+", "*", "==", "!="):
+            left, right = right, left
         # robin-sparkless Column uses method-based API (gt, lt, etc.), not Python operators
         if op in (">", "<", ">=", "<=", "==", "!="):
             if op == ">":
@@ -219,14 +250,15 @@ def _expression_to_robin(expr: Any) -> Any:
                 return left.eq(right)
             if op == "!=":
                 return left.ne(right)
-        if op == "+":
-            return left + right
-        if op == "-":
-            return left - right
-        if op == "*":
-            return left * right
-        if op == "/":
-            return left / right
+        if op in ("+", "-", "*", "/"):
+            if op == "+":
+                return left + right
+            if op == "-":
+                return left - right
+            if op == "*":
+                return left * right
+            if op == "/":
+                return left / right
         return None
     return None
 
@@ -247,6 +279,8 @@ class RobinMaterializer:
         "withColumn",
         "join",
         "union",
+        "distinct",
+        "drop",
     }
 
     def __init__(self) -> None:
@@ -254,6 +288,13 @@ class RobinMaterializer:
 
     def _can_handle_filter(self, payload: Any) -> bool:
         return _simple_filter_to_robin(payload) is not None
+
+    def _can_handle_distinct(self, payload: Any) -> bool:
+        return payload == () or payload is None
+
+    def _can_handle_drop(self, payload: Any) -> bool:
+        cols = payload if isinstance(payload, (list, tuple)) else [payload]
+        return len(cols) > 0 and all(isinstance(c, str) for c in cols)
 
     def _can_handle_order_by(self, payload: Any) -> bool:
         if not isinstance(payload, (list, tuple)) or len(payload) < 1:
@@ -322,6 +363,10 @@ class RobinMaterializer:
             return self._can_handle_with_column(op_payload)
         if op_name == "join":
             return self._can_handle_join(op_payload)
+        if op_name == "distinct":
+            return self._can_handle_distinct(op_payload)
+        if op_name == "drop":
+            return self._can_handle_drop(op_payload)
         return op_name == "union"
 
     def can_handle_operations(
@@ -347,14 +392,24 @@ class RobinMaterializer:
         F = robin_sparkless  # type: ignore[union-attr]
         if not schema.fields:
             raise ValueError("RobinMaterializer requires a non-empty schema")
-        # For initial creation, use only columns present in data. The passed schema may be
-        # the fully projected schema (e.g. after join) which can include right-side columns
-        # not yet in the left data. robin create_dataframe_from_rows rejects duplicate
-        # column names, so we must match schema to data.
+        # For initial creation, use columns from data to support operations like drop().
+        # The passed schema may be the final projected schema (e.g. after drop) which
+        # would omit columns we need for intermediate ops. Use data keys first.
+        name_to_field = {f.name: f for f in schema.fields}
         if data:
-            init_names = list(data[0].keys()) if isinstance(data[0], dict) else []
-            name_to_field = {f.name: f for f in schema.fields}
-            init_fields = [name_to_field[n] for n in init_names if n in name_to_field]
+            if isinstance(data[0], dict):
+                init_names = list(data[0].keys())
+            elif hasattr(data[0], "_fields"):
+                init_names = list(data[0]._fields)
+            else:
+                init_names = [f.name for f in schema.fields]
+            # Include all columns present in data; use schema for types, default string if missing
+            init_fields = []
+            for n in init_names:
+                if n in name_to_field:
+                    init_fields.append(name_to_field[n])
+                else:
+                    init_fields.append(StructField(n, StringType(), True))
             if not init_fields:
                 init_fields = schema.fields
                 init_names = [f.name for f in schema.fields]
@@ -367,7 +422,7 @@ class RobinMaterializer:
         robin_data = _data_to_robin_rows(data, init_names)
 
         spark = F.SparkSession.builder().app_name("sparkless-robin-poc").get_or_create()
-        df = spark.create_dataframe_from_rows(robin_data, robin_schema)
+        df = spark._create_dataframe_from_rows(robin_data, robin_schema)
 
         for op_name, payload in operations:
             if op_name == "filter":
@@ -396,6 +451,14 @@ class RobinMaterializer:
                 df = df.order_by(col_names, asc_list)
             elif op_name == "withColumn":
                 col_name, expression = payload[0], payload[1]
+                # Unwrap alias: withColumn("doubled", (expr).alias("doubled")) -> pass
+                # only the inner expression; Robin uses col_name for the new column.
+                from sparkless.functions import ColumnOperation
+
+                if isinstance(expression, ColumnOperation) and getattr(
+                    expression, "operation", None
+                ) == "alias":
+                    expression = getattr(expression, "column", expression)
                 robin_expr = _expression_to_robin(expression)
                 if robin_expr is not None:
                     df = df.with_column(col_name, robin_expr)
@@ -408,7 +471,7 @@ class RobinMaterializer:
                     for f in other_eager.schema.fields
                 ]
                 other_robin_data = _data_to_robin_rows(other_eager.data, other_names)
-                other_robin_df = spark.create_dataframe_from_rows(
+                other_robin_df = spark._create_dataframe_from_rows(
                     other_robin_data, other_robin_schema
                 )
                 how_str = "outer" if how == "full" else how
@@ -436,10 +499,19 @@ class RobinMaterializer:
                     for f in other_eager.schema.fields
                 ]
                 other_robin_data = _data_to_robin_rows(other_eager.data, other_names)
-                other_robin_df = spark.create_dataframe_from_rows(
+                other_robin_df = spark._create_dataframe_from_rows(
                     other_robin_data, other_robin_schema
                 )
                 df = df.union(other_robin_df)
+            elif op_name == "distinct":
+                df = df.distinct()
+            elif op_name == "drop":
+                cols = (
+                    list(payload)
+                    if isinstance(payload, (list, tuple))
+                    else [payload]
+                )
+                df = df.drop(cols)
 
         collected = df.collect()
         # Use projected schema so column order and duplicate names (e.g. after join) are correct

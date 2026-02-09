@@ -24,25 +24,21 @@ This document lists **concrete Sparkless-side changes** that improve Robin backe
 ### High priority
 
 1. **Add groupBy + agg to Robin materializer**  
-   - **Why:** Many parity and unit tests use `df.groupBy(...).agg(...)` or `count()`, `sum()`, etc. Robin materializer does not list `groupBy` in `SUPPORTED_OPERATIONS`, so those tests raise `SparkUnsupportedOperationError`.  
-   - **What:** Add `"groupBy"` to `SUPPORTED_OPERATIONS`, and in the materialize loop handle the groupBy op plus the subsequent agg (see how the operations queue encodes groupBy + GroupedData.agg in lazy.py / Polars materializer). Translate to robin_sparkless `df.group_by([...]).agg(...)` (or equivalent).  
-   - **Files:** `sparkless/backend/robin/materializer.py`, and possibly `logical_plan` / queue shape for groupBy+agg.
+   - **Status:** Not implemented. In the current design, `groupBy` never appears in a DataFrame’s `_operations_queue`; `GroupedData.agg()` materializes the parent DataFrame (via Robin when applicable) and then runs aggregation in Python. So typical `df.filter(...).groupBy("a").count()` already works with Robin (filter is materialized by Robin, then group+count run in Sparkless). Adding groupBy to the Robin materializer would only matter if a future path put groupBy in the queue.  
+   - **What (if needed):** Add `"groupBy"` to `SUPPORTED_OPERATIONS` and in the materialize loop translate to robin_sparkless `df.group_by([...]).agg(...)` when the queue contains groupBy.
 
 2. **Document Robin-supported operations and limits**  
-   - **Why:** Users and contributors need to know what works in Robin mode and what fails fast.  
-   - **What:** Add a short “Robin backend” section to [backend_selection.md](backend_selection.md) (or a dedicated `docs/robin_backend.md`) listing: supported ops (filter, select by name, limit, orderBy, withColumn, join, union), unsupported (select with expressions, groupBy until implemented, UDF, window, etc.), and the worker-crash workaround (use `-n 4` or `-n 0`).  
-   - **Files:** `docs/backend_selection.md` and/or `docs/robin_backend.md`.
+   - **Status:** Done. [backend_selection.md](backend_selection.md) has a “Robin backend” section; [robin_compatibility_recommendations.md](robin_compatibility_recommendations.md) lists supported/unsupported ops and the worker-crash workaround.
 
 ### Medium priority
 
 3. **Join result: 0 rows**  
-   - **Why:** Robin join path runs but some tests see 0 rows for inner/left/right/outer.  
-   - **What:** Debug conversion from `df.collect()` to `List[Row]` (column names, schema, duplicate handling). If our conversion is correct, compare with robin-sparkless `join(on=..., how=...)` behavior and open or reference a robin-sparkless issue if the bug is upstream.  
-   - **Files:** `sparkless/backend/robin/materializer.py` (collect → merged → Row), and robin-sparkless API usage.
+   - **Status:** Not changed. Conversion from `collect()` to `List[Row]` (and `_right` merge) is in place; if Robin still returns 0 rows for some joins, the cause is likely in robin-sparkless or in the join keys we pass. Debug with a minimal repro and report upstream if needed.  
+   - **Files:** `sparkless/backend/robin/materializer.py` (collect → merged → Row).
 
 4. **Extend withColumn expression translation**  
-   - **Why:** `_expression_to_robin()` supports only a subset of expressions; more withColumn tests would pass if we translated more ops (e.g. arithmetic, simple functions).  
-   - **What:** Incrementally extend `_expression_to_robin()` for expressions that robin-sparkless supports (check their API). Prefer clear “unsupported” for complex expressions rather than incorrect translation.
+   - **Status:** Done. `_expression_to_robin()` now supports: **alias** (e.g. `col.alias("x")`), **commutative ops** with `Literal` on the left (e.g. `lit(2) + col("x")`), and the same comparison/arithmetic ops as before.  
+   - **Files:** `sparkless/backend/robin/materializer.py`.
 
 ### Low priority / optional
 
@@ -50,9 +46,8 @@ This document lists **concrete Sparkless-side changes** that improve Robin backe
    - **Why:** Users who see “node down” or INTERNALERROR in Robin mode need a quick pointer.  
    - **What:** In backend_selection “Troubleshooting” or “Robin backend”, add one line: “If you see worker crashes or INTERNALERROR when running with many workers, use fewer workers (e.g. `-n 4`) or serial (`-n 0`); see [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).”
 
-6. **Fallback to Polars when Robin can’t handle an op**  
-   - **Why:** Tests could run (with Polars) instead of failing with SparkUnsupportedOperationError in Robin mode.  
-   - **Trade-off:** Hides Robin gaps and changes semantics (result may differ from “pure” Robin). Prefer only behind a config flag (e.g. `spark.sparkless.robin.fallbackToPolars=true`) and document that it’s for development/CI, not for asserting Robin behavior.
+6. **Pure Robin mode (no Polars fallback)**  
+   - **Status:** Done. When Robin is selected, Sparkless runs in pure Robin mode only. Unsupported operations raise `SparkUnsupportedOperationError`. Use the Polars backend for full operation coverage.
 
 ---
 
@@ -71,11 +66,13 @@ No Sparkless code change is required for these; we work around or skip where nee
 
 | Operation | Supported | Notes |
 |-----------|-----------|--------|
-| filter | Yes | Simple col op literal; AND/OR. Method API (.gt, .lt, …). |
+| filter | Yes | Simple col op literal; AND/OR; isin (translated to OR of equality). Method API (.gt, .lt, …). |
 | select | Partial | Only list of column names (strings). No Column expressions. |
 | limit | Yes | Non-negative int. |
 | orderBy | Yes | Column names + optional ascending. |
 | withColumn | Partial | Only expressions translatable by `_expression_to_robin`. |
 | join | Yes | on= list or extracted from col==col; how= inner/left/right/outer/semi/anti. |
 | union | Yes | |
+| distinct | Yes | Deduplicate rows. |
+| drop | Yes | Drop column(s) by name. |
 | groupBy + agg | **No** | Recommended to add (high priority). |
