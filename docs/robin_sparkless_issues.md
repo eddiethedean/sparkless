@@ -2,6 +2,18 @@
 
 The following text can be copied into the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) GitHub repo when opening issues.
 
+## Issues created from robin_sparkless_needs.md (2026-02-08)
+
+| # | Title | Link |
+|---|-------|------|
+| 182 | select()/with_column() resolve Column expressions by name instead of evaluating them | https://github.com/eddiethedean/robin-sparkless/issues/182 |
+| 184 | [Enhancement] Filter: support Column–Column comparisons (col_a > col_b) | https://github.com/eddiethedean/robin-sparkless/issues/184 |
+| 185 | [Enhancement] filter(condition): document Column-only or accept literal bool | https://github.com/eddiethedean/robin-sparkless/issues/185 |
+| 186 | [Enhancement] lit(): extend to date/datetime types for PySpark parity | https://github.com/eddiethedean/robin-sparkless/issues/186 |
+| 187 | [Enhancement] Window API for row_number, rank, sum over window, lag, lead | https://github.com/eddiethedean/robin-sparkless/issues/187 |
+
+Created via `gh issue create -R eddiethedean/robin-sparkless` with body files in `docs/robin_issue_*.md`.
+
 ## Issues created 2026-02-06 (from ownership analysis)
 
 | # | Title | Link |

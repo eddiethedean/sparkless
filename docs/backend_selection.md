@@ -17,8 +17,8 @@ benchmarks favour alternative engines.
 - `duckdb` (optional) – legacy SQL-backed engine. Requires the
   `sparkless.backend.duckdb` modules to be installed (available in the 2.x
   releases) alongside `duckdb`/`duckdb-engine` Python packages.
-- `robin` (optional) – Rust/Polars engine via the `robin-sparkless` package (0.3.0+).
-  Install with `pip install sparkless[robin]` or `pip install robin-sparkless>=0.3.0`.
+- `robin` (optional) – Rust/Polars engine via the `robin-sparkless` package (0.4.0+).
+  Install with `pip install sparkless[robin]` or `pip install robin-sparkless>=0.4.0`.
   If the package is not installed, selecting `robin` raises a `ValueError`
   with install instructions.
 
@@ -72,13 +72,13 @@ spark = SparkSession(backend_type="polars")
 ## Robin backend (optional)
 
 When using `backend_type="robin"`, Sparkless runs in **pure Robin mode** (no
-fallback to Polars). The Robin materializer supports: **filter** (simple
-conditions, AND/OR, and `isin`), **select** (column names only), **limit**,
-**orderBy**, **withColumn** (simple expressions), **join**, **union**,
-**distinct**, and **drop**. **groupBy** + agg and **select with Column
-expressions** (e.g. `F.regexp_extract_all(...)`) are not yet supported and will
-raise `SparkUnsupportedOperationError`. For a full list and recommended Sparkless
-improvements, see [robin_compatibility_recommendations.md](robin_compatibility_recommendations.md).
+fallback to Polars). With **robin-sparkless 0.4.0+**, the Robin materializer
+supports: **filter** (including Column–Column comparisons), **select** (column
+names and Column expressions), **limit**, **orderBy**, **withColumn** (Column
+expressions), **join**, **union**, **distinct**, and **drop**. **groupBy** + agg
+and some expressions (e.g. `F.regexp_extract_all(...)`) may not yet be
+supported and will raise `SparkUnsupportedOperationError`. For a full list and
+recommended Sparkless improvements, see [robin_compatibility_recommendations.md](robin_compatibility_recommendations.md).
 
 When running tests in Robin mode with many parallel workers, you may see worker
 crashes ("node down: Not properly terminated") or an INTERNALERROR. Use fewer

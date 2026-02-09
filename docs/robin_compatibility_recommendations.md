@@ -53,12 +53,13 @@ This document lists **concrete Sparkless-side changes** that improve Robin backe
 
 ## What to leave to robin-sparkless
 
-- **select() with Column expressions** (e.g. `regexp_extract_all`) – robin-sparkless issue #176.  
-- **Operator overloads on Column** (`col > lit`) – robin-sparkless already has an issue; we use method API.  
-- **join(on="col")** – single-column string; we pass list; robin-sparkless issue exists.  
+- **select() / with_column() with Column expressions** – **Resolved in robin-sparkless 0.4.0** (issue #182). Sparkless requires 0.4.0+ and uses these APIs.
+- **Filter Column–Column, filter(bool), lit(date/datetime), Window API** – **Resolved in 0.4.0** (issues #184–#187).
+- **select() with some expressions** (e.g. `regexp_extract_all`) – robin-sparkless issue #176 if still needed.  
+- **join(on="col")** – single-column string; we pass list; robin-sparkless issue #175.  
 - **Worker crashes under pytest-xdist** – robin-sparkless issue #178 (fork-safety / stability).
 
-No Sparkless code change is required for these; we work around or skip where needed and track upstream fixes.
+No Sparkless code change is required for the remaining items; we work around or skip where needed and track upstream fixes.
 
 ---
 
@@ -67,10 +68,10 @@ No Sparkless code change is required for these; we work around or skip where nee
 | Operation | Supported | Notes |
 |-----------|-----------|--------|
 | filter | Yes | Simple col op literal; AND/OR; isin (translated to OR of equality). Method API (.gt, .lt, …). |
-| select | Partial | Only list of column names (strings). No Column expressions. |
+| select | Yes (0.4.0+) | Column names (strings) and Column expressions. |
 | limit | Yes | Non-negative int. |
 | orderBy | Yes | Column names + optional ascending. |
-| withColumn | Partial | Only expressions translatable by `_expression_to_robin`. |
+| withColumn | Yes (0.4.0+) | Expressions translatable by `_expression_to_robin`; robin-sparkless 0.4.0+ accepts Column in `with_column()`. |
 | join | Yes | on= list or extracted from col==col; how= inner/left/right/outer/semi/anti. |
 | union | Yes | |
 | distinct | Yes | Deduplicate rows. |

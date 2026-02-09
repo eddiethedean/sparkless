@@ -81,7 +81,7 @@ docs = [
     "sphinx-autodoc-typehints>=1.19.0",
 ]
 robin = [
-    "robin-sparkless>=0.3.0",
+    "robin-sparkless>=0.4.0",
 ]
 
 [project.urls]

@@ -10,25 +10,14 @@ from sparkless.backend.factory import BackendFactory
 from sparkless.functions import F
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-# robin-sparkless with_column() currently expects column-name resolution; passing
-# expression Column objects yields RuntimeError "not found: <expr>". Xfail until
-# robin-sparkless supports expression with_column.
-ROBIN_WITH_COLUMN_EXPR_XFAIL = pytest.mark.xfail(
-    reason="robin-sparkless with_column does not accept expression Column objects",
-    raises=RuntimeError,
-    strict=True,
-)
-
-
 @pytest.mark.unit
 class TestRobinMaterializerExpressionTranslation:
-    """Test _expression_to_robin supports alias and literal-on-left for withColumn."""
+    """Test _expression_to_robin supports alias and literal-on-left for withColumn (robin-sparkless 0.4.0+)."""
 
     def teardown_method(self) -> None:
         BackendFactory._robin_available_cache = None
 
     @pytest.mark.backend("robin")
-    @ROBIN_WITH_COLUMN_EXPR_XFAIL
     def test_with_column_alias_expression_robin(self, spark: Any) -> None:
         """WithColumn with col.alias('x') is supported when Robin backend is used."""
         if get_backend_type() != BackendType.ROBIN:
@@ -42,7 +31,6 @@ class TestRobinMaterializerExpressionTranslation:
         assert result[2]["doubled"] == 6
 
     @pytest.mark.backend("robin")
-    @ROBIN_WITH_COLUMN_EXPR_XFAIL
     def test_with_column_literal_plus_column_robin(self, spark: Any) -> None:
         """WithColumn with lit(2) + col('x') (literal on left) is supported when Robin backend is used."""
         if get_backend_type() != BackendType.ROBIN:
@@ -54,7 +42,6 @@ class TestRobinMaterializerExpressionTranslation:
         assert result[1]["plus_two"] == 22
 
     @pytest.mark.backend("robin")
-    @ROBIN_WITH_COLUMN_EXPR_XFAIL
     def test_with_column_literal_times_column_robin(self, spark: Any) -> None:
         """WithColumn with lit(3) * col('x') (literal on left) is supported when Robin backend is used."""
         if get_backend_type() != BackendType.ROBIN:
