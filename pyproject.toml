@@ -154,15 +154,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-# Robin unsupported tests: type-check strictly (no ignore_errors) so typing is fixed
-[[tool.mypy.overrides]]
-module = [
-    "tests.robin_helpers",
-    "tests.unit.backend.test_robin_unsupported_raises",
-    "tests.unit.backend.robin_test_utils",
-]
-ignore_errors = false
-
 [[tool.mypy.overrides]]
 module = [
     "sparkless.testing.*",

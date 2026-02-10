@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from sparkless.dataframe.protocols import SupportsDataFrameOps
+from typing import Any, List, Protocol
 
 
-def trigger_collect(df: SupportsDataFrameOps) -> None:
+class _Collectible(Protocol):
+    def collect(self) -> List[Any]: ...
+
+
+def trigger_collect(df: _Collectible) -> None:
     """Call collect() to trigger materialization (used in tests that expect an error)."""
     df.collect()
