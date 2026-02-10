@@ -257,6 +257,36 @@ class UnifiedStorageManager(IStorageManager):
         """
         self.backend.create_temp_view(name, dataframe)
 
+    def drop_temp_view(self, name: str) -> bool:
+        """Drop a temporary view.
+
+        Args:
+            name: Name of the temporary view to drop.
+
+        Returns:
+            True if the view existed and was dropped, False otherwise.
+        """
+        return self.backend.drop_temp_view(name)
+
+    def temp_view_exists(self, name: str) -> bool:
+        """Check if a temporary view exists.
+
+        Args:
+            name: Name of the temporary view.
+
+        Returns:
+            True if the view exists, False otherwise.
+        """
+        return self.backend.temp_view_exists(name)
+
+    def list_temp_views(self) -> List[str]:
+        """List all temporary views.
+
+        Returns:
+            List of temporary view names.
+        """
+        return self.backend.list_temp_views()
+
     def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
 
