@@ -10,7 +10,11 @@ from __future__ import annotations
 
 import datetime as _dt
 
-from sparkless.sql import SparkSession, functions as F
+from tests.fixtures.spark_imports import get_spark_imports
+
+imports = get_spark_imports()
+SparkSession = imports.SparkSession
+F = imports.F
 
 
 class TestDateTruncPolarsBackend:
@@ -46,4 +50,3 @@ class TestDateTruncPolarsBackend:
             assert month_value.date() == _dt.date(2024, 3, 1)
         else:
             assert month_value == _dt.date(2024, 3, 1)
-

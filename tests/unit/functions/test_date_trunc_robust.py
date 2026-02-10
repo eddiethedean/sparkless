@@ -28,7 +28,9 @@ def _as_datetime(value: object) -> _dt.datetime:
         return value
     if isinstance(value, _dt.date):
         return _dt.datetime.combine(value, _dt.time())
-    raise AssertionError(f"Unexpected value type for datetime comparison: {type(value)!r}")
+    raise AssertionError(
+        f"Unexpected value type for datetime comparison: {type(value)!r}"
+    )
 
 
 class TestDateTruncRobust:
@@ -136,4 +138,3 @@ class TestDateTruncRobust:
         # Second row: valid datetime -> truncated to first of month
         month_trunc = _as_datetime(result[1]["month_trunc"])
         assert month_trunc.date() == _dt.date(2024, 3, 1)
-
