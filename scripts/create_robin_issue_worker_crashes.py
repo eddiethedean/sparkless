@@ -17,12 +17,22 @@ from pathlib import Path
 
 REPO = "eddiethedean/robin-sparkless"
 TITLE = "[Bug] Worker processes crash (node down: Not properly terminated) when used from pytest-xdist (forked workers)"
-BODY_FILE = Path(__file__).resolve().parent.parent / "docs" / "robin_github_issue_worker_crashes.md"
+BODY_FILE = (
+    Path(__file__).resolve().parent.parent
+    / "docs"
+    / "robin_github_issue_worker_crashes.md"
+)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Create robin-sparkless issue for worker crashes under xdist")
-    parser.add_argument("--dry-run", action="store_true", help="Print title and body path, do not create")
+    parser = argparse.ArgumentParser(
+        description="Create robin-sparkless issue for worker crashes under xdist"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print title and body path, do not create",
+    )
     args = parser.parse_args()
 
     if not BODY_FILE.exists():
@@ -32,14 +42,21 @@ def main() -> int:
     print(f"Title: {TITLE}")
     print(f"Body file: {BODY_FILE}")
     if args.dry_run:
-        print("Dry run: would run gh issue create -R {} --title ... --body-file {}".format(REPO, BODY_FILE))
+        print(
+            f"Dry run: would run gh issue create -R {REPO} --title ... --body-file {BODY_FILE}"
+        )
         return 0
 
     cmd = [
-        "gh", "issue", "create",
-        "-R", REPO,
-        "--title", TITLE,
-        "--body-file", str(BODY_FILE),
+        "gh",
+        "issue",
+        "create",
+        "-R",
+        REPO,
+        "--title",
+        TITLE,
+        "--body-file",
+        str(BODY_FILE),
     ]
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)

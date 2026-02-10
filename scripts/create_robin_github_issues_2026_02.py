@@ -127,9 +127,14 @@ In the Python bindings for `join`, accept `on` as:
     },
 ]
 
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Create GitHub issues in robin-sparkless")
-    parser.add_argument("--dry-run", action="store_true", help="Print issue content without creating")
+    parser = argparse.ArgumentParser(
+        description="Create GitHub issues in robin-sparkless"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print issue content without creating"
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     created = 0
@@ -150,10 +155,15 @@ def main() -> int:
         body_file.write_text(body, encoding="utf-8")
 
         cmd = [
-            "gh", "issue", "create",
-            "-R", REPO,
-            "--title", title,
-            "--body-file", str(body_file),
+            "gh",
+            "issue",
+            "create",
+            "-R",
+            REPO,
+            "--title",
+            title,
+            "--body-file",
+            str(body_file),
         ]
         if labels:
             for label in labels:
@@ -175,7 +185,9 @@ def main() -> int:
     if not args.dry_run:
         print(f"\nCreated {created}/{len(ISSUES)} issue(s) in {REPO}.")
     else:
-        print(f"\nDry run: would create {len(ISSUES)} issue(s). Run without --dry-run to create.")
+        print(
+            f"\nDry run: would create {len(ISSUES)} issue(s). Run without --dry-run to create."
+        )
 
     return 0 if created == len(ISSUES) or args.dry_run else 1
 
