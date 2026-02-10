@@ -65,39 +65,27 @@ result = df.select("Name").collect()  # Must use exact case
 # df.select("name") would raise column not found error
 ```
 
-## Backend Configuration (v3.0.0+)
+## Backend Configuration (v4)
 
-### Default Backend (Polars)
+### Robin Backend (Only Option)
+
+In v4 only the Robin backend is supported. The default is Robin.
 
 ```python
-# Polars is the default backend in v3.0.0+
+# Default (Robin)
 spark = SparkSession("MyApp")
-```
 
-### Explicit Backend Selection
-
-```python
-# Use Polars explicitly
+# Explicit (same)
 spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "polars") \
-    .getOrCreate()
-
-# Use DuckDB backend (legacy, requires duckdb package)
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "duckdb") \
-    .config("spark.sparkless.backend.maxMemory", "4GB") \
-    .config("spark.sparkless.backend.allowDiskSpillover", True) \
-    .getOrCreate()
-
-# Use memory backend
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "memory") \
+    .config("spark.sparkless.backend", "robin") \
     .getOrCreate()
 ```
+
+Setting any other `spark.sparkless.backend` value will raise `ValueError`. See [migration_v3_to_v4.md](../migration_v3_to_v4.md) when migrating from v3.
 
 ### Backend-Specific Options
 
-**Polars Backend (default):**
+**Robin Backend (v4 default):**
 - No configuration needed - Polars handles memory and performance automatically
 - Thread-safe by design
 - Uses Parquet files for persistence
@@ -114,5 +102,5 @@ You can tune mock behaviour per pipeline using the following.
 
 - **Lazy vs eager evaluation** – `SparkSession(..., enable_lazy_evaluation=True)` (default) defers execution until an action (`collect`, `show`, `count`, etc.). Set to `False` for legacy eager behaviour.
 - **Logical plan path** – Set `spark.conf.set("spark.sparkless.useLogicalPlan", "true")` (or builder config) to use the serialized logical plan path when the backend supports it (e.g. Robin). This can change execution strategy and performance.
-- **Backend selection** – The Polars backend is the default and is optimized for in-memory pipelines. For very large or I/O-bound workloads, consider splitting data or using the appropriate backend (see [Backend selection](../backend_selection.md)).
+- **Backend** – In v4 only the Robin backend is supported (see [Backend selection](../backend_selection.md)).
 - **Profiling** – Optional profiling utilities are documented in [Profiling](../performance/profiling.md). Use them to identify hot paths before tuning.

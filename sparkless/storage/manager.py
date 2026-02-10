@@ -13,7 +13,7 @@ import os
 from ..core.interfaces.storage import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.file import FileStorageManager
-from sparkless.backend.polars import PolarsStorageManager
+from sparkless.backend.robin.storage import RobinStorageManager
 from sparkless.spark_types import StructType, StructField
 
 
@@ -70,16 +70,16 @@ class StorageManagerFactory:
         return FileStorageManager(base_path)
 
     @staticmethod
-    def create_polars_manager(db_path: Optional[str] = None) -> IStorageManager:
-        """Create a Polars storage manager (default in v3.0.0+).
+    def create_robin_manager(db_path: Optional[str] = None) -> IStorageManager:
+        """Create a Robin storage manager (v4 default).
 
         Args:
-            db_path: Optional path for persistent storage. If None, uses in-memory storage.
+            db_path: Optional path for persistent storage. If None, uses temp directory.
 
         Returns:
-            Polars storage manager instance.
+            Robin storage manager instance.
         """
-        return PolarsStorageManager(db_path=db_path)
+        return RobinStorageManager(db_path=db_path)
 
 
 class UnifiedStorageManager(IStorageManager):

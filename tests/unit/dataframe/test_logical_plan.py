@@ -148,7 +148,7 @@ class TestLogicalPlanPhase2:
         def fake_get_backend_type(storage):
             return "plan_test"
 
-        def create_materializer(backend_type="polars", **kwargs):
+        def create_materializer(backend_type="robin", **kwargs):
             if backend_type == "plan_test":
                 return MockPlanMaterializer()
             return orig_create(backend_type, **kwargs)

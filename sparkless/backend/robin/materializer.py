@@ -625,6 +625,25 @@ class RobinMaterializer:
                 unsupported.append(op_name)
         return (len(unsupported) == 0, unsupported)
 
+    def materialize_from_plan(
+        self,
+        data: List[Any],
+        schema: StructType,
+        logical_plan: List[Any],
+    ) -> List[Row]:
+        """Plan-based execution entry point for the Robin backend.
+
+        This stub exists to document the required API and allow the lazy engine
+        to attempt the plan-based path for backend_type=\"robin\". Until a
+        stable Robin plan execution API is available and wired up here, this
+        method raises ValueError so that the caller can fall back to the
+        existing operation-by-operation materialize() path.
+        """
+        raise ValueError(
+            "Robin plan-based execution is not yet implemented; falling back to "
+            "operation-based materialization."
+        )
+
     def materialize(
         self,
         data: List[Any],

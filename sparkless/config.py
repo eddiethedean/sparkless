@@ -7,7 +7,8 @@ import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-DEFAULT_BACKEND = "polars"
+# v4: Robin is the only supported backend; SPARKLESS_BACKEND is effectively ignored (only "robin" is valid).
+DEFAULT_BACKEND = "robin"
 ENV_BACKEND_KEY = "SPARKLESS_BACKEND"
 ENV_FEATURE_FLAGS_KEY = "SPARKLESS_FEATURE_FLAGS"
 ENV_PROFILE_TOGGLE = "SPARKLESS_PROFILE"

@@ -220,7 +220,7 @@ storage = BackendFactory.create_storage_backend("polars")
 
 # Detect the backend type
 backend_type = BackendFactory.get_backend_type(storage)
-print(backend_type)  # "polars"
+print(backend_type)  # "robin" (v4)
 
 # List available backends
 available = BackendFactory.list_available_backends()

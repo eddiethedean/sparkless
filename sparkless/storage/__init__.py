@@ -1,32 +1,16 @@
 """
 Storage module for Sparkless.
 
-This module provides a comprehensive storage system with Polars as the primary
-persistent storage backend (v3.0.0+) and in-memory storage for testing. Supports
-file-based storage and various serialization formats.
+This module provides storage interfaces and backends. In v4 the default
+persistent backend is Robin (via BackendFactory); file and memory backends
+are available for testing. Use BackendFactory.create_storage_backend("robin")
+for the v4 default.
 
 Key Features:
-    - Polars as primary persistent storage backend (v3.0.0+, default)
-    - In-memory storage for testing
-    - File-based storage for data export/import
-    - Flexible serialization (JSON, CSV, Parquet)
-    - Unified storage interface for consistency
-    - Transaction support and data integrity
-    - Schema management and validation
-    - Table and database operations
-    - Storage manager factory for easy backend switching
-
-Example:
-    >>> from sparkless.storage import PolarsStorageManager
-    >>> from sparkless.spark_types import StructType, StructField, StringType, IntegerType
-    >>> storage = PolarsStorageManager()
-    >>> storage.create_schema("test_db")
-    >>> schema = StructType([
-    ...     StructField("name", StringType()),
-    ...     StructField("age", IntegerType())
-    ... ])
-    >>> storage.create_table("test_db", "users", schema)
-    >>> storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
+    - Robin backend (v4 default) via sparkless.backend.factory
+    - In-memory and file-based storage for testing
+    - Unified storage interface
+    - Schema management and table operations
 """
 
 # Import interfaces from canonical location
@@ -35,9 +19,11 @@ from ..core.types.schema import ISchema
 
 # Import backends
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
+from .backends.file import FileStorageManager, FileTable, FileSchema
 
-# Import Polars from backend location (default in v3.0.0+)
-from sparkless.backend.polars import PolarsStorageManager, PolarsTable, PolarsSchema
+# Robin backend (v4 default) - use BackendFactory.create_storage_backend("robin") in practice
+from sparkless.backend.robin.storage import RobinStorageManager
+
 from .models import (
     MockTableMetadata,
     ColumnDefinition,
@@ -45,7 +31,6 @@ from .models import (
     StorageOperationResult,
     QueryResult,
 )
-from .backends.file import FileStorageManager, FileTable, FileSchema
 
 # Import serialization
 from .serialization.json import JSONSerializer
@@ -63,20 +48,18 @@ __all__ = [
     "MemoryStorageManager",
     "MemoryTable",
     "MemorySchema",
-    # Polars backend (default in v3.0.0+)
-    "PolarsStorageManager",
-    "PolarsTable",
-    "PolarsSchema",
+    # File backend
+    "FileStorageManager",
+    "FileTable",
+    "FileSchema",
+    # Robin backend (v4 default)
+    "RobinStorageManager",
     # Storage models (dataclasses)
     "MockTableMetadata",
     "ColumnDefinition",
     "StorageMode",
     "StorageOperationResult",
     "QueryResult",
-    # File backend
-    "FileStorageManager",
-    "FileTable",
-    "FileSchema",
     # Serialization
     "JSONSerializer",
     "CSVSerializer",

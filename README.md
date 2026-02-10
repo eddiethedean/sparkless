@@ -15,7 +15,7 @@
 
 **Current release:** 3.29.0
 
-*⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🧵 Thread-safe Polars backend*
+*⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🧵 Robin backend (v4)*
 
 📚 **[Full Documentation →](https://sparkless.readthedocs.io/)**
 
@@ -43,11 +43,11 @@ from sparkless.sql import SparkSession
 |---------|-------------|
 | ⚡ **10x Faster** | No JVM startup (30s → 0.1s) |
 | 🎯 **Drop-in Replacement** | Use existing PySpark code unchanged |
-| 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
+| 📦 **Zero Java** | Pure Python with Robin backend (robin-sparkless, no JVM required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
 | 🏭 **Production Ready** | 2314+ passing tests, 100% mypy typed |
-| 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
+| 🧵 **Robin backend** | v4 uses robin-sparkless for execution |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
 
@@ -268,41 +268,28 @@ result = (
 
 ---
 
-## Backend Architecture
+## Backend Architecture (v4)
 
-### Polars Backend (Default)
+### Robin Backend (Default)
 
-Sparkless uses **Polars** as the default backend, providing:
+Sparkless v4 uses **Robin (robin-sparkless)** as the only backend, providing:
 
-- 🧵 **Thread Safety** - Designed for parallel execution
-- ⚡ **High Performance** - Optimized DataFrame operations
-- 📊 **Parquet Storage** - Tables persist as Parquet files
-- 🔄 **Lazy Evaluation** - Automatic query optimization
+- 🧵 **Single engine** – No backend selection; execution is handled by robin-sparkless
+- ⚡ **High performance** – Rust/Polars-based engine
+- 📊 **File-based storage** – Catalog and tables use file-backed storage
+- 🔄 **Lazy evaluation** – Query planning with Robin execution
 
 ```python
-# Default backend (Polars) - thread-safe, high-performance
+# Default (Robin) in v4
 spark = SparkSession("MyApp")
 
-# Explicit backend selection
+# Explicit (same in v4)
 spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "polars") \
+    .config("spark.sparkless.backend", "robin") \
     .getOrCreate()
 ```
 
-### Alternative Backends
-
-```python
-# Memory backend for lightweight testing
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "memory") \
-    .getOrCreate()
-
-# File backend for persistent storage
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "file") \
-    .config("spark.sparkless.backend.basePath", "/tmp/sparkless") \
-    .getOrCreate()
-```
+Migration from v3 (Polars/memory/file): see [docs/migration_v3_to_v4.md](docs/migration_v3_to_v4.md).
 
 ---
 

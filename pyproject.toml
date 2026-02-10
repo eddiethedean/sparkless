@@ -37,7 +37,7 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "spark-ddl-parser>=0.1.0",
-    "polars>=0.20.0",
+    "robin-sparkless>=0.5.0",
     "psutil>=5.8.0",
     "typing_extensions>=4.0.0; python_version<'3.9'",
 ]
@@ -51,7 +51,6 @@ analytics = [
     "pandas>=1.3.0,<3",
     "pandas-stubs>=2.0.0,<3",
     "numpy>=1.20.0",
-    "polars[pyarrow]>=0.20.0",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -79,9 +78,6 @@ docs = [
     "sphinx-rtd-theme>=1.0.0",
     "myst-parser>=1.0.0",
     "sphinx-autodoc-typehints>=1.19.0",
-]
-robin = [
-    "robin-sparkless>=0.4.0",
 ]
 
 [project.urls]

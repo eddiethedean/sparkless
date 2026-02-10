@@ -8,12 +8,12 @@ core DataFrame and Session modules.
 Architecture:
     - protocols.py: Protocol definitions for backend interfaces
     - factory.py: Factory for creating backend instances
-    - polars/: Polars-specific backend implementation (default in v3.0.0+)
+    - robin/: Robin backend implementation (only backend in v4)
 
 Example:
     >>> from sparkless.backend.factory import BackendFactory
-    >>> storage = BackendFactory.create_storage_backend("polars")
-    >>> materializer = BackendFactory.create_materializer("polars")
+    >>> storage = BackendFactory.create_storage_backend("robin")
+    >>> materializer = BackendFactory.create_materializer("robin")
 """
 
 from .protocols import (

@@ -142,21 +142,21 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 
 ### No Threading Issues!
 
-With Polars backend, threading issues should be completely eliminated. If you encounter any issues:
+With the Robin backend (v4 default), threading behaviour is determined by robin-sparkless. If you encounter issues:
 
-1. **Verify Backend**: Ensure you're using Polars backend (default in v3.0.0+)
+1. **Verify Backend**: In v4 the only backend is Robin
    ```python
    from sparkless.backend.factory import BackendFactory
    backend_type = BackendFactory.get_backend_type(spark._storage)
-   assert backend_type == "polars"
+   assert backend_type == "robin"
    ```
 
-2. **Check Polars Version**: Ensure you have a recent version of Polars
+2. **Robin Version**: Ensure robin-sparkless is installed
    ```bash
-   pip install polars>=0.20.0
+   pip install robin-sparkless>=0.5.0
    ```
 
-3. **No Special Configuration**: No threading-related configuration needed
+3. **No Special Configuration**: No threading-related configuration needed for the backend itself
 
 ## Migration from DuckDB
 

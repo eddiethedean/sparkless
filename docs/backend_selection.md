@@ -1,83 +1,34 @@
-# Backend Selection
+# Backend Selection (v4)
 
+In Sparkless v4 only the **Robin** backend is supported. Polars, memory, file, and DuckDB backends have been removed from the default build.
 
-Sparkless ships with multiple storage backends. Polars is the default engine in
-v3.x, replacing the legacy DuckDB implementation used in previous releases. You
-can still switch between backends when you need specific behaviour or when
-benchmarks favour alternative engines.
+## v4: Robin only
 
-## Available Backends
+- **robin** – The only supported backend. Uses the `robin-sparkless` package (>=0.5.0) for execution. Required dependency of Sparkless v4.
 
-- `polars` (default) – fast, thread-safe, zero-install beyond the Sparkless
-  dependency.
-- `memory` – compatibility shim that keeps all data in Python collections. Useful
-  for extremely small unit tests or debugging expression translation.
-- `file` – persists tables under `sparkless_storage/` as JSON/CSV files. Handy
-  for sharing fixtures across sessions.
-- `duckdb` (optional) – legacy SQL-backed engine. Requires the
-  `sparkless.backend.duckdb` modules to be installed (available in the 2.x
-  releases) alongside `duckdb`/`duckdb-engine` Python packages.
-- `robin` (optional) – Rust/Polars engine via the `robin-sparkless` package (0.4.0+).
-  Install with `pip install sparkless[robin]` or `pip install robin-sparkless>=0.4.0`.
-  If the package is not installed, selecting `robin` raises a `ValueError`
-  with install instructions.
+`BackendFactory.list_available_backends()` returns `["robin"]`. Passing any other `backend_type` or `SPARKLESS_BACKEND` value raises `ValueError`.
 
-Call `sparkless.backend.factory.BackendFactory.list_available_backends()` to see
-which backends are currently importable in your environment.
+## Creating a session
 
-## Selecting a Backend
-
-Sparkless resolves the backend in the following order:
-
-1. **Explicit constructor argument** – `SparkSession(backend_type="memory")`
-2. **Environment variable** – set `SPARKLESS_BACKEND=memory` before starting
-   the process. This is convenient for CI toggles.
-3. **Builder configuration** – `SparkSession.builder.config("spark.sparkless.backend", "file")`
-4. **Default** – falls back to `polars` when no overrides are provided.
-
-Examples:
-
-```
-import os
+```python
 from sparkless import SparkSession
 
-# Environment variable
-os.environ["SPARKLESS_BACKEND"] = "memory"
-spark = SparkSession()
+# Default (Robin)
+spark = SparkSession("MyApp")
 
-# Builder configuration
-spark = (
-    SparkSession.builder
-    .config("spark.sparkless.backend", "file")
-    .getOrCreate()
-)
-
-# Direct constructor
-spark = SparkSession(backend_type="polars")
+# Explicit (same in v4)
+spark = SparkSession(backend_type="robin")
 ```
 
-## Behavioural Notes
+Setting `SPARKLESS_BACKEND=robin` is optional; the default is already Robin.
 
-- Polars enforces strict schemas and eager type conversion. When migrating from
-  DuckDB you may need the datetime helpers described in
-  `docs/known_issues.md`.
-- The memory backend is intended for developer diagnostics; it is not
-  feature-complete and skips several optimisations.
-- DuckDB support is best-effort. If the optional modules are missing, selecting
-  `duckdb` raises a clear `ValueError` suggesting the required packages.
-- Robin support is optional. If `robin-sparkless` is not installed, `robin` does
-  not appear in `list_available_backends()` and selecting it raises a
-  `ValueError` with install instructions.
+## Migration from v3
 
-## Robin backend (optional)
+If you were using Polars, memory, file, or DuckDB in v3, see **docs/migration_v3_to_v4.md** for the v3→v4 migration guide.
 
-When using `backend_type="robin"`, Sparkless runs in **pure Robin mode** (no
-fallback to Polars). With **robin-sparkless 0.4.0+**, the Robin materializer
-supports: **filter** (including Column–Column comparisons), **select** (column
-names and Column expressions), **limit**, **orderBy**, **withColumn** (Column
-expressions), **join**, **union**, **distinct**, and **drop**. **groupBy** + agg
-and some expressions (e.g. `F.regexp_extract_all(...)`) may not yet be
-supported and will raise `SparkUnsupportedOperationError`. For a full list and
+## Robin backend behaviour
+
+Robin (robin-sparkless) provides the execution engine for DataFrame operations. The materializer supports: **filter**, **select**, **limit**, **orderBy**, **withColumn**, **join**, **union**, **distinct**, and **drop**. **groupBy** + agg and some expressions may raise `SparkUnsupportedOperationError` if not yet supported. For a full list and
 recommended Sparkless improvements, see [robin_compatibility_recommendations.md](robin_compatibility_recommendations.md).
 
 When running tests in Robin mode with many parallel workers, you may see worker
@@ -85,20 +36,20 @@ crashes ("node down: Not properly terminated") or an INTERNALERROR. Use fewer
 workers (e.g. `-n 4`) or run serially (`-n 0`); the test runner defaults to 4
 workers for Robin. See [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).
 
-## Running tests with a specific backend
+## Running tests
 
-To run the full test suite using the Robin backend (requires `pip install sparkless[robin]`):
+In v4 the default backend is Robin. To run the full test suite:
 
 ```bash
-SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
+bash tests/run_all_tests.sh
 ```
 
-Or with pytest directly:
+Or with pytest (optionally with Robin env set explicitly):
 
 ```bash
-SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/ -n 10 --dist loadfile -v
-# Without parallelism:
-SPARKLESS_BACKEND=robin python -m pytest tests/ -v
+SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh -n 10
+# Serial:
+python -m pytest tests/ -v
 ```
 
 Individual tests can request the Robin backend via the marker:
@@ -106,18 +57,7 @@ Individual tests can request the Robin backend via the marker:
 
 ## Troubleshooting
 
-- **`ValueError: Unsupported backend type`** – verify the spelling and check the
-  available list via `BackendFactory.list_available_backends()`.
-- **DuckDB import errors** – install Sparkless 2.x (which includes the DuckDB
-  modules) or vendor the legacy backend into your project. You also need the
-  `duckdb` and `duckdb-engine` pip packages.
-- **Robin backend not available** – install with `pip install sparkless[robin]`
-  or `pip install robin-sparkless`; then `robin` will appear in
-  `list_available_backends()`.
-- **Robin: worker crashes or INTERNALERROR** – when using pytest-xdist with
-  Robin, use fewer workers (e.g. `-n 4`) or serial (`-n 0`). See
-  [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).
-- **Permission issues with `file` backend** – adjust the base path by passing
-  `SparkSession.builder.config("spark.sparkless.backend.basePath", "/tmp/mock")` and
-  ensure the process can read/write there.
+- **`ValueError: Unsupported backend type`** – In v4 only `robin` is supported. Do not set `SPARKLESS_BACKEND` or `backend_type` to any other value.
+- **Robin backend not available** – Install with `pip install robin-sparkless>=0.5.0` (required for v4).
+- **Robin: worker crashes or INTERNALERROR** – When using pytest-xdist with Robin, use fewer workers (e.g. `-n 4`) or serial (`-n 0`). See [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).
 

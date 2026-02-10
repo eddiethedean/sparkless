@@ -18,7 +18,7 @@ F = imports.F
 
 
 class TestDateTruncPolarsBackend:
-    """Tests for F.date_trunc with backend_type='polars'."""
+    """Tests for F.date_trunc with default backend (v4: Robin)."""
 
     def test_date_trunc_month_on_date_column(self) -> None:
         """date_trunc('month', to_date(col)) should materialize without error.
@@ -32,7 +32,7 @@ class TestDateTruncPolarsBackend:
             df.show()
         """
 
-        spark = SparkSession("test-date-trunc-polars", backend_type="polars")
+        spark = SparkSession("test-date-trunc", backend_type="robin")
         df = spark.createDataFrame([("2024-03-15",)], ["d"])
 
         df_truncated = df.withColumn("d", F.to_date("d")).withColumn(

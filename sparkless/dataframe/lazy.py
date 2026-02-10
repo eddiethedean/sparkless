@@ -524,10 +524,19 @@ class LazyEvaluationEngine:
                     except (AttributeError, TypeError):
                         use_plan_flag = False
                     if use_plan_flag or backend_type == "robin":
-                        from ..dataframe.logical_plan import to_logical_plan
-
                         try:
-                            logical_plan = to_logical_plan(df)
+                            if backend_type == "robin":
+                                # For the Robin backend, build a Robin-format plan that can
+                                # be consumed by the Robin plan interpreter. Unsupported
+                                # operations or expressions will cause the builder to
+                                # raise ValueError, triggering the fallback path below.
+                                from ..dataframe.robin_plan import to_robin_plan
+
+                                logical_plan = to_robin_plan(df)
+                            else:
+                                from ..dataframe.logical_plan import to_logical_plan
+
+                                logical_plan = to_logical_plan(df)
                             rows = use_plan(df.data, df.schema, logical_plan)
                         except (ValueError, TypeError):
                             # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)

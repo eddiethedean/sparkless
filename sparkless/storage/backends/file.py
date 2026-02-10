@@ -289,6 +289,7 @@ class FileStorageManager(IStorageManager):
         self.schemas: Dict[str, FileSchema] = {}
         # Create default schema
         self.schemas["default"] = FileSchema("default", base_path)
+        self._current_schema: str = "default"
 
     def create_schema(self, schema: str) -> None:
         """Create a new schema.
@@ -507,6 +508,16 @@ class FileStorageManager(IStorageManager):
         if table_name not in self.schemas[schema_name].tables:
             return {}
         return self.schemas[schema_name].tables[table_name].get_metadata()
+
+    def get_current_schema(self) -> str:
+        """Return the current default schema name."""
+        return self._current_schema
+
+    def set_current_schema(self, schema_name: str) -> None:
+        """Set the current default schema. Creates the schema if it does not exist."""
+        if schema_name not in self.schemas:
+            self.create_schema(schema_name)
+        self._current_schema = schema_name
 
     def update_table_metadata(
         self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]

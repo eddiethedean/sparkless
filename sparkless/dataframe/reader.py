@@ -24,6 +24,8 @@ Example:
 
 from __future__ import annotations
 
+import csv
+import json
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
@@ -32,13 +34,9 @@ if TYPE_CHECKING:
     from ..core.interfaces.dataframe import IDataFrame
     from ..core.interfaces.session import ISession
 
-import polars as pl
-
 from ..errors import AnalysisException, IllegalArgumentException
-from ..spark_types import StructField, StructType
+from ..spark_types import StructField, StructType, StringType
 from ..core.ddl_adapter import parse_ddl_schema
-from ..backend.polars.schema_utils import align_frame_to_schema
-from ..backend.polars.type_mapper import polars_dtype_to_mock_type
 
 
 class DataFrameReader:
@@ -180,9 +178,8 @@ class DataFrameReader:
         if not paths:
             raise AnalysisException(f"No {resolved_format} files found at {path}")
 
-        frame = self._read_with_polars(paths, resolved_format, combined_options)
-
-        schema, data_rows = self._build_schema_and_rows(frame)
+        data_rows, column_names = self._read_data(paths, resolved_format, combined_options)
+        schema, data_rows = self._build_schema_and_rows_from_data(data_rows, column_names)
 
         from .dataframe import DataFrame
 
@@ -290,53 +287,79 @@ class DataFrameReader:
         }
         return mapping.get(data_format)
 
-    def _read_with_polars(
-        self, paths: Iterable[str], data_format: str, options: Dict[str, Any]
-    ) -> pl.DataFrame:
-        """Load data from disk using Polars."""
-        paths_list = list(paths)
-        if not paths_list:
-            return pl.DataFrame()
+    def _read_data(
+        self, paths: List[str], data_format: str, options: Dict[str, Any]
+    ) -> Tuple[List[Dict[str, Any]], List[str]]:
+        """Load data from disk; returns (list of row dicts, column names)."""
+        if not paths:
+            return [], []
 
         if data_format == "parquet":
-            return pl.scan_parquet(
-                paths_list, **self._extract_parquet_options(options)
-            ).collect()
+            return self._read_parquet(paths)
         if data_format == "csv":
-            csv_opts = self._extract_csv_options(options)
-            return pl.scan_csv(paths_list, **csv_opts).collect()
+            return self._read_csv(paths, options)
         if data_format == "json":
-            return self._read_json(paths_list, options)
+            return self._read_json(paths, options)
         if data_format == "text":
-            return self._read_text(paths_list)
+            return self._read_text(paths)
 
         raise AnalysisException(
             f"Unsupported format '{data_format}' for DataFrameReader"
         )
 
-    def _read_json(self, paths: List[str], options: Dict[str, Any]) -> pl.DataFrame:
-        """Read JSON or NDJSON files via Polars, falling back to Python json."""
-        ndjson_opts = {}
-        if "infer_schema_length" in options:
-            ndjson_opts["infer_schema_length"] = int(options["infer_schema_length"])
-
+    def _read_parquet(self, paths: List[str]) -> Tuple[List[Dict[str, Any]], List[str]]:
         try:
-            return pl.scan_ndjson(paths, **ndjson_opts).collect()
-        except Exception:
-            pass
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "Reading Parquet requires pandas. Install with: pip install pandas"
+            ) from None
+        dfs = [pd.read_parquet(p) for p in paths]
+        combined = pd.concat(dfs, ignore_index=True)
+        names = list(combined.columns)
+        rows = combined.to_dict("records")
+        return rows, names
 
-        frames: List[pl.DataFrame] = []
-        import json
-
+    def _read_csv(
+        self, paths: List[str], options: Dict[str, Any]
+    ) -> Tuple[List[Dict[str, Any]], List[str]]:
+        has_header = self._to_bool(
+            options.get("header", options.get("hasHeader", "true")), default=True
+        )
+        delimiter = options.get("sep", options.get("delimiter", ","))
+        rows: List[Dict[str, Any]] = []
+        names: List[str] = []
         for file_path in paths:
-            with open(file_path, encoding="utf-8") as handle:
-                content = handle.read().strip()
+            with open(file_path, newline="", encoding="utf-8") as f:
+                if has_header:
+                    reader = csv.DictReader(f, delimiter=delimiter)
+                    fieldnames = reader.fieldnames or []
+                    if not names:
+                        names = list(fieldnames)
+                    for row in reader:
+                        rows.append(row)
+                else:
+                    r = csv.reader(f, delimiter=delimiter)
+                    for i, row_list in enumerate(r):
+                        if not names:
+                            names = [f"_c{j}" for j in range(len(row_list))]
+                        rows.append(dict(zip(names, row_list)))
+        if not names and rows:
+            names = list(rows[0].keys())
+        return rows, names
+
+    def _read_json(
+        self, paths: List[str], options: Dict[str, Any]
+    ) -> Tuple[List[Dict[str, Any]], List[str]]:
+        all_rows: List[Dict[str, Any]] = []
+        for file_path in paths:
+            with open(file_path, encoding="utf-8") as f:
+                content = f.read().strip()
                 if not content:
                     continue
                 try:
                     parsed = json.loads(content)
                 except json.JSONDecodeError:
-                    # Attempt line-by-line parsing for permissive mode
                     parsed = []
                     for line in content.splitlines():
                         line = line.strip()
@@ -344,56 +367,19 @@ class DataFrameReader:
                             continue
                         parsed.append(json.loads(line))
                 if isinstance(parsed, list):
-                    frames.append(pl.DataFrame(parsed))
+                    all_rows.extend(parsed)
                 else:
-                    frames.append(pl.DataFrame([parsed]))
+                    all_rows.append(parsed)
+        names = list(all_rows[0].keys()) if all_rows else []
+        return all_rows, names
 
-        if not frames:
-            return pl.DataFrame()
-
-        return pl.concat(frames, how="diagonal_relaxed")
-
-    def _read_text(self, paths: List[str]) -> pl.DataFrame:
-        """Read plain text files into a single-column DataFrame."""
-        values: List[str] = []
+    def _read_text(self, paths: List[str]) -> Tuple[List[Dict[str, Any]], List[str]]:
+        values: List[Dict[str, str]] = []
         for file_path in paths:
-            with open(file_path, encoding="utf-8") as handle:
-                values.extend([line.rstrip("\n") for line in handle])
-        return pl.DataFrame({"value": values})
-
-    def _extract_parquet_options(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Filter parquet-specific options."""
-        parquet_opts: Dict[str, Any] = {}
-        if "hive_partitioning" in options:
-            parquet_opts["hive_partitioning"] = options["hive_partitioning"]
-        return parquet_opts
-
-    def _extract_csv_options(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Translate Spark CSV options to Polars equivalents."""
-        csv_opts: Dict[str, Any] = {}
-
-        header = options.get("header", options.get("hasHeader", "true"))
-        csv_opts["has_header"] = self._to_bool(header, default=True)
-
-        delimiter = options.get("sep", options.get("delimiter", ","))
-        if isinstance(delimiter, str) and delimiter:
-            csv_opts["separator"] = delimiter
-
-        null_value = options.get("nullValue")
-        if null_value is not None:
-            csv_opts["null_values"] = null_value
-
-        infer_schema = options.get("inferSchema")
-        if infer_schema is not None and self._to_bool(infer_schema):
-            # Explicitly enable schema inference
-            # Don't set infer_schema_length - let Polars use default (all rows)
-            csv_opts["infer_schema"] = True
-        else:
-            # Explicitly set infer_schema=False to match PySpark default
-            # PySpark defaults to inferSchema=False (all columns as strings)
-            csv_opts["infer_schema"] = False
-
-        return csv_opts
+            with open(file_path, encoding="utf-8") as f:
+                for line in f:
+                    values.append({"value": line.rstrip("\n")})
+        return values, ["value"]
 
     def _to_bool(self, value: Any, default: bool = False) -> bool:
         """Interpret Spark-style truthy values."""
@@ -403,20 +389,17 @@ class DataFrameReader:
             return default
         return str(value).strip().lower() in {"1", "true", "yes", "y"}
 
-    def _build_schema_and_rows(
-        self, frame: pl.DataFrame
+    def _build_schema_and_rows_from_data(
+        self, data_rows: List[Dict[str, Any]], column_names: List[str]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Create StructType schema and dictionary rows from a Polars frame."""
+        """Build StructType and rows from loaded data; apply user schema if set."""
         if self._schema is not None:
-            aligned = align_frame_to_schema(frame, self._schema)
-            return self._schema, aligned.to_dicts()
-
-        fields: List[StructField] = []
-        for name, dtype in zip(frame.columns, frame.dtypes):
-            mock_type = polars_dtype_to_mock_type(dtype)
-            fields.append(StructField(name, mock_type))
+            names = self._schema.fieldNames()
+            projected = [{k: r.get(k) for k in names} for r in data_rows]
+            return self._schema, projected
+        fields = [StructField(name, StringType()) for name in column_names]
         schema = StructType(fields)
-        return schema, frame.to_dicts()
+        return schema, data_rows
 
     def json(self, path: str, **options: Any) -> IDataFrame:
         """Load JSON data from disk."""
@@ -443,7 +426,7 @@ class DataFrameReader:
         Example:
             >>> spark.read.orc("/path/to/file.orc")
         """
-        raise AnalysisException("ORC format is not supported by the Polars backend")
+        raise AnalysisException("ORC format is not supported")
 
     def text(self, path: str, **options: Any) -> IDataFrame:
         """Load text data.

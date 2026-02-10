@@ -27,6 +27,8 @@ Example:
 from __future__ import annotations
 
 import contextlib
+import csv
+import json
 import logging
 import os
 import shutil
@@ -34,9 +36,6 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
-import polars as pl
-
-from sparkless.backend.polars.schema_utils import align_frame_to_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
 
 if TYPE_CHECKING:
@@ -480,16 +479,18 @@ class DataFrameWriter:
             return
 
         data_frame = self._materialize_dataframe()
-        polars_frame = self._to_polars_frame(data_frame.data, data_frame.schema)
+        data = data_frame.data
+        schema = data_frame.schema
+        names = schema.fieldNames() if schema.fields else []
 
         if resolved_format == "parquet":
-            self._write_parquet(polars_frame, target_path)
+            self._write_parquet(data, schema, target_path)
         elif resolved_format == "json":
-            self._write_json(polars_frame, target_path)
+            self._write_json(data, names, target_path)
         elif resolved_format == "csv":
-            self._write_csv(polars_frame, target_path)
+            self._write_csv(data, names, target_path)
         elif resolved_format == "text":
-            self._write_text(data_frame.data, data_frame.schema, target_path)
+            self._write_text(data, schema, target_path)
         else:
             raise AnalysisException(
                 f"File format '{self.format_name}' is not supported."
@@ -611,21 +612,6 @@ class DataFrameWriter:
         else:
             path.unlink()
 
-    def _to_polars_frame(
-        self, data: List[Dict[str, Any]], schema: StructType
-    ) -> pl.DataFrame:
-        """Convert row dictionaries and schema into a Polars DataFrame."""
-        if not schema.fields:
-            return pl.DataFrame(data)
-
-        # Create DataFrame from dictionaries (handles empty data gracefully)
-        frame = (
-            pl.DataFrame(data)
-            if data
-            else pl.DataFrame({f.name: [] for f in schema.fields})
-        )
-        return align_frame_to_schema(frame, schema)
-
     def _next_part_file(self, path: Path, extension: str) -> Path:
         """Generate a unique part file name within the target directory."""
         path.mkdir(parents=True, exist_ok=True)
@@ -635,7 +621,9 @@ class DataFrameWriter:
         filename = f"part-{index:05d}-{unique}{extension}"
         return path / filename
 
-    def _write_parquet(self, frame: pl.DataFrame, path: Path) -> None:
+    def _write_parquet(
+        self, data: List[Dict[str, Any]], schema: StructType, path: Path
+    ) -> None:
         target = (
             path
             if path.suffix == ".parquet"
@@ -643,32 +631,43 @@ class DataFrameWriter:
         )
         compression = self._options.get("compression", "snappy")
         target.parent.mkdir(parents=True, exist_ok=True)
-        frame.write_parquet(str(target), compression=compression)
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "Writing Parquet requires pandas. Install with: pip install pandas"
+            ) from None
+        names = schema.fieldNames() if schema.fields else []
+        pdf = pd.DataFrame(data, columns=names) if data else pd.DataFrame(columns=names)
+        pdf.to_parquet(str(target), index=False, compression=compression)
 
-    def _write_json(self, frame: pl.DataFrame, path: Path) -> None:
+    def _write_json(
+        self, data: List[Dict[str, Any]], names: List[str], path: Path
+    ) -> None:
         target = path if path.suffix == ".json" else self._next_part_file(path, ".json")
         target.parent.mkdir(parents=True, exist_ok=True)
-        # Spark writes newline-delimited JSON; Polars handles this via write_ndjson
-        frame.write_ndjson(str(target))
+        with open(target, "w", encoding="utf-8") as f:
+            for row in data:
+                out = (
+                    {k: get_row_value(row, k) for k in names}
+                    if names
+                    else (row if isinstance(row, dict) else dict(row))
+                )
+                f.write(json.dumps(out, default=str) + "\n")
 
-    def _write_csv(self, frame: pl.DataFrame, path: Path) -> None:
+    def _write_csv(
+        self, data: List[Dict[str, Any]], names: List[str], path: Path
+    ) -> None:
         target = path if path.suffix == ".csv" else self._next_part_file(path, ".csv")
         target.parent.mkdir(parents=True, exist_ok=True)
-
         include_header = self._get_bool_option("header", default=True)
         delimiter = self._options.get("sep", self._options.get("delimiter", ","))
-        null_value = self._options.get("nullValue")
-        compression = self._options.get("compression")
-
-        kwargs: Dict[str, Any] = {"include_header": include_header}
-        if delimiter:
-            kwargs["separator"] = delimiter
-        if null_value is not None:
-            kwargs["null_value"] = null_value
-        if compression is not None:
-            kwargs["compression"] = compression
-
-        frame.write_csv(str(target), **kwargs)
+        rows = [{k: get_row_value(r, k) for k in names} for r in data] if names else data
+        with open(target, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=names, delimiter=delimiter)
+            if include_header:
+                w.writeheader()
+            w.writerows(rows)
 
     def _write_text(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path

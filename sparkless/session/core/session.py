@@ -95,9 +95,9 @@ class SparkSession:
             allow_disk_spillover: If True, allows backend to spill to disk when memory is full.
                                  If False (default), disables spillover for test isolation.
             storage_backend: Optional storage backend instance. If None, creates backend based on backend_type.
-            backend_type: Type of backend to use ("polars", "memory", "file", optional "duckdb").
-                If omitted, resolves from the ``MOCK_SPARK_BACKEND`` environment variable or defaults
-                to "polars".
+            backend_type: Type of backend to use. In v4 only "robin" is supported.
+                If omitted, resolves from the ``SPARKLESS_BACKEND`` environment variable or defaults
+                to "robin".
             db_path: Optional path to persistent database file. If provided, tables will persist across sessions.
                     If None (default), uses in-memory storage and tables don't persist.
                     For test scenarios requiring table persistence across multiple pipeline runs,
