@@ -68,6 +68,26 @@ def _robin_available() -> bool:
     return robin_sparkless is not None
 
 
+def _get_robin_session_and_create_from_rows():  # type: () -> Tuple[Any, Any]
+    """Return (spark_session, create_from_rows_callable) for Robin DataFrame creation.
+
+    Uses robin_sparkless.SparkSession.builder().get_or_create() only. No fallback.
+    Uses create_dataframe_from_rows (public) or _create_dataframe_from_rows (private).
+    """
+    F = robin_sparkless  # type: ignore[union-attr]
+    spark = F.SparkSession.builder().app_name("sparkless-robin-poc").get_or_create()
+    create_fn = getattr(spark, "create_dataframe_from_rows", None) or getattr(
+        spark, "_create_dataframe_from_rows", None
+    )
+    if create_fn is None:
+        raise RuntimeError(
+            "Robin backend requires a SparkSession with create_dataframe_from_rows (or "
+            "_create_dataframe_from_rows). Ensure robin-sparkless is installed and that "
+            "the session is created with backend_type='robin'."
+        )
+    return (spark, create_fn)
+
+
 def _simple_filter_to_robin(condition: Any) -> Any:
     """Translate a Sparkless filter to robin_sparkless Column expression.
 
@@ -245,9 +265,27 @@ def _expression_to_robin(expr: Any) -> Any:
             return inner
         # Unary functions (column, op, None or no value)
         unary_ops = (
-            "upper", "lower", "length", "char_length", "trim", "ltrim", "rtrim",
-            "abs", "sqrt", "year", "month", "dayofmonth", "hour", "minute", "second",
-            "isnull", "isnotnull", "dayofweek", "dayofyear", "weekofyear", "quarter",
+            "upper",
+            "lower",
+            "length",
+            "char_length",
+            "trim",
+            "ltrim",
+            "rtrim",
+            "abs",
+            "sqrt",
+            "year",
+            "month",
+            "dayofmonth",
+            "hour",
+            "minute",
+            "second",
+            "isnull",
+            "isnotnull",
+            "dayofweek",
+            "dayofyear",
+            "weekofyear",
+            "quarter",
         )
         if op in unary_ops and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -257,7 +295,11 @@ def _expression_to_robin(expr: Any) -> Any:
             if callable(fn):
                 return fn(inner)
         # No-column functions
-        if op == "current_timestamp" and col_side is None and hasattr(F, "current_timestamp"):
+        if (
+            op == "current_timestamp"
+            and col_side is None
+            and hasattr(F, "current_timestamp")
+        ):
             return F.current_timestamp()
         if op == "current_date" and col_side is None and hasattr(F, "current_date"):
             return F.current_date()
@@ -266,7 +308,15 @@ def _expression_to_robin(expr: Any) -> Any:
             inner = _expression_to_robin(col_side)
             if inner is None:
                 return None
-            delim = val_side if isinstance(val_side, str) else (val_side[0] if isinstance(val_side, (list, tuple)) and val_side else ",")
+            delim = (
+                val_side
+                if isinstance(val_side, str)
+                else (
+                    val_side[0]
+                    if isinstance(val_side, (list, tuple)) and val_side
+                    else ","
+                )
+            )
             if hasattr(F, "split"):
                 return F.split(inner, delim)
         if op in ("substring", "substr") and col_side is not None:
@@ -296,11 +346,19 @@ def _expression_to_robin(expr: Any) -> Any:
             inner = _expression_to_robin(col_side)
             if inner is not None and hasattr(F, "left"):
                 return F.left(inner, int(val_side))
-        if op == "right" and col_side is not None and isinstance(val_side, (int, float)):
+        if (
+            op == "right"
+            and col_side is not None
+            and isinstance(val_side, (int, float))
+        ):
             inner = _expression_to_robin(col_side)
             if inner is not None and hasattr(F, "right"):
                 return F.right(inner, int(val_side))
-        if op == "add_months" and col_side is not None and isinstance(val_side, (int, float)):
+        if (
+            op == "add_months"
+            and col_side is not None
+            and isinstance(val_side, (int, float))
+        ):
             inner = _expression_to_robin(col_side)
             if inner is not None and hasattr(F, "add_months"):
                 return F.add_months(inner, int(val_side))
@@ -324,14 +382,20 @@ def _expression_to_robin(expr: Any) -> Any:
             rest = val_side[1] if len(val_side) > 1 else []
             if not isinstance(rest, (list, tuple)):
                 rest = [rest]
-            robin_cols = [_expression_to_robin(col_side)] + [_expression_to_robin(c) for c in rest]
+            robin_cols = [_expression_to_robin(col_side)] + [
+                _expression_to_robin(c) for c in rest
+            ]
             if None in robin_cols:
                 return None
             if hasattr(F, "concat_ws"):
                 return F.concat_ws(sep, *robin_cols)
         # struct: value is tuple/list of columns
         if op == "struct":
-            cols = val_side if isinstance(val_side, (list, tuple)) else ([col_side] if col_side else [])
+            cols = (
+                val_side
+                if isinstance(val_side, (list, tuple))
+                else ([col_side] if col_side else [])
+            )
             if col_side and not cols:
                 cols = [col_side]
             robin_cols = [_expression_to_robin(c) for c in cols]
@@ -350,7 +414,11 @@ def _expression_to_robin(expr: Any) -> Any:
         # For robin-sparkless 0.4.0, build literal+column in one shot so the
         # Column is created in a single expression (avoids recursive Column
         # being treated as name lookup in with_column).
-        if op in ("+", "-", "*", "/") and isinstance(col_side, Literal) and isinstance(val_side, Column):
+        if (
+            op in ("+", "-", "*", "/")
+            and isinstance(col_side, Literal)
+            and isinstance(val_side, Column)
+        ):
             lit_val = _lit_value_for_robin(getattr(col_side, "value", col_side))
             col_name = getattr(val_side, "name", None)
             if isinstance(col_name, str):
@@ -364,7 +432,11 @@ def _expression_to_robin(expr: Any) -> Any:
                     return R.lit(lit_val) * R.col(col_name)
                 if op == "/":
                     return R.lit(lit_val) / R.col(col_name)
-        if op in ("+", "-", "*", "/") and isinstance(val_side, Literal) and isinstance(col_side, Column):
+        if (
+            op in ("+", "-", "*", "/")
+            and isinstance(val_side, Literal)
+            and isinstance(col_side, Column)
+        ):
             lit_val = _lit_value_for_robin(getattr(val_side, "value", val_side))
             col_name = getattr(col_side, "name", None)
             if isinstance(col_name, str):
@@ -380,8 +452,10 @@ def _expression_to_robin(expr: Any) -> Any:
         # col * 2 or col + 2 where 2 is plain int/float (not Literal)
         if op in ("+", "-", "*", "/") and isinstance(col_side, Column):
             col_name = getattr(col_side, "name", None)
-            if isinstance(col_name, str) and val_side is not None and isinstance(
-                val_side, (int, float, str, bool, type(None))
+            if (
+                isinstance(col_name, str)
+                and val_side is not None
+                and isinstance(val_side, (int, float, str, bool, type(None)))
             ):
                 R = robin_sparkless  # type: ignore[union-attr]
                 lit_val = _lit_value_for_robin(val_side)
@@ -421,9 +495,8 @@ def _expression_to_robin(expr: Any) -> Any:
                 return left * right
             if op == "/":
                 return left / right
-        if op == "%":
-            if hasattr(left, "__mod__"):
-                return left % right
+        if op == "%" and hasattr(left, "__mod__"):
+            return left % right
     return None
 
 
@@ -466,7 +539,9 @@ class RobinMaterializer:
         for c in payload:
             if isinstance(c, str):
                 continue
-            if _expression_to_robin(c) is None:
+            # Resolve aliased columns: Column("m", _original_column=expr) -> check expr
+            expr_to_check = getattr(c, "_original_column", c)
+            if _expression_to_robin(expr_to_check) is None:
                 return False
         return True
 
@@ -593,8 +668,8 @@ class RobinMaterializer:
         ]
         robin_data = _data_to_robin_rows(data, init_names)
 
-        spark = F.SparkSession.builder().app_name("sparkless-robin-poc").get_or_create()
-        df = spark._create_dataframe_from_rows(robin_data, robin_schema)
+        spark, create_from_rows = _get_robin_session_and_create_from_rows()
+        df = create_from_rows(robin_data, robin_schema)
 
         for op_name, payload in operations:
             if op_name == "filter":
@@ -610,10 +685,18 @@ class RobinMaterializer:
                     if isinstance(c, str):
                         robin_cols.append(c)
                     else:
-                        expr = _expression_to_robin(c)
+                        # Resolve aliased columns to underlying expression for translation
+                        expr_to_translate = getattr(c, "_original_column", c)
+                        expr = _expression_to_robin(expr_to_translate)
                         if expr is None:
-                            raise ValueError(
-                                f"Robin materializer cannot translate select expression: {c}"
+                            from sparkless.core.exceptions.operation import (
+                                SparkUnsupportedOperationError,
+                            )
+
+                            raise SparkUnsupportedOperationError(
+                                operation="select",
+                                reason="Backend 'robin' does not support this select expression",
+                                alternative="Consider using a different backend (e.g. polars)",
                             )
                         robin_cols.append(expr)
                 df = df.select(*robin_cols)
@@ -638,9 +721,10 @@ class RobinMaterializer:
                 from sparkless.functions.core.column import Column
                 from sparkless.functions.core.literals import Literal
 
-                if isinstance(expression, ColumnOperation) and getattr(
-                    expression, "operation", None
-                ) == "alias":
+                if (
+                    isinstance(expression, ColumnOperation)
+                    and getattr(expression, "operation", None) == "alias"
+                ):
                     expression = getattr(expression, "column", expression)
                 # Build simple literal+col / col*lit / col*scalar in this frame so
                 # Robin 0.4.0 treats the argument as an expression, not a name lookup.
@@ -650,8 +734,12 @@ class RobinMaterializer:
                     col_side = getattr(expression, "column", None)
                     val_side = getattr(expression, "value", None)
                     if op in ("+", "-", "*", "/"):
-                        if isinstance(col_side, Literal) and isinstance(val_side, Column):
-                            lit_val = _lit_value_for_robin(getattr(col_side, "value", col_side))
+                        if isinstance(col_side, Literal) and isinstance(
+                            val_side, Column
+                        ):
+                            lit_val = _lit_value_for_robin(
+                                getattr(col_side, "value", col_side)
+                            )
                             cname = getattr(val_side, "name", None)
                             if isinstance(cname, str):
                                 if op == "+":
@@ -662,8 +750,12 @@ class RobinMaterializer:
                                     robin_expr = F.lit(lit_val) * F.col(cname)
                                 elif op == "/":
                                     robin_expr = F.lit(lit_val) / F.col(cname)
-                        elif isinstance(val_side, Literal) and isinstance(col_side, Column):
-                            lit_val = _lit_value_for_robin(getattr(val_side, "value", val_side))
+                        elif isinstance(val_side, Literal) and isinstance(
+                            col_side, Column
+                        ):
+                            lit_val = _lit_value_for_robin(
+                                getattr(val_side, "value", val_side)
+                            )
                             cname = getattr(col_side, "name", None)
                             if isinstance(cname, str):
                                 if op == "+":
@@ -674,8 +766,12 @@ class RobinMaterializer:
                                     robin_expr = F.col(cname) * F.lit(lit_val)
                                 elif op == "/":
                                     robin_expr = F.col(cname) / F.lit(lit_val)
-                        elif isinstance(col_side, Column) and val_side is not None and isinstance(
-                            val_side, (int, float, str, bool, type(None))
+                        elif (
+                            isinstance(col_side, Column)
+                            and val_side is not None
+                            and isinstance(
+                                val_side, (int, float, str, bool, type(None))
+                            )
                         ):
                             cname = getattr(col_side, "name", None)
                             if isinstance(cname, str):
@@ -701,9 +797,7 @@ class RobinMaterializer:
                     for f in other_eager.schema.fields
                 ]
                 other_robin_data = _data_to_robin_rows(other_eager.data, other_names)
-                other_robin_df = spark._create_dataframe_from_rows(
-                    other_robin_data, other_robin_schema
-                )
+                other_robin_df = create_from_rows(other_robin_data, other_robin_schema)
                 how_str = "outer" if how == "full" else how
                 if how_str in ("left_semi", "leftsemi", "left_anti", "leftanti"):
                     how_str = (
@@ -729,17 +823,13 @@ class RobinMaterializer:
                     for f in other_eager.schema.fields
                 ]
                 other_robin_data = _data_to_robin_rows(other_eager.data, other_names)
-                other_robin_df = spark._create_dataframe_from_rows(
-                    other_robin_data, other_robin_schema
-                )
+                other_robin_df = create_from_rows(other_robin_data, other_robin_schema)
                 df = df.union(other_robin_df)
             elif op_name == "distinct":
                 df = df.distinct()
             elif op_name == "drop":
                 cols = (
-                    list(payload)
-                    if isinstance(payload, (list, tuple))
-                    else [payload]
+                    list(payload) if isinstance(payload, (list, tuple)) else [payload]
                 )
                 df = df.drop(cols)
 

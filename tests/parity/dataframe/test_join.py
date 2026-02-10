@@ -4,8 +4,6 @@ PySpark parity tests for DataFrame join operations.
 Tests validate that Sparkless join operations behave identically to PySpark.
 """
 
-import pytest
-
 from tests.fixtures.parity_base import ParityTestBase
 
 

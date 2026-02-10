@@ -257,6 +257,8 @@ class SupportsDataFrameOps(
 ):
     """Composite protocol satisfied by `sparkless.dataframe.DataFrame`."""
 
+    def collect(self) -> List[Any]: ...
+
     def _validate_expression_columns(
         self,
         expression: ColumnExpression,

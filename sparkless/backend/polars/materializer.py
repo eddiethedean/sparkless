@@ -5,6 +5,7 @@ This module provides materialization of lazy DataFrame operations using Polars,
 replacing SQL-based materialization with Polars DataFrame operations.
 """
 
+import contextlib
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 import polars as pl
 from sparkless.spark_types import StructType, Row, get_row_value
@@ -1695,18 +1696,22 @@ class PolarsMaterializer:
                     if isinstance(value, dict):
                         ordered_pairs.append((field_name, value))
                         continue
-                    if col_type is not None and isinstance(col_type, DateType) and isinstance(value, str):
-                        try:
+                    if (
+                        col_type is not None
+                        and isinstance(col_type, DateType)
+                        and isinstance(value, str)
+                    ):
+                        with contextlib.suppress(ValueError, AttributeError):
                             value = dt_module.date.fromisoformat(value)
-                        except (ValueError, AttributeError):
-                            pass
-                    elif col_type is not None and isinstance(col_type, TimestampType) and isinstance(value, str):
-                        try:
+                    elif (
+                        col_type is not None
+                        and isinstance(col_type, TimestampType)
+                        and isinstance(value, str)
+                    ):
+                        with contextlib.suppress(ValueError, AttributeError):
                             value = dt_module.datetime.fromisoformat(
                                 value.replace("Z", "+00:00") if "T" in value else value
                             )
-                        except (ValueError, AttributeError):
-                            pass
                     ordered_pairs.append((field_name, value))
                 rows.append(Row(ordered_pairs, schema=None))
                 continue

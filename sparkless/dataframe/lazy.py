@@ -531,6 +531,20 @@ class LazyEvaluationEngine:
                             rows = use_plan(df.data, df.schema, logical_plan)
                         except (ValueError, TypeError):
                             # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
+                            # Re-check capabilities so unsupported ops raise
+                            can_handle_all, unsupported_ops = (
+                                materializer.can_handle_operations(df._operations_queue)
+                            )
+                            if not can_handle_all:
+                                from ..core.exceptions.operation import (
+                                    SparkUnsupportedOperationError,
+                                )
+
+                                raise SparkUnsupportedOperationError(
+                                    operation=f"Operations: {', '.join(unsupported_ops)}",
+                                    reason=f"Backend '{backend_type}' does not support these operations",
+                                    alternative="Consider using a different backend (e.g. polars)",
+                                )
                             rows = materializer.materialize(
                                 df.data, df.schema, df._operations_queue
                             )
@@ -609,7 +623,14 @@ class LazyEvaluationEngine:
                 materializer.close()
 
         except ImportError:
-            # Fallback to manual materialization if backend is not available
+            # Do not fall back for Robin: when Robin backend is selected, let it fail.
+            try:
+                from sparkless.backend.factory import BackendFactory
+
+                if BackendFactory.get_backend_type(df.storage) == "robin":
+                    raise
+            except ImportError:
+                pass
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod

@@ -10,6 +10,7 @@ from sparkless.backend.factory import BackendFactory
 from sparkless.functions import F
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
+
 @pytest.mark.unit
 class TestRobinMaterializerExpressionTranslation:
     """Test _expression_to_robin supports alias and literal-on-left for withColumn (robin-sparkless 0.4.0+)."""
@@ -17,7 +18,7 @@ class TestRobinMaterializerExpressionTranslation:
     def teardown_method(self) -> None:
         BackendFactory._robin_available_cache = None
 
-    @pytest.mark.backend("robin")
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
     def test_with_column_alias_expression_robin(self, spark: Any) -> None:
         """WithColumn with col.alias('x') is supported when Robin backend is used."""
         if get_backend_type() != BackendType.ROBIN:
@@ -30,7 +31,7 @@ class TestRobinMaterializerExpressionTranslation:
         assert result[1]["doubled"] == 4
         assert result[2]["doubled"] == 6
 
-    @pytest.mark.backend("robin")
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
     def test_with_column_literal_plus_column_robin(self, spark: Any) -> None:
         """WithColumn with lit(2) + col('x') (literal on left) is supported when Robin backend is used."""
         if get_backend_type() != BackendType.ROBIN:
@@ -41,7 +42,7 @@ class TestRobinMaterializerExpressionTranslation:
         assert result[0]["plus_two"] == 12
         assert result[1]["plus_two"] == 22
 
-    @pytest.mark.backend("robin")
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
     def test_with_column_literal_times_column_robin(self, spark: Any) -> None:
         """WithColumn with lit(3) * col('x') (literal on left) is supported when Robin backend is used."""
         if get_backend_type() != BackendType.ROBIN:

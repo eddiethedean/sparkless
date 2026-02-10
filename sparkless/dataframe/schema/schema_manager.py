@@ -54,16 +54,23 @@ class SchemaManager:
             op = getattr(on, "operation", None)
             col_side = getattr(on, "column", None)
             val_side = getattr(on, "value", None)
-            if op == "==":
-                if isinstance(col_side, Column) and isinstance(val_side, Column):
-                    left_name = getattr(col_side, "name", None)
-                    right_name = getattr(val_side, "name", None)
-                    if isinstance(left_name, str) and left_name == right_name:
-                        return [left_name]
+            if (
+                op == "=="
+                and isinstance(col_side, Column)
+                and isinstance(val_side, Column)
+            ):
+                left_name = getattr(col_side, "name", None)
+                right_name = getattr(val_side, "name", None)
+                if isinstance(left_name, str) and left_name == right_name:
+                    return [left_name]
             if op == "&":
                 left_list = SchemaManager._join_on_to_column_names(col_side)
                 right_list = SchemaManager._join_on_to_column_names(val_side)
-                if left_list is not None and right_list is not None and left_list == right_list:
+                if (
+                    left_list is not None
+                    and right_list is not None
+                    and left_list == right_list
+                ):
                     return left_list
         return None
 

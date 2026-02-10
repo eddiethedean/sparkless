@@ -3253,11 +3253,7 @@ class PolarsExpressionTranslator:
                 digit_char = params.get("digitChar", "n")
                 other_char = params.get("otherChar", "-")
                 return col_expr.map_elements(
-                    lambda x,
-                    uc=upper_char,
-                    lc=lower_char,
-                    dc=digit_char,
-                    oc=other_char: (
+                    lambda x, uc=upper_char, lc=lower_char, dc=digit_char, oc=other_char: (
                         "".join(
                             uc
                             if c.isupper()
@@ -4378,9 +4374,11 @@ class PolarsExpressionTranslator:
             # which handles both arrays and maps correctly. Do not duplicate here.
             "array_max": lambda e: e.list.max(),
             "array_min": lambda e: e.list.min(),
-            "array_distinct": lambda e: pl.when(e.is_null())
-            .then(pl.lit(None))
-            .otherwise(e.list.unique(maintain_order=True)),
+            "array_distinct": lambda e: (
+                pl.when(e.is_null())
+                .then(pl.lit(None))
+                .otherwise(e.list.unique(maintain_order=True))
+            ),
             # Note: explode/explode_outer expressions just return the array column
             # The actual row expansion is handled in operation_executor
             "explode": lambda e: (

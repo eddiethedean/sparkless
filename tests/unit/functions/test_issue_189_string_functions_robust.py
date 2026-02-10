@@ -190,13 +190,6 @@ class TestIssue189StringFunctionsRobust:
         assert out[3]["c1"] is None
 
     def test_regexp_extract_all_multiple_matches_and_nulls(self, spark):
-        # Robin backend does not support select with regexp_extract_all (only string
-        # column names). Running this in Robin mode would raise SparkUnsupportedOperationError
-        # or stall (e.g. in session/materializer init). Skip so the Robin test suite completes.
-        if get_backend_type() == BackendType.ROBIN:
-            pytest.skip(
-                "Robin backend does not support regexp_extract_all in select"
-            )
         df = spark.createDataFrame(
             [
                 {"s": "a1 b22 c333"},
@@ -205,9 +198,17 @@ class TestIssue189StringFunctionsRobust:
             ]
         )
 
+        backend = get_backend_type()
+        if backend == BackendType.ROBIN:
+            from sparkless.core.exceptions.operation import (
+                SparkUnsupportedOperationError,
+            )
+
+            with pytest.raises(SparkUnsupportedOperationError):
+                df.select(F.regexp_extract_all("s", r"\d+", 0).alias("m")).collect()
+            return
         # In PySpark, the regexp argument is treated as a column unless it is a literal.
         # Sparkless expects a Python string. Use backend-appropriate form.
-        backend = get_backend_type()
         pattern_digits = F.lit(r"\d+") if backend == BackendType.PYSPARK else r"\d+"
         pattern_group = F.lit(r"(\d+)") if backend == BackendType.PYSPARK else r"(\d+)"
 

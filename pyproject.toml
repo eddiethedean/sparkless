@@ -154,15 +154,18 @@ module = [
 ]
 ignore_missing_imports = true
 
+# Robin unsupported tests: type-check strictly (no ignore_errors) so typing is fixed
+[[tool.mypy.overrides]]
+module = [
+    "tests.robin_helpers",
+    "tests.unit.backend.test_robin_unsupported_raises",
+    "tests.unit.backend.robin_test_utils",
+]
+ignore_errors = false
+
 [[tool.mypy.overrides]]
 module = [
     "sparkless.testing.*",
-    "tests.*",
-    "tests.documentation.*",
-    "tests.fixtures.*",
-    "tests.tools.*",
-    "tests.unit.*",
-    "tests.compatibility.*",
 ]
 ignore_errors = true
 
@@ -176,10 +179,10 @@ warn_unused_ignores = false
 [[tool.mypy.overrides]]
 module = [
     "tests.test_issue_259_datetime_string_comparison",
-    "tests.unit.session.test_sql_update",
-    "tests.unit.session.test_sql_create_table_as_select",
     "tests.test_issue_261_between",
     "tests.test_issue_260_eq_null_safe",
+    "tests.unit.session.test_sql_update",
+    "tests.unit.session.test_sql_create_table_as_select",
 ]
 # Pytest decorators: 3.9 needs [misc], 3.11 reports [misc] unused
 warn_unused_ignores = false
