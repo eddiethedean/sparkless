@@ -28,7 +28,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Create robin-sparkless issue for with_column expression support"
     )
-    parser.add_argument("--dry-run", action="store_true", help="Print title and body path, do not create")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print title and body path, do not create",
+    )
     args = parser.parse_args()
 
     if not BODY_FILE.exists():
@@ -39,9 +43,7 @@ def main() -> int:
     print(f"Body file: {BODY_FILE}")
     if args.dry_run:
         print(
-            "Dry run: would run gh issue create -R {} --title ... --body-file {}".format(
-                REPO, BODY_FILE
-            )
+            f"Dry run: would run gh issue create -R {REPO} --title ... --body-file {BODY_FILE}"
         )
         return 0
 
