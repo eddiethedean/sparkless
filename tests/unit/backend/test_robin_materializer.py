@@ -10,16 +10,13 @@ from sparkless.backend.factory import BackendFactory
 from sparkless.functions import F
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-try:
-    import robin_sparkless  # type: ignore[import]
-
-    _HAS_ROBIN = True
-except Exception:
-    _HAS_ROBIN = False
+_HAS_ROBIN = BackendFactory._robin_available()  # type: ignore[attr-defined]
 
 
 @pytest.mark.unit
-@pytest.mark.skipif(not _HAS_ROBIN, reason="Robin backend requires robin-sparkless to be installed")
+@pytest.mark.skipif(
+    not _HAS_ROBIN, reason="Robin backend requires robin-sparkless to be installed"
+)
 class TestRobinMaterializerExpressionTranslation:
     """Test _expression_to_robin supports alias and literal-on-left for withColumn (robin-sparkless 0.4.0+)."""
 
