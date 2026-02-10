@@ -50,6 +50,20 @@ if "JAVA_HOME" not in os.environ:
                 break
 
 
+def pytest_sessionstart(session):
+    """Warn when pytest-xdist is loaded but running with 0 workers (sequential)."""
+    config = session.config
+    n = getattr(config.option, "numprocesses", None)
+    if n == 0:
+        import sys
+
+        msg = (
+            "NOTE: pytest-xdist is running with 0 workers (sequential). "
+            "For parallel runs, pass -n 10 or -n auto."
+        )
+        print(msg, file=sys.stderr, flush=True)
+
+
 @pytest.fixture(scope="function", autouse=True)
 def cleanup_after_each_test():
     """Automatically clean up resources after each test.
@@ -301,9 +315,36 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    """When SPARKLESS_TEST_BACKEND=robin, skip unit tests in the v4 Robin skip list (Phase 6)."""
+    """When SPARKLESS_TEST_BACKEND=robin, skip unit tests in the v4 Robin skip list (Phase 6).
+    Set SPARKLESS_ROBIN_NO_SKIP=1 to run all tests (e.g. for failure catalog).
+    When backend is not robin, skip parquet/table-append tests that require Sparkless session (_storage)."""
     backend = (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower()
+    # Parquet/table-append tests require Robin backend (Sparkless session with _storage)
+    if backend and backend != "robin":
+        robin_only_patterns = (
+            "test_parquet_format_table_append",
+            "test_table_append_persistence",
+        )
+        reason_robin_only = "Parquet/table-append tests require Robin backend (v4)."
+        for item in items:
+            if any(p in item.nodeid for p in robin_only_patterns):
+                item.add_marker(pytest.mark.skip(reason=reason_robin_only))
+    # v4 (Robin-only): skip tests that require PySpark backend
+    try:
+        from sparkless.backend.factory import BackendFactory
+        available = BackendFactory.list_available_backends()
+    except Exception:
+        available = []
+    if available == ["robin"]:
+        reason_pyspark = "v4 is Robin-only; this test requires PySpark backend."
+        for item in items:
+            marker = item.get_closest_marker("backend")
+            if marker and getattr(marker, "args", None) and len(marker.args) > 0:
+                if str(marker.args[0]).strip().lower() == "pyspark":
+                    item.add_marker(pytest.mark.skip(reason=reason_pyspark))
     if backend != "robin":
+        return
+    if (os.environ.get("SPARKLESS_ROBIN_NO_SKIP") or "").strip() == "1":
         return
     skip_list_path = os.path.join(
         os.path.dirname(__file__), "unit", "v4_robin_skip_list.txt"

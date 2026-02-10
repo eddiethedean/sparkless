@@ -23,6 +23,24 @@ Created via `gh issue create -R eddiethedean/robin-sparkless` with body files in
 
 Created via `python scripts/create_robin_github_issues_2026_02.py`
 
+## Issues created from failure catalog (2026-02-10, Phase 8 plan)
+
+Grouped by root cause after running Robin unit+integration and parity tests, verifying features in robin-sparkless source, and classifying failures. One issue per group. See `docs/robin_sparkless_verification_table.md` and `scripts/create_robin_issues_from_catalog.py`.
+
+| # | Title | Link |
+|---|-------|------|
+| 194 | [Sparkless parity] Column name case sensitivity vs PySpark | https://github.com/eddiethedean/robin-sparkless/issues/194 |
+| 195 | [Sparkless parity] Column/expression resolution (not found) | https://github.com/eddiethedean/robin-sparkless/issues/195 |
+| 196 | [Sparkless parity] concat/concat_ws with literal separator or mixed literals | https://github.com/eddiethedean/robin-sparkless/issues/196 |
+| 197 | [Sparkless] Reader schema inference (string-only in v4) | https://github.com/eddiethedean/robin-sparkless/issues/197 |
+| 198 | [Sparkless parity] map(), array(), nested struct/row values | https://github.com/eddiethedean/robin-sparkless/issues/198 |
+| 199 | [Sparkless parity] Other expression or result parity | https://github.com/eddiethedean/robin-sparkless/issues/199 |
+| 200 | [Sparkless parity] substring/substr or alias/partial resolution | https://github.com/eddiethedean/robin-sparkless/issues/200 |
+| 201 | [Sparkless parity] Type strictness (string vs numeric, coercion) | https://github.com/eddiethedean/robin-sparkless/issues/201 |
+| 202 | [Sparkless parity] Unsupported filter conditions (complex/column-column) | https://github.com/eddiethedean/robin-sparkless/issues/202 |
+
+Created via `python scripts/create_robin_issues_from_catalog.py` (uses `tests/robin_unit_integration_results.txt`, `tests/robin_parity_full_results.txt`, `tests/pyspark_parity_full_results.txt`).
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.

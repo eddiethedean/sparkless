@@ -1,0 +1,1252 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0 -- /Users/odosmatthews/.pyenv/versions/3.11.13/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'ci' -> database=None, deadline=None, print_blob=True, derandomize=True, suppress_health_check=(HealthCheck.too_slow,)
+rootdir: /Users/odosmatthews/Documents/coding/sparkless
+configfile: pyproject.toml
+plugins: anyio-4.11.0, cov-7.0.0, green-light-0.2.0, asyncio-1.2.0, xdist-3.8.0, timeout-2.4.0, hypothesis-6.148.7, alt-pytest-asyncio-0.9.3, async-sqlalchemy-0.2.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: thread
+timeout func_only: False
+created: 10/10 workers
+10 workers [256 items]
+
+scheduling tests via LoadScheduling
+
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_groupby_multiple_columns 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_left_join 
+tests/parity/dataframe/test_groupby.py::TestGroupByParity::test_group_by 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_existing_table 
+tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_intersect 
+tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_filter_comparison_operations_not_treated_as_column_existence 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_sum_aggregation 
+tests/parity/dataframe/test_double_join_empty_aggregated.py::TestDoubleJoinEmptyAggregated::test_columns_preserved_in_double_join_with_empty_aggregated 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_pipeline_logs_like_write_visible_immediately 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_issue_267_example 
+[gw8] [  0%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_issue_267_example 
+[gw9] [  0%] PASSED tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_intersect 
+[gw4] [  1%] PASSED tests/parity/dataframe/test_groupby.py::TestGroupByParity::test_group_by 
+[gw0] [  1%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_sum_aggregation 
+[gw1] [  1%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_groupby_multiple_columns 
+[gw6] [  2%] FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_existing_table 
+[gw7] [  2%] PASSED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_pipeline_logs_like_write_visible_immediately 
+[gw2] [  3%] FAILED tests/parity/dataframe/test_double_join_empty_aggregated.py::TestDoubleJoinEmptyAggregated::test_columns_preserved_in_double_join_with_empty_aggregated 
+[gw3] [  3%] PASSED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_filter_comparison_operations_not_treated_as_column_existence 
+tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_operations 
+tests/parity/dataframe/test_select.py::TestSelectParity::test_basic_select 
+[gw8] [  3%] PASSED tests/parity/dataframe/test_select.py::TestSelectParity::test_basic_select 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_avg_aggregation 
+tests/parity/dataframe/test_groupby.py::TestGroupByParity::test_aggregation 
+[gw2] [  4%] PASSED tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_operations 
+tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_except 
+tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_filter_on_table_with_comparison_operations 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_global_aggregation 
+[gw4] [  4%] PASSED tests/parity/dataframe/test_groupby.py::TestGroupByParity::test_aggregation 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_new_table 
+[gw6] [  5%] PASSED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_new_table 
+[gw1] [  5%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_global_aggregation 
+tests/parity/dataframe/test_select.py::TestSelectParity::test_select_with_alias 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_multiple_append_operations 
+tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_with_boolean 
+[gw2] [  5%] PASSED tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_with_boolean 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_sum_parity 
+[gw7] [  6%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_sum_parity 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_avg_parity 
+[gw7] [  6%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_avg_parity 
+[gw5] [  7%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_left_join 
+[gw0] [  7%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_avg_aggregation 
+[gw9] [  7%] PASSED tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_except 
+tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_data_visible_immediately 
+[gw8] [  8%] FAILED tests/parity/dataframe/test_select.py::TestSelectParity::test_select_with_alias 
+[gw3] [  8%] FAILED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_filter_on_table_with_comparison_operations 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_aggregation_with_nulls 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_right_join 
+[gw5] [  8%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_right_join 
+[gw1] [  9%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_aggregation_with_nulls 
+[gw6] [  9%] FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_multiple_append_operations 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_count_parity 
+[gw9] [ 10%] FAILED tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_data_visible_immediately 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_count_aggregation 
+tests/parity/dataframe/test_select.py::TestSelectParity::test_column_access 
+tests/parity/dataframe/test_column_subscript_parity.py::TestColumnSubscriptParity::test_column_subscript_single_field_parity 
+[gw7] [ 10%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_count_parity 
+[gw0] [ 10%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_count_aggregation 
+tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_with_and_operator 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_outer_join 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_max_aggregation 
+tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_arithmetic_operations_in_filters 
+[gw8] [ 11%] PASSED tests/parity/dataframe/test_select.py::TestSelectParity::test_column_access 
+[gw1] [ 11%] SKIPPED tests/parity/dataframe/test_column_subscript_parity.py::TestColumnSubscriptParity::test_column_subscript_single_field_parity 
+[gw2] [ 12%] PASSED tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_with_and_operator 
+tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_to_new_table 
+[gw0] [ 12%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_max_aggregation 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_max_parity 
+tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_union 
+[gw5] [ 12%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_outer_join 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_min_aggregation 
+tests/parity/dataframe/test_column_subscript_parity.py::TestColumnSubscriptParity::test_column_subscript_multiple_fields_parity 
+[gw1] [ 13%] SKIPPED tests/parity/dataframe/test_column_subscript_parity.py::TestColumnSubscriptParity::test_column_subscript_multiple_fields_parity 
+tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_single_column 
+[gw7] [ 13%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_max_parity 
+[gw0] [ 14%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_min_aggregation 
+[gw9] [ 14%] PASSED tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_to_new_table 
+tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_with_or_operator 
+[gw6] [ 14%] FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions 
+[gw8] [ 15%] PASSED tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_union 
+[gw4] [ 15%] PASSED tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_single_column 
+[gw2] [ 16%] PASSED tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_with_or_operator 
+[gw3] [ 16%] PASSED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_arithmetic_operations_in_filters 
+tests/parity/dataframe/test_column_subscript_parity.py::TestColumnSubscriptParity::test_column_subscript_equals_dot_notation_parity 
+tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_multiple_append_operations 
+[gw6] [ 16%] FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions 
+tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_multiple_aggregations 
+[gw1] [ 17%] SKIPPED tests/parity/dataframe/test_column_subscript_parity.py::TestColumnSubscriptParity::test_column_subscript_equals_dot_notation_parity 
+tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_drop_column 
+tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_multiple_columns 
+[gw9] [ 17%] PASSED tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_multiple_append_operations 
+[gw4] [ 17%] PASSED tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_multiple_columns 
+tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_complex_nested_operations_in_filters 
+[gw0] [ 18%] PASSED tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_multiple_aggregations 
+tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_equals_avg 
+[gw3] [ 18%] PASSED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_complex_nested_operations_in_filters 
+[gw4] [ 19%] PASSED tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_equals_avg 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_cross_join 
+[gw5] [ 19%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_cross_join 
+[gw1] [ 19%] PASSED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_drop_column 
+tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_string_operations_in_filters 
+tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_on_table_with_complex_schema 
+tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_union_all 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_rank 
+[gw0] [ 20%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_rank 
+[gw3] [ 20%] FAILED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_string_operations_in_filters 
+tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_distinct 
+[gw8] [ 21%] PASSED tests/parity/dataframe/test_set_operations.py::TestSetOperationsParity::test_union_all 
+[gw2] [ 21%] FAILED tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_on_table_with_complex_schema 
+[gw1] [ 21%] PASSED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_distinct 
+tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_with_column 
+[gw9] [ 22%] PASSED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_with_column 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_min_parity 
+tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_min 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_storage_manager_detached_write_visible_to_session 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_inner_join 
+[gw4] [ 22%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_inner_join 
+[gw2] [ 23%] PASSED tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_min 
+[gw6] [ 23%] FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_storage_manager_detached_write_visible_to_session 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_semi_join 
+[gw5] [ 23%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_semi_join 
+tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_order_by 
+[gw1] [ 24%] PASSED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_order_by 
+[gw7] [ 24%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_min_parity 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_first_value 
+[gw7] [ 25%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_first_value 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_last_value 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_empty_groups 
+[gw8] [ 25%] FAILED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_empty_groups 
+tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_parity 
+[gw9] [ 25%] FAILED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_parity 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_dense_rank 
+[gw0] [ 26%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_dense_rank 
+tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_logical_operations_in_filters 
+[gw3] [ 26%] FAILED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_logical_operations_in_filters 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_different_numeric_types 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_remove 
+tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_without_rsd_parity 
+[gw7] [ 26%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_last_value 
+[gw9] [ 27%] PASSED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_without_rsd_parity 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_mean_cast_string_issue_265 
+[gw2] [ 27%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_mean_cast_string_issue_265 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_element_at 
+[gw3] [ 28%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_remove 
+tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_with_filter_parity 
+tests/parity/dataframe/test_join.py::TestJoinParity::test_anti_join 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_percent_rank 
+tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_basic_parity 
+[gw3] [ 28%] FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_basic_parity 
+tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_multiple_matches_parity 
+[gw3] [ 28%] FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_multiple_matches_parity 
+tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity 
+[gw7] [ 29%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_percent_rank 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_ntile 
+[gw7] [ 29%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_ntile 
+tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_sum 
+[gw7] [ 30%] PASSED tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_sum 
+tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_avg 
+[gw7] [ 30%] PASSED tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_avg 
+tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_count 
+[gw7] [ 30%] PASSED tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_count 
+[gw6] [ 31%] PASSED tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_with_filter_parity 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_year 
+[gw6] [ 31%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_year 
+tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_order_by_desc 
+[gw1] [ 32%] FAILED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_order_by_desc 
+tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_limit 
+[gw1] [ 32%] PASSED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_limit 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_sum_over_window 
+[gw0] [ 32%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_sum_over_window 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_lag 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_row_number 
+[gw0] [ 33%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_lag 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_lead 
+[gw0] [ 33%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_lead 
+[gw4] [ 33%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_element_at 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_explode 
+[gw4] [ 34%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_explode 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_distinct 
+[gw4] [ 34%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_distinct 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_join 
+[gw4] [ 35%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_join 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_union 
+[gw4] [ 35%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_union 
+[gw3] [ 35%] FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity 
+tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_basic_parity 
+tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_cume_dist 
+tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_max 
+[gw0] [ 36%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_cume_dist 
+tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_different_values_parity 
+[gw9] [ 36%] PASSED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_different_values_parity 
+tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_without_rsd_parity 
+[gw9] [ 37%] FAILED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_without_rsd_parity 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_contains 
+[gw9] [ 37%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_contains 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_all_aggregate_functions_with_string_cast 
+[gw2] [ 37%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_all_aggregate_functions_with_string_cast 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_to_different_types 
+[gw2] [ 38%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_to_different_types 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_null_values 
+[gw2] [ 38%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_null_values 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_column_name_format 
+[gw2] [ 39%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_column_name_format 
+[gw7] [ 39%] PASSED tests/parity/functions/test_aggregate.py::TestAggregateFunctionsParity::test_agg_max 
+tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_with_null_parity 
+[gw3] [ 39%] PASSED tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_basic_parity 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_month 
+[gw6] [ 40%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_month 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofmonth 
+[gw6] [ 40%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofmonth 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofweek 
+[gw6] [ 41%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofweek 
+[gw7] [ 41%] FAILED tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_with_null_parity 
+[gw1] [ 41%] FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_row_number 
+[gw8] [ 42%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_different_numeric_types 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_chain_operations 
+[gw8] [ 42%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_chain_operations 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_count_distinct 
+[gw8] [ 42%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_count_distinct 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_position 
+[gw9] [ 43%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_position 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_multiple_casts_same_aggregate 
+[gw2] [ 43%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_multiple_casts_same_aggregate 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_abs 
+[gw1] [ 44%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_abs 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_round 
+[gw5] [ 44%] PASSED tests/parity/dataframe/test_join.py::TestJoinParity::test_anti_join 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_sub 
+[gw5] [ 44%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_sub 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_format 
+[gw5] [ 45%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_format 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_to_date 
+[gw5] [ 45%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_to_date 
+tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_stddev_variance 
+[gw8] [ 46%] PASSED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_stddev_variance 
+tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_issue_266 
+[gw1] [ 46%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_round 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_exp 
+[gw0] [ 46%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_exp 
+[gw8] [ 47%] FAILED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_issue_266 
+tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_multiple_aggregations_parity 
+[gw3] [ 47%] PASSED tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_multiple_aggregations_parity 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_add 
+tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_float_base_parity 
+[gw7] [ 48%] FAILED tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_float_base_parity 
+[gw6] [ 48%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_add 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_size 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnull 
+[gw9] [ 48%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_size 
+tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_basic_parity 
+[gw3] [ 49%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnull 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_sqrt 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_floor 
+tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_parity 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_sin 
+tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_sort 
+[gw4] [ 49%] FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_sort 
+[gw1] [ 50%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_sqrt 
+[gw5] [ 50%] FAILED tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_basic_parity 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nullif 
+tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_without_limit_parity 
+[gw8] [ 50%] PASSED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_parity 
+[gw0] [ 51%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_sin 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_cos 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnotnull 
+[gw4] [ 51%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nullif 
+[gw3] [ 51%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnotnull 
+tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_natural_log_parity 
+[gw7] [ 52%] FAILED tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_natural_log_parity 
+[gw0] [ 52%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_cos 
+[gw6] [ 53%] FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_without_limit_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_length 
+tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_orderby_ascending_false_parity 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_ifnull 
+[gw8] [ 53%] PASSED tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_orderby_ascending_false_parity 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_when_otherwise 
+tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_multiple_args_parity 
+[gw5] [ 53%] FAILED tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_multiple_args_parity 
+[gw9] [ 54%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_length 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_tan 
+[gw0] [ 54%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_tan 
+[gw4] [ 55%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_ifnull 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nanvl 
+[gw4] [ 55%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nanvl 
+tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_minus_one_parity 
+[gw6] [ 55%] FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_minus_one_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_column_astype_method 
+tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_different_bases_parity 
+tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_sort_with_ascending_parity 
+[gw3] [ 56%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_when_otherwise 
+[gw5] [ 56%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_column_astype_method 
+[gw2] [ 57%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_floor 
+[gw7] [ 57%] FAILED tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_different_bases_parity 
+[gw8] [ 57%] PASSED tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_sort_with_ascending_parity 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_pow 
+tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_upper 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_substring 
+[gw8] [ 58%] FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_parity 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_greatest 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_ceil 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nvl 
+tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_1_parity 
+[gw1] [ 58%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_pow 
+[gw2] [ 58%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_greatest 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_least 
+[gw6] [ 59%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_upper 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_concat 
+[gw5] [ 59%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_concat 
+[gw2] [ 60%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_least 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_regexp_extract 
+[gw7] [ 60%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_regexp_extract 
+[gw3] [ 60%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nvl 
+tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_log 
+[gw1] [ 61%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_log 
+[gw9] [ 61%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_substring 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_ascii 
+[gw3] [ 62%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_ascii 
+tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_coalesce 
+[gw8] [ 62%] FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_1_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_initcap 
+[gw8] [ 62%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_initcap 
+[gw2] [ 63%] FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_coalesce 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_levenshtein 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_substr_method 
+[gw0] [ 63%] FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_ceil 
+[gw1] [ 64%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_levenshtein 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_hex 
+[gw3] [ 64%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_hex 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_lower 
+[gw6] [ 64%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_lower 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rtrim 
+[gw0] [ 65%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rtrim 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_lpad 
+[gw0] [ 65%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_lpad 
+tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_orderby_ascending_true_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_trim 
+[gw7] [ 66%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_trim 
+[gw9] [ 66%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_substr_method 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_xxhash64 
+[gw2] [ 66%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_xxhash64 
+[gw4] [ 67%] PASSED tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_orderby_ascending_true_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_like 
+[gw4] [ 67%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_like 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rlike 
+[gw4] [ 67%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rlike 
+[gw8] [ 68%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_crc32 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_ltrim 
+[gw1] [ 68%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_crc32 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_split 
+[gw5] [ 69%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_split 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_json_tuple 
+[gw6] [ 69%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_json_tuple 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_translate 
+[gw7] [ 69%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_ltrim 
+tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_mm_slash_dd_slash_yyyy_format 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rpad 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_base64 
+tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_parity 
+[gw5] [ 70%] FAILED tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_parity 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_concat_ws 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_repeat 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_get_json_object 
+[gw2] [ 70%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_get_json_object 
+[gw3] [ 71%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_base64 
+[gw0] [ 71%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rpad 
+[gw8] [ 71%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_translate 
+[gw7] [ 72%] FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_mm_slash_dd_slash_yyyy_format 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_substring_index 
+[gw4] [ 72%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_concat_ws 
+[gw9] [ 73%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_repeat 
+tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_and_other_columns_parity 
+[gw6] [ 73%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_substring_index 
+tests/parity/functions/test_window_function_comparison_parity.py::TestWindowFunctionComparisonParity::test_window_function_gt_comparison_parity 
+[gw1] [ 73%] FAILED tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_and_other_columns_parity 
+[gw0] [ 74%] SKIPPED tests/parity/functions/test_window_function_comparison_parity.py::TestWindowFunctionComparisonParity::test_window_function_gt_comparison_parity 
+tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_without_format_string 
+[gw8] [ 74%] FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_without_format_string 
+tests/parity/functions/test_window_function_comparison_parity.py::TestWindowFunctionComparisonParity::test_window_function_comparison_in_filter_parity 
+[gw2] [ 75%] SKIPPED tests/parity/functions/test_window_function_comparison_parity.py::TestWindowFunctionComparisonParity::test_window_function_comparison_in_filter_parity 
+tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_yyyy_mm_dd_format 
+tests/parity/functions/test_window_function_comparison_parity.py::TestWindowFunctionComparisonParity::test_window_function_eq_comparison_parity 
+[gw0] [ 75%] SKIPPED tests/parity/functions/test_window_function_comparison_parity.py::TestWindowFunctionComparisonParity::test_window_function_eq_comparison_parity 
+tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_orderby_list_basic_parity 
+tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_dd_hyphen_mm_hyphen_yyyy_format 
+tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_multiple_fields_parity 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_create_database_catalog 
+[gw5] [ 75%] FAILED tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_multiple_fields_parity 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_tables_in_database 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_reverse 
+tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_orderby_list_multiple_columns_parity 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_databases 
+tests/parity/functions/test_to_date_issue_126.py::TestToDateIssue126::test_issue_126_reproduction 
+[gw5] [ 76%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_databases 
+[gw3] [ 76%] FAILED tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_orderby_list_basic_parity 
+tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_partitionby_list_parity 
+[gw4] [ 76%] FAILED tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_orderby_list_multiple_columns_parity 
+[gw9] [ 77%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_reverse 
+[gw1] [ 77%] FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_yyyy_mm_dd_format 
+[gw2] [ 78%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_create_database_catalog 
+[gw7] [ 78%] FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_dd_hyphen_mm_hyphen_yyyy_format 
+[gw0] [ 78%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_tables_in_database 
+[gw6] [ 79%] FAILED tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_partitionby_list_parity 
+[gw8] [ 79%] FAILED tests/parity/functions/test_to_date_issue_126.py::TestToDateIssue126::test_issue_126_reproduction 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_is_cached 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_table_exists 
+[gw6] [ 80%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_is_cached 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_tables 
+[gw3] [ 80%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_table_exists 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_uncache_table 
+[gw1] [ 80%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_tables 
+[gw5] [ 81%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_uncache_table 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_get_table_in_database 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_cache_table 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_drop_database_catalog 
+[gw7] [ 81%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_drop_database_catalog 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_set_current_database 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_get_table 
+[gw4] [ 82%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_get_table_in_database 
+tests/parity/internal/test_session.py::TestSessionParity::test_createDataFrame_from_list_of_dicts 
+[gw8] [ 82%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_cache_table 
+tests/parity/internal/test_session.py::TestSessionParity::test_createDataFrame_empty 
+tests/parity/internal/test_catalog.py::TestCatalogParity::test_table_exists_in_database 
+[gw2] [ 82%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_table_exists_in_database 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_inner_join 
+[gw9] [ 83%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_set_current_database 
+[gw1] [ 83%] PASSED tests/parity/internal/test_session.py::TestSessionParity::test_createDataFrame_empty 
+[gw6] [ 83%] PASSED tests/parity/internal/test_session.py::TestSessionParity::test_createDataFrame_from_list_of_dicts 
+[gw0] [ 84%] PASSED tests/parity/internal/test_catalog.py::TestCatalogParity::test_get_table 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_limit 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_having 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_like 
+tests/parity/internal/test_session.py::TestSessionParity::test_createDataFrame_with_explicit_schema 
+[gw3] [ 84%] PASSED tests/parity/internal/test_session.py::TestSessionParity::test_createDataFrame_with_explicit_schema 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_subquery 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_union 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_order_by 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_left_join 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_case_when 
+[gw8] [ 85%] PASSED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_limit 
+[gw2] [ 85%] PASSED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_subquery 
+[gw7] [ 85%] FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_left_join 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_with_select 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_database_if_not_exists 
+[gw8] [ 86%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_database_if_not_exists 
+[gw3] [ 86%] FAILED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_with_select 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_table 
+[gw0] [ 87%] FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_order_by 
+[gw4] [ 87%] PASSED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_having 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_set_current_database 
+[gw1] [ 87%] FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_like 
+[gw6] [ 88%] FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_case_when 
+[gw5] [ 88%] FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_inner_join 
+[gw9] [ 89%] PASSED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_union 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_table_if_exists 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_database 
+[gw0] [ 89%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_set_current_database 
+[gw6] [ 89%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_table_if_exists 
+[gw2] [ 90%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_table 
+[gw9] [ 90%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_database 
+tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_in_clause 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_specific_columns 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_from_dataframe 
+[gw1] [ 91%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_from_dataframe 
+[gw5] [ 91%] PASSED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_in_clause 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_multiple_columns 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_table 
+[gw8] [ 91%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_table 
+[gw2] [ 92%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_specific_columns 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_table 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_all_rows 
+[gw6] [ 92%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_table 
+[gw9] [ 92%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_multiple_columns 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_database 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_schema 
+tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_table_in_specific_database 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_multiple_values 
+[gw4] [ 93%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_database 
+[gw3] [ 93%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_table_in_specific_database 
+[gw1] [ 94%] PASSED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_all_rows 
+[gw7] [ 94%] PASSED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_schema 
+[gw0] [ 94%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_multiple_values 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_group_by 
+[gw8] [ 95%] PASSED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_group_by 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_from_table 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_table 
+[gw1] [ 95%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_table 
+tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_from_select 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_filtered_select 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_basic_select 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_aggregation 
+[gw7] [ 96%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_from_select 
+[gw2] [ 96%] PASSED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_aggregation 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables_in_database 
+[gw6] [ 96%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables_in_database 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables 
+[gw9] [ 97%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables 
+[gw3] [ 97%] PASSED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_filtered_select 
+[gw5] [ 98%] PASSED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_basic_select 
+[gw4] [ 98%] FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_from_table 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_databases 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_column 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_columns 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_extended 
+[gw0] [ 98%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_databases 
+[gw5] [ 99%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_columns 
+[gw2] [ 99%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_column 
+[gw8] [100%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_extended 
+
+=================================== FAILURES ===================================
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/dataframe/test_parquet_format_table_append.py:62: AssertionError: Initial table should be empty
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: concat(first_name,  , last_name)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/plan_executor.py:197: RuntimeError: not found: unable to find column "active"; valid columns: ["id", "score", "status"]
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/dataframe/test_parquet_format_table_append.py:147: AssertionError: After 1 appends, table should have 2 rows, got 3
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/dataframe/test_table_append_persistence.py:28: AssertionError: Initial table should have 1 row
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/dataframe/test_parquet_format_table_append.py:182: assert 0 == 2
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/dataframe/test_parquet_format_table_append.py:214: assert 0 == 2
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported
+/Users/odosmatthews/.pyenv/versions/3.11.13/lib/python3.11/json/encoder.py:180: TypeError: Object of type datetime is not JSON serializable
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/dataframe/test_parquet_format_table_append.py:246: assert 0 == 2
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/plan_executor.py:197: RuntimeError: not found: unable to find column "A"; valid columns: ["group", "value"]
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: format_string('%s-%s', Value, Number)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:769: RuntimeError: not found: Log10
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: format_string('%s-%s', StringValue, IntegerValue)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:769: RuntimeError: not found: Ln
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: split(Value, ,, -1)
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: format_string('%s is %d years old and lives in %s', Name, Age, City)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: split(Value, ,, -1)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: substring(proc_date, 1, 10)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:769: RuntimeError: not found: Log10
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: split(StringValue, ,, 3)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: split(Value, ,, 1)
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:769: RuntimeError: not found: partial_name
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:736: TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, or str
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: to_date(event_date, 'MM/dd/yyyy')
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:736: TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, or str
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: to_date(date_str)
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:736: TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, or str
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/tools/comparison_utils.py:798: AssertionError: DataFrames are not equivalent:
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: to_date(date_of_birth, 'yyyy-MM-dd')
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: to_date(event_date, 'dd-MM-yyyy')
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/materializer.py:857: RuntimeError: not found: to_date(date_of_birth, 'yyyy-MM-dd')
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/tests/parity/sql/test_ddl.py:102: assert 0 == 2
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: select' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/plan_executor.py:197: RuntimeError: not found: unable to find column "Alice"; valid columns: ["name", "age"]
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/backend/robin/plan_executor.py:197: RuntimeError: not found: unable to find column "Alice"; valid columns: ["name", "age", "dept"]
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/session/sql/executor.py:150: sparkless.core.exceptions.execution.QueryExecutionException: Failed to execute query: not found: unable to find column "IT"; valid columns: ["name", "age", "dept"]
+/Users/odosmatthews/Documents/coding/sparkless/sparkless/dataframe/lazy.py:542: sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                 Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------
+sparkless/__init__.py                                                   24      0   100%
+sparkless/_version.py                                                    8      4    50%   10-12, 16-19
+sparkless/backend/__init__.py                                            3      0   100%
+sparkless/backend/factory.py                                            72     33    54%   45, 50, 79, 84, 104-115, 135-157, 176, 190-191
+sparkless/backend/polars/__init__.py                                     4      0   100%
+sparkless/backend/polars/_over_compat.py                                19     12    37%   21-27, 36-40
+sparkless/backend/polars/executors/__init__.py                           1      1     0%   13
+sparkless/backend/polars/export.py                                      36     28    22%   27-53, 67-76, 88-89, 102-103, 113-114
+sparkless/backend/polars/expression_translator.py                     2172   2123     2%   40-48, 59-148, 161-167, 178-192, 201-214, 236-313, 332-367, 383-388, 400-404, 422-1080, 1102-1249, 1280-1356, 1368-1567, 1582, 1587-1591, 1594-1633, 1636-1649, 1652-1656, 1659-1663, 1671-1672, 1693-4572, 4584-4601, 4614-4624, 4637-4663, 4676-4730, 4741-4787, 4800-4828, 4839-4863, 4876-5031, 5042-5091, 5103-5110, 5122-5156, 5178-5226, 5241-5251
+sparkless/backend/polars/materializer.py                               852    828     3%   49-50, 59-69, 76-106, 126-1780, 1792-1807, 1823-1838, 1850-1857, 1872-1907, 1922-1928, 1937-1939, 1944
+sparkless/backend/polars/operation_executor.py                        2047   1996     2%   37-42, 56-113, 121-130, 139-149, 164-170, 176-177, 191-347, 360-2001, 2010-2018, 2023-2038, 2043-2064, 2069-2073, 2078-2086, 2089-2102, 2105-2120, 2123-2126, 2131-2143, 2146-2165, 2187-3405, 3421-3467, 3499-3643, 3666-3937, 3967-4256, 4274-4346, 4359-4380, 4395-4453, 4465, 4477, 4494-4517, 4528, 4540, 4555
+sparkless/backend/polars/parquet_storage.py                             41     41     0%   8-119
+sparkless/backend/polars/plan_interpreter.py                           381    381     0%   8-531
+sparkless/backend/polars/schema_registry.py                             73     59    19%   42-43, 59-94, 107-190, 203-207, 217-222
+sparkless/backend/polars/schema_utils.py                                31     10    68%   18-20, 31-38, 53, 65
+sparkless/backend/polars/storage.py                                    350    215    39%   61, 68-69, 80-83, 87-94, 98-103, 108, 118, 127, 137-138, 149-152, 163-175, 183-185, 189-196, 200-206, 225-226, 242, 274, 286, 289-290, 301-319, 325-349, 365-367, 371, 375-377, 385-400, 420, 440-457, 470-483, 494-538, 551-561, 574, 578, 606-614, 626-634, 646, 669, 681-690, 702-703, 707, 714, 718, 724, 728, 730, 735, 740-743, 753-771
+sparkless/backend/polars/translators/__init__.py                         1      1     0%   14
+sparkless/backend/polars/translators/arithmetic_translator.py           17     17     0%   8-70
+sparkless/backend/polars/translators/string_translator.py              145    145     0%   8-302
+sparkless/backend/polars/translators/type_translator.py                107    107     0%   8-190
+sparkless/backend/polars/type_mapper.py                                 99     91     8%   48-96, 111-173
+sparkless/backend/polars/window_handler.py                             290    278     4%   20-25, 30-44, 56-70, 80-85, 100-113, 132-563
+sparkless/backend/protocols.py                                          14      0   100%
+sparkless/backend/robin/__init__.py                                      4      0   100%
+sparkless/backend/robin/export.py                                       46     34    26%   20-29, 36, 41-50, 55-62, 71-77, 80-85
+sparkless/backend/robin/materializer.py                                593    309    48%   42-43, 53-56, 63-64, 83, 103, 116, 122, 127, 130, 133, 147, 150-151, 157, 170, 184, 188, 203, 205-213, 222-224, 241, 248, 250-252, 257-544, 583, 598, 602-605, 610-614, 618, 623, 628-629, 648, 699, 705, 713-716, 725-729, 759-763, 771, 783, 795, 804-853, 876, 881, 895-901, 921
+sparkless/backend/robin/plan_executor.py                               191     62    68%   18-19, 30-32, 43, 50, 55, 68-75, 82-89, 92-97, 127, 142, 154, 160-163, 171-172, 186, 190, 195, 205, 215, 217, 221, 227, 229, 235, 239-249, 258-260, 263
+sparkless/backend/robin/storage.py                                      52      4    92%   27, 77, 94, 99
+sparkless/compat/__init__.py                                             2      0   100%
+sparkless/compat/datetime.py                                            74     53    28%   43, 55-57, 61-67, 73-81, 96-103, 115-122, 128-133, 141-146, 162-182
+sparkless/config.py                                                     55     17    69%   46-58, 64-65, 69, 77-81, 90-91, 106
+sparkless/core/__init__.py                                               9      0   100%
+sparkless/core/column_resolver.py                                       33     11    67%   48, 72-73, 105-116, 139
+sparkless/core/condition_evaluator.py                                  764    730     4%   27-34, 49-56, 71-245, 260-541, 556-576, 591-604, 619-781, 795-1203, 1218-1229, 1245-1274, 1290-1311, 1324-1340, 1353, 1366-1370, 1384-1403
+sparkless/core/data_validation.py                                       80     41    49%   56-85, 91-113, 129, 136-137, 177-185, 205-206, 220-221
+sparkless/core/ddl_adapter.py                                           31     12    61%   93-106
+sparkless/core/exceptions/__init__.py                                    6      0   100%
+sparkless/core/exceptions/analysis.py                                  100     81    19%   37-63, 70-73, 91, 109, 137-162, 170-202, 230-245, 269-272, 302-323
+sparkless/core/exceptions/base.py                                       22      4    82%   31, 61, 76, 91
+sparkless/core/exceptions/execution.py                                  29     12    59%   45, 63, 87-90, 114-117, 135, 153
+sparkless/core/exceptions/operation.py                                  87     55    37%   24-34, 49-58, 72-82, 96-106, 120-129, 152, 173-183
+sparkless/core/exceptions/py4j_compat.py                                10     10     0%   8-41
+sparkless/core/exceptions/runtime.py                                    41     25    39%   27, 53-57, 75, 101-107, 131-134, 158-161, 187-193
+sparkless/core/exceptions/validation.py                                 44     26    41%   27, 45, 63, 81, 107-111, 141-147, 171-174, 202-207
+sparkless/core/interfaces/__init__.py                                    5      0   100%
+sparkless/core/interfaces/dataframe.py                                 180     56    69%   20, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 98, 103, 110, 115, 120, 125, 130, 136, 142, 151, 156, 161, 166, 171, 176, 181, 190, 195, 200, 205, 212, 217, 222, 227, 232, 241, 246, 251, 256, 261, 266, 275, 280, 285, 290, 295, 300, 305, 310, 315, 320
+sparkless/core/interfaces/functions.py                                 186     56    70%   23, 28, 33, 42, 47, 56, 61, 70, 75, 84, 89, 94, 99, 108, 113, 118, 123, 130, 135, 144, 149, 154, 159, 164, 173, 178, 185, 192, 197, 202, 207, 212, 221, 226, 231, 236, 241, 250, 255, 263, 273, 278, 283, 288, 293, 298, 303, 308, 313, 318, 323, 328, 333, 338, 343, 348
+sparkless/core/interfaces/session.py                                   117     34    71%   20, 26, 32, 38, 44, 50, 59, 64, 69, 76, 81, 86, 96, 101, 106, 115, 120, 125, 136, 141, 146, 151, 156, 161, 166, 171, 176, 185, 190, 195, 200, 209, 214, 219
+sparkless/core/interfaces/storage.py                                   126     38    70%   29, 34, 39, 44, 54, 59, 64, 69, 76, 83, 90, 97, 102, 106, 110, 114, 120, 126, 136, 142, 148, 153, 158, 163, 168, 173, 186, 192, 198, 204, 210, 215, 220, 229, 234, 239, 248, 253
+sparkless/core/protocols.py                                             42      0   100%
+sparkless/core/safe_evaluator.py                                       125     83    34%   45-50, 66-67, 86, 88, 90, 95, 97-103, 105-134, 145-147, 150-152, 157-164, 169, 171, 173, 176-179, 184-215
+sparkless/core/schema_inference.py                                     107     36    66%   73, 83-84, 99, 111, 132, 158, 167, 187-200, 218-237, 242-251, 256-265, 297, 307
+sparkless/core/type_utils.py                                            86     56    35%   20-21, 91-93, 116-121, 140-144, 164-168, 187-199, 223-259, 278, 290-292, 304
+sparkless/core/types/__init__.py                                         4      0   100%
+sparkless/core/types/data_types.py                                     139     38    73%   22, 27, 32, 37, 42, 47, 52, 57, 66, 76, 81, 91, 97, 102, 111, 121, 127, 132, 141, 146, 155, 160, 170, 175, 180, 190, 196, 201, 206, 211, 221, 226, 231, 240, 249, 254, 259, 264
+sparkless/core/types/metadata.py                                       166     47    72%   18, 23, 28, 33, 38, 43, 48, 53, 58, 63, 73, 79, 85, 91, 97, 103, 108, 113, 118, 128, 134, 140, 145, 150, 160, 166, 172, 177, 182, 187, 197, 203, 209, 215, 220, 225, 230, 239, 244, 249, 254, 259, 268, 273, 278, 283, 288
+sparkless/core/types/schema.py                                         121     36    70%   22, 28, 34, 40, 45, 50, 55, 60, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 185, 190, 195, 200, 209, 214, 221, 226
+sparkless/data_generation/__init__.py                                    4      4     0%   8-12
+sparkless/data_generation/builder.py                                    28     28     0%   8-85
+sparkless/data_generation/convenience.py                                 9      9     0%   8-64
+sparkless/data_generation/generator.py                                 174    174     0%   8-337
+sparkless/dataframe/__init__.py                                          6      0   100%
+sparkless/dataframe/aggregations/__init__.py                             2      2     0%   8-10
+sparkless/dataframe/aggregations/operations.py                          75     75     0%   8-208
+sparkless/dataframe/assertions/__init__.py                               3      3     0%   7-10
+sparkless/dataframe/assertions/assertions.py                            26     26     0%   8-88
+sparkless/dataframe/assertions/operations.py                            16     16     0%   8-45
+sparkless/dataframe/attribute_handler.py                                62     30    52%   30, 54, 77-85, 116-125, 176, 190-196, 213-217, 223-224
+sparkless/dataframe/casting/__init__.py                                  2      0   100%
+sparkless/dataframe/casting/type_converter.py                           95     75    21%   54, 56-58, 62-153, 158-180
+sparkless/dataframe/collection_handler.py                               29     17    41%   27-29, 35-41, 47-53, 68-72, 81
+sparkless/dataframe/condition_handler.py                                52     34    35%   58-64, 80, 109-122, 136-180
+sparkless/dataframe/dataframe.py                                       513    211    59%   187-191, 219-224, 240-243, 262-265, 280, 305, 317, 325, 339, 345, 373, 377, 381, 390, 394, 420, 424, 432, 440, 453, 457, 469-477, 486, 490, 507-508, 518-532, 551, 555-561, 565, 569, 596-609, 621, 625, 630, 634, 638, 642, 652, 674, 689-691, 700, 709, 715, 719, 723, 727, 733, 742, 746, 750, 756, 760, 770, 780, 791, 795, 799, 803, 809, 813, 817, 821, 829, 835, 839, 843, 847, 852, 856, 860, 864, 875, 894, 899, 960-969, 997, 1002, 1021-1026, 1041-1052, 1062, 1078-1097, 1103, 1128, 1152-1153, 1161-1162, 1195, 1201-1206, 1210, 1216, 1225, 1250, 1258, 1269, 1284, 1292, 1303, 1311, 1323, 1329, 1335, 1342, 1347-1353, 1368-1379, 1383, 1403-1411, 1420-1460
+sparkless/dataframe/display/__init__.py                                  3      3     0%   3-6
+sparkless/dataframe/display/formatter.py                                37     37     0%   3-57
+sparkless/dataframe/display/operations.py                              118    118     0%   8-274
+sparkless/dataframe/evaluation/__init__.py                               2      0   100%
+sparkless/dataframe/evaluation/evaluators/__init__.py                    1      0   100%
+sparkless/dataframe/evaluation/evaluators/conditional_evaluator.py      22     15    32%   35-63
+sparkless/dataframe/evaluation/expression_evaluator.py                2615   2358    10%   96, 99, 103, 106-113, 117-122, 128-130, 134, 145-146, 150, 154, 160-181, 193-259, 269-300, 306-416, 422-448, 458-1021, 1027-1066, 1072-1257, 1263-1340, 1347-1385, 1391-1442, 1448-1534, 1539-1555, 1562-1574, 1578-1593, 1597-1612, 1616-1631, 1635-1650, 1661-1666, 1670-1693, 1697, 1944, 1948, 1952-1956, 1960-1964, 1968-1972, 1976-1989, 1993-2000, 2004-2014, 2018-2028, 2032-2034, 2040-2043, 2047-2050, 2054-2061, 2065-2070, 2085-2143, 2147-2152, 2163-2207, 2211-2222, 2226-2234, 2240-2242, 2246-2251, 2255-2257, 2261-2263, 2269, 2273-2279, 2283, 2287-2292, 2296-2298, 2302-2304, 2308, 2312, 2316, 2324, 2328, 2332-2335, 2339-2341, 2345-2350, 2354-2357, 2361-2373, 2380, 2384-2416, 2420-2425, 2429-2451, 2455-2477, 2483-2499, 2503-2534, 2540-2575, 2581-2588, 2592-2612, 2616-2659, 2663-2680, 2684-2697, 2702, 2706-2707, 2711, 2715, 2719, 2725-2734, 2738-2747, 2751-2758, 2764, 2768-2782, 2786-2793, 2797-2811, 2815-2822, 2826-2833, 2837-2844, 2848-2857, 2861-2870, 2874-2883, 2887-2894, 2898-2905, 2909-2916, 2920-2927, 2931-2938, 2944, 2948-2957, 2962, 2967, 2972-3004, 3008-3017, 3023, 3029, 3033-3044, 3050, 3057, 3062, 3068, 3073-3097, 3102, 3107, 3112, 3121-3153, 3157-3201, 3205-3249, 3253-3280, 3285-3306, 3314-3376, 3380-3387, 3391-3411, 3417, 3423, 3427-3542, 3547-3558, 3562-3571, 3575, 3579, 3583, 3587, 3591, 3595, 3599, 3603-3608, 3612-3618, 3622-3627, 3631-3636, 3645, 3659-3693, 3699, 3703-3710, 3714-3725, 3730-3739, 3745-3754, 3760-3765, 3771-3776, 3782-3790, 3796-3804, 3808, 3812-3818, 3822-3833, 3837-3840, 3844-3850, 3854-3856, 3861, 3866-3878, 3882, 3886-3892, 3896-3902, 3908-3918, 3922-3929, 3934, 3938-3940, 3944-3967, 3971-3994, 3999, 4004, 4009, 4014, 4019, 4024, 4028-4040, 4046-4053, 4059-4066, 4070-4079, 4085-4092, 4098-4105, 4111-4118, 4126-4140, 4144-4151, 4155-4162, 4167-4182, 4186-4201, 4221, 4226, 4231, 4237-4248, 4255-4258, 4264-4267, 4273-4278, 4283-4287, 4291-4308, 4314-4329, 4335-4350, 4356-4359, 4363-4365, 4370-4378, 4384-4411, 4416-4425, 4429-4431, 4435-4437, 4442-4461, 4465-4482, 4486-4503, 4507-4524, 4528-4533, 4539-4550, 4554-4565, 4569-4574
+sparkless/dataframe/export.py                                           15     15     0%   8-46
+sparkless/dataframe/grouped/__init__.py                                  5      0   100%
+sparkless/dataframe/grouped/base.py                                   1064    737    31%   93, 95, 101-145, 181, 188, 192-196, 271, 302-307, 314-322, 328, 347, 357-389, 406-422, 439-442, 465-466, 515-516, 554-600, 609-624, 657-689, 711-722, 736-765, 802, 805-808, 810-811, 841-844, 851, 853-856, 873, 875-878, 880-881, 911-914, 921, 923-926, 954-955, 960-966, 981-982, 987-993, 995-1001, 1003-1009, 1011-1027, 1029-1035, 1046, 1050-1069, 1072-1089, 1100, 1103-1121, 1123-1143, 1145-1151, 1153-1159, 1162-1175, 1178-1191, 1195-1250, 1253-1259, 1267, 1269-1272, 1302-1647, 1664-1934, 1945-1952, 1964, 2003-2007, 2018-2025, 2036-2043, 2054-2063, 2074-2083, 2094-2103, 2114-2123, 2134-2143, 2154-2163, 2174-2201, 2212-2239, 2268, 2272-2279, 2303-2370, 2392-2447
+sparkless/dataframe/grouped/cube.py                                     86     77    10%   30-31, 47-215
+sparkless/dataframe/grouped/pivot.py                                   493    347    30%   97-119, 122, 127-184, 205-215, 229-230, 236-237, 243, 249-254, 256-328, 356, 362-397, 420, 422-425, 435, 437-440, 449-450, 467-641, 649-810, 825, 845, 862, 878-882, 896, 916, 933-939, 950-956, 967-973, 984-990, 1001-1007, 1018-1024, 1035-1041
+sparkless/dataframe/grouped/rollup.py                                   87     79     9%   29-30, 48-220
+sparkless/dataframe/joins/__init__.py                                    2      2     0%   8-10
+sparkless/dataframe/joins/operations.py                                146    146     0%   8-396
+sparkless/dataframe/lazy.py                                           1222   1047    14%   47-73, 106-108, 120-153, 167-173, 188-258, 271-301, 313-337, 352-388, 402-415, 433-447, 453-489, 495-504, 517-519, 523, 562-563, 581-582, 594-600, 603, 607-611, 617-621, 630-642, 645, 649-655, 668, 692-704, 727-734, 775-829, 839-922, 956, 966, 980-991, 1013, 1016, 1021, 1025, 1028, 1072-1075, 1080, 1085, 1095-1099, 1105, 1112-1123, 1128-1129, 1134-1135, 1157-2251, 2264-2525, 2538-2594, 2609-2837, 2853-2865
+sparkless/dataframe/logical_plan.py                                    223    113    49%   23-33, 60-112, 120-123, 130, 172-180, 184-201, 205-211, 232, 249-254, 271-294, 310, 317-318, 402-407, 415-416, 425, 430-454
+sparkless/dataframe/operations/__init__.py                               2      0   100%
+sparkless/dataframe/operations/aggregation_operations.py               128    128     0%   3-313
+sparkless/dataframe/operations/join_operations.py                      157    157     0%   3-329
+sparkless/dataframe/operations/misc.py                                 516    472     9%   56-77, 103-145, 167-215, 236-250, 267-308, 323-407, 421-501, 518-549, 566-593, 615-630, 643-659, 678-685, 710-742, 770-831, 863-922, 949-986, 1023-1074, 1082-1113, 1117-1135, 1149-1176, 1191-1196, 1216, 1232-1234, 1248-1255, 1266-1267, 1276, 1295-1304, 1323-1324, 1340-1345, 1353, 1366-1369, 1377, 1382, 1391-1392, 1401, 1415-1427
+sparkless/dataframe/operations/set_operations.py                       168    149    11%   28-94, 99, 121-145, 160-290, 296-316, 322-339, 344-346
+sparkless/dataframe/protocols.py                                        49      0   100%
+sparkless/dataframe/rdd.py                                              83     56    33%   26, 34, 42, 53, 61, 69-70, 81, 92-95, 106, 117-125, 136-143, 155-166, 174, 185, 193, 201, 209, 217, 229, 240-243, 254-261, 269, 277
+sparkless/dataframe/reader.py                                          187    156    17%   64-67, 81-82, 97-98, 112-113, 127-136, 158-190, 206-259, 266-277, 281-288, 294-306, 311-321, 326-349, 354-374, 377-382, 386-390, 396-402, 406, 410, 414, 429, 444, 461-463
+sparkless/dataframe/robin_plan.py                                       78      9    88%   54, 57, 61, 68, 111, 119, 128, 130, 159
+sparkless/dataframe/schema/__init__.py                                   3      0   100%
+sparkless/dataframe/schema/operations.py                                22      9    59%   23-31, 39-41, 46, 51
+sparkless/dataframe/schema/schema_manager.py                           514    312    39%   49-75, 93, 109-111, 128-130, 136-151, 227-258, 284, 288-327, 356, 361, 378-401, 406, 438-474, 482, 484, 486-487, 489, 491, 493, 507, 509-510, 514-517, 523, 527-617, 627-639, 668-670, 692-715, 720-735, 745, 747, 763-764, 768-771, 777, 788-798, 803-839, 843-846, 850-853, 857-875, 879-887, 905-909, 916-919, 922-930, 944, 952-967, 975-978, 989, 991, 993, 995, 997, 1000-1019
+sparkless/dataframe/services/__init__.py                                 8      0   100%
+sparkless/dataframe/services/aggregation_service.py                     99     68    31%   29-39, 69, 126-154, 174-202, 224-250
+sparkless/dataframe/services/assertion_service.py                       17      8    53%   25-27, 33-35, 41-43, 49-51
+sparkless/dataframe/services/display_service.py                        126    102    19%   39-101, 120-167, 171-174, 182-186, 195-204, 208-223, 227-232, 238-240, 244-250, 264-267, 280, 292-297
+sparkless/dataframe/services/join_service.py                           248    166    33%   114, 129, 168-443, 460, 510-534, 606-628
+sparkless/dataframe/services/misc_service.py                           613    565     8%   56-73, 84-124, 159-282, 304-352, 373-400, 417-458, 476-560, 574-654, 669-720, 737-780, 802-817, 830-846, 865-872, 897-929, 955-1016, 1048-1126, 1153-1190, 1227-1277, 1285-1318, 1322-1340, 1354-1381, 1396-1401, 1419, 1435-1437, 1451-1458, 1469-1472, 1481, 1499-1503, 1518, 1529-1534, 1540, 1551-1554, 1562, 1567, 1576-1577, 1586, 1600-1612
+sparkless/dataframe/services/schema_service.py                           4      0   100%
+sparkless/dataframe/services/transformation_service.py                 349    219    37%   57-60, 70-71, 83, 93, 100, 150, 157, 175-191, 198-202, 224, 246-247, 251-266, 271-275, 283-289, 293, 308-315, 330-460, 476-478, 499, 510, 533-543, 559, 595-624, 643-661, 670-697, 713, 730, 751, 771-775, 779, 783, 811-870, 890-910
+sparkless/dataframe/transformations/__init__.py                          2      2     0%   8-10
+sparkless/dataframe/transformations/operations.py                      224    224     0%   8-629
+sparkless/dataframe/types.py                                             8      8     0%   8-25
+sparkless/dataframe/validation/__init__.py                               2      0   100%
+sparkless/dataframe/validation/column_validator.py                     171     78    54%   34, 36, 94-115, 137, 141-161, 164-165, 185-198, 218, 245-289, 332, 337, 343, 348, 357, 375, 385-392, 401, 422, 429, 440, 461, 473, 485, 494, 508-517, 533-578
+sparkless/dataframe/validation_handler.py                               21      2    90%   75-76
+sparkless/dataframe/window_handler.py                                  315    315     0%   8-698
+sparkless/dataframe/writer.py                                          395    251    36%   113-115, 129, 159-160, 174-175, 192-194, 208-210, 228-232, 235-238, 248-250, 258, 280-283, 288, 294-296, 308-360, 401-402, 414-418, 434-436, 469-495, 509, 521, 537, 549, 561, 573, 580-586, 590-606, 610-613, 617-622, 627-642, 647-656, 661-670, 675-690, 694-699, 720-753, 782-865, 888-892, 896, 912-917, 942-1022
+sparkless/delta.py                                                     308    254    18%   46-51, 61-74, 87-88, 100-116, 121-122, 127, 131-132, 137-152, 156-185, 189, 198, 210, 221-286, 300-341, 345, 348-352, 355-357, 360-368, 373-379, 384-408, 421-430, 434, 438, 441-446, 449-450, 455-456, 459-461, 464-466, 470-514, 517-523, 526-540, 547-551, 563-576, 581-584, 589-593, 601-629, 637-657
+sparkless/error_simulation.py                                           89     89     0%   29-338
+sparkless/errors.py                                                     28     10    64%   57, 62, 67, 72, 79, 86, 91, 96, 101, 106
+sparkless/functions/__init__.py                                         29      4    86%   562-566
+sparkless/functions/aggregate.py                                       323    158    51%   64-66, 70, 243-244, 259-260, 299-300, 315-316, 331-332, 370-371, 386-387, 418-420, 439-443, 461-472, 490-501, 516-517, 534-535, 552-553, 570-571, 591-597, 617-623, 640-641, 658-659, 733-734, 751-752, 769-770, 787-788, 803-807, 825-826, 843-844, 857-859, 874-890, 904-912, 930-940, 958-967, 985-994, 1014-1026, 1044-1053, 1071-1080, 1098-1107, 1125-1134, 1152-1161, 1182-1222
+sparkless/functions/array.py                                           272    165    39%   56, 78-83, 107, 109, 134-139, 161, 185, 213-219, 245-251, 277-283, 309-315, 346-356, 385-396, 418-421, 440-443, 466, 486-490, 511-514, 538-541, 561-564, 580, 604, 626-629, 644-647, 663, 681, 698-701, 716-719, 737-742, 762-765, 779-782, 794-797, 811-830, 853-883, 900-903, 927-976, 997-1000, 1018-1022, 1040-1043, 1058-1059, 1074-1086, 1098-1100, 1112-1116
+sparkless/functions/base.py                                            135     63    53%   72, 121, 128, 137, 150-161, 165-171, 175-184, 188-201, 205-217, 221-233, 250-251, 277, 281, 285, 289, 293, 297, 302, 307, 312, 317, 322
+sparkless/functions/bitwise.py                                         108     67    38%   31-34, 50-53, 71, 86-89, 107-110, 125-128, 143-146, 161-168, 183-198, 213-228, 243-258, 276-283, 300-307, 324-331, 347-350, 367-370, 387-390, 405-408, 425-428
+sparkless/functions/conditional.py                                     396    279    30%   33-115, 147, 152, 214, 226, 230, 234, 238, 242, 246, 251, 256, 261, 266, 271, 275, 279, 283, 295-300, 304-367, 381-384, 396-412, 426-455, 475, 499, 515, 533-538, 553, 570-603, 622, 637-648, 670, 673, 707-722, 737-752, 767-782, 797-812, 827-842, 854-861, 873-880, 895-908, 923-939, 954-970, 985-1001
+sparkless/functions/core/__init__.py                                     6      0   100%
+sparkless/functions/core/column.py                                     457    167    63%   43, 53, 93, 97, 102, 108, 113, 119, 125, 131, 147, 155, 163, 194, 199, 216, 224, 251, 255, 259, 263, 306, 331-345, 389, 399, 417-436, 464-466, 470-472, 476-478, 482-484, 492, 500-510, 518-528, 536-546, 554-564, 572-582, 590-600, 609, 696, 702, 706, 713, 731, 740, 744, 748, 751-757, 760, 764, 768, 772, 775-777, 779-781, 783-785, 787-789, 807, 818-825, 829, 836, 838-842, 844-848, 850-854, 856-860, 863-885, 891, 958, 970, 991, 994, 1009, 1030, 1046
+sparkless/functions/core/expressions.py                                109     74    32%   28-32, 55, 73, 91-94, 108-115, 127-129, 141-143, 155-157, 169-171, 188-228, 240-247, 259-266, 278-285, 297-304, 320-323
+sparkless/functions/core/lambda_parser.py                              146    126    14%   58-134, 142-148, 167-175, 189-247, 260-274, 285-298, 309-314, 327-332, 359-361, 369, 377, 381-385
+sparkless/functions/core/literals.py                                   131     76    42%   49, 52, 65-76, 86, 108-110, 117-119, 123-125, 129-131, 135-137, 141-143, 147-149, 153-155, 159-161, 165-167, 171-173, 177-179, 183-185, 189-191, 195-197, 201-203, 207-209, 213, 217, 227-229, 233-240, 244-246, 250-252, 256-258, 262-268, 272-274, 278-280, 284-286, 302, 306-308, 312-314, 318-320
+sparkless/functions/core/operations.py                                 106     67    37%   27-29, 33-35, 39-41, 45-47, 51-53, 57-59, 63-65, 69, 73, 77-79, 83-85, 89-91, 95-97, 101-103, 107-109, 122, 126, 130, 134, 145, 150-154, 158, 162, 176-189, 199, 203, 211, 219-221, 225-227, 235-237
+sparkless/functions/core/sql_expr_parser.py                            308    166    46%   68-78, 90-101, 149, 151-157, 163-171, 175-183, 188-204, 209-226, 248-253, 279-289, 294-300, 308-314, 322-339, 345-381, 399, 401, 405, 410, 419, 428, 489, 491, 501-507, 520-551
+sparkless/functions/crypto.py                                           48     39    19%   49-71, 91-113, 133-155
+sparkless/functions/datetime.py                                        474    305    36%   49-52, 69-74, 86-89, 98, 107, 119-125, 137-143, 155-161, 173-179, 188-189, 205-218, 231-237, 262-301, 327-366, 390-429, 455-500, 520-549, 564-580, 595-601, 616-622, 637-646, 658-664, 676-682, 694-700, 712-718, 730-736, 748-754, 775, 783, 813-844, 856-860, 872-876, 889, 905, 921, 937, 954-960, 972-978, 990-994, 1006-1010, 1022-1026, 1039-1048, 1063-1074, 1088, 1107, 1126, 1149-1159, 1179-1191, 1211-1222, 1231-1234, 1248-1253, 1262-1273, 1283-1294, 1317-1320, 1340-1343, 1368-1372, 1393-1396, 1422-1468, 1492-1497, 1518-1537, 1557-1560, 1576-1579, 1600-1603, 1622-1627, 1646-1647, 1664-1665, 1685-1693, 1711-1727, 1745-1761
+sparkless/functions/functions.py                                      1547    543    65%   67-77, 92, 133-136, 142-162, 168-187, 193-212, 218-238, 259, 264, 286, 341, 346, 351, 356, 361, 366, 371, 376, 381, 394-396, 401, 408, 415, 422, 427, 432, 437, 442, 447, 452, 457, 462, 467, 472, 483, 490, 497, 502, 507, 523, 533, 543, 548, 555, 593, 598, 605, 627, 637, 642, 652, 657, 664, 695, 726, 731, 736, 741, 755, 760, 765, 785, 790, 795, 800, 805, 810, 817, 822, 827, 832, 837, 842, 847, 852, 857, 862, 867, 872, 877, 882, 892, 902, 907, 912, 917, 922, 927, 932, 985, 990, 1002, 1007, 1012, 1023, 1028, 1038, 1045, 1052, 1059, 1082, 1087, 1092, 1097, 1104, 1109, 1114, 1119, 1128, 1133, 1138, 1143, 1148, 1155, 1162, 1167, 1172, 1182-1183, 1192-1193, 1202-1205, 1219, 1224, 1231, 1238, 1243, 1248, 1284, 1296, 1301, 1311, 1316, 1321, 1326, 1331, 1336, 1341, 1346, 1364-1420, 1425, 1430, 1435, 1442, 1466, 1471, 1476, 1483, 1491, 1496, 1501, 1506, 1511, 1516, 1521, 1533-1538, 1549, 1556, 1563, 1579-1586, 1595-1597, 1706-1713, 1770-1777, 1786-1793, 1798-1803, 1809, 1814, 1819, 1824, 1829, 1841, 1855, 1873, 1880, 1887, 1894, 1904, 1913, 1919, 1924, 1934, 1939, 1946, 1951, 1963, 1973, 1978, 1993, 2005, 2010, 2015, 2020, 2029, 2034, 2040, 2045, 2050, 2055, 2062, 2068, 2073, 2078, 2085, 2092, 2099, 2108, 2114-2138, 2152-2158, 2169, 2174, 2179, 2185, 2190, 2195, 2200, 2205, 2210, 2215, 2220, 2225, 2233, 2242-2243, 2248, 2253, 2259, 2264, 2269, 2279, 2285, 2290, 2297, 2302, 2316-2318, 2326-2328, 2336-2338, 2346-2348, 2353-2355, 2360-2362, 2369-2371, 2378-2380, 2387-2389, 2396-2398, 2404, 2409, 2414, 2419, 2424, 2429, 2434, 2439, 2444, 2449, 2454, 2464-2466, 2471-2473, 2492-2494, 2503-2505, 2510-2512, 2517-2519, 2525-2527, 2532-2534, 2539-2541, 2546-2548, 2553-2555, 2561-2563, 2568-2570, 2575-2577, 2582-2584, 2589-2591, 2596-2598, 2603-2605, 2634-2687, 2716-2741, 2765-2772, 2789-2791, 2797, 2804, 2809, 2814, 2821, 2828, 2833, 2842, 2847, 2854, 2861, 2866, 2871, 2879, 2884, 2891, 2898, 2905, 2913, 2920, 2927, 2933, 2938, 2945, 2950, 2962, 2975, 2989, 3004, 3016, 3023, 3030, 3037, 3044, 3049, 3054, 3059, 3064, 3069, 3074, 3080, 3085, 3090, 3097, 3102, 3107, 3112, 3117, 3122, 3130, 3135, 3140, 3149, 3155, 3160, 3165, 3170, 3175, 3196-3213
+sparkless/functions/json_csv.py                                         41     18    56%   31-34, 51-54, 68, 89, 105-107, 127-130, 144-147, 159-161
+sparkless/functions/map.py                                             101     72    29%   51-54, 69-72, 87-90, 107-115, 138-143, 167-222, 243-246, 266-269, 292-298, 324-330, 356-362, 391-400, 423-430
+sparkless/functions/math.py                                            320    143    55%   51, 66-70, 82-86, 100, 118, 133, 146, 162, 178, 207, 211, 216, 219, 228, 246-249, 264-267, 284-287, 304-307, 323, 349, 362, 378, 394, 409-414, 427, 452, 476-477, 489-490, 505-506, 518-519, 531-532, 544-545, 567-574, 586-587, 599-600, 612-613, 625-626, 638-639, 651-652, 664-665, 677-679, 696-698, 715-716, 729-730, 745-748, 774, 776, 809-810, 823-824, 836-837, 849-850, 859-862, 871-874, 886-887, 902-907, 921-926, 941-960, 972, 990-1003, 1026-1067
+sparkless/functions/metadata.py                                         33     33     0%   8-109
+sparkless/functions/ordering.py                                         28     28     0%   7-93
+sparkless/functions/pandas_types.py                                      6      0   100%
+sparkless/functions/string.py                                          547    278    49%   50, 66, 82, 97-103, 115-121, 134, 150, 166, 184-196, 209-218, 231-237, 250-256, 268-274, 287-296, 309-318, 331-337, 350-356, 370-379, 395, 411-420, 435-450, 462-468, 480-484, 496, 508, 521-534, 550-561, 579, 629, 655, 684, 706, 722, 737-741, 760-769, 792, 795-796, 819, 839, 860, 879, 900-903, 923-926, 941-944, 963, 1004, 1031, 1054-1057, 1075-1078, 1099-1102, 1125, 1147, 1170, 1172, 1202-1223, 1235-1238, 1251, 1265-1268, 1280-1299, 1319, 1329-1332, 1352-1355, 1370-1373, 1391-1394, 1414-1417, 1432-1435, 1451-1457, 1475, 1492-1495, 1508-1514, 1529-1540, 1553-1562, 1575-1584, 1601-1610, 1627-1636, 1649-1655, 1673-1684, 1698-1710, 1725-1731, 1746-1752, 1764-1768, 1781-1792, 1807, 1832-1854, 1872-1879, 1897-1902, 1918-1927, 1939-1940
+sparkless/functions/udf.py                                              51     41    20%   41-46, 57-58, 70-90, 119-121, 133-155
+sparkless/functions/window_execution.py                                651    582    11%   58-67, 100-101, 115, 129, 143, 157, 171, 185, 201-203, 219, 235-237, 253-255, 269, 283, 297, 311, 325, 339, 350, 361, 377, 390-428, 432-471, 478-553, 557-607, 613-629, 633-694, 698-742, 746-790, 794-845, 849-916, 920-981, 987-1024, 1028-1087, 1092, 1101-1146, 1150-1230, 1234-1260, 1268-1304, 1308-1372, 1376-1420, 1424-1468
+sparkless/functions/xml.py                                              65     39    40%   25-28, 50-64, 84-87, 107-110, 131-134, 155-158, 179-182, 203-206, 227-230, 251-254, 275-278
+sparkless/optimizer/__init__.py                                          3      0   100%
+sparkless/optimizer/optimization_rules.py                              174    144    17%   16-61, 65-66, 71, 83-110, 114-115, 119-142, 150-170, 174-175, 181-184, 192-224, 228, 233, 241-266, 270, 275-278, 286-324, 328, 333, 341-361, 365-366, 371-376
+sparkless/optimizer/query_optimizer.py                                 256    185    28%   47-58, 67, 72, 80-125, 129-130, 135, 147-174, 178-179, 183-206, 214-234, 238-239, 245-248, 256-288, 292, 297, 305-330, 334, 339-342, 379-392, 403-408, 413, 418-456, 459-472, 477-504, 508, 512, 518
+sparkless/performance_simulation.py                                     91     91     0%   29-329
+sparkless/session/__init__.py                                            4      0   100%
+sparkless/session/catalog.py                                           258    133    48%   43, 47, 65, 69, 111, 131-133, 150, 170, 173, 178, 187-190, 212, 215, 225, 230-233, 251-253, 267, 272, 275, 278, 281, 299-302, 309-312, 315-318, 338, 341, 344, 349-352, 374, 386-414, 431, 434, 438-443, 463, 466, 470-475, 484, 499, 502, 506-511, 528, 537, 546, 566-575, 606, 617, 630, 633, 636, 640-644, 651, 654, 658-659, 666, 683-716
+sparkless/session/config/__init__.py                                     2      0   100%
+sparkless/session/config/configuration.py                               54     22    59%   77, 85-86, 94, 102, 110, 118-119, 130, 141, 146, 150, 188, 199-200, 211-212, 224-225, 236-237, 245
+sparkless/session/context.py                                            36     10    72%   47, 51, 55, 92, 101, 110, 119, 123, 127, 131
+sparkless/session/core/__init__.py                                       4      0   100%
+sparkless/session/core/builder.py                                       30      7    77%   31, 54, 68-72, 97
+sparkless/session/core/session.py                                      227     72    68%   12-13, 122, 174-177, 182, 187, 202, 237-239, 249-254, 258-260, 273, 277, 287, 293, 306-308, 350, 368, 380, 391, 414, 429-436, 444-446, 468, 479-482, 509-510, 525, 530-536, 544, 553-555, 575-580, 597, 604, 611, 621, 628, 633-643, 652, 661-662, 667
+sparkless/session/performance_tracker.py                                39     19    51%   57, 87-109, 117
+sparkless/session/services/__init__.py                                   6      0   100%
+sparkless/session/services/dataframe_factory.py                        216    123    43%   14-15, 73-78, 87-99, 102-103, 106, 119, 131-170, 182, 190, 204, 206, 211, 218, 255, 271, 281, 296-336, 343, 350, 361-364, 392, 403, 414, 428, 440, 447, 465-472, 490-506, 517-587
+sparkless/session/services/lifecycle_manager.py                         21     10    52%   32-34, 42-43, 55-59
+sparkless/session/services/mocking_coordinator.py                       32     21    34%   39-57, 69-72, 84-86, 102-104, 109
+sparkless/session/services/protocols.py                                 20      0   100%
+sparkless/session/services/sql_parameter_binder.py                      29     25    14%   28-51, 62-74
+sparkless/session/session.py                                             0      0   100%
+sparkless/session/sql/__init__.py                                        5      0   100%
+sparkless/session/sql/executor.py                                     1280    623    51%   83-90, 129, 140-143, 149, 179-190, 204-211, 232-239, 281, 284, 289, 310-352, 366-381, 419, 514, 517-520, 544-545, 556-569, 609-612, 616-631, 637-643, 648-652, 654-658, 668, 698-720, 730-733, 751-754, 793-820, 825-841, 851-867, 875-910, 965-1011, 1053-1061, 1081-1129, 1185-1192, 1197-1198, 1221-1243, 1268-1271, 1303, 1310, 1319-1326, 1329-1336, 1344-1346, 1390, 1404-1406, 1408-1410, 1417-1478, 1510, 1517-1519, 1554, 1560, 1565, 1588, 1603, 1611, 1627-1641, 1658, 1680, 1690, 1692, 1700-1705, 1729, 1738-1740, 1760-1761, 1802, 1805, 1807, 1811, 1816-1829, 1839, 1853, 1871-1872, 1906, 1915, 1950-1951, 1967, 2002-2030, 2102, 2108-2190, 2194-2249, 2273, 2299-2302, 2314, 2423-2644, 2667-2751, 2764-2779, 2806-2838, 2860-2867, 2899-2908, 2935-3001
+sparkless/session/sql/optimizer.py                                      65     48    26%   41-43, 47, 51, 68, 85-100, 111-114, 127, 142, 155, 168, 181, 192-234, 247-260
+sparkless/session/sql/parser.py                                        496    175    65%   45, 49, 263, 271-272, 297, 303, 305, 310-315, 356, 358, 486, 509, 540-548, 562, 564, 596-617, 668-671, 674-677, 726-737, 755-765, 790, 806-833, 892, 915, 928, 993, 1019, 1027, 1046-1047, 1049-1050, 1094, 1101, 1121-1141, 1160-1275, 1291-1323, 1335-1338, 1360-1361
+sparkless/session/sql/validation.py                                     85     72    15%   42, 105-126, 137-166, 177-188, 199-216, 227-235, 246-265, 276-279, 292, 306-311, 322-323
+sparkless/spark_types.py                                               404    206    49%   60-74, 111, 115, 123, 279-281, 285, 333-334, 337, 343, 350, 354, 368, 372, 384, 396, 420, 432, 439-440, 443, 450-451, 454, 466, 475-477, 480, 489-491, 494, 503-505, 508, 531, 539-544, 570-575, 585-590, 593, 602, 605-606, 610-613, 625-633, 654-656, 660, 664-665, 669, 673, 685, 698, 704-713, 718-733, 738-739, 746, 755-767, 812, 823-826, 834-848, 856, 859-880, 884-888, 892-899, 903-910, 914, 918-943, 955-978, 983-984, 989, 995-997, 1011-1012
+sparkless/sql/__init__.py                                               10      0   100%
+sparkless/sql/functions.py                                              30     11    63%   62-74, 84-92
+sparkless/sql/types.py                                                   2      0   100%
+sparkless/sql/utils.py                                                   7      0   100%
+sparkless/storage/__init__.py                                           10      0   100%
+sparkless/storage/backends/__init__.py                                   0      0   100%
+sparkless/storage/backends/file.py                                     206     45    78%   39, 49, 93, 96-98, 119, 142, 146, 150, 154-155, 159-161, 225, 238, 242, 246, 250, 254, 258, 262-264, 268, 272, 276, 366, 409-414, 471-482, 495-498, 501, 507, 519, 538
+sparkless/storage/backends/memory.py                                   133     60    55%   34, 44, 54, 57-59, 72-77, 93, 97, 101, 105, 109-110, 114-115, 160-161, 169, 208-209, 217, 230, 247, 258-259, 290-295, 310-312, 330, 342, 352-370, 381-390, 402-406, 418-423, 430
+sparkless/storage/manager.py                                           135     86    36%   40-45, 58, 70, 82, 94-98, 108, 119, 128-130, 138, 142-149, 153-159, 171, 186, 195, 208, 223, 237, 249, 258, 269, 283, 295, 303, 312, 325, 336, 344-349, 353-358, 366-378, 382, 390-400, 411-432
+sparkless/storage/models.py                                             67      1    99%   77
+sparkless/storage/serialization/__init__.py                              0      0   100%
+sparkless/storage/serialization/csv.py                                  46     32    30%   23-30, 42-47, 57-62, 76-92, 104-120
+sparkless/storage/serialization/json.py                                 39     25    36%   23-24, 36-41, 51-63, 75-90, 102-118
+sparkless/utils/profiling.py                                            96     40    58%   47-48, 58, 61, 71-76, 85, 88-90, 94, 99, 102, 118-135, 161-172, 182, 188
+sparkless/window.py                                                     67     17    75%   78, 91, 114, 127, 147-151, 166-170, 182, 186, 229, 234, 239
+--------------------------------------------------------------------------------------------------
+TOTAL                                                                33758  23779    30%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_existing_table - AssertionError: Initial table should be empty
+assert 4 == 0
+ +  where 4 = count()
+ +    where count = DataFrame[4 rows, 2 columns].count
+FAILED tests/parity/dataframe/test_double_join_empty_aggregated.py::TestDoubleJoinEmptyAggregated::test_columns_preserved_in_double_join_with_empty_aggregated - RuntimeError: not found: concat(first_name,  , last_name)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["patient_id", "first_name", "last_name", "age"]; PROJECT */7 COLUMNS; SELECTION: None
+FAILED tests/parity/dataframe/test_select.py::TestSelectParity::test_select_with_alias - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_filter_on_table_with_comparison_operations - RuntimeError: not found: unable to find column "active"; valid columns: ["id", "score", "status"]
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'filter' <---
+DF ["id", "score", "status"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_multiple_append_operations - AssertionError: After 1 appends, table should have 2 rows, got 3
+assert 3 == 2
+ +  where 3 = count()
+ +    where count = DataFrame[3 rows, 2 columns].count
+FAILED tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_data_visible_immediately - AssertionError: Initial table should have 1 row
+assert 3 == 1
+ +  where 3 = count()
+ +    where count = DataFrame[3 rows, 2 columns].count
+FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session - assert 0 == 2
+ +  where 0 = count()
+ +    where count = DataFrame[0 rows, 2 columns].count
+FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions - assert 0 == 2
+ +  where 0 = count()
+ +    where count = DataFrame[0 rows, 0 columns].count
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_rank - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_string_operations_in_filters - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_on_table_with_complex_schema - TypeError: Object of type datetime is not JSON serializable
+FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_storage_manager_detached_write_visible_to_session - assert 0 == 2
+ +  where 0 = count()
+ +    where count = DataFrame[0 rows, 0 columns].count
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_first_value - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_empty_groups - RuntimeError: not found: unable to find column "A"; valid columns: ["group", "value"]
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'filter' <---
+DF ["group", "value"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_dense_rank - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_logical_operations_in_filters - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_last_value - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_remove - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_basic_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_multiple_matches_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_percent_rank - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_ntile - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_year - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/dataframe/test_transformations.py::TestTransformationsParity::test_order_by_desc - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_sum_over_window - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_lag - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_lead - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_element_at - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_explode - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=9
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_distinct - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_join - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_union - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_cume_dist - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_without_rsd_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_contains - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_month - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofmonth - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofweek - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_with_null_parity - RuntimeError: not found: format_string('%s-%s', Value, Number)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["Name", "Number", "Value"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/dataframe/test_window.py::TestWindowOperationsParity::test_row_number - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_position - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_abs - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_sub - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_format - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_to_date - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_round - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_exp - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_issue_266 - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_float_base_parity - RuntimeError: not found: Log10
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'select' <---
+DF ["Value"]; PROJECT */1 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_add - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_size - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnull - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_sort - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_sqrt - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_basic_parity - RuntimeError: not found: format_string('%s-%s', StringValue, IntegerValue)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["IntegerValue", "Name", "StringValue"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_sin - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nullif - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnotnull - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_natural_log_parity - RuntimeError: not found: Ln
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'select' <---
+DF ["Value"]; PROJECT */1 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_cos - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_without_limit_parity - RuntimeError: not found: split(Value, ,, -1)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["Name", "Value"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_format_string_parity.py::TestFormatStringParity::test_format_string_multiple_args_parity - RuntimeError: not found: format_string('%s is %d years old and lives in %s', Name, Age, City)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["Age", "City", "Name"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_length - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_tan - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_ifnull - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nanvl - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_minus_one_parity - RuntimeError: not found: split(Value, ,, -1)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["Name", "Value"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_when_otherwise - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_column_astype_method - RuntimeError: not found: substring(proc_date, 1, 10)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["proc_date"]; PROJECT */1 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_floor - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_different_bases_parity - RuntimeError: not found: Log10
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'select' <---
+DF ["Value"]; PROJECT */1 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_parity - RuntimeError: not found: split(StringValue, ,, 3)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["Name", "StringValue"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_pow - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_greatest - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_upper - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_concat - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_least - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_regexp_extract - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nvl - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_log - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_substring - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_ascii - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_1_parity - RuntimeError: not found: split(Value, ,, 1)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["Name", "Value"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_initcap - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_coalesce - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=4
+FAILED tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_ceil - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_levenshtein - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_hex - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_lower - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rtrim - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_lpad - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_trim - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_substr_method - RuntimeError: not found: partial_name
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'select' <---
+DF ["name"]; PROJECT */1 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_xxhash64 - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_like - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rlike - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_crc32 - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_split - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_json_tuple - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_ltrim - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_parity - TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, or str
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_get_json_object - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_base64 - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_string_rpad - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_translate - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_mm_slash_dd_slash_yyyy_format - RuntimeError: not found: to_date(event_date, 'MM/dd/yyyy')
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["id", "event_date"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_concat_ws - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_repeat - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_substring_index - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_and_other_columns_parity - TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, or str
+FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_without_format_string - RuntimeError: not found: to_date(date_str)
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["id", "date_str"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_multiple_fields_parity - TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, or str
+FAILED tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_orderby_list_basic_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_orderby_list_multiple_columns_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_reverse - AssertionError: DataFrames are not equivalent:
+Row count mismatch: mock=0, expected=3
+FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_yyyy_mm_dd_format - RuntimeError: not found: to_date(date_of_birth, 'yyyy-MM-dd')
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["id", "name", "date_of_birth"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_to_date_format.py::TestToDateWithFormat::test_to_date_with_dd_hyphen_mm_hyphen_yyyy_format - RuntimeError: not found: to_date(event_date, 'dd-MM-yyyy')
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["id", "event_date"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/functions/test_window_orderby_list_parity.py::TestWindowOrderByListParity::test_window_partitionby_list_parity - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/functions/test_to_date_issue_126.py::TestToDateIssue126::test_issue_126_reproduction - RuntimeError: not found: to_date(date_of_birth, 'yyyy-MM-dd')
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'with_columns' <---
+DF ["id", "name", "date_of_birth"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_left_join - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_with_select - assert 0 == 2
+ +  where 0 = count()
+ +    where count = DataFrame[0 rows, 0 columns].count
+FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_order_by - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_like - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_case_when - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: select' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_inner_join - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_table - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_specific_columns - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_table - RuntimeError: not found: unable to find column "Alice"; valid columns: ["name", "age"]
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'filter' <---
+DF ["name", "age"]; PROJECT */2 COLUMNS; SELECTION: None
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_multiple_columns - RuntimeError: not found: unable to find column "Alice"; valid columns: ["name", "age", "dept"]
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'filter' <---
+DF ["name", "age", "dept"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_multiple_values - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_from_select - sparkless.core.exceptions.execution.QueryExecutionException: Failed to execute query: not found: unable to find column "IT"; valid columns: ["name", "age", "dept"]
+
+Resolved plan until failure:
+
+	---> FAILED HERE RESOLVING 'filter' <---
+DF ["name", "age", "dept"]; PROJECT */3 COLUMNS; SELECTION: None
+FAILED tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_from_table - sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported
+Reason: Backend 'robin' does not support these operations
+Alternative: In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.
+================= 135 failed, 115 passed, 6 skipped in 13.88s ==================

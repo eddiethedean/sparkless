@@ -1968,7 +1968,7 @@ class ExpectedOutputGenerator:
 
             metadata_file = self.output_dir / "metadata.json"
             with open(metadata_file, "w") as f:
-                json.dump(metadata, f, indent=2)
+                json.dump(metadata, f, indent=2, default=str)
 
             print(f"\n✓ Generated {metadata['total_tests']} expected outputs")
             print(f"✓ Metadata saved to {metadata_file}")

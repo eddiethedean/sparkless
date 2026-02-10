@@ -60,4 +60,5 @@ Individual tests can request the Robin backend via the marker:
 - **`ValueError: Unsupported backend type`** – In v4 only `robin` is supported. Do not set `SPARKLESS_BACKEND` or `backend_type` to any other value.
 - **Robin backend not available** – Install with `pip install robin-sparkless>=0.5.0` (required for v4).
 - **Robin: worker crashes or INTERNALERROR** – When using pytest-xdist with Robin, use fewer workers (e.g. `-n 4`) or serial (`-n 0`). See [robin_mode_worker_crash_investigation.md](robin_mode_worker_crash_investigation.md).
+- **I pass `-n 10` but tests run sequentially** – Nothing in this repo overrides `-n`. Check: (1) **Environment:** `echo $PYTEST_ADDOPTS` — if it contains `-n 0`, unset it (`unset PYTEST_ADDOPTS`) or remove `-n 0` from wherever it is set (e.g. `.bashrc`, `.zshrc`, IDE env). (2) **IDE:** If you run tests from Cursor/VS Code, the test runner may be invoking pytest with its own args; check the Python/Testing settings and any run configuration for extra pytest options like `-n 0`. Running `python -m pytest tests/ -n 10` from the project root in a terminal should always respect `-n 10`.
 

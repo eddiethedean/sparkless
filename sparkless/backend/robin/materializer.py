@@ -250,6 +250,112 @@ def _expression_to_robin(expr: Any) -> Any:
         val = getattr(expr, "value", expr)
         safe_val = _lit_value_for_robin(val)
         return F.lit(safe_val)  # type: ignore[arg-type]
+    # CaseWhen -> Robin when(cond).then(val).otherwise(default)
+    try:
+        from sparkless.functions.conditional import CaseWhen
+    except ImportError:
+        CaseWhen = None  # type: ignore[misc, assignment]
+    if CaseWhen is not None and isinstance(expr, CaseWhen):
+        conditions = getattr(expr, "conditions", [])
+        default_value = getattr(expr, "default_value", None)
+        if not conditions or default_value is None:
+            return None
+        cond_robin = _expression_to_robin(conditions[0][0])
+        val_robin = _expression_to_robin(conditions[0][1])
+        if cond_robin is None or val_robin is None:
+            return None
+        # Robin: when(cond).then(val).when(cond2).then(val2).otherwise(default)
+        out = F.when(cond_robin).then(val_robin)
+        for cond, val in conditions[1:]:
+            c = _expression_to_robin(cond)
+            v = _expression_to_robin(val)
+            if c is None or v is None:
+                return None
+            if hasattr(out, "when") and callable(out.when):
+                out = out.when(c).then(v)
+            else:
+                return None
+        default_robin = _expression_to_robin(default_value)
+        if default_robin is None:
+            return None
+        if hasattr(out, "otherwise") and callable(out.otherwise):
+            return out.otherwise(default_robin)
+        return None
+    # WindowFunction -> Robin Column.row_number()/rank()/etc. .over(partition_by)
+    try:
+        from sparkless.functions.window_execution import WindowFunction
+    except ImportError:
+        WindowFunction = None  # type: ignore[misc, assignment]
+    if WindowFunction is not None and isinstance(expr, WindowFunction):
+        spec = getattr(expr, "window_spec", None)
+        if spec is None:
+            return None
+        part_by = getattr(spec, "_partition_by", []) or []
+        order_by = getattr(spec, "_order_by", []) or []
+        partition_names = []
+        for c in part_by:
+            if isinstance(c, str):
+                partition_names.append(c)
+            elif hasattr(c, "name") and isinstance(getattr(c, "name"), str):
+                partition_names.append(c.name)
+        order_names = []
+        for c in order_by:
+            if isinstance(c, str):
+                order_names.append(c)
+            elif hasattr(c, "name") and isinstance(getattr(c, "name"), str):
+                order_names.append(c.name)
+        partition_by = partition_names if partition_names else order_names
+        if not partition_by:
+            partition_by = []
+        base_col = (partition_by[0] if partition_by else None) or "__dummy__"
+        base = F.col(base_col)
+        fn_name = (getattr(expr, "function_name", None) or "row_number").lower()
+        descending = False
+        if order_names and hasattr(spec, "_order_by"):
+            order_cols = spec._order_by
+            if order_cols and hasattr(order_cols[0], "operation"):
+                if getattr(order_cols[0], "operation", None) == "desc":
+                    descending = True
+        offset = getattr(expr, "offset", 1) or 1
+        if fn_name == "row_number":
+            if hasattr(base, "row_number"):
+                return base.row_number(descending=descending).over(partition_by)
+        elif fn_name == "rank":
+            if hasattr(base, "rank"):
+                return base.rank(descending=descending).over(partition_by)
+        elif fn_name == "dense_rank":
+            if hasattr(base, "dense_rank"):
+                return base.dense_rank(descending=descending).over(partition_by)
+        elif fn_name == "lag":
+            if hasattr(base, "lag"):
+                return base.lag(offset).over(partition_by)
+        elif fn_name == "lead":
+            if hasattr(base, "lead"):
+                return base.lead(offset).over(partition_by)
+        elif fn_name == "first_value":
+            if hasattr(base, "first_value"):
+                return base.first_value().over(partition_by)
+        elif fn_name == "last_value":
+            if hasattr(base, "last_value"):
+                return base.last_value().over(partition_by)
+        elif fn_name == "percent_rank":
+            if hasattr(base, "percent_rank"):
+                try:
+                    return base.percent_rank(partition_by, descending)
+                except TypeError:
+                    return base.percent_rank().over(partition_by)
+        elif fn_name in ("sum", "avg", "min", "max"):
+            col_name = getattr(expr, "column_name", None) or base_col
+            col = F.col(col_name) if isinstance(col_name, str) else base
+            if fn_name == "sum" and hasattr(col, "sum"):
+                return col.sum().over(partition_by)
+            if fn_name == "avg" and hasattr(col, "avg"):
+                return col.avg().over(partition_by)
+            if fn_name == "min" and hasattr(col, "min"):
+                return col.min().over(partition_by)
+            if fn_name == "max" and hasattr(col, "max"):
+                return col.max().over(partition_by)
+        return None
     # ColumnOperation or any object with operation/column/value (e.g. from sparkless.sql)
     if isinstance(expr, ColumnOperation) or (
         hasattr(expr, "operation") and hasattr(expr, "column")
@@ -400,6 +506,23 @@ def _expression_to_robin(expr: Any) -> Any:
             robin_cols = [_expression_to_robin(p) for p in parts]
             if None in robin_cols or not robin_cols:
                 return None
+            # If exactly one part is a string Literal (separator), use concat_ws
+            from sparkless.functions.core.literals import Literal
+            literal_parts = [
+                (i, getattr(p, "value", p))
+                for i, p in enumerate(parts)
+                if isinstance(p, Literal)
+            ]
+            if (
+                len(parts) >= 3
+                and len(literal_parts) == 1
+                and isinstance(literal_parts[0][1], str)
+            ):
+                sep = literal_parts[0][1]
+                col_parts = [p for i, p in enumerate(parts) if i != literal_parts[0][0]]
+                ws_robin = [_expression_to_robin(p) for p in col_parts]
+                if None not in ws_robin and hasattr(F, "concat_ws"):
+                    return F.concat_ws(sep, *ws_robin)
             if hasattr(F, "concat"):
                 return F.concat(*robin_cols)
         # concat_ws: value is (sep, columns[1:])
