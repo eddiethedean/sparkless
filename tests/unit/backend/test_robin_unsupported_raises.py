@@ -11,6 +11,13 @@ from sparkless.backend.factory import BackendFactory
 from sparkless.core.exceptions.operation import SparkUnsupportedOperationError
 from sparkless.sql import functions as F
 
+try:
+    import robin_sparkless  # type: ignore[import]
+
+    _HAS_ROBIN = True
+except Exception:
+    _HAS_ROBIN = False
+
 
 @no_type_check
 def _trigger_collect_untyped(df: object) -> None:
@@ -19,6 +26,7 @@ def _trigger_collect_untyped(df: object) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.skipif(not _HAS_ROBIN, reason="Robin backend requires robin-sparkless to be installed")
 class TestRobinUnsupportedRaises:
     """Robin backend: unsupported operations raise."""
 
