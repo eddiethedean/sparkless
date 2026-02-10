@@ -250,7 +250,10 @@ def _expression_to_robin(expr: Any) -> Any:
         val = getattr(expr, "value", expr)
         safe_val = _lit_value_for_robin(val)
         return F.lit(safe_val)  # type: ignore[arg-type]
-    if isinstance(expr, ColumnOperation):
+    # ColumnOperation or any object with operation/column/value (e.g. from sparkless.sql)
+    if isinstance(expr, ColumnOperation) or (
+        hasattr(expr, "operation") and hasattr(expr, "column")
+    ):
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
         val_side = getattr(expr, "value", None)
@@ -263,6 +266,28 @@ def _expression_to_robin(expr: Any) -> Any:
             if alias_name is not None and hasattr(inner, "alias"):
                 return inner.alias(alias_name)
             return inner
+        # Cast / astype (Phase 7; astype is an alias for cast)
+        if op in ("cast", "astype") and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            if val_side is None:
+                robin_type = "string"
+            elif hasattr(val_side, "simpleString") and callable(val_side.simpleString):
+                type_str = val_side.simpleString()
+                robin_type = _SPARK_TYPE_TO_ROBIN_DTYPE.get(
+                    type_str.lower() if isinstance(type_str, str) else str(type_str).lower(),
+                    "string",
+                )
+            elif isinstance(val_side, str):
+                robin_type = _SPARK_TYPE_TO_ROBIN_DTYPE.get(val_side.lower(), "string")
+            else:
+                robin_type = _spark_type_to_robin_dtype(val_side)
+            if hasattr(inner, "cast"):
+                return inner.cast(robin_type)
+            if hasattr(F, "cast") and callable(F.cast):
+                return F.cast(inner, robin_type)
+            return None
         # Unary functions (column, op, None or no value)
         unary_ops = (
             "upper",
@@ -330,8 +355,11 @@ def _expression_to_robin(expr: Any) -> Any:
                 length = -1
             else:
                 return None
-            if hasattr(F, "substring"):
+            # Robin may expose substring or substr; try both (Phase 7)
+            if hasattr(F, "substring") and callable(F.substring):
                 return F.substring(inner, pos, length)
+            if hasattr(F, "substr") and callable(F.substr):
+                return F.substr(inner, pos, length)
         if op == "replace" and col_side is not None:
             inner = _expression_to_robin(col_side)
             if inner is None:
@@ -403,6 +431,23 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             if hasattr(F, "struct"):
                 return F.struct(*robin_cols)
+        # getItem (Phase 7): column[key] for array index or map key
+        if op == "getItem" and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            key = val_side  # int for array, str or other for map
+            if hasattr(inner, "getItem"):
+                return inner.getItem(key)
+            if hasattr(F, "getItem") and callable(F.getItem):
+                return F.getItem(inner, key)
+            # Try __getitem__ (e.g. expr[key])
+            if isinstance(key, (int, str)):
+                try:
+                    return inner[key]
+                except (TypeError, KeyError):
+                    pass
+            return None
         # to_date, to_timestamp (unary on column)
         if op in ("to_date", "to_timestamp") and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -539,8 +584,11 @@ class RobinMaterializer:
         for c in payload:
             if isinstance(c, str):
                 continue
-            # Resolve aliased columns: Column("m", _original_column=expr) -> check expr
-            expr_to_check = getattr(c, "_original_column", c)
+            # Resolve aliased columns: Column("m", _original_column=expr) -> check expr.
+            # ColumnOperation inherits _original_column=None from Column; use c when None.
+            expr_to_check = getattr(c, "_original_column", None)
+            if expr_to_check is None:
+                expr_to_check = c
             if _expression_to_robin(expr_to_check) is None:
                 return False
         return True
@@ -701,8 +749,11 @@ class RobinMaterializer:
                     if isinstance(c, str):
                         robin_cols.append(c)
                     else:
-                        # Resolve aliased columns to underlying expression for translation
-                        expr_to_translate = getattr(c, "_original_column", c)
+                        # Resolve aliased columns: use _original_column when set (Column alias);
+                        # ColumnOperation has _original_column=None from base, so use c.
+                        expr_to_translate = getattr(c, "_original_column", None)
+                        if expr_to_translate is None:
+                            expr_to_translate = c
                         expr = _expression_to_robin(expr_to_translate)
                         if expr is None:
                             from sparkless.core.exceptions.operation import (

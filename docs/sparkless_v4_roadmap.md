@@ -305,9 +305,16 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
 
 #### 7.7.1 Phase 7 implementation status
 
-- [ ] Priority operations/expressions (e.g. cast, CaseWhen, window in select, getItem) implemented or mapped to Robin equivalents.
-- [ ] Plan builder and/or materializer updated; tests added or un-skipped where coverage is added.
-- [ ] Remaining unsupported ops/expressions documented with workarounds or clear error messages.
+- [x] Priority operations/expressions (e.g. cast, CaseWhen, window in select, getItem) implemented or mapped to Robin equivalents **to agreed extent**.
+  - **Cast (astype):** Implemented in materializer (`_expression_to_robin` op `cast`/`astype`) and plan path (`robin_plan` pass-through, `plan_executor` `robin_expr_to_column` + alias); alias serialization fixed for plan; some `test_column_astype` tests un-skipped (others still skipped for substring/literal/compound).
+  - **Substring/substr:** Materializer supports `F.substring`/`F.substr` (fallback); `test_column_substr` remains skipped (Robin result column naming/alias may differ).
+  - **CaseWhen (when/otherwise):** Robin API not verified; documented as Phase 7 gap; `test_casewhen_windowfunction_cast` remains skipped.
+  - **getItem:** Materializer supports `op == "getItem"` (column[key] for array/map); plan path not added; `test_issues_225_231` remains skipped (isin/coercion).
+  - **Window in select:** Documented as gap; out of scope for Phase 7.
+- [x] Plan builder and/or materializer updated; tests added or un-skipped where coverage is added.
+- [x] Remaining unsupported ops/expressions documented with workarounds or clear error messages (see docs/v4_behavior_changes_and_known_differences.md § Phase 7).
+
+**Implementation note:** Phase 7 added cast (materializer + plan path with alias), substring/substr fallback, and getItem in the materializer. Alias handling fixed for `_original_column is None` (ColumnOperation inherits from Column). Logical plan serializes alias value as literal for plan path. Window and CaseWhen are documented as gaps; skip list comments updated.
 
 ### 7.8 Release Readiness (v4.0.0)
 

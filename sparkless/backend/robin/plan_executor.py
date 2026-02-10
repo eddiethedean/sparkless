@@ -77,6 +77,24 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
         right = robin_expr_to_column(right_d) if right_d is not None else None
         if left is None or right is None:
             raise ValueError(f"Robin op '{op}' requires both left and right")
+        # cast: right is a type string literal (Robin plan uses {"lit": type_str})
+        if op == "cast":
+            type_str = right_d.get("lit") if isinstance(right_d, dict) else None
+            if not isinstance(type_str, str):
+                raise ValueError("Robin cast requires right to be a string literal (type name)")
+            if hasattr(left, "cast"):
+                return left.cast(type_str)
+            if hasattr(F, "cast") and callable(F.cast):
+                return F.cast(left, type_str)
+            raise ValueError("Robin backend does not support cast")
+        # alias: right is alias name literal (Robin plan uses {"lit": alias_name})
+        if op == "alias":
+            alias_name = right_d.get("lit") if isinstance(right_d, dict) else None
+            if not isinstance(alias_name, str):
+                raise ValueError("Robin alias requires right to be a string literal (alias name)")
+            if hasattr(left, "alias"):
+                return left.alias(alias_name)
+            raise ValueError("Robin backend does not support alias")
         # comparison
         if op == "eq":
             return left.eq(right)

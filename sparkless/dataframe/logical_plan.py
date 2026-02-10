@@ -125,7 +125,11 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
             )
 
         left = serialize_expression(col_side) if col_side is not None else None
-        right = serialize_expression(val_side) if val_side is not None else None
+        # Alias value is a string (name); serialize as literal so plan path gets {"lit": name}
+        if op == "alias" and isinstance(val_side, str):
+            right = {"type": "literal", "value": val_side}
+        else:
+            right = serialize_expression(val_side) if val_side is not None else None
 
         # Unary ops: desc, asc, -, !, isnull, isnotnull, etc.
         if right is None and op in (

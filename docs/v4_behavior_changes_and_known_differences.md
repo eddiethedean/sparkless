@@ -80,6 +80,29 @@ When running unit tests with **Robin** as the backend (`SPARKLESS_TEST_BACKEND=r
 
 Adding or changing unit tests that rely on unsupported features may require updating the skip list so that `SPARKLESS_TEST_BACKEND=robin` runs remain green.
 
+## Phase 7: Expression coverage (supported vs unsupported)
+
+The Robin materializer (and, where noted, the plan path) was extended in Phase 7 to support additional expressions. The following summarizes what is supported and what remains a gap.
+
+**Supported in Phase 7**
+
+| Expression | Materializer | Plan path | Notes |
+|------------|--------------|-----------|--------|
+| **cast / astype** | Yes | Yes (alias + cast) | Type name mapped to Robin dtype; some `test_column_astype` tests un-skipped. |
+| **substring / substr** | Yes | No | `F.substring` / `F.substr` fallback; `test_column_substr` skipped (result column naming may differ). |
+| **getItem** | Yes | No | `column[key]` for array index or map key; `test_issues_225_231` still skipped (isin/coercion). |
+
+**Remaining unsupported (documented gaps)**
+
+| Expression / feature | Notes |
+|----------------------|--------|
+| **CaseWhen (when/otherwise)** | Robin API not verified; tests remain skipped. |
+| **Window in select** | Out of scope for Phase 7; document as gap. |
+| **map() / array() / nested struct** | Robin row values must be scalar; see Phase 3 catalog. |
+| **Chained arithmetic with unsupported sub-expressions** | e.g. "(a * 2)" resolution; high-value cases may be addressed later. |
+
+Workarounds: use supported expressions only in select/withColumn/filter; for CaseWhen/window, consider pre-aggregation or Python-side logic; see [sparkless_v4_roadmap.md](sparkless_v4_roadmap.md) §7.7.1.
+
 ## References
 
 - [sparkless_v4_roadmap.md](sparkless_v4_roadmap.md) §7.3, §7.3.1, §7.6, §7.6.1
