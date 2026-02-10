@@ -77,6 +77,6 @@ When the Robin plan builder raises (e.g. unsupported op), the dump still writes 
 
 3. **Use the dump to reproduce:**
    - **Option A**: If Robin-sparkless exposes a plan executor (e.g. `execute_plan(data, schema, plan)`), use [scripts/reproduce_robin_plan.py](../../scripts/reproduce_robin_plan.py) (if present) to load the dump and call the executor, reproducing the failure outside Sparkless.
-   - **Option B**: Until Robin plan execution is wired in Sparkless, the dump shows exactly "what Sparkless sent" (plan + input + schema). To reproduce "what Robin returned", run the same operations manually via Robin’s Python API; see [internal/robin_plan_contract.md](../internal/robin_plan_contract.md) for the plan format.
+   - **Option B**: The dump shows exactly "what Sparkless sent" (plan + input + schema). When using the **in-repo plan executor** (Phase 5, `sparkless.backend.robin.plan_executor.execute_robin_plan`), the same dump reflects what the executor receives; `result.json` or `error.txt` shows what it returned or raised. To reproduce outside Sparkless, run the same operations manually via Robin’s Python API; see [internal/robin_plan_contract.md](../internal/robin_plan_contract.md) for the plan format.
 
 4. **Minimal Robin-only repro**: From the dump, build a small Python script that creates a Robin DataFrame from `input_data.json` + `schema.json`, then applies the operations in `plan.json` (or the equivalent Robin API calls) and prints the result or error.

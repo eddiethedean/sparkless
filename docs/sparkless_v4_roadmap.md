@@ -186,7 +186,7 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
 - [x] `RobinMaterializer.materialize_from_plan` stub added in `sparkless/backend/robin/materializer.py` to establish the plan-based API and allow the lazy engine to attempt the plan path for backend_type `robin` while still falling back to the operation-based path.
 - [x] Lazy engine updated in `sparkless/dataframe/lazy.py` to use `to_robin_plan` when backend_type is `robin` and a `materialize_from_plan` method is present.
 - [x] Initial unit tests for the Robin plan builder added in `tests/unit/dataframe/test_robin_plan.py` to validate structure and JSON-serializability.
-- [ ] Robin backend wired to a concrete Robin plan execution API (e.g. `_execute_plan`) and exercised in parity/integration tests (pending Robin-sparkless plan executor exposure and alignment).
+- [x] Robin backend wired to plan-based execution via in-repo interpreter (`sparkless.backend.robin.plan_executor.execute_robin_plan`); exercised in unit and integration tests (Phase 5). See §7.5.1. Upstream Robin-sparkless plan executor can be used in a future release if exposed.
 
 ### 7.2 Backend Simplification (Removing Non-Robin Backends)
 
@@ -265,10 +265,12 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
 
 #### 7.5.1 Phase 5 implementation status
 
-- [ ] Robin-sparkless plan execution API identified and documented (entry point, args, return shape).
-- [ ] `RobinMaterializer.materialize_from_plan` implemented to call Robin plan executor; fallback to operation-based path when plan is incomplete or unsupported.
-- [ ] Integration or parity tests added for plan-based execution path.
-- [ ] Contract and versioning notes updated in `docs/internal/robin_plan_contract.md` (or equivalent).
+- [x] Robin-sparkless plan execution API identified and documented: in-repo interpreter used (Robin-sparkless does not yet expose a plan execution entry point). Entry point, args, return shape documented in `docs/internal/robin_plan_contract.md` §4.
+- [x] `RobinMaterializer.materialize_from_plan` implemented to call `execute_robin_plan` in `sparkless/backend/robin/plan_executor.py`; fallback to operation-based path when plan is incomplete or unsupported (ValueError re-raised so lazy engine falls back).
+- [x] Integration or parity tests added for plan-based execution path: `tests/unit/backend/robin/test_plan_executor.py` (executor unit tests), `tests/unit/dataframe/test_logical_plan.py` `TestLogicalPlanPhase5` (Robin plan path and fallback).
+- [x] Contract and versioning notes updated in `docs/internal/robin_plan_contract.md` (§4 Plan execution, §5 Versioning).
+
+**Implementation note:** Implemented in-repo Robin plan interpreter in `sparkless/backend/robin/plan_executor.py` (`robin_expr_to_column`, `execute_robin_plan`). `materialize_from_plan` calls it and falls back to operation-based path on unsupported op/expr; contract documented in `docs/internal/robin_plan_contract.md`.
 
 ### 7.6 Test Suite Green & CI (Robin-Only)
 

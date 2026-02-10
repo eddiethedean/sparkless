@@ -1,0 +1,246 @@
+"""
+Robin-format plan executor (Phase 5).
+
+Executes a Robin-format logical plan (list of {"op", "payload"}) over input data
+using the Robin DataFrame API. Used by RobinMaterializer.materialize_from_plan
+when the lazy engine chooses the plan-based path.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List
+
+from sparkless.spark_types import Row, StructField, StructType, StringType
+
+# Optional import; executor is only used when backend_type="robin" and robin_sparkless is installed
+try:
+    import robin_sparkless  # noqa: F401
+except ImportError:
+    robin_sparkless = None  # type: ignore[assignment]
+
+
+def _robin_available() -> bool:
+    return robin_sparkless is not None
+
+
+def _lit_value_for_robin(val: Any) -> Any:
+    """Convert value for F.lit(); Robin supports only None, int, float, bool, str."""
+    if val is None or isinstance(val, (int, float, bool, str)):
+        return val
+    if hasattr(val, "isoformat"):
+        return val.isoformat() if callable(getattr(val, "isoformat")) else str(val)
+    return str(val)
+
+
+def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
+    """Build a Robin Column from a Robin-format expression dict.
+
+    Handles: {"col": name}, {"lit": value}, {"op": op_name, "left": ..., "right": ...}
+    for comparison (eq, ne, gt, lt, ge, le), arithmetic (add, sub, mul, div),
+    and logical (and, or, not) ops. Raises ValueError for unsupported shapes.
+    """
+    if not _robin_available():
+        raise RuntimeError(
+            "robin_sparkless is not installed. "
+            "Install with: pip install sparkless[robin] (or pip install robin-sparkless)."
+        )
+    F = robin_sparkless  # type: ignore[union-attr]
+
+    if not isinstance(expr, dict):
+        raise ValueError(f"Robin expression must be a dict, got {type(expr)!r}")
+
+    if "col" in expr:
+        name = expr["col"]
+        if not isinstance(name, str):
+            raise ValueError(f"Robin col expression must have string name, got {type(name)!r}")
+        return F.col(name)
+
+    if "lit" in expr:
+        val = expr["lit"]
+        safe = _lit_value_for_robin(val)
+        return F.lit(safe)  # type: ignore[arg-type]
+
+    if "op" in expr:
+        op = expr["op"]
+        left_d = expr.get("left")
+        right_d = expr.get("right")
+        if op == "not":
+            inner = robin_expr_to_column(left_d) if left_d is not None else None
+            if inner is None:
+                raise ValueError("Robin 'not' expression requires 'left'")
+            if hasattr(inner, "not_"):
+                return inner.not_()
+            if hasattr(F, "not_"):
+                return F.not_(inner)
+            raise ValueError("Robin backend does not support 'not' expression")
+        left = robin_expr_to_column(left_d) if left_d is not None else None
+        right = robin_expr_to_column(right_d) if right_d is not None else None
+        if left is None or right is None:
+            raise ValueError(f"Robin op '{op}' requires both left and right")
+        # comparison
+        if op == "eq":
+            return left.eq(right)
+        if op == "ne":
+            return left.ne(right)
+        if op == "gt":
+            return left.gt(right)
+        if op == "lt":
+            return left.lt(right)
+        if op == "ge":
+            return left.ge(right)
+        if op == "le":
+            return left.le(right)
+        # arithmetic
+        if op == "add":
+            return left + right
+        if op == "sub":
+            return left - right
+        if op == "mul":
+            return left * right
+        if op == "div":
+            return left / right
+        # logical
+        if op == "and":
+            return left & right
+        if op == "or":
+            return left | right
+        raise ValueError(f"Unsupported Robin plan op: {op!r}")
+
+    raise ValueError(f"Robin expression must contain 'col', 'lit', or 'op'; got {list(expr.keys())!r}")
+
+
+def execute_robin_plan(
+    data: List[Any],
+    schema: StructType,
+    plan: List[Dict[str, Any]],
+) -> List[Row]:
+    """Execute a Robin-format logical plan over data and return List[Row].
+
+    Creates a Robin DataFrame from data/schema, applies each operation in plan
+    in order, then collects to Sparkless Rows. Raises ValueError for
+    unsupported ops so the caller can fall back to operation-based materialization.
+    """
+    if not _robin_available():
+        raise RuntimeError(
+            "robin_sparkless is not installed. "
+            "Install with: pip install sparkless[robin] (or pip install robin-sparkless)."
+        )
+
+    from sparkless.backend.robin.materializer import (
+        _data_to_robin_rows,
+        _get_robin_session_and_create_from_rows,
+        _spark_type_to_robin_dtype,
+    )
+
+    if not schema.fields:
+        raise ValueError("execute_robin_plan requires a non-empty schema")
+
+    name_to_field = {f.name: f for f in schema.fields}
+    if data:
+        if isinstance(data[0], dict):
+            init_names = list(data[0].keys())
+        elif hasattr(data[0], "_fields"):
+            init_names = list(data[0]._fields)
+        else:
+            init_names = [f.name for f in schema.fields]
+        init_fields = []
+        for n in init_names:
+            if n in name_to_field:
+                init_fields.append(name_to_field[n])
+            else:
+                init_fields.append(StructField(n, StringType(), True))
+        if not init_fields:
+            init_fields = schema.fields
+            init_names = [f.name for f in schema.fields]
+    else:
+        init_names = [f.name for f in schema.fields]
+        init_fields = schema.fields
+
+    robin_schema = [
+        (f.name, _spark_type_to_robin_dtype(f.dataType)) for f in init_fields
+    ]
+    robin_data = _data_to_robin_rows(data, init_names)
+    spark, create_from_rows = _get_robin_session_and_create_from_rows()
+    df = create_from_rows(robin_data, robin_schema)
+
+    for entry in plan:
+        if not isinstance(entry, dict):
+            raise ValueError(f"Plan entry must be a dict, got {type(entry)!r}")
+        op = entry.get("op")
+        payload = entry.get("payload", {})
+        if not isinstance(op, str) or not isinstance(payload, dict):
+            raise ValueError("Plan entry must have 'op' (str) and 'payload' (dict)")
+
+        if op == "filter":
+            cond = payload.get("condition")
+            if cond is None:
+                raise ValueError("Filter payload missing 'condition'")
+            expr = robin_expr_to_column(cond)
+            df = df.filter(expr)
+        elif op == "select":
+            columns = payload.get("columns", [])
+            cols = [robin_expr_to_column(c) for c in columns]
+            df = df.select(*cols)
+        elif op == "limit":
+            n = payload.get("n")
+            if n is None:
+                raise ValueError("Limit payload missing 'n'")
+            df = df.limit(int(n))
+        elif op == "orderBy":
+            col_specs = payload.get("columns", [])
+            ascending = payload.get("ascending", [])
+            col_names = []
+            for e in col_specs:
+                if isinstance(e, dict) and "col" in e:
+                    col_names.append(e["col"])
+                else:
+                    raise ValueError("orderBy currently supports only column references in plan")
+            if isinstance(ascending, bool):
+                asc_list = [ascending] * len(col_names)
+            else:
+                asc_list = list(ascending)
+            if len(asc_list) < len(col_names):
+                asc_list = asc_list + [True] * (len(col_names) - len(asc_list))
+            df = df.order_by(col_names, asc_list[: len(col_names)])
+        elif op == "withColumn":
+            name = payload.get("name")
+            expr_p = payload.get("expression")
+            if not isinstance(name, str):
+                raise ValueError("withColumn payload missing 'name'")
+            if expr_p is None:
+                raise ValueError("withColumn payload missing 'expression'")
+            expr = robin_expr_to_column(expr_p)
+            df = df.with_column(name, expr)
+        elif op == "drop":
+            cols = payload.get("cols", payload.get("columns", []))
+            if isinstance(cols, str):
+                cols = [cols]
+            df = df.drop(list(cols))
+        elif op == "distinct":
+            df = df.distinct()
+        elif op == "withColumnRenamed":
+            existing = payload.get("existing")
+            new = payload.get("new")
+            if not existing or not new:
+                raise ValueError("withColumnRenamed payload requires 'existing' and 'new'")
+            df = df.with_column_renamed(existing, new)
+        elif op == "offset":
+            n = payload.get("n", 0)
+            df = df.offset(int(n))
+        else:
+            raise ValueError(f"Unsupported plan op: {op!r}")
+
+    collected = df.collect()
+    merged: List[dict] = []
+    for d in collected:
+        if isinstance(d, dict):
+            row = dict(d)
+            for k in list(row.keys()):
+                if k.endswith("_right"):
+                    base = k[:-6]
+                    row[base] = row[k]
+                    del row[k]
+            merged.append(row)
+        else:
+            merged.append(d)
+    return [Row(d, schema=schema) for d in merged]

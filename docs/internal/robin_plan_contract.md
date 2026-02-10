@@ -204,11 +204,38 @@ either:
 - Extend this contract in a future phase once the Robin plan interpreter’s
   expectations are fully specified.
 
-## 4. Versioning and Compatibility
+## 4. Plan Execution (Phase 5)
+
+Sparkless v4 Phase 5 implements **plan-based execution** via an in-repo interpreter
+that runs Robin-format plans using the existing Robin DataFrame API. If
+Robin-sparkless later exposes a native plan execution entry point, Sparkless can
+call it instead (or as a fallback).
+
+**Entry point (in-repo):** `sparkless.backend.robin.plan_executor.execute_robin_plan`
+
+**Signature:**
+
+- `execute_robin_plan(data: List[Any], schema: StructType, plan: List[Dict[str, Any]]) -> List[Row]`
+- `data`: Input rows (same as for `materialize()`).
+- `schema`: Sparkless `StructType` for the initial DataFrame.
+- `plan`: Robin-format list of `{"op": str, "payload": dict}` (see §1 and §3).
+
+**Return:** `List[Row]` in the same form as `RobinMaterializer.materialize()`.
+
+**Errors:** Unsupported operation or expression, or execution failure, raises
+(e.g. `ValueError`). The lazy engine treats that as “fall back to
+operation-based materialization.”
+
+**Row value constraints:** Plan-based execution has the same limits as the
+operation-based path: row values are expected to be `None`, `int`, `float`,
+`bool`, or `str` (see v4 behavior docs). Nested structs/arrays may raise.
+
+## 5. Versioning and Compatibility
 
 - Sparkless v4 assumes a Robin-sparkless version **≥ 0.5.0** that stabilizes
-  this plan format and exposes a plan execution entry point (e.g.
-  `_execute_plan(data, schema, plan_json)` or equivalent).
+  this plan format. Plan execution is currently implemented in-repo
+  (`plan_executor.execute_robin_plan`); an upstream entry point (e.g.
+  `_execute_plan(data, schema, plan_json)`) may be used in a future release.
 - Any breaking changes to the Robin plan format MUST be:
   - Reflected here.
   - Released with a corresponding Sparkless update that knows how to emit the
@@ -217,7 +244,7 @@ either:
   builder for unsupported expressions or operations to force fallback to the
   legacy Robin backend behavior.
 
-## 5. Relationship to Existing Sparkless Logical Plan
+## 6. Relationship to Existing Sparkless Logical Plan
 
 Sparkless already defines a backend-agnostic logical plan in
 `docs/internal/logical_plan_format.md` and

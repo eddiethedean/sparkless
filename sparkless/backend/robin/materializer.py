@@ -633,16 +633,13 @@ class RobinMaterializer:
     ) -> List[Row]:
         """Plan-based execution entry point for the Robin backend.
 
-        This stub exists to document the required API and allow the lazy engine
-        to attempt the plan-based path for backend_type=\"robin\". Until a
-        stable Robin plan execution API is available and wired up here, this
-        method raises ValueError so that the caller can fall back to the
-        existing operation-by-operation materialize() path.
+        Calls the in-repo Robin plan executor (Phase 5). On unsupported op or
+        expression the executor raises ValueError so the lazy engine falls back
+        to the operation-by-operation materialize() path.
         """
-        raise ValueError(
-            "Robin plan-based execution is not yet implemented; falling back to "
-            "operation-based materialization."
-        )
+        from sparkless.backend.robin.plan_executor import execute_robin_plan
+
+        return execute_robin_plan(data, schema, logical_plan)
 
     def materialize(
         self,

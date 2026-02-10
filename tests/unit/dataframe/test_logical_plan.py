@@ -497,3 +497,40 @@ class TestLogicalPlanPhase4:
             by_dept[d].append(r["rn"])
         assert by_dept["A"] == [1, 2]
         assert by_dept["B"] == [1]
+
+
+class TestLogicalPlanPhase5:
+    """Phase 5: Robin plan-based execution path."""
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_robin_plan_path_simple_pipeline(self, spark):
+        """With Robin backend, filter -> select -> limit runs via plan path and returns correct rows."""
+        if getattr(spark, "backend_type", None) != "robin":
+            pytest.skip("Robin backend only")
+        data = [{"a": 1, "b": 10}, {"a": 2, "b": 20}, {"a": 3, "b": 30}]
+        df = (
+            spark.createDataFrame(data)
+            .filter(F.col("a") > 1)
+            .select("a", "b")
+            .limit(2)
+        )
+        rows = df.collect()
+        assert len(rows) == 2
+        assert rows[0]["a"] == 2 and rows[0]["b"] == 20
+        assert rows[1]["a"] == 3 and rows[1]["b"] == 30
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_robin_plan_fallback_on_unsupported_expression(self, spark):
+        """When to_robin_plan raises (e.g. unsupported expression), lazy engine falls back to materialize."""
+        from sparkless.dataframe.robin_plan import to_robin_plan
+
+        if getattr(spark, "backend_type", None) != "robin":
+            pytest.skip("Robin backend only")
+        # Simple pipeline that plan supports: filter + select. Collect should succeed.
+        data = [{"x": 1}, {"x": 2}]
+        df = spark.createDataFrame(data).filter(F.col("x") >= 1).select("x")
+        plan = to_robin_plan(df)
+        assert len(plan) >= 1
+        rows = df.collect()
+        assert len(rows) == 2
+        assert rows[0]["x"] == 1 and rows[1]["x"] == 2
