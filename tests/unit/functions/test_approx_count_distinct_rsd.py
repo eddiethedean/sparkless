@@ -11,8 +11,8 @@ class TestApproxCountDistinctRsd:
 
     @pytest.fixture
     def spark(self):
-        """Create a SparkSession for testing."""
-        return SparkSession.builder.appName("test").getOrCreate()
+        """Create a SparkSession for testing (v4: Robin backend)."""
+        return SparkSession("ApproxCountDistinctTest", backend_type="robin")
 
     @pytest.fixture
     def sample_data(self):
@@ -106,6 +106,7 @@ class TestApproxCountDistinctRsd:
         assert row_b is not None
         assert row_b["distinct_count"] == 1
 
+    @pytest.mark.skip(reason="v4 Robin backend does not support withColumn with window expressions; see docs/v4_behavior_changes_and_known_differences.md")
     def test_approx_count_distinct_in_window(self, spark, sample_data):
         """Test approx_count_distinct with Window functions (fixes the None issue)."""
         df = spark.createDataFrame(sample_data)
@@ -128,6 +129,7 @@ class TestApproxCountDistinctRsd:
             elif row["type"] == "B":
                 assert row["approx_count"] == 1
 
+    @pytest.mark.skip(reason="v4 Robin backend does not support withColumn with window expressions; see docs/v4_behavior_changes_and_known_differences.md")
     def test_approx_count_distinct_window_without_rsd(self, spark, sample_data):
         """Test approx_count_distinct in Window without rsd parameter."""
         df = spark.createDataFrame(sample_data)

@@ -7,7 +7,11 @@ for DataFrame. Extracted from dataframe.py to improve organization.
 
 import ast
 import contextlib
+import json
 import logging
+import os
+import traceback
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, TYPE_CHECKING, Tuple, cast
 
 from ..optimizer.query_optimizer import OperationType
@@ -26,6 +30,48 @@ from ..spark_types import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Counter for debug plan dumps (SPARKLESS_DEBUG_PLAN_DIR); incremented per materialization.
+_debug_plan_dump_counter = 0
+
+
+def _write_debug_dump(
+    run_dir: Path,
+    input_data: List[Any],
+    schema: StructType,
+    plan: Optional[List[Any]] = None,
+    result: Optional[List[Any]] = None,
+    error: Optional[Exception] = None,
+) -> None:
+    """Write plan/input/result or error to run_dir for maintainer debugging (Phase 4)."""
+    def _row_to_json_safe(row: Any) -> Any:
+        if hasattr(row, "_fields"):
+            return {k: getattr(row, k, None) for k in row._fields}
+        if isinstance(row, dict):
+            return row
+        if isinstance(row, (list, tuple)):
+            return list(row)
+        return str(row)
+
+    run_dir.mkdir(parents=True, exist_ok=True)
+    with open(run_dir / "input_data.json", "w") as f:
+        json.dump([_row_to_json_safe(r) for r in input_data], f, indent=2, default=str)
+    schema_list = [
+        {"name": f.name, "type": getattr(f.dataType, "typeName", lambda: type(f.dataType).__name__)()}
+        for f in schema.fields
+    ]
+    with open(run_dir / "schema.json", "w") as f:
+        json.dump(schema_list, f, indent=2)
+    if plan is not None:
+        with open(run_dir / "plan.json", "w") as f:
+            json.dump(plan, f, indent=2, default=str)
+    if result is not None:
+        with open(run_dir / "result.json", "w") as f:
+            json.dump([_row_to_json_safe(r) for r in result], f, indent=2, default=str)
+    if error is not None:
+        with open(run_dir / "error.txt", "w") as f:
+            f.write(f"{type(error).__name__}: {error}\n\n{traceback.format_exc()}")
+
 
 # Exceptions that indicate evaluation/transform fallback (set to None); re-raise others.
 _EVALUATION_FAILURE_EXCEPTIONS = (
@@ -496,7 +542,7 @@ class LazyEvaluationEngine:
                     raise SparkUnsupportedOperationError(
                         operation=f"Operations: {', '.join(unsupported_ops)}",
                         reason=f"Backend '{backend_type}' does not support these operations",
-                        alternative="Consider using a different backend (e.g. polars)",
+                        alternative="In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.",
                     )
 
                 # Compute final schema after all operations
@@ -506,65 +552,110 @@ class LazyEvaluationEngine:
                     df.schema, df._operations_queue
                 )
 
-                # Optional plan-based path: use materialize_from_plan when backend supports it
-                # and session is configured (spark.sparkless.useLogicalPlan=true) or backend is robin
-                use_plan = getattr(materializer, "materialize_from_plan", None)
-                if use_plan is not None:
-                    try:
-                        from sparkless.session.core.session import SparkSession as SS
+                # Phase 4: optional dump of plan/input/result for Robin backend (SPARKLESS_DEBUG_PLAN_DIR)
+                debug_run_dir = None
+                debug_plan = None
+                debug_result = None
+                debug_error = None
+                if backend_type == "robin" and os.environ.get("SPARKLESS_DEBUG_PLAN_DIR"):
+                    global _debug_plan_dump_counter
+                    _debug_plan_dump_counter += 1
+                    debug_run_dir = Path(os.environ["SPARKLESS_DEBUG_PLAN_DIR"]) / f"run_{_debug_plan_dump_counter:03d}"
 
-                        active = getattr(SS, "_active_sessions", [])
-                        session = active[-1] if active else None
-                        conf_val = (
-                            session.conf.get("spark.sparkless.useLogicalPlan", "false")
-                            if session and hasattr(session, "conf")
-                            else "false"
-                        )
-                        use_plan_flag = str(conf_val).lower() in ("true", "1", "yes")
-                    except (AttributeError, TypeError):
-                        use_plan_flag = False
-                    if use_plan_flag or backend_type == "robin":
+                try:
+                    # Optional plan-based path: use materialize_from_plan when backend supports it
+                    # and session is configured (spark.sparkless.useLogicalPlan=true) or backend is robin
+                    use_plan = getattr(materializer, "materialize_from_plan", None)
+                    if use_plan is not None:
                         try:
-                            if backend_type == "robin":
-                                # For the Robin backend, build a Robin-format plan that can
-                                # be consumed by the Robin plan interpreter. Unsupported
-                                # operations or expressions will cause the builder to
-                                # raise ValueError, triggering the fallback path below.
-                                from ..dataframe.robin_plan import to_robin_plan
+                            from sparkless.session.core.session import SparkSession as SS
 
-                                logical_plan = to_robin_plan(df)
-                            else:
-                                from ..dataframe.logical_plan import to_logical_plan
-
-                                logical_plan = to_logical_plan(df)
-                            rows = use_plan(df.data, df.schema, logical_plan)
-                        except (ValueError, TypeError):
-                            # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
-                            # Re-check capabilities so unsupported ops raise
-                            can_handle_all, unsupported_ops = (
-                                materializer.can_handle_operations(df._operations_queue)
+                            active = getattr(SS, "_active_sessions", [])
+                            session = active[-1] if active else None
+                            conf_val = (
+                                session.conf.get("spark.sparkless.useLogicalPlan", "false")
+                                if session and hasattr(session, "conf")
+                                else "false"
                             )
-                            if not can_handle_all:
-                                from ..core.exceptions.operation import (
-                                    SparkUnsupportedOperationError,
-                                )
+                            use_plan_flag = str(conf_val).lower() in ("true", "1", "yes")
+                        except (AttributeError, TypeError):
+                            use_plan_flag = False
+                        if use_plan_flag or backend_type == "robin":
+                            try:
+                                if backend_type == "robin":
+                                    # For the Robin backend, build a Robin-format plan that can
+                                    # be consumed by the Robin plan interpreter. Unsupported
+                                    # operations or expressions will cause the builder to
+                                    # raise ValueError, triggering the fallback path below.
+                                    from ..dataframe.robin_plan import to_robin_plan
 
-                                raise SparkUnsupportedOperationError(
-                                    operation=f"Operations: {', '.join(unsupported_ops)}",
-                                    reason=f"Backend '{backend_type}' does not support these operations",
-                                    alternative="Consider using a different backend (e.g. polars)",
+                                    logical_plan = to_robin_plan(df)
+                                    if debug_run_dir is not None:
+                                        debug_plan = logical_plan
+                                else:
+                                    from ..dataframe.logical_plan import to_logical_plan
+
+                                    logical_plan = to_logical_plan(df)
+                                    if debug_run_dir is not None:
+                                        debug_plan = logical_plan
+                                rows = use_plan(df.data, df.schema, logical_plan)
+                                if debug_run_dir is not None:
+                                    debug_result = rows
+                            except (ValueError, TypeError):
+                                # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
+                                if backend_type == "robin" and debug_run_dir is not None:
+                                    try:
+                                        from ..dataframe.logical_plan import to_logical_plan
+                                        debug_plan = to_logical_plan(df)
+                                    except Exception:
+                                        pass
+                                # Re-check capabilities so unsupported ops raise
+                                can_handle_all, unsupported_ops = (
+                                    materializer.can_handle_operations(df._operations_queue)
                                 )
+                                if not can_handle_all:
+                                    from ..core.exceptions.operation import (
+                                        SparkUnsupportedOperationError,
+                                    )
+
+                                    raise SparkUnsupportedOperationError(
+                                        operation=f"Operations: {', '.join(unsupported_ops)}",
+                                        reason=f"Backend '{backend_type}' does not support these operations",
+                                        alternative="In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.",
+                                    )
+                                rows = materializer.materialize(
+                                    df.data, df.schema, df._operations_queue
+                                )
+                                if debug_run_dir is not None:
+                                    debug_result = rows
+                        else:
                             rows = materializer.materialize(
                                 df.data, df.schema, df._operations_queue
                             )
+                            if debug_run_dir is not None:
+                                debug_result = rows
                     else:
                         rows = materializer.materialize(
                             df.data, df.schema, df._operations_queue
                         )
-                else:
-                    rows = materializer.materialize(
-                        df.data, df.schema, df._operations_queue
-                    )
+                        if debug_run_dir is not None:
+                            debug_result = rows
+                except Exception as e:
+                    if debug_run_dir is not None:
+                        debug_error = e
+                    raise
+                finally:
+                    if debug_run_dir is not None:
+                        if debug_plan is None and backend_type == "robin":
+                            try:
+                                from ..dataframe.logical_plan import to_logical_plan
+                                debug_plan = to_logical_plan(df)
+                            except Exception:
+                                pass
+                        _write_debug_dump(
+                            debug_run_dir, df.data, df.schema,
+                            debug_plan, debug_result, debug_error,
+                        )
 
                 # Convert rows back to data format using final schema
                 materialized_data = LazyEvaluationEngine._convert_materialized_rows(

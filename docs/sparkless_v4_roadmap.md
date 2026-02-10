@@ -223,6 +223,14 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
   - A documented list of deliberate behavior changes.
   - Parity tests reflect the agreed behavior (PySpark vs Robin vs Sparkless).
 
+#### 7.3.1 Phase 3 implementation status
+
+- [x] Catalog of test failures with Robin (unit + optional parity), grouped by: unsupported operation, unsupported expression, behavioral/semantic difference. See `docs/v4_behavior_changes_and_known_differences.md` and `tests/phase3_robin_unit_failures.txt`.
+- [x] Documented list of deliberate behavior changes and known differences (v3 vs v4 / Robin). See `docs/v4_behavior_changes_and_known_differences.md`; migration guide updated with "Known differences and limitations" and link.
+- [x] Decisions per category: shim vs accept-and-document. Unsupported select/withColumn/filter expressions, type strictness, map/array/nested rows, column case: accept and document. Error message ("Consider using a different backend (e.g. polars)"): shim to v4 message. See doc.
+- [x] Compatibility shims implemented: error-message normalization in `sparkless/dataframe/lazy.py` and `sparkless/backend/robin/materializer.py` (alternative text points to docs/v4_behavior_changes_and_known_differences.md).
+- [x] Parity/test updates: tests that requested polars backend updated (test_approx_count_distinct_rsd fixture uses Robin session; test_logical_plan Phase 2 config set to robin; test_polars_materialize_from_plan_simple_pipeline skipped with Phase 1 reason). Default test run uses Robin; many unit tests still fail with Robin due to unsupported operations/expressions—documented as known gaps; no bulk skip of all failing tests in Phase 3.
+
 ### 7.4 Tooling & Debugging
 
 - **Scope**
@@ -234,6 +242,100 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
   - Early experiences debugging the Robin-backed execution path reveal pain points.
 - **Completion criteria**
   - Maintainers have a repeatable workflow to understand “what Sparkless sent to Robin” and “what Robin returned” for any failing case.
+
+#### 7.4.1 Phase 4 implementation status
+
+- [x] Pretty-print Sparkless and Robin logical plans: `sparkless.utils.plan_debug` (`pretty_print_logical_plan`, `get_logical_plan`); doc in `docs/development/debugging_plans.md`; script `scripts/dump_plan.py`.
+- [x] Dump Robin plan + input + result/error when `SPARKLESS_DEBUG_PLAN_DIR` is set: in `sparkless/dataframe/lazy.py` (Robin path); writes `run_NNN/plan.json`, `input_data.json`, `schema.json`, `result.json` or `error.txt`; dump layout documented in debugging_plans.md.
+- [x] Documented workflow to reproduce a failing test from dump: section "Reproducing a failing test with Robin only" in debugging_plans.md; script `scripts/reproduce_robin_plan.py` loads dump and prints summary.
+- [x] Completion: maintainers can repeatably see "what Sparkless sent to Robin" and "what Robin returned" (or the error) via env var dump and reproduce script.
+
+### 7.5 Plan-Based Execution (Robin Plan Interpreter)
+
+- **Scope**
+  - Wire Sparkless Robin backend to a concrete plan execution API from Robin-sparkless (e.g. `execute_plan(data, schema, plan_json)` or equivalent).
+  - Replace or complement the current operation-by-operation materialization path with plan-based execution when the plan is fully supported.
+  - Document the contract (plan format version, supported ops) and any fallback behavior.
+- **Entry criteria**
+  - Robin-sparkless exposes a stable plan execution entry point that Sparkless can call.
+  - Plan format and supported operations are aligned with `docs/internal/robin_plan_contract.md`.
+- **Completion criteria**
+  - `RobinMaterializer.materialize_from_plan` calls the Robin plan executor and returns rows (no longer raises "not yet implemented").
+  - Parity or integration tests exercise the plan path; fallback to operation-based path is documented and tested where the plan does not cover an op.
+
+#### 7.5.1 Phase 5 implementation status
+
+- [ ] Robin-sparkless plan execution API identified and documented (entry point, args, return shape).
+- [ ] `RobinMaterializer.materialize_from_plan` implemented to call Robin plan executor; fallback to operation-based path when plan is incomplete or unsupported.
+- [ ] Integration or parity tests added for plan-based execution path.
+- [ ] Contract and versioning notes updated in `docs/internal/robin_plan_contract.md` (or equivalent).
+
+### 7.6 Test Suite Green & CI (Robin-Only)
+
+- **Scope**
+  - Achieve a green (or explicitly accepted) test run with Robin as the only backend.
+  - Either: (a) fix or extend the engine so previously failing tests pass, or (b) formally skip or mark tests that are out of scope for v4 and document them.
+  - CI runs the full suite with Robin by default; any skips or expected failures are documented and tracked.
+- **Entry criteria**
+  - Phase 3 catalog of failures exists; Phase 4 tooling is available for debugging.
+- **Completion criteria**
+  - `pytest tests/unit/ ...` (and any agreed parity subset) completes with no unexpected failures; remaining skips/failures are listed and justified (e.g. in roadmap or `v4_behavior_changes_and_known_differences.md`).
+  - CI configuration (e.g. `run_all_tests.sh`, GitHub Actions) runs Robin-only and is documented.
+
+#### 7.6.1 Phase 6 implementation status
+
+- [ ] Full unit (and agreed parity) test run with Robin-only: all failures either fixed or explicitly skipped/marked with reference to v4 scope.
+- [ ] Documented list of skipped or expected-fail tests and rationale (roadmap or `docs/v4_behavior_changes_and_known_differences.md`).
+- [ ] CI runs Robin-only by default; any optional "legacy" or Polars paths documented if retained.
+
+### 7.7 Expression & Operation Coverage (Robin Materializer)
+
+- **Scope**
+  - Extend the Robin materializer (and Robin plan builder where applicable) to support more expressions and operations used by the test suite and common PySpark patterns.
+  - Prioritize: cast in select/withColumn, CaseWhen, window expressions in select, getItem, and other high-impact gaps from the Phase 3 catalog.
+  - Document any remaining unsupported operations and recommend workarounds.
+- **Entry criteria**
+  - Test suite green or accepted (7.6); list of unsupported ops/expressions is known.
+- **Completion criteria**
+  - Agreed set of "in scope" operations and expressions is supported; remaining gaps are documented and optionally gated with clear errors.
+
+#### 7.7.1 Phase 7 implementation status
+
+- [ ] Priority operations/expressions (e.g. cast, CaseWhen, window in select, getItem) implemented or mapped to Robin equivalents.
+- [ ] Plan builder and/or materializer updated; tests added or un-skipped where coverage is added.
+- [ ] Remaining unsupported ops/expressions documented with workarounds or clear error messages.
+
+### 7.8 Release Readiness (v4.0.0)
+
+- **Scope**
+  - Version and dependency alignment: pin or document supported `robin-sparkless` version(s); ensure `pyproject.toml` and install instructions are correct.
+  - Changelog and release notes: summarize v3 → v4 breaking changes, migration path, and known limitations.
+  - Documentation pass: README, migration guide, backend docs, and roadmap reflect the final v4 scope; remove or archive obsolete backend references.
+- **Entry criteria**
+  - Plan execution (7.5) and test green/acceptance (7.6) are at least in a releasable state; expression coverage (7.7) is at a level the maintainers accept for v4.
+- **Completion criteria**
+  - Changelog and release notes drafted; docs updated; version set to v4.0.0 (or target version); release process (tag, publish) documented or executed.
+
+#### 7.8.1 Phase 8 implementation status
+
+- [ ] `robin-sparkless` version requirement documented (e.g. in `pyproject.toml` and README); install verified.
+- [ ] CHANGELOG and release notes drafted (v3 → v4 breaking changes, migration, known limitations).
+- [ ] README, migration guide, backend/configuration docs updated; obsolete backend references removed or archived.
+- [ ] Version set to v4.0.0 (or target); release steps documented or performed.
+
+### 7.9 Optional: Reader Schema Inference & Polish
+
+- **Scope**
+  - Optional improvements for v4.0 or a follow-up patch: CSV/reader schema inference beyond string-only (e.g. numeric/boolean/date) without reintroducing Polars; any small compatibility or UX polish identified during 7.6–7.8.
+- **Entry criteria**
+  - v4.0 scope is otherwise complete; maintainers choose to include this in v4.0 or defer.
+- **Completion criteria**
+  - Agreed optional items implemented or explicitly deferred with a short rationale.
+
+#### 7.9.1 Phase 9 implementation status
+
+- [ ] CSV/reader schema inference (beyond string-only) evaluated; implemented or deferred with rationale.
+- [ ] Any additional polish items from 7.6–7.8 tracked and completed or deferred.
 
 ## 8. Risks, Open Questions, and Decision Points
 

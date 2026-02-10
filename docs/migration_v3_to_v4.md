@@ -26,6 +26,13 @@ Sparkless v4 uses **Robin (robin-sparkless)** as the only supported execution ba
 - Your existing PySpark-style code (e.g. `SparkSession()`, `createDataFrame`, `filter`, `select`, `collect`) continues to work; execution is handled by Robin instead of Polars.
 - For behavioural differences between Robin and Polars (e.g. expression semantics, supported functions), see the Robin-sparkless documentation and the v4 roadmap: `docs/sparkless_v4_roadmap.md`.
 
+## Known differences and limitations
+
+- **Schema inference**: When reading CSV (or similar) without a schema, v4 infers all columns as `StringType`. Numeric/boolean/date inference is not available (was provided by Polars in v3).
+- **Unsupported expressions**: Some select/filter/withColumn expressions are not supported by the Robin backend (e.g. cast in select, CaseWhen, window functions in select, getItem, map/array literals). You will see `SparkUnsupportedOperationError` with a message pointing to the compatibility doc.
+- **Type strictness**: Robin does not coerce string vs numeric in comparisons; "cannot compare string with numeric type" may appear where v3/PySpark allowed coercion.
+- **Full list**: See [v4_behavior_changes_and_known_differences.md](v4_behavior_changes_and_known_differences.md) for the complete list of deliberate behavior changes and known differences.
+
 ## Summary
 
 | Item            | v3                    | v4        |

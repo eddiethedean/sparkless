@@ -715,7 +715,7 @@ class RobinMaterializer:
                             raise SparkUnsupportedOperationError(
                                 operation="select",
                                 reason="Backend 'robin' does not support this select expression",
-                                alternative="Consider using a different backend (e.g. polars)",
+                                alternative="In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported expressions.",
                             )
                         robin_cols.append(expr)
                 df = df.select(*robin_cols)

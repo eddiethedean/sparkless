@@ -164,10 +164,11 @@ class TestLogicalPlanPhase2:
             staticmethod(create_materializer),
         )
 
+        # v4: only robin is supported; config must be robin (get_backend_type is patched to "plan_test" below)
         session = (
             SparkSession.builder.appName("PlanTest")
             .config("spark.sparkless.useLogicalPlan", "true")
-            .config("spark.sparkless.backend", "polars")
+            .config("spark.sparkless.backend", "robin")
             .getOrCreate()
         )
         # Force backend type to be plan_test for this session's DataFrames by patching storage's type
@@ -323,6 +324,7 @@ class TestLogicalPlanPhase3:
 class TestLogicalPlanPhase4:
     """Phase 4: Polars plan interpreter produces correct results."""
 
+    @pytest.mark.skip(reason="v4 is Robin-only; Polars plan interpreter not used; Robin plan execution not yet wired (Phase 1)")
     def test_polars_materialize_from_plan_simple_pipeline(self):
         """With useLogicalPlan=true and Polars backend, plan path runs and result matches."""
         from sparkless.session.core.session import SparkSession as CoreSession
@@ -334,7 +336,7 @@ class TestLogicalPlanPhase4:
             session = (
                 SparkSession.builder.appName("Phase4Test")
                 .config("spark.sparkless.useLogicalPlan", "true")
-                .config("spark.sparkless.backend", "polars")
+                .config("spark.sparkless.backend", "robin")
                 .getOrCreate()
             )
             data = [{"a": 1, "b": 10}, {"a": 2, "b": 20}, {"a": 3, "b": 30}]
