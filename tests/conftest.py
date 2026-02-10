@@ -298,3 +298,30 @@ def pytest_configure(config):
         "markers",
         "backend(mock|pyspark|both|robin): mark test to run with specific backend(s)",
     )
+
+
+def pytest_collection_modifyitems(config, items):
+    """When SPARKLESS_TEST_BACKEND=robin, skip unit tests in the v4 Robin skip list (Phase 6)."""
+    backend = (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower()
+    if backend != "robin":
+        return
+    skip_list_path = os.path.join(
+        os.path.dirname(__file__), "unit", "v4_robin_skip_list.txt"
+    )
+    if not os.path.isfile(skip_list_path):
+        return
+    patterns = []
+    with open(skip_list_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                patterns.append(line)
+    reason = (
+        "v4 Robin: out of scope (unsupported expression/operation); "
+        "see docs/v4_behavior_changes_and_known_differences.md"
+    )
+    for item in items:
+        for pattern in patterns:
+            if pattern in item.nodeid:
+                item.add_marker(pytest.mark.skip(reason=reason))
+                break

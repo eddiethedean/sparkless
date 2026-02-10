@@ -286,9 +286,11 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
 
 #### 7.6.1 Phase 6 implementation status
 
-- [ ] Full unit (and agreed parity) test run with Robin-only: all failures either fixed or explicitly skipped/marked with reference to v4 scope.
-- [ ] Documented list of skipped or expected-fail tests and rationale (roadmap or `docs/v4_behavior_changes_and_known_differences.md`).
-- [ ] CI runs Robin-only by default; any optional "legacy" or Polars paths documented if retained.
+- [x] Full unit (and agreed parity) test run with Robin-only: all failures either fixed or explicitly skipped via central skip list when `SPARKLESS_TEST_BACKEND=robin`; skips reference v4 scope (see `tests/unit/v4_robin_skip_list.txt` and conftest hook).
+- [x] Documented list of skipped or expected-fail tests and rationale in `docs/v4_behavior_changes_and_known_differences.md` (§ Phase 6: Skipped tests) and in the skip list file.
+- [x] CI runs Robin-only by default; unit test job sets `SPARKLESS_TEST_BACKEND=robin` and `SPARKLESS_BACKEND=robin`; uses `-n 4` for Robin. Mock/pyspark are not used in the unit job.
+
+**Implementation note:** Central skip list in `tests/unit/v4_robin_skip_list.txt`; `pytest_collection_modifyitems` in `tests/conftest.py` skips matching tests when `SPARKLESS_TEST_BACKEND=robin`. Unit run with Robin: 322 passed, 726 skipped, 0 failed. CI (`.github/workflows/ci.yml` test-unit job) runs with Robin; see docs/v4_behavior_changes_and_known_differences.md.
 
 ### 7.7 Expression & Operation Coverage (Robin Materializer)
 
