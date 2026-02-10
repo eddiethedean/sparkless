@@ -1,20 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Fixed
-- **Issue #448** - `dropDuplicates()` and `distinct()` no longer raise `TypeError: unhashable type: 'list'` when the DataFrame contains list-typed (array) or dict-typed (struct) columns. Added `_make_hashable()` helper to recursively convert unhashable values before set membership checks in `TransformationService`, `TransformationOperations`, and lazy evaluation.
-- **Issue #451** - `dropDuplicates()` with struct column after materialization no longer raises `TypeError: unhashable type: 'dict'`. Same fix as #448: `_make_hashable()` handles struct (dict) columns. Added regression tests for the materialized-struct scenario.
-- **Issue #453** - `alias().cast()` in `withColumn()` no longer raises `SparkColumnNotFoundError`. `ColumnValidator.validate_expression_columns` now validates `_original_column` for aliased columns (same pattern as #435 fix for `select()`).
-- **Issue #439** - `F.array_distinct()` now returns deduplicated arrays with the original element type preserved, matching PySpark. Previously returned strings (e.g. `['1', '2', '3']`) instead of integers (e.g. `[1, 2, 3]`) due to incorrect `return_dtype=pl.List(pl.Utf8)` in the Polars expression translator. Switched to Polars native `list.unique(maintain_order=True)`.
-- **Issue #437** - `F.mean()` on string columns no longer raises `TypeError: can't convert type 'str' to numerator/denominator`. PySpark interprets string columns as numeric for mean/avg; Sparkless now coerces string values to float (including scientific notation, e.g. `"1e2"`), matching PySpark behavior.
-- **Issue #438** - `leftsemi` join (e.g. `df.join(other, on="Name", how="leftsemi")`) no longer incorrectly includes columns from the right DataFrame. PySpark accepts both `leftsemi` and `left_semi`; Sparkless now recognizes both and returns only left-side columns for semi/anti joins.
-  - Added `leftsemi` and `leftanti` to semi/anti join checks in lazy.py, schema_manager, Polars operation executor, and Robin materializer.
-  - Fixed anti join: append left row only when NOT matched (was incorrectly appending on match).
-- **Issue #465** - `F.date_trunc` is now implemented for the Polars backend. Previously the function was exposed in the API but raised `ValueError: Unsupported function: date_trunc` at materialization time; the Polars expression translator now supports common truncation units (year, quarter, month, day, hour, minute, second), and backend-agnostic tests keep behavior aligned with PySpark.
-
----
-
 ## 3.31.0 — 2026-02-05
 
 ### Added
@@ -32,6 +17,17 @@
 ### Documentation
 - **backend_selection.md** — Robin optional backend, install steps, and "Running tests with a specific backend" (e.g. `SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh`).
 - **pytest_integration.md** — "Running tests with the Robin backend" and env vars; note that missing robin causes test failures (no silent skip).
+
+### Fixed
+- **Issue #448** - `dropDuplicates()` and `distinct()` no longer raise `TypeError: unhashable type: 'list'` when the DataFrame contains list-typed (array) or dict-typed (struct) columns. Added `_make_hashable()` helper to recursively convert unhashable values before set membership checks in `TransformationService`, `TransformationOperations`, and lazy evaluation.
+- **Issue #451** - `dropDuplicates()` with struct column after materialization no longer raises `TypeError: unhashable type: 'dict'`. Same fix as #448: `_make_hashable()` handles struct (dict) columns. Added regression tests for the materialized-struct scenario.
+- **Issue #453** - `alias().cast()` in `withColumn()` no longer raises `SparkColumnNotFoundError`. `ColumnValidator.validate_expression_columns` now validates `_original_column` for aliased columns (same pattern as #435 fix for `select()`).
+- **Issue #439** - `F.array_distinct()` now returns deduplicated arrays with the original element type preserved, matching PySpark. Previously returned strings (e.g. `['1', '2', '3']`) instead of integers (e.g. `[1, 2, 3]`) due to incorrect `return_dtype=pl.List(pl.Utf8)` in the Polars expression translator. Switched to Polars native `list.unique(maintain_order=True)`.
+- **Issue #437** - `F.mean()` on string columns no longer raises `TypeError: can't convert type 'str' to numerator/denominator`. PySpark interprets string columns as numeric for mean/avg; Sparkless now coerces string values to float (including scientific notation, e.g. `"1e2"`), matching PySpark behavior.
+- **Issue #438** - `leftsemi` join (e.g. `df.join(other, on="Name", how="leftsemi")`) no longer incorrectly includes columns from the right DataFrame. PySpark accepts both `leftsemi` and `left_semi`; Sparkless now recognizes both and returns only left-side columns for semi/anti joins.
+  - Added `leftsemi` and `leftanti` to semi/anti join checks in lazy.py, schema_manager, Polars operation executor, and Robin materializer.
+  - Fixed anti join: append left row only when NOT matched (was incorrectly appending on match).
+- **Issue #465** - `F.date_trunc` is now implemented for the Polars backend. Previously the function was exposed in the API but raised `ValueError: Unsupported function: date_trunc` at materialization time; the Polars expression translator now supports common truncation units (year, quarter, month, day, hour, minute, second), and backend-agnostic tests keep behavior aligned with PySpark.
 
 ---
 
