@@ -44,7 +44,9 @@ def run_robin_direct() -> None:
         return
 
     F = rs
-    spark = F.SparkSession.builder().app_name("repro-regexp-extract-all").get_or_create()
+    spark = (
+        F.SparkSession.builder().app_name("repro-regexp-extract-all").get_or_create()
+    )
 
     # Minimal data: one string column
     data = [
@@ -70,17 +72,27 @@ def run_robin_direct() -> None:
     # Check if robin exposes regexp_extract_all or similar
     if hasattr(F, "regexp_extract_all"):
         try:
-            out = df.select([F.regexp_extract_all(F.col("s"), F.lit(r"\d+"), 0).alias("m")]).collect()
+            out = df.select(
+                [F.regexp_extract_all(F.col("s"), F.lit(r"\d+"), 0).alias("m")]
+            ).collect()
             print(f"  robin_sparkless has regexp_extract_all -> {len(out)} rows")
         except Exception as e:
             print(f"  FAILED: {type(e).__name__}: {e}")
     else:
-        print("  robin_sparkless has no F.regexp_extract_all (or similar) - cannot express this query.")
-        print("  select() also only accepts list of column names (strings), not Column expressions.")
+        print(
+            "  robin_sparkless has no F.regexp_extract_all (or similar) - cannot express this query."
+        )
+        print(
+            "  select() also only accepts list of column names (strings), not Column expressions."
+        )
 
-    print("\nConclusion: To run PySpark-style tests that use regexp_extract_all in select(),")
+    print(
+        "\nConclusion: To run PySpark-style tests that use regexp_extract_all in select(),"
+    )
     print("robin-sparkless would need either:")
-    print("  - select() to accept Column/expression arguments (not just string names), and")
+    print(
+        "  - select() to accept Column/expression arguments (not just string names), and"
+    )
     print("  - a regexp_extract_all(column, pattern, group_index) function.")
 
 
@@ -88,11 +100,23 @@ def run_sparkless_robin_mode() -> None:
     """Run the equivalent test via Sparkless in Robin mode."""
     section("2. Sparkless in Robin mode (impact)")
 
-    backend = (os.environ.get("SPARKLESS_TEST_BACKEND") or os.environ.get("SPARKLESS_BACKEND") or "").strip().lower()
+    backend = (
+        (
+            os.environ.get("SPARKLESS_TEST_BACKEND")
+            or os.environ.get("SPARKLESS_BACKEND")
+            or ""
+        )
+        .strip()
+        .lower()
+    )
     if backend != "robin":
-        print("Not in Robin mode. Set SPARKLESS_TEST_BACKEND=robin and SPARKLESS_BACKEND=robin to reproduce.")
+        print(
+            "Not in Robin mode. Set SPARKLESS_TEST_BACKEND=robin and SPARKLESS_BACKEND=robin to reproduce."
+        )
         print("When run in Robin mode, this test either:")
-        print("  - Raises SparkUnsupportedOperationError (Robin materializer does not support select with expressions),")
+        print(
+            "  - Raises SparkUnsupportedOperationError (Robin materializer does not support select with expressions),"
+        )
         print("  - Or stalls (e.g. first-time Robin session init in a worker).")
         return
 
@@ -100,8 +124,12 @@ def run_sparkless_robin_mode() -> None:
     from sparkless.sql import functions as F
 
     print("Creating SparkSession with backend=robin...")
-    spark = SparkSession.builder.config("spark.sparkless.backend", "robin").getOrCreate()
-    print("Creating DataFrame and calling select(regexp_extract_all(...)).collect() ...")
+    spark = SparkSession.builder.config(
+        "spark.sparkless.backend", "robin"
+    ).getOrCreate()
+    print(
+        "Creating DataFrame and calling select(regexp_extract_all(...)).collect() ..."
+    )
 
     df = spark.createDataFrame(
         [
@@ -116,10 +144,10 @@ def run_sparkless_robin_mode() -> None:
     except Exception as e:
         print(f"Result: {type(e).__name__}: {e}")
     finally:
-        try:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             spark.stop()
-        except Exception:
-            pass
 
 
 def main() -> int:

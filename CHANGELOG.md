@@ -11,6 +11,7 @@
 - **Issue #438** - `leftsemi` join (e.g. `df.join(other, on="Name", how="leftsemi")`) no longer incorrectly includes columns from the right DataFrame. PySpark accepts both `leftsemi` and `left_semi`; Sparkless now recognizes both and returns only left-side columns for semi/anti joins.
   - Added `leftsemi` and `leftanti` to semi/anti join checks in lazy.py, schema_manager, Polars operation executor, and Robin materializer.
   - Fixed anti join: append left row only when NOT matched (was incorrectly appending on match).
+- **Issue #465** - `F.date_trunc` is now implemented for the Polars backend. Previously the function was exposed in the API but raised `ValueError: Unsupported function: date_trunc` at materialization time; the Polars expression translator now supports common truncation units (year, quarter, month, day, hour, minute, second), and backend-agnostic tests keep behavior aligned with PySpark.
 
 ---
 

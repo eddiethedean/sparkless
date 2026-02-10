@@ -301,6 +301,10 @@ F.to_timestamp(F.col("date_string"), "yyyy-MM-dd")
 F.date_add(F.col("date"), 7)
 F.date_sub(F.col("date"), 7)
 F.datediff(F.col("end_date"), F.col("start_date"))
+
+# Date truncation (PySpark parity)
+F.date_trunc("month", F.col("timestamp"))
+F.date_trunc("day", F.col("date"))
 ```
 
 #### Conditional Functions

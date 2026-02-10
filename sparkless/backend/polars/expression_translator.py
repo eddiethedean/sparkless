@@ -874,6 +874,7 @@ class PolarsExpressionTranslator:
             "to_date",
             "to_timestamp",
             "date_format",
+            "date_trunc",
             "date_add",
             "date_sub",
             "datediff",
@@ -2956,6 +2957,62 @@ class PolarsExpressionTranslator:
                 # Parse string dates first, then subtract duration
                 date_col = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 return date_col - days_expr
+            elif operation == "date_trunc":
+                # date_trunc(format, timestamp) - truncate timestamp to specified unit
+                # In ColumnOperation: column is the timestamp, value is the format/unit.
+                from ...functions.core.literals import Literal
+
+                fmt = op.value
+
+                # Unwrap Literal values where possible (F.lit("month"), etc.)
+                if isinstance(fmt, Literal):
+                    unit = str(fmt.value).lower()
+                else:
+                    unit = str(fmt).lower()
+
+                # Map PySpark-style units to Polars truncate intervals
+                unit_map = {
+                    # Years
+                    "year": "1y",
+                    "yyyy": "1y",
+                    "yy": "1y",
+                    # Months / quarters
+                    "quarter": "3mo",
+                    "qq": "3mo",
+                    "q": "3mo",
+                    "month": "1mo",
+                    "mon": "1mo",
+                    "mm": "1mo",
+                    # Days
+                    "day": "1d",
+                    "dd": "1d",
+                    # Hours
+                    "hour": "1h",
+                    "hh": "1h",
+                    # Minutes
+                    "minute": "1m",
+                    "min": "1m",
+                    # Seconds
+                    "second": "1s",
+                    "sec": "1s",
+                    "ss": "1s",
+                }
+
+                every = unit_map.get(unit)
+                if every is None:
+                    raise ValueError(f"Unsupported date_trunc unit: {unit}")
+
+                # Cast to datetime so Polars dt.truncate works for dates, timestamps, and strings.
+                # strict=False ensures non-parsable values become null rather than raising.
+                dt_expr = col_expr.cast(pl.Datetime, strict=False)
+                truncated = dt_expr.dt.truncate(every=every)
+
+                # If the original input dtype was a Date and we're truncating to day-or-coarser,
+                # cast back to Date so schemas stay close to PySpark behavior.
+                if input_col_dtype == pl.Date and every in ("1d", "1mo", "3mo", "1y"):
+                    return truncated.cast(pl.Date)
+
+                return truncated
             elif operation == "datediff":
                 # datediff(end, start) - note: in PySpark, end comes first
                 # In ColumnOperation: column is end, value is start
