@@ -13,7 +13,7 @@
 [![Type Checked](https://img.shields.io/badge/mypy-501%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-**Current release:** 3.29.0
+**Current release:** 4.0.0
 
 *⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🧵 Robin backend (v4)*
 
@@ -69,6 +69,8 @@ from sparkless.sql import SparkSession
 ```bash
 pip install sparkless
 ```
+
+Sparkless v4 uses **robin-sparkless** (>=0.5.0) as the execution backend; it is installed automatically with `pip install sparkless`.
 
 📖 **Need help?** Check out the [full documentation](https://sparkless.readthedocs.io/) for detailed guides, API reference, and examples.
 

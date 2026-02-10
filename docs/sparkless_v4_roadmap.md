@@ -329,10 +329,12 @@ This section breaks v4 work into **workstreams** with qualitative entry/exit cri
 
 #### 7.8.1 Phase 8 implementation status
 
-- [ ] `robin-sparkless` version requirement documented (e.g. in `pyproject.toml` and README); install verified.
-- [ ] CHANGELOG and release notes drafted (v3 → v4 breaking changes, migration, known limitations).
-- [ ] README, migration guide, backend/configuration docs updated; obsolete backend references removed or archived.
-- [ ] Version set to v4.0.0 (or target); release steps documented or performed.
+- [x] `robin-sparkless` version requirement documented (e.g. in `pyproject.toml` and README); install verified. (robin-sparkless>=0.5.0 documented in pyproject.toml and README; install verified.)
+- [x] CHANGELOG and release notes drafted (v3 → v4 breaking changes, migration, known limitations). (CHANGELOG 4.0.0 and release notes drafted; see CHANGELOG.md and docs/release_notes_v4.md.)
+- [x] README, migration guide, backend/configuration docs updated; obsolete backend references removed or archived. (README install notes for robin-sparkless; migration_v3_to_v4 updated with Phase 7 expressions and What's new; backend_selection already v4; configuration.md and threading.md updated for v4 Robin-only.)
+- [x] Version set to v4.0.0 (or target); release steps documented or performed. (Version set to 4.0.0 in pyproject.toml and sparkless/_version.py; release steps documented in docs/release_process.md; tag/publish deferred to maintainer.)
+
+**Implementation note:** Phase 8 completed the release-readiness checklist. Robin-sparkless (>=0.5.0) is documented in pyproject.toml and README; install was verified with a minimal smoke test. CHANGELOG 4.0.0 and docs/release_notes_v4.md were drafted (breaking changes, migration, known limitations). README, migration_v3_to_v4, backend_selection, and guides (configuration.md, threading.md) were updated for v4 Robin-only; obsolete Polars/DuckDB references were clarified as v3-only. Version was set to 4.0.0 in pyproject.toml and sparkless/_version.py; release process is documented in docs/release_process.md. Tag and PyPI publish are deferred to maintainer discretion.
 
 ### 7.9 Optional: Reader Schema Inference & Polish
 

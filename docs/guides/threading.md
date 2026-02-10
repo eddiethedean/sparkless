@@ -1,9 +1,8 @@
 # Threading
 
+**v4:** In Sparkless v4 the only backend is **Robin** (robin-sparkless). Threading behaviour is determined by robin-sparkless; see the "Robin backend (v4)" section below. The Polars and DuckDB sections describe v3 behaviour for reference.
 
-Sparkless's Polars backend is **thread-safe by design**, eliminating threading issues that were present with DuckDB. Polars uses Rayon (Rust's data parallelism library) internally, making it safe for concurrent operations.
-
-## Thread Safety with Polars
+## Thread Safety with Polars (v3)
 
 Polars backend provides native thread safety:
 

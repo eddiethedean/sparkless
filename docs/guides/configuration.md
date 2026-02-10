@@ -85,16 +85,12 @@ Setting any other `spark.sparkless.backend` value will raise `ValueError`. See [
 
 ### Backend-Specific Options
 
-**Robin Backend (v4 default):**
-- No configuration needed - Polars handles memory and performance automatically
-- Thread-safe by design
-- Uses Parquet files for persistence
+**Robin Backend (v4 only):**
+- No configuration needed for basic use; Robin (robin-sparkless) handles execution.
+- Thread-safety and performance are determined by robin-sparkless.
+- Catalog and table persistence use file-based storage; Parquet/CSV/JSON use row-based and pandas where needed.
 
-**DuckDB Backend (legacy):**
-- `spark.sparkless.backend.maxMemory`: Maximum memory (e.g., "1GB", "4GB")
-- `spark.sparkless.backend.allowDiskSpillover`: Allow disk spillover when memory is full
-
-**Note**: `maxMemory` and `allowDiskSpillover` options are ignored for Polars backend.
+**v3-only (not supported in v4):** DuckDB, Polars, memory, and file backends are no longer available. Options such as `maxMemory` and `allowDiskSpillover` applied to legacy backends and are not used in v4.
 
 ## Performance knobs
 

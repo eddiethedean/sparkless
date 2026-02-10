@@ -2,6 +2,8 @@
 
 Sparkless v4 uses **Robin (robin-sparkless)** as the only supported execution backend. Polars, DuckDB, memory, and file backends are no longer selectable in the default v4 build.
 
+**What's new in 4.0:** Single-backend (Robin-only) architecture; plan-based execution path for Robin with fallback to operation-based materialization; Phase 7 expression coverage (cast, substring, getItem in materializer; cast and alias in plan path). See [release_notes_v4.md](release_notes_v4.md) and [CHANGELOG.md](../CHANGELOG.md) § 4.0.0.
+
 ## Backend changes
 
 - **v3**: You could set `SPARKLESS_BACKEND` or `backend_type` to `polars`, `memory`, `file`, or (optionally) `duckdb` or `robin`. The default was `polars`.
@@ -29,7 +31,7 @@ Sparkless v4 uses **Robin (robin-sparkless)** as the only supported execution ba
 ## Known differences and limitations
 
 - **Schema inference**: When reading CSV (or similar) without a schema, v4 infers all columns as `StringType`. Numeric/boolean/date inference is not available (was provided by Polars in v3).
-- **Unsupported expressions**: Some select/filter/withColumn expressions are not supported by the Robin backend (e.g. cast in select, CaseWhen, window functions in select, getItem, map/array literals). You will see `SparkUnsupportedOperationError` with a message pointing to the compatibility doc.
+- **Unsupported expressions**: Cast in select/withColumn is supported (Phase 7). CaseWhen (when/otherwise), window functions in select, and some other expressions (e.g. getItem in some contexts, map/array literals) are not supported or only partially supported by the Robin backend. You will see `SparkUnsupportedOperationError` with a message pointing to the compatibility doc. See [v4_behavior_changes_and_known_differences.md](v4_behavior_changes_and_known_differences.md) § Phase 7 for the full list.
 - **Type strictness**: Robin does not coerce string vs numeric in comparisons; "cannot compare string with numeric type" may appear where v3/PySpark allowed coercion.
 - **Full list**: See [v4_behavior_changes_and_known_differences.md](v4_behavior_changes_and_known_differences.md) for the complete list of deliberate behavior changes and known differences.
 

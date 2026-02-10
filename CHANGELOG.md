@@ -1,5 +1,31 @@
 # Changelog
 
+## 4.0.0 — Unreleased
+
+### Breaking changes
+
+- **Robin-only backend:** Sparkless v4 supports only the **Robin** backend. Polars, memory, file, and DuckDB backends have been removed. `BackendFactory.list_available_backends()` returns `["robin"]` only. Setting `SPARKLESS_BACKEND` or `backend_type` to any value other than `robin` (or leaving it unset) will raise `ValueError` with a message that v4 supports only Robin.
+- **Required dependency:** v4 requires **robin-sparkless** (>=0.5.0). It is a core dependency; `pip install sparkless` installs it. There is no optional-backend path in v4.
+
+### Migration from v3
+
+- See **[docs/migration_v3_to_v4.md](docs/migration_v3_to_v4.md)** for the full migration guide.
+- **Dependency:** Install `robin-sparkless>=0.5.0` (included with `pip install sparkless`). No Polars or other backend packages are required for default execution.
+- **Configuration:** Only `robin` is valid for `SPARKLESS_BACKEND` and `backend_type`; the default is already Robin.
+- **Behavioral differences:** Schema inference (e.g. CSV without schema) is string-only in v4. Some expressions (e.g. CaseWhen, window in select) are not supported by the Robin backend and raise `SparkUnsupportedOperationError`. Robin does not coerce string vs numeric in comparisons; see the migration guide and behavior doc.
+
+### Known limitations
+
+- **Unsupported expressions and operations:** Cast in select/withColumn is supported (Phase 7); substring/substr and getItem have materializer support. CaseWhen (when/otherwise), window in select, and some other operations remain unsupported or partially supported. See **[docs/v4_behavior_changes_and_known_differences.md](docs/v4_behavior_changes_and_known_differences.md)** for the full list and Phase 7 expression coverage.
+- **Robin semantics:** Type strictness, column name resolution, and error messages may differ from v3 (Polars) or PySpark. The same doc above summarizes deliberate behavior changes and known differences.
+
+### Added (v4 / Phase 6–7)
+
+- **Phase 6:** Unit test run with Robin: skip list in `tests/unit/v4_robin_skip_list.txt`; tests that require unsupported operations are skipped when `SPARKLESS_TEST_BACKEND=robin`.
+- **Phase 7:** Expression coverage for Robin materializer and plan path: **cast/astype** (materializer + plan path with alias); **substring/substr** (materializer, fallback); **getItem** (materializer). Alias handling fixed for plan path; logical plan serializes alias value as literal. CaseWhen and window in select documented as gaps.
+
+---
+
 ## 3.31.0 — 2026-02-05
 
 ### Added
