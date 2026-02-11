@@ -1,6 +1,12 @@
-# Issue Templates for robin-sparkless (Upstream)
+# Robin-sparkless upstream issues
 
-The following text can be copied into the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) GitHub repo when opening issues.
+**Policy:** If something **PySpark can do** and **robin-sparkless does differently** (or fails on), we **report it** to the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) GitHub repo. We do not tiptoe around differences or accept them silently—they are upstream bugs or missing features and should be filed so Robin can reach PySpark parity.
+
+- **Reproduce** with minimal robin-sparkless code and the same logic in PySpark (baseline).
+- **File** via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file <path>` with summary, PySpark expected behavior, Robin actual behavior, and repro steps.
+- **Document** the issue number in this file and in [v4_behavior_changes_and_known_differences.md](v4_behavior_changes_and_known_differences.md) where relevant.
+
+Minimal repro scripts live in `scripts/repro_robin_limitations/`; use them as templates for new gaps.
 
 ## Issues created from robin_sparkless_needs.md (2026-02-08)
 
@@ -40,6 +46,20 @@ Grouped by root cause after running Robin unit+integration and parity tests, ver
 | 202 | [Sparkless parity] Unsupported filter conditions (complex/column-column) | https://github.com/eddiethedean/robin-sparkless/issues/202 |
 
 Created via `python scripts/create_robin_issues_from_catalog.py` (uses `tests/robin_unit_integration_results.txt`, `tests/robin_parity_full_results.txt`, `tests/pyspark_parity_full_results.txt`).
+
+## Issues created from minimal repros (robin-sparkless 0.6.0, 2026-02-10)
+
+Reproduced with **robin-sparkless 0.6.0** using direct API (no Sparkless). Each limitation was run with Robin and with PySpark; only cases where Robin failed and PySpark succeeded were filed. Repros: `scripts/repro_robin_limitations/01_type_strictness.py` through `10_datetime_row.py`. Results: `scripts/repro_robin_limitations/RESULTS_0.6.0.md`.
+
+| # | Title | Link |
+|---|-------|------|
+| 235 | [0.6.0 repro] Type strictness: string vs numeric comparison raises RuntimeError | https://github.com/eddiethedean/robin-sparkless/issues/235 |
+| 236 | [0.6.0 repro] CaseWhen: Column.otherwise() missing (AttributeError) | https://github.com/eddiethedean/robin-sparkless/issues/236 |
+| 237 | [0.6.0 repro] Window/row_number not exposed in Python API | https://github.com/eddiethedean/robin-sparkless/issues/237 |
+| 238 | [0.6.0 repro] F.concat not found in Python API | https://github.com/eddiethedean/robin-sparkless/issues/238 |
+| 239 | [0.6.0 repro] datetime in row not accepted (row values must be scalar types) | https://github.com/eddiethedean/robin-sparkless/issues/239 |
+
+Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file tests/.robin_issue_*.txt`.
 
 ## Sparkless parity issues created (earlier)
 

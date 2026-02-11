@@ -1,0 +1,37 @@
+## Summary
+
+With **robin-sparkless 0.6.0**, PySpark-style CaseWhen using `.otherwise()` fails: `AttributeError: 'builtins.Column' object has no attribute 'otherwise'`. PySpark uses `F.when(cond, val).otherwise(default)`.
+
+Related: #195 (closed), #81 (when_otherwise parity).
+
+## PySpark (expected)
+
+```python
+from pyspark.sql import SparkSession, functions as F
+spark = SparkSession.builder.master("local[1]").getOrCreate()
+df = spark.createDataFrame([{"a": 1}, {"a": -1}, {"a": 0}])
+out = df.withColumn("x", F.when(F.col("a") > 0, F.lit(1)).otherwise(F.lit(0))).collect()
+# 3 rows with x=1,0,0
+spark.stop()
+```
+
+## Robin 0.6.0 (actual)
+
+```python
+import robin_sparkless as rs
+F = rs
+spark = F.SparkSession.builder().app_name("repro").get_or_create()
+data = [{"a": 1}, {"a": -1}, {"a": 0}]
+df = spark._create_dataframe_from_rows(data, [("a", "int")])
+expr = F.when(F.col("a").gt(F.lit(0)), F.lit(1)).otherwise(F.lit(0))
+# AttributeError: 'builtins.Column' object has no attribute 'otherwise'
+out = df.with_column("x", expr).collect()
+```
+
+## Expected
+
+Expose `Column.otherwise(value)` (or equivalent) so that `when(cond).then(val).otherwise(default)` works like PySpark's `when(cond, val).otherwise(default)`.
+
+## Reproducer
+
+Run from sparkless repo: `python scripts/repro_robin_limitations/04_case_when.py`.

@@ -1,0 +1,34 @@
+## Summary
+
+With **robin-sparkless 0.6.0**, the Python API does not expose `row_number` or `Window` (e.g. `F.row_number()`, `F.Window.partition_by(...).order_by(...)`). Window-in-select is a documented PySpark pattern.
+
+Related: #187 (closed).
+
+## PySpark (expected)
+
+```python
+from pyspark.sql import SparkSession, Window, functions as F
+spark = SparkSession.builder.master("local[1]").getOrCreate()
+df = spark.createDataFrame([{"dept": "A", "salary": 10}, {"dept": "A", "salary": 20}, {"dept": "B", "salary": 15}])
+win = Window.partitionBy("dept").orderBy(F.col("salary"))
+out = df.withColumn("rn", F.row_number().over(win)).collect()
+# 3 rows with rn 1,2,1 per partition
+spark.stop()
+```
+
+## Robin 0.6.0 (actual)
+
+```python
+import robin_sparkless as rs
+F = rs
+# F.row_number and F.Window are not present (hasattr False)
+# So with_column(row_number().over(...)) cannot be expressed
+```
+
+## Expected
+
+Expose in the Python API: `row_number()` (or equivalent) and `Window` with `partition_by` / `order_by`, so that window expressions can be used in `select` / `with_column`.
+
+## Reproducer
+
+Run from sparkless repo: `python scripts/repro_robin_limitations/05_window_in_select.py`.

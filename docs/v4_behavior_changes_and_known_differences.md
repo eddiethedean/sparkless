@@ -11,7 +11,7 @@ This document summarizes deliberate behavior changes in Sparkless v4 (Robin-only
 
 ## Known differences (Robin semantics)
 
-These are cases where Robin-backed execution behaves differently from v3 (Polars) or where certain operations/expressions are not supported. Tests that rely on these may fail under the default (Robin) backend.
+These are cases where Robin-backed execution behaves differently from v3 (Polars) or where certain operations/expressions are not supported. **Any such difference vs PySpark must be reported upstream** in [robin-sparkless issues](https://github.com/eddiethedean/robin-sparkless/issues); see [robin_sparkless_issues.md](robin_sparkless_issues.md) for policy and how to file. Tests that rely on these may fail under the default (Robin) backend.
 
 ### Unsupported operation
 

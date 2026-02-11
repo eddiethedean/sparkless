@@ -3,8 +3,10 @@ Robin (robin-sparkless) materializer.
 
 Implements DataMaterializer using robin_sparkless: _create_dataframe_from_rows (0.4.0+)
 for arbitrary schema, then filter, select, limit (and optionally orderBy, withColumn,
-join, union). Unsupported operations cause can_handle_operations -> False so the
-caller may raise SparkUnsupportedOperationError or use another backend.
+join, union). Row values are normalized for Robin (e.g. datetime/date to ISO string)
+so that create_dataframe_from_rows accepts them (robin-sparkless #239). Unsupported
+operations cause can_handle_operations -> False so the caller may raise
+SparkUnsupportedOperationError or use another backend.
 """
 
 from __future__ import annotations
@@ -44,16 +46,39 @@ def _spark_type_to_robin_dtype(data_type: Any) -> str:
     return _SPARK_TYPE_TO_ROBIN_DTYPE.get(name, "string")
 
 
+def _row_value_for_robin(val: Any) -> Any:
+    """Convert a single row cell value for Robin create_dataframe_from_rows.
+
+    Robin 0.6.0 accepts only None, int, float, bool, str, dict (struct/map),
+    or list (array). Python datetime/date are not accepted; convert to ISO string
+    so we don't raise when materializing (robin-sparkless #239).
+    """
+    if val is None or isinstance(val, (int, float, bool, str)):
+        return val
+    if isinstance(val, dict):
+        return {k: _row_value_for_robin(v) for k, v in val.items()}
+    if isinstance(val, (list, tuple)):
+        return [_row_value_for_robin(v) for v in val]
+    if hasattr(val, "isoformat") and callable(getattr(val, "isoformat")):
+        return val.isoformat()
+    return str(val)
+
+
 def _data_to_robin_rows(data: List[Any], names: List[str]) -> List[dict]:
     """Convert Sparkless row data to list of dicts for create_dataframe_from_rows."""
     rows: List[dict] = []
     for row in data:
         if isinstance(row, dict):
-            rows.append({n: row.get(n) for n in names})
+            rows.append(
+                {n: _row_value_for_robin(row.get(n)) for n in names}
+            )
         elif isinstance(row, (list, tuple)):
-            rows.append(dict(zip(names, list(row) + [None] * (len(names) - len(row)))))
+            values = list(row) + [None] * (len(names) - len(row))
+            rows.append(dict(zip(names, (_row_value_for_robin(v) for v in values))))
         else:
-            rows.append({n: getattr(row, n, None) for n in names})
+            rows.append(
+                {n: _row_value_for_robin(getattr(row, n, None)) for n in names}
+            )
     return rows
 
 

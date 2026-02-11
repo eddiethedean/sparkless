@@ -1,0 +1,32 @@
+## Summary
+
+With **robin-sparkless 0.6.0**, `F.concat` is not present. PySpark supports `concat(col1, lit(' '), col2)` for concatenating columns with a literal separator.
+
+Related: #196 (closed).
+
+## PySpark (expected)
+
+```python
+from pyspark.sql import SparkSession, functions as F
+spark = SparkSession.builder.master("local[1]").getOrCreate()
+df = spark.createDataFrame([{"first_name": "Alice", "last_name": "Smith"}, {"first_name": "Bob", "last_name": "Jones"}])
+out = df.withColumn("full_name", F.concat(F.col("first_name"), F.lit(" "), F.col("last_name"))).collect()
+# full_name: "Alice Smith", "Bob Jones"
+spark.stop()
+```
+
+## Robin 0.6.0 (actual)
+
+```python
+import robin_sparkless as rs
+F = rs
+# hasattr(F, "concat") is False — F.concat not found
+```
+
+## Expected
+
+Expose `concat` (and/or `concat_ws`) in the Python API so that PySpark-style concat with literals works.
+
+## Reproducer
+
+Run from sparkless repo: `python scripts/repro_robin_limitations/08_concat_literal.py`.

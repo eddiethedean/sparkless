@@ -1,0 +1,37 @@
+## Summary
+
+With **robin-sparkless 0.6.0**, `_create_dataframe_from_rows` (and the plan path) rejects Python `datetime` values in row data: `TypeError: create_dataframe_from_rows / execute_plan: row values must be None, int, float, bool, str, dict (struct/map), or list (array)`. PySpark accepts datetime in createDataFrame.
+
+Related: #198 (closed), #186 (lit date/datetime).
+
+## PySpark (expected)
+
+```python
+from pyspark.sql import SparkSession
+from datetime import datetime
+spark = SparkSession.builder.master("local[1]").getOrCreate()
+df = spark.createDataFrame([(1, datetime(2025, 2, 10, 12, 0, 0)), (2, None)], ["id", "ts"])
+out = df.collect()
+# 2 rows
+spark.stop()
+```
+
+## Robin 0.6.0 (actual)
+
+```python
+import robin_sparkless as rs
+from datetime import datetime
+spark = rs.SparkSession.builder().app_name("repro").get_or_create()
+data = [{"id": 1, "ts": datetime(2025, 2, 10, 12, 0, 0)}, {"id": 2, "ts": None}]
+schema = [("id", "int"), ("ts", "timestamp")]
+df = spark._create_dataframe_from_rows(data, schema)
+# TypeError: row values must be None, int, float, bool, str, dict (struct/map), or list (array)
+```
+
+## Expected
+
+Accept Python `datetime`/`date` in row values and map them to timestamp/date type (PySpark parity).
+
+## Reproducer
+
+Run from sparkless repo: `python scripts/repro_robin_limitations/10_datetime_row.py`.
