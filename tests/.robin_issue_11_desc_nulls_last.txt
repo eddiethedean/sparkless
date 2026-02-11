@@ -1,0 +1,36 @@
+## Summary
+
+With robin-sparkless 0.7.0, `Column.desc_nulls_last()` and similar nulls ordering methods (`desc_nulls_first`, `asc_nulls_last`, `asc_nulls_first`) are not available. PySpark supports these for controlling null placement in orderBy.
+
+## PySpark (expected)
+
+```python
+from pyspark.sql import SparkSession, functions as F
+spark = SparkSession.builder.master("local[1]").getOrCreate()
+df = spark.createDataFrame([{"value": "A"}, {"value": "B"}, {"value": None}, {"value": "C"}])
+out = df.orderBy(F.col("value").desc_nulls_last()).collect()
+# Returns rows with nulls last
+spark.stop()
+```
+
+## Robin 0.7.0 (actual)
+
+```python
+import robin_sparkless as rs
+F = rs
+spark = F.SparkSession.builder().app_name("repro").get_or_create()
+data = [{"value": "A"}, {"value": "B"}, {"value": None}, {"value": "C"}]
+schema = [("value", "string")]
+df = spark._create_dataframe_from_rows(data, schema)
+c = F.col("value")
+has_desc_nulls_last = hasattr(c, "desc_nulls_last")
+# False - Column has no desc_nulls_last
+```
+
+## Expected
+
+Add `desc_nulls_last()`, `desc_nulls_first()`, `asc_nulls_last()`, `asc_nulls_first()` to Column for PySpark parity in orderBy expressions.
+
+## Reproducer
+
+Run: python scripts/repro_robin_limitations/11_order_by_nulls.py

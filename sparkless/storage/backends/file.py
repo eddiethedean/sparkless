@@ -75,7 +75,7 @@ class FileTable(ITable):
             data: Data to save.
         """
         with open(self.file_path, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, default=str)
 
     def insert_data(self, data: List[Dict[str, Any]], mode: str = "append") -> None:
         """Insert data into table.

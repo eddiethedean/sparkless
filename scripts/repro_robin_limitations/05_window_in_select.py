@@ -37,7 +37,8 @@ def run_robin() -> None:
         ROBIN_FAIL.append("row_number or Window not found")
         return
     try:
-        win = F.Window.partition_by("dept").order_by(F.col("salary"))
+        # Robin uses partitionBy/orderBy (camelCase) like PySpark
+        win = F.Window.partitionBy("dept").orderBy(F.col("salary"))
         out = df.with_column("rn", F.row_number().over(win)).collect()
         ROBIN_OK.append(f"with_column(row_number().over(...)): {len(out)} rows")
     except Exception as e:

@@ -60,7 +60,7 @@ class JSONSerializer:
         }
 
         with open(file_path, "w") as f:
-            json.dump(schema_data, f, indent=2)
+            json.dump(schema_data, f, indent=2, default=str)
 
     @staticmethod
     def deserialize_schema(file_path: str) -> StructType:

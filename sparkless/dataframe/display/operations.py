@@ -240,7 +240,7 @@ class DisplayOperations:
         """Return a single-column DataFrame of JSON strings."""
         import json
 
-        json_rows = [{"value": json.dumps(row)} for row in self.data]
+        json_rows = [{"value": json.dumps(row, default=str)} for row in self.data]
 
         from ..dataframe import DataFrame
 

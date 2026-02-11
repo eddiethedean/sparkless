@@ -11,9 +11,13 @@ SparkUnsupportedOperationError or use another backend.
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 from sparkless.spark_types import Row, StringType, StructField, StructType
+
+# Sort ops that imply descending; others imply ascending.
+# Robin lacks nulls_first/nulls_last (#245); we map to asc/desc only.
+_DESC_OPS = frozenset({"desc", "desc_nulls_last", "desc_nulls_first"})
 
 # Map Sparkless DataType.typeName() to robin_sparkless create_dataframe_from_rows dtype strings.
 # Robin supports: bigint, int, long, double, float, string, str, varchar, boolean, bool, date, timestamp, datetime.
@@ -80,6 +84,65 @@ def _data_to_robin_rows(data: List[Any], names: List[str]) -> List[dict]:
                 {n: _row_value_for_robin(getattr(row, n, None)) for n in names}
             )
     return rows
+
+
+def _order_by_payload_to_robin(payload: Any) -> Optional[Tuple[List[str], List[bool]]]:
+    """Convert orderBy payload to (col_names, asc_list) for Robin order_by.
+
+    Handles string column names, Column objects, and ColumnOperation
+    (desc, asc, desc_nulls_last, etc.). Ignores nulls_first/nulls_last
+    until Robin supports it (#245).
+    """
+    if not isinstance(payload, (list, tuple)) or len(payload) < 1:
+        return None
+    columns_raw = payload[0]
+    ascending_param = payload[1] if len(payload) > 1 else True
+    if isinstance(columns_raw, (list, tuple)):
+        cols_list = list(columns_raw)
+    elif isinstance(columns_raw, str):
+        cols_list = [columns_raw]
+    else:
+        cols_list = [columns_raw]
+    col_names: List[str] = []
+    asc_list: List[bool] = []
+    for i, c in enumerate(cols_list):
+        col_name: Optional[str] = None
+        asc: Optional[bool] = None
+        if isinstance(c, str):
+            col_name = c
+            if isinstance(ascending_param, bool):
+                asc = ascending_param
+            elif isinstance(ascending_param, (list, tuple)) and i < len(ascending_param):
+                asc = bool(ascending_param[i])
+            else:
+                asc = True
+        elif hasattr(c, "operation") and hasattr(c, "column"):
+            # ColumnOperation (e.g. col("x").desc())
+            op = getattr(c, "operation", None)
+            col_side = getattr(c, "column", None)
+            if col_side is not None and hasattr(col_side, "name"):
+                col_name = getattr(col_side, "name", None)
+            if col_name is None:
+                return None
+            if op in _DESC_OPS:
+                asc = False
+            else:
+                asc = True
+        elif hasattr(c, "name"):
+            col_name = getattr(c, "name", None)
+            if isinstance(ascending_param, bool):
+                asc = ascending_param
+            elif isinstance(ascending_param, (list, tuple)) and i < len(ascending_param):
+                asc = bool(ascending_param[i])
+            else:
+                asc = True
+        else:
+            return None
+        if not isinstance(col_name, str):
+            return None
+        col_names.append(col_name)
+        asc_list.append(asc)
+    return (col_names, asc_list)
 
 
 # Optional import; materializer is only used when backend_type="robin" and robin_sparkless is installed
@@ -591,8 +654,19 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             if hasattr(F, "create_map") and callable(F.create_map):
                 return F.create_map(*robin_cols)
+        # map_from_entries: value is single column (array of structs)
+        if op == "map_from_entries" and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is not None and hasattr(F, "map_from_entries") and callable(
+                F.map_from_entries
+            ):
+                return F.map_from_entries(inner)
+        # withField: Robin lacks struct mutation (robin-sparkless #195, #198).
+        # Documented as gap; return None so caller falls back.
+        if op == "withField":
             return None
         # getItem (Phase 7): column[key] for array index or map key
+        # Robin may expose getItem, element_at, or __getitem__
         if op == "getItem" and col_side is not None:
             inner = _expression_to_robin(col_side)
             if inner is None:
@@ -602,7 +676,8 @@ def _expression_to_robin(expr: Any) -> Any:
                 return inner.getItem(key)
             if hasattr(F, "getItem") and callable(F.getItem):
                 return F.getItem(inner, key)
-            # Try __getitem__ (e.g. expr[key])
+            if hasattr(F, "element_at") and callable(F.element_at):
+                return F.element_at(inner, key)
             if isinstance(key, (int, str)):
                 try:
                     return inner[key]
@@ -621,7 +696,7 @@ def _expression_to_robin(expr: Any) -> Any:
         # Column is created in a single expression (avoids recursive Column
         # being treated as name lookup in with_column).
         if (
-            op in ("+", "-", "*", "/")
+            op in ("+", "-", "*", "/", "%")
             and isinstance(col_side, Literal)
             and isinstance(val_side, Column)
         ):
@@ -638,8 +713,10 @@ def _expression_to_robin(expr: Any) -> Any:
                     return R.lit(lit_val) * R.col(col_name)
                 if op == "/":
                     return R.lit(lit_val) / R.col(col_name)
+                if op == "%" and hasattr(R.lit(lit_val), "__mod__"):
+                    return R.lit(lit_val) % R.col(col_name)
         if (
-            op in ("+", "-", "*", "/")
+            op in ("+", "-", "*", "/", "%")
             and isinstance(val_side, Literal)
             and isinstance(col_side, Column)
         ):
@@ -655,8 +732,10 @@ def _expression_to_robin(expr: Any) -> Any:
                     return R.col(col_name) * R.lit(lit_val)
                 if op == "/":
                     return R.col(col_name) / R.lit(lit_val)
+                if op == "%":
+                    return R.col(col_name) % R.lit(lit_val)
         # col * 2 or col + 2 where 2 is plain int/float (not Literal)
-        if op in ("+", "-", "*", "/") and isinstance(col_side, Column):
+        if op in ("+", "-", "*", "/", "%") and isinstance(col_side, Column):
             col_name = getattr(col_side, "name", None)
             if (
                 isinstance(col_name, str)
@@ -673,6 +752,8 @@ def _expression_to_robin(expr: Any) -> Any:
                     return R.col(col_name) * R.lit(lit_val)
                 if op == "/":
                     return R.col(col_name) / R.lit(lit_val)
+                if op == "%":
+                    return R.col(col_name) % R.lit(lit_val)
         left = _expression_to_robin(col_side) if col_side is not None else None
         right = _expression_to_robin(val_side) if val_side is not None else None
         if left is None or right is None:
@@ -755,24 +836,7 @@ class RobinMaterializer:
         return True
 
     def _can_handle_order_by(self, payload: Any) -> bool:
-        if not isinstance(payload, (list, tuple)) or len(payload) < 1:
-            return False
-        columns, ascending = payload[0], payload[1] if len(payload) > 1 else True
-        if isinstance(columns, (list, tuple)):
-            cols_list = list(columns)
-        elif isinstance(columns, str):
-            cols_list = [columns]
-        else:
-            return False
-        if not all(isinstance(c, str) for c in cols_list):
-            return False
-        if isinstance(ascending, bool):
-            return True
-        if isinstance(ascending, (list, tuple)):
-            return len(ascending) == len(cols_list) and all(
-                isinstance(a, bool) for a in ascending
-            )
-        return False
+        return _order_by_payload_to_robin(payload) is not None
 
     def _can_handle_with_column(self, payload: Any) -> bool:
         if not isinstance(payload, (list, tuple)) or len(payload) != 2:
@@ -931,17 +995,10 @@ class RobinMaterializer:
             elif op_name == "limit":
                 df = df.limit(payload)
             elif op_name == "orderBy":
-                columns, ascending = (
-                    payload[0],
-                    payload[1] if len(payload) > 1 else True,
-                )
-                col_names = (
-                    list(columns) if isinstance(columns, (list, tuple)) else [columns]
-                )
-                if isinstance(ascending, bool):
-                    asc_list = [ascending] * len(col_names)
-                else:
-                    asc_list = list(ascending)
+                ob = _order_by_payload_to_robin(payload)
+                if ob is None:
+                    raise ValueError("orderBy payload not supported")
+                col_names, asc_list = ob
                 df = df.order_by(col_names, asc_list)
             elif op_name == "withColumn":
                 col_name, expression = payload[0], payload[1]

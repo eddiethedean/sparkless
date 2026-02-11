@@ -243,7 +243,7 @@ class DisplayService:
         """Return a single-column DataFrame of JSON strings."""
         import json
 
-        json_rows = [{"value": json.dumps(row)} for row in self._df.data]
+        json_rows = [{"value": json.dumps(row, default=str)} for row in self._df.data]
 
         from ..dataframe import DataFrame
 

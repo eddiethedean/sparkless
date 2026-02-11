@@ -1,0 +1,35 @@
+## Summary
+
+With robin-sparkless 0.7.0, `Column.isin([])` is not available. PySpark supports `col.isin([])` for filtering with an empty list (returns 0 rows).
+
+## PySpark (expected)
+
+```python
+from pyspark.sql import SparkSession, functions as F
+spark = SparkSession.builder.master("local[1]").getOrCreate()
+df = spark.createDataFrame([{"id": 1}, {"id": 2}, {"id": 3}])
+out = df.filter(F.col("id").isin([])).collect()
+# Returns 0 rows (empty result)
+spark.stop()
+```
+
+## Robin 0.7.0 (actual)
+
+```python
+import robin_sparkless as rs
+F = rs
+spark = F.SparkSession.builder().app_name("repro").get_or_create()
+data = [{"id": 1}, {"id": 2}, {"id": 3}]
+schema = [("id", "int")]
+df = spark._create_dataframe_from_rows(data, schema)
+out = df.filter(F.col("id").isin([])).collect()
+# AttributeError: 'builtins.Column' object has no attribute 'isin'
+```
+
+## Expected
+
+Add `isin` method to Column for PySpark parity, accepting a list of values (including empty list).
+
+## Reproducer
+
+Run: python scripts/repro_robin_limitations/12_isin_empty_list.py

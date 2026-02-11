@@ -179,7 +179,13 @@ class DataFrameReader:
             raise AnalysisException(f"No {resolved_format} files found at {path}")
 
         data_rows, column_names = self._read_data(paths, resolved_format, combined_options)
-        schema, data_rows = self._build_schema_and_rows_from_data(data_rows, column_names)
+        infer_schema = self._to_bool(
+            combined_options.get("inferSchema", "false"),
+            default=False,
+        )
+        schema, data_rows = self._build_schema_and_rows_from_data(
+            data_rows, column_names, resolved_format, infer_schema
+        )
 
         from .dataframe import DataFrame
 
@@ -390,13 +396,37 @@ class DataFrameReader:
         return str(value).strip().lower() in {"1", "true", "yes", "y"}
 
     def _build_schema_and_rows_from_data(
-        self, data_rows: List[Dict[str, Any]], column_names: List[str]
+        self,
+        data_rows: List[Dict[str, Any]],
+        column_names: List[str],
+        data_format: str = "parquet",
+        infer_schema: bool = False,
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Build StructType and rows from loaded data; apply user schema if set."""
+        """Build StructType and rows from loaded data; apply user schema if set.
+
+        When inferSchema is true and no user schema is set, infers types:
+        - JSON: uses SchemaInferenceEngine (values already typed from parsing)
+        - CSV: infers int, float, bool, date, timestamp from string values
+        """
         if self._schema is not None:
             names = self._schema.fieldNames()
             projected = [{k: r.get(k) for k in names} for r in data_rows]
             return self._schema, projected
+        if infer_schema and data_rows and column_names:
+            if data_format == "json":
+                from ..core.schema_inference import SchemaInferenceEngine
+
+                schema, normalized = SchemaInferenceEngine.infer_from_data(
+                    data_rows, column_order=column_names
+                )
+                return schema, normalized
+            if data_format == "csv":
+                from ..core.schema_inference import infer_schema_from_csv_strings
+
+                schema, normalized = infer_schema_from_csv_strings(
+                    data_rows, column_names
+                )
+                return schema, normalized
         fields = [StructField(name, StringType()) for name in column_names]
         schema = StructType(fields)
         return schema, data_rows

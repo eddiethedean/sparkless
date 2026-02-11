@@ -61,7 +61,7 @@ def _write_debug_dump(
         for f in schema.fields
     ]
     with open(run_dir / "schema.json", "w") as f:
-        json.dump(schema_list, f, indent=2)
+        json.dump(schema_list, f, indent=2, default=str)
     if plan is not None:
         with open(run_dir / "plan.json", "w") as f:
             json.dump(plan, f, indent=2, default=str)

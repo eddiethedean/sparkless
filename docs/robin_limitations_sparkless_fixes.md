@@ -86,6 +86,42 @@ During the robin-sparkless limitations and parity review, the following were ide
 
 ---
 
+## 7. Robin materializer: orderBy not translated (2026-02-11)
+
+**Symptom:** Tests using `df.orderBy(F.col("value").desc_nulls_last())` fail with `SparkUnsupportedOperationError: Operation 'Operations: orderBy' is not supported`.
+
+**Cause:** The Sparkless Robin materializer does not translate orderBy to Robin's order_by. Robin lacks `Column.desc_nulls_last()` (robin-sparkless #245 filed).
+
+**Fix (Sparkless):** Add orderBy translation in the Robin materializer. When Robin gains desc_nulls_last etc. (#245), translate those expressions.
+
+**Upstream:** robin-sparkless #245.
+
+---
+
+## 8. Robin materializer: withField, F.map(), getItem, selectExpr — expression resolution (2026-02-11)
+
+**Symptom:** Tests fail with `RuntimeError: not found: Column 'X' not found` for withField, map_col, getItem aliases, selectExpr aliases, chained arithmetic with literals.
+
+**Cause:** Sparkless materializer sends expression strings to Robin; Robin resolves columns by name.
+
+**Fix (Sparkless):** Extend Robin materializer expression translation for withField, F.map(), getItem, selectExpr, compound arithmetic.
+
+**Upstream:** robin-sparkless #195, #198.
+
+---
+
+## 9. Sparkless Reader: inferSchema string-only (2026-02-11)
+
+**Symptom:** `test_inferschema_parity.py` fails with `AssertionError: id should be LongType` etc.
+
+**Cause:** v4 Reader infers all CSV columns as StringType (v4 design).
+
+**Fix (Sparkless):** Implement schema inference for numeric/boolean/date, or document and skip/adapt tests.
+
+**Classification:** Documented in v4_behavior_changes; robin-sparkless #197.
+
+---
+
 ## Summary
 
 | Item | Where to fix | Upstream issue? |
@@ -96,5 +132,8 @@ During the robin-sparkless limitations and parity review, the following were ide
 | Window expressions → Robin Window API | Robin materializer (expression + plan) | No (#187 is upstream Window API; we only need to use it) |
 | Parquet/table append session assumptions | Test markers / fixtures for v4 Robin-only | No |
 | PySpark backend in v4 | Test skip/adapt for Robin-only | No |
+| orderBy not translated | Robin materializer | #245 |
+| withField, map, getItem, selectExpr expression resolution | Robin materializer | #195, #198 |
+| inferSchema string-only | Reader / v4 design | #197 |
 
 So: **yes** — there are several concrete fixes on Sparkless’s end (test serialization, concat_ws translation, CaseWhen and window translation, and test/fixture setup for v4). The verification table and this doc are the references used when creating the upstream robin-sparkless issues.

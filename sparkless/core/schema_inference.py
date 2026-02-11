@@ -264,6 +264,160 @@ class SchemaInferenceEngine:
         ]
         return any(re.match(pattern, value) for pattern in timestamp_patterns)
 
+    @staticmethod
+    def _infer_csv_string_type(values: List[str]) -> Any:
+        """Infer Sparkless type from list of CSV string values.
+
+        Order: bool, int, float, timestamp, date, string.
+        Promotes int+float -> DoubleType.
+        """
+        import datetime as dt_module
+
+        types_seen: Set[type] = set()
+        for v in values:
+            t = SchemaInferenceEngine._try_parse_csv_value_type(v)
+            types_seen.add(t)
+        if not types_seen:
+            return StringType()
+        if str in types_seen:
+            return StringType()
+        if float in types_seen or (int in types_seen and float in types_seen):
+            return DoubleType()
+        if int in types_seen:
+            return LongType()
+        if bool in types_seen:
+            return BooleanType()
+        if dt_module.datetime in types_seen:
+            return TimestampType()
+        if dt_module.date in types_seen:
+            return DateType()
+        return StringType()
+
+    @staticmethod
+    def _try_parse_csv_value_type(value: str) -> type:
+        """Return Python type for a single CSV string value."""
+        import datetime as dt_module
+
+        v_lower = value.strip().lower()
+        if v_lower in ("true", "false"):
+            return bool
+        try:
+            int(value)
+            return int
+        except (ValueError, TypeError):
+            pass
+        try:
+            float(value)
+            return float
+        except (ValueError, TypeError):
+            pass
+        if SchemaInferenceEngine._is_timestamp_string(value):
+            return dt_module.datetime
+        if SchemaInferenceEngine._is_date_string(value):
+            return dt_module.date
+        return str
+
+    @staticmethod
+    def _parse_csv_string_to_type(value: str, data_type: Any) -> Any:
+        """Parse CSV string to the given Sparkless data type."""
+        import datetime as dt_module
+
+        type_name = getattr(data_type, "typeName", None)
+        if callable(type_name):
+            type_name = type_name()
+        else:
+            type_name = getattr(
+                getattr(data_type, "__class__", None), "__name__", "string"
+            )
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return None
+        try:
+            if type_name in ("boolean", "bool"):
+                return value.strip().lower() in ("1", "true", "yes", "y")
+            if type_name in ("long", "bigint", "int"):
+                return int(value)
+            if type_name in ("double", "float"):
+                return float(value)
+            if type_name == "date":
+                from datetime import datetime
+
+                # Simple ISO date parsing
+                return datetime.strptime(value[:10], "%Y-%m-%d").date()
+            if type_name in ("timestamp", "datetime"):
+                from datetime import datetime
+
+                for fmt in (
+                    "%Y-%m-%d %H:%M:%S",
+                    "%Y-%m-%dT%H:%M:%S",
+                    "%Y-%m-%d %H:%M:%S.%f",
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                ):
+                    try:
+                        return datetime.strptime(value[:26], fmt)
+                    except ValueError:
+                        continue
+            return value
+        except (ValueError, TypeError):
+            return value
+
+
+def infer_schema_from_csv_strings(
+    data_rows: List[Dict[str, Any]],
+    column_names: List[str],
+) -> Tuple[StructType, List[Dict[str, Any]]]:
+    """
+    Infer schema from CSV string values and parse rows to inferred types.
+
+    For each column, tries bool, int, float, date, timestamp in order.
+    Uses type promotion (int+float -> DoubleType) for mixed numeric columns.
+    Empty string and None are treated as null.
+
+    Args:
+        data_rows: List of dicts with string values (from CSV DictReader)
+        column_names: Column names in order
+
+    Returns:
+        Tuple of (inferred_schema, rows_with_parsed_values)
+    """
+    if not data_rows or not column_names:
+        fields = [StructField(name, StringType()) for name in column_names]
+        return StructType(fields), data_rows
+
+    fields: List[StructField] = []
+    for col in column_names:
+        values = []
+        for row in data_rows:
+            if isinstance(row, dict) and col in row:
+                v = row[col]
+                if v is not None and str(v).strip() != "":
+                    values.append(str(v).strip())
+        if not values:
+            fields.append(StructField(col, StringType(), nullable=True))
+            continue
+        # Infer type from all non-null values; promote if mixed
+        inferred_type = SchemaInferenceEngine._infer_csv_string_type(values)
+        fields.append(StructField(col, inferred_type, nullable=True))
+    schema = StructType(fields)
+
+    # Parse rows to typed values
+    normalized = []
+    for row in data_rows:
+        if not isinstance(row, dict):
+            normalized.append(row)
+            continue
+        parsed_row: Dict[str, Any] = {}
+        for i, col in enumerate(column_names):
+            val = row.get(col)
+            if val is None or (isinstance(val, str) and val.strip() == ""):
+                parsed_row[col] = None
+            else:
+                field_type = schema.fields[i].dataType
+                parsed_row[col] = SchemaInferenceEngine._parse_csv_string_to_type(
+                    str(val).strip(), field_type
+                )
+        normalized.append(parsed_row)
+    return schema, normalized
+
 
 # Convenience functions for external use
 def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:

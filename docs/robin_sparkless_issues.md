@@ -61,6 +61,17 @@ Reproduced with **robin-sparkless 0.6.0** using direct API (no Sparkless). Each 
 
 Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file tests/.robin_issue_*.txt`.
 
+## Issues created from minimal repros (robin-sparkless 0.7.0, 2026-02-11)
+
+Reproduced with **robin-sparkless 0.7.0** using direct API (no Sparkless). Repros: `scripts/repro_robin_limitations/11_order_by_nulls.py`, `12_isin_empty_list.py`. Results: `scripts/repro_robin_limitations/RESULTS_0.7.0.md`. All 10 original repros (01–10) now pass with 0.7.0.
+
+| # | Title | Link |
+|---|-------|------|
+| 244 | [0.7.0 repro] Column.isin() not found | https://github.com/eddiethedean/robin-sparkless/issues/244 |
+| 245 | [0.7.0 repro] Column.desc_nulls_last() and nulls ordering methods not found | https://github.com/eddiethedean/robin-sparkless/issues/245 |
+
+Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file tests/.robin_issue_*.txt`.
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.
