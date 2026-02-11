@@ -5,12 +5,12 @@
 ### Breaking changes
 
 - **Robin-only backend:** Sparkless v4 supports only the **Robin** backend. Polars, memory, file, and DuckDB backends have been removed. `BackendFactory.list_available_backends()` returns `["robin"]` only. Setting `SPARKLESS_BACKEND` or `backend_type` to any value other than `robin` (or leaving it unset) will raise `ValueError` with a message that v4 supports only Robin.
-- **Required dependency:** v4 requires **robin-sparkless** (>=0.5.0). It is a core dependency; `pip install sparkless` installs it. There is no optional-backend path in v4.
+- **Required dependency:** v4 requires **robin-sparkless** (>=0.6.0). It is a core dependency; `pip install sparkless` installs it. There is no optional-backend path in v4.
 
 ### Migration from v3
 
 - See **[docs/migration_v3_to_v4.md](docs/migration_v3_to_v4.md)** for the full migration guide.
-- **Dependency:** Install `robin-sparkless>=0.5.0` (included with `pip install sparkless`). No Polars or other backend packages are required for default execution.
+- **Dependency:** Install `robin-sparkless>=0.6.0` (included with `pip install sparkless`). No Polars or other backend packages are required for default execution.
 - **Configuration:** Only `robin` is valid for `SPARKLESS_BACKEND` and `backend_type`; the default is already Robin.
 - **Behavioral differences:** Schema inference (e.g. CSV without schema) is string-only in v4. Some expressions (e.g. CaseWhen, window in select) are not supported by the Robin backend and raise `SparkUnsupportedOperationError`. Robin does not coerce string vs numeric in comparisons; see the migration guide and behavior doc.
 

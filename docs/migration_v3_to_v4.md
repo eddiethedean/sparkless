@@ -11,7 +11,7 @@ Sparkless v4 uses **Robin (robin-sparkless)** as the only supported execution ba
 
 ## What you need
 
-- **robin-sparkless**: Install with `pip install robin-sparkless>=0.5.0`. It is a required dependency of Sparkless v4.
+- **robin-sparkless**: Install with `pip install robin-sparkless>=0.6.0`. It is a required dependency of Sparkless v4.
 
 ## Configuration
 
@@ -41,4 +41,4 @@ Sparkless v4 uses **Robin (robin-sparkless)** as the only supported execution ba
 |-----------------|------------------------|-----------|
 | Default backend | polars                 | robin     |
 | Other backends  | memory, file, duckdb   | not supported |
-| Dependency      | polars (default path)  | robin-sparkless>=0.5.0 |
+| Dependency      | polars (default path)  | robin-sparkless>=0.6.0 |

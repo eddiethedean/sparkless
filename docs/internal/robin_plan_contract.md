@@ -232,7 +232,7 @@ operation-based path: row values are expected to be `None`, `int`, `float`,
 
 ## 5. Versioning and Compatibility
 
-- Sparkless v4 assumes a Robin-sparkless version **≥ 0.5.0** that stabilizes
+- Sparkless v4 assumes a Robin-sparkless version **≥ 0.6.0** that stabilizes
   this plan format. Plan execution is currently implemented in-repo
   (`plan_executor.execute_robin_plan`); an upstream entry point (e.g.
   `_execute_plan(data, schema, plan_json)`) may be used in a future release.

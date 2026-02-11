@@ -152,7 +152,7 @@ With the Robin backend (v4 default), threading behaviour is determined by robin-
 
 2. **Robin Version**: Ensure robin-sparkless is installed
    ```bash
-   pip install robin-sparkless>=0.5.0
+   pip install robin-sparkless>=0.6.0
    ```
 
 3. **No Special Configuration**: No threading-related configuration needed for the backend itself

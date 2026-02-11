@@ -70,7 +70,7 @@ from sparkless.sql import SparkSession
 pip install sparkless
 ```
 
-Sparkless v4 uses **robin-sparkless** (>=0.5.0) as the execution backend; it is installed automatically with `pip install sparkless`.
+Sparkless v4 uses **robin-sparkless** (>=0.6.0) as the execution backend; it is installed automatically with `pip install sparkless`.
 
 📖 **Need help?** Check out the [full documentation](https://sparkless.readthedocs.io/) for detailed guides, API reference, and examples.
 
