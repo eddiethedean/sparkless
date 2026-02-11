@@ -63,6 +63,11 @@ class SQLValidator:
             "SHOW",
             "DESCRIBE",
             "EXPLAIN",
+            "VACUUM",
+            "RETAIN",
+            "HOURS",
+            "DRY",
+            "RUN",
             "WITH",
             "UNION",
             "INTERSECT",
@@ -159,6 +164,7 @@ class SQLValidator:
                 "SHOW",
                 "DESCRIBE",
                 "EXPLAIN",
+                "VACUUM",
             ]
         ):
             errors.append("Query must start with a valid SQL keyword")
