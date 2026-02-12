@@ -11,7 +11,7 @@ SparkUnsupportedOperationError or use another backend.
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple, cast
 
 from sparkless.spark_types import Row, StringType, StructField, StructType
 
@@ -265,16 +265,25 @@ def _simple_filter_to_robin(condition: Any) -> Any:
                 return inner.isNotNull()
             return None
         # between(lower, upper): translate to (col >= lower) & (col <= upper) for Robin parity
-        if op == "between" and col_side is not None and isinstance(val_side, (list, tuple)) and len(val_side) >= 2:
+        if (
+            op == "between"
+            and col_side is not None
+            and isinstance(val_side, (list, tuple))
+            and len(val_side) >= 2
+        ):
             inner = _expression_to_robin(col_side)
             if inner is None:
                 return None
             low_expr = _expression_to_robin(val_side[0])
             high_expr = _expression_to_robin(val_side[1])
             if low_expr is None and isinstance(val_side[0], Literal):
-                low_expr = F.lit(_lit_value_for_robin(getattr(val_side[0], "value", val_side[0])))
+                low_expr = F.lit(
+                    _lit_value_for_robin(getattr(val_side[0], "value", val_side[0]))
+                )
             if high_expr is None and isinstance(val_side[1], Literal):
-                high_expr = F.lit(_lit_value_for_robin(getattr(val_side[1], "value", val_side[1])))
+                high_expr = F.lit(
+                    _lit_value_for_robin(getattr(val_side[1], "value", val_side[1]))
+                )
             if low_expr is None:
                 low_expr = F.lit(_lit_value_for_robin(val_side[0]))
             if high_expr is None:
@@ -285,19 +294,37 @@ def _simple_filter_to_robin(condition: Any) -> Any:
         # eqNullSafe / eq_null_safe: (col.isnull() & other.isnull()) | (col.isnotnull() & other.isnotnull() & (col == other))
         if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
             left_expr = _expression_to_robin(col_side)
-            right_expr = _expression_to_robin(val_side) if val_side is not None else None
+            right_expr = (
+                _expression_to_robin(val_side) if val_side is not None else None
+            )
             if right_expr is None and isinstance(val_side, Literal):
-                right_expr = F.lit(_lit_value_for_robin(getattr(val_side, "value", val_side)))
+                right_expr = F.lit(
+                    _lit_value_for_robin(getattr(val_side, "value", val_side))
+                )
             if right_expr is None and val_side is not None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))
             if left_expr is not None and right_expr is not None:
-                l_isnull = getattr(left_expr, "isnull", None) or getattr(left_expr, "isNull", None)
-                l_isnotnull = getattr(left_expr, "isnotnull", None) or getattr(left_expr, "isNotNull", None)
-                r_isnull = getattr(right_expr, "isnull", None) or getattr(right_expr, "isNull", None)
-                r_isnotnull = getattr(right_expr, "isnotnull", None) or getattr(right_expr, "isNotNull", None)
-                if all(callable(f) for f in (l_isnull, l_isnotnull, r_isnull, r_isnotnull)):
-                    both_null = l_isnull() & r_isnull()
-                    both_not_null = l_isnotnull() & r_isnotnull()
+                l_isnull = getattr(left_expr, "isnull", None) or getattr(
+                    left_expr, "isNull", None
+                )
+                l_isnotnull = getattr(left_expr, "isnotnull", None) or getattr(
+                    left_expr, "isNotNull", None
+                )
+                r_isnull = getattr(right_expr, "isnull", None) or getattr(
+                    right_expr, "isNull", None
+                )
+                r_isnotnull = getattr(right_expr, "isnotnull", None) or getattr(
+                    right_expr, "isNotNull", None
+                )
+                if all(
+                    callable(f) for f in (l_isnull, l_isnotnull, r_isnull, r_isnotnull)
+                ):
+                    l_in = cast("Callable[[], Any]", l_isnull)
+                    r_in = cast("Callable[[], Any]", r_isnull)
+                    l_not = cast("Callable[[], Any]", l_isnotnull)
+                    r_not = cast("Callable[[], Any]", r_isnotnull)
+                    both_null = l_in() & r_in()
+                    both_not_null = l_not() & r_not()
                     return both_null | (both_not_null & left_expr.eq(right_expr))
             return None
         if op not in (">", "<", ">=", "<=", "==", "!="):
@@ -550,39 +577,70 @@ def _expression_to_robin(expr: Any) -> Any:
             safe_val = _lit_value_for_robin(val)
             return F.lit(safe_val)  # type: ignore[arg-type]
         # between(lower, upper): translate to (col >= lower) & (col <= upper) for Robin parity
-        if op == "between" and col_side is not None and isinstance(val_side, (list, tuple)) and len(val_side) >= 2:
+        if (
+            op == "between"
+            and col_side is not None
+            and isinstance(val_side, (list, tuple))
+            and len(val_side) >= 2
+        ):
             inner = _expression_to_robin(col_side)
             if inner is None:
                 return None
             low_expr = _expression_to_robin(val_side[0])
             if low_expr is None:
-                low_expr = F.lit(_lit_value_for_robin(
-                    getattr(val_side[0], "value", val_side[0]) if isinstance(val_side[0], Literal) else val_side[0]
-                ))
+                low_expr = F.lit(
+                    _lit_value_for_robin(
+                        getattr(val_side[0], "value", val_side[0])
+                        if isinstance(val_side[0], Literal)
+                        else val_side[0]
+                    )
+                )
             high_expr = _expression_to_robin(val_side[1])
             if high_expr is None:
-                high_expr = F.lit(_lit_value_for_robin(
-                    getattr(val_side[1], "value", val_side[1]) if isinstance(val_side[1], Literal) else val_side[1]
-                ))
+                high_expr = F.lit(
+                    _lit_value_for_robin(
+                        getattr(val_side[1], "value", val_side[1])
+                        if isinstance(val_side[1], Literal)
+                        else val_side[1]
+                    )
+                )
             if low_expr is not None and high_expr is not None:
                 return (inner.ge(low_expr)) & (inner.le(high_expr))
             return None
         # eqNullSafe / eq_null_safe in select/withColumn: (both_null) | (both_not_null & eq)
         if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
             left_expr = _expression_to_robin(col_side)
-            right_expr = _expression_to_robin(val_side) if val_side is not None else None
+            right_expr = (
+                _expression_to_robin(val_side) if val_side is not None else None
+            )
             if right_expr is None and isinstance(val_side, Literal):
-                right_expr = F.lit(_lit_value_for_robin(getattr(val_side, "value", val_side)))
+                right_expr = F.lit(
+                    _lit_value_for_robin(getattr(val_side, "value", val_side))
+                )
             if right_expr is None and val_side is not None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))
             if left_expr is not None and right_expr is not None:
-                l_isnull = getattr(left_expr, "isnull", None) or getattr(left_expr, "isNull", None)
-                l_isnotnull = getattr(left_expr, "isnotnull", None) or getattr(left_expr, "isNotNull", None)
-                r_isnull = getattr(right_expr, "isnull", None) or getattr(right_expr, "isNull", None)
-                r_isnotnull = getattr(right_expr, "isnotnull", None) or getattr(right_expr, "isNotNull", None)
-                if all(callable(f) for f in (l_isnull, l_isnotnull, r_isnull, r_isnotnull)):
-                    both_null = l_isnull() & r_isnull()
-                    both_not_null = l_isnotnull() & r_isnotnull()
+                l_isnull = getattr(left_expr, "isnull", None) or getattr(
+                    left_expr, "isNull", None
+                )
+                l_isnotnull = getattr(left_expr, "isnotnull", None) or getattr(
+                    left_expr, "isNotNull", None
+                )
+                r_isnull = getattr(right_expr, "isnull", None) or getattr(
+                    right_expr, "isNull", None
+                )
+                r_isnotnull = getattr(right_expr, "isnotnull", None) or getattr(
+                    right_expr, "isNotNull", None
+                )
+                if all(
+                    callable(f) for f in (l_isnull, l_isnotnull, r_isnull, r_isnotnull)
+                ):
+                    l_in = cast("Callable[[], Any]", l_isnull)
+                    r_in = cast("Callable[[], Any]", r_isnull)
+                    l_not = cast("Callable[[], Any]", l_isnotnull)
+                    r_not = cast("Callable[[], Any]", r_isnotnull)
+                    both_null = l_in() & r_in()
+                    both_not_null = l_not() & r_not()
                     return both_null | (both_not_null & left_expr.eq(right_expr))
             return None
         # Cast / astype (Phase 7; astype is an alias for cast)
@@ -755,7 +813,10 @@ def _expression_to_robin(expr: Any) -> Any:
                 if isinstance(p, Literal):
                     v = getattr(p, "value", p)
                     return v if isinstance(v, str) else None
-                if isinstance(p, ColumnOperation) and getattr(p, "operation", None) == "lit":
+                if (
+                    isinstance(p, ColumnOperation)
+                    and getattr(p, "operation", None) == "lit"
+                ):
                     v = getattr(p, "value", None)
                     if isinstance(v, Literal):
                         v = getattr(v, "value", v)
