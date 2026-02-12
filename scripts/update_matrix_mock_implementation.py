@@ -175,7 +175,7 @@ def update_matrix_json(functions, df_methods, json_file):
 
     # Write back
     with open(json_file, "w") as f:
-        json.dump(matrix, f, indent=2)
+        json.dump(matrix, f, indent=2, default=str)
 
     return updated_count
 

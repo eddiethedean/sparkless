@@ -16,7 +16,7 @@ These are cases where Robin-backed execution behaves differently from v3 (Polars
 ### Unsupported operation
 
 - **Operations not in Robin materializer**: The Robin materializer supports a fixed set of operations (filter, select, limit, orderBy, withColumn, join, distinct, drop, union). Any other operation (e.g. aggregate in a way that is not groupBy+agg, or operations not yet implemented) causes `SparkUnsupportedOperationError` with "Backend 'robin' does not support these operations".
-- **Join (Robin)**: Join is executed via the op path only (the Robin plan path does not support join). Same-name join keys are supported: `on='col'`, `on=['c1','c2']`, or `left['id'] == right['id']`. Different-name join keys (e.g. `left['id'] == right['id_right']`) are not supported; use same-named columns or see [#473](https://github.com/eddiethedean/sparkless/issues/473).
+- **Join (Robin)**: Join is executed via the op path only (the Robin plan path does not support join). Same-name join keys are supported: `on='col'`, `on=['c1','c2']`, or `left['id'] == right['id']`. Different-name join keys (e.g. `left['id'] == right['id_right']`) are supported via an internal temp join key that is dropped after the join. See [#473](https://github.com/eddiethedean/sparkless/issues/473) for earlier discussion.
 
 ### Unsupported expression (select / withColumn / filter)
 

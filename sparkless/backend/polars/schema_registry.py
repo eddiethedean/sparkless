@@ -91,7 +91,7 @@ class SchemaRegistry:
                 schema_data["fields"][i]["scale"] = field.dataType.scale
 
         with open(schema_path, "w") as f:
-            json.dump(schema_data, f, indent=2)
+            json.dump(schema_data, f, indent=2, default=str)
 
     def load_schema(self, schema_name: str, table_name: str) -> Optional[StructType]:
         """Load schema from JSON file.

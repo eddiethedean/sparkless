@@ -4101,7 +4101,7 @@ class PolarsExpressionTranslator:
                 if cur is None:
                     return None
                 if isinstance(cur, (dict, list)):
-                    return json.dumps(cur, separators=(",", ":"))
+                    return json.dumps(cur, separators=(",", ":"), default=str)
                 return str(cur)
 
             def _get(val: Any) -> Any:

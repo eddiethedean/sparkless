@@ -165,7 +165,7 @@ def main() -> int:
             "included": len(included),
             "categories": categories,
         }
-        out_json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        out_json.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
         print(f"Wrote {out_json}")
 
     # Output Markdown

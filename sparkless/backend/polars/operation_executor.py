@@ -2070,7 +2070,7 @@ class PolarsOperationExecutor:
         if not field_names:
             return None
         struct_dict = {name: get_row_value(row, name) for name in field_names}
-        return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"))
+        return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"), default=str)
 
     def _python_to_csv(
         self, row: Dict[str, Any], expression: ColumnOperation

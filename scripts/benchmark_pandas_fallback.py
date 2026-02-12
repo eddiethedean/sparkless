@@ -151,7 +151,7 @@ def main() -> None:
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as handle:
-            json.dump(results, handle, indent=2)
+            json.dump(results, handle, indent=2, default=str)
         print(f"\nWrote detailed metrics to {args.output}")
 
 

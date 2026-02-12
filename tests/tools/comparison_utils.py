@@ -14,6 +14,19 @@ from typing import Any, Dict, List, Sequence, Tuple
 from dataclasses import dataclass
 
 
+def _safe_repr_for_assert(v: Any) -> str:
+    """Format a value for assertion error messages; normalize date/datetime to strings.
+
+    Avoids non-JSON-serializable objects in error messages and gives consistent
+    date/datetime formatting (isoformat).
+    """
+    if v is None:
+        return "None"
+    if hasattr(v, "isoformat") and callable(getattr(v, "isoformat")):
+        return v.isoformat()
+    return str(v)
+
+
 @dataclass
 class ComparisonResult:
     """Result of comparing mock-spark output with expected output."""
@@ -152,7 +165,7 @@ def compare_dataframes(
                         if not equivalent:
                             result.equivalent = False
                             result.errors.append(
-                                f"Null mismatch in column '{mock_col}' row {row_index}: mock={mock_val}, expected={expected_val}"
+                                f"Null mismatch in column '{mock_col}' row {row_index}: mock={_safe_repr_for_assert(mock_val)}, expected={_safe_repr_for_assert(expected_val)}"
                             )
                 else:
                     # Normal comparison using column names
@@ -419,7 +432,7 @@ def _compare_values(
 
     if _is_null(mock_val) != _is_null(expected_val):
         return False, (
-            f"Null mismatch in {context}: mock={mock_val!r}, expected={expected_val!r}"
+            f"Null mismatch in {context}: mock={_safe_repr_for_assert(mock_val)}, expected={_safe_repr_for_assert(expected_val)}"
         )
 
     # Handle date/datetime objects - convert both to strings for comparison
@@ -542,14 +555,14 @@ def _compare_values(
         if mock_val == expected_val:
             return True, ""
         return False, (
-            f"Set mismatch in {context}: mock={mock_val!r}, expected={expected_val!r}"
+            f"Set mismatch in {context}: mock={_safe_repr_for_assert(mock_val)}, expected={_safe_repr_for_assert(expected_val)}"
         )
 
     if isinstance(mock_val, bool) or isinstance(expected_val, bool):
         if bool(mock_val) == bool(expected_val):
             return True, ""
         return False, (
-            f"Boolean mismatch in {context}: mock={mock_val}, expected={expected_val}"
+            f"Boolean mismatch in {context}: mock={_safe_repr_for_assert(mock_val)}, expected={_safe_repr_for_assert(expected_val)}"
         )
 
     if _is_numeric(mock_val) and _is_numeric(expected_val):
@@ -599,7 +612,7 @@ def _compare_values(
                 return True, ""
             diff = abs(mock_num - expected_num)
             return False, (
-                f"Numerical mismatch in {context}: mock={mock_val}, expected={expected_val}, diff={diff}"
+                f"Numerical mismatch in {context}: mock={_safe_repr_for_assert(mock_val)}, expected={_safe_repr_for_assert(expected_val)}, diff={diff}"
             )
 
     if mock_val == expected_val:
@@ -609,7 +622,7 @@ def _compare_values(
         return True, ""
 
     return False, (
-        f"Value mismatch in {context}: mock={mock_val!r}, expected={expected_val!r}"
+        f"Value mismatch in {context}: mock={_safe_repr_for_assert(mock_val)}, expected={_safe_repr_for_assert(expected_val)}"
     )
 
 

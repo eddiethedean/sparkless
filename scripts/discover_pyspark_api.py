@@ -249,7 +249,7 @@ def save_json(matrix: Dict[str, Any], output_path: Path) -> None:
     """Save matrix as JSON."""
     print(f"\nSaving JSON to {output_path}...")
     with open(output_path, "w") as f:
-        json.dump(matrix, f, indent=2)
+        json.dump(matrix, f, indent=2, default=str)
     print(f"✓ Saved {output_path}")
 
 

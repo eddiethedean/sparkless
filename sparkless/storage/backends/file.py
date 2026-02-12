@@ -53,7 +53,7 @@ class FileTable(ITable):
         os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
         if not os.path.exists(self.file_path):
             with open(self.file_path, "w") as f:
-                json.dump([], f)
+                json.dump([], f, default=str)
 
     def _load_data(self) -> List[Dict[str, Any]]:
         """Load data from file.
