@@ -72,6 +72,18 @@ Reproduced with **robin-sparkless 0.7.0** using direct API (no Sparkless). Repro
 
 Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file tests/.robin_issue_*.txt`.
 
+## Issues created from verified parity repros (2026-02-12)
+
+Reproduced with **robin-sparkless** using direct API (no Sparkless). Each gap was run with Robin and with PySpark; only cases where Robin failed and PySpark succeeded were filed. Repros: `scripts/robin_parity_repros/04_filter_eqNullSafe.py`, `05_parity_string_soundex.py`, `06_filter_between.py`. See `scripts/robin_parity_repros/VERIFICATION.md`.
+
+| # | Title | Link |
+|---|-------|------|
+| 248 | [Parity] Column.eqNullSafe / eq_null_safe missing for null-safe equality in filter | https://github.com/eddiethedean/robin-sparkless/issues/248 |
+| 249 | [Parity] soundex() string function missing | https://github.com/eddiethedean/robin-sparkless/issues/249 |
+| 250 | [Parity] Column.between(low, high) missing for range filter | https://github.com/eddiethedean/robin-sparkless/issues/250 |
+
+Created via `python scripts/create_robin_issues_from_verified_repros.py`.
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.

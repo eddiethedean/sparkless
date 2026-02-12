@@ -1,0 +1,226 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0 -- /Users/odosmatthews/.pyenv/versions/3.11.13/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'ci' -> database=None, deadline=None, print_blob=True, derandomize=True, suppress_health_check=(HealthCheck.too_slow,)
+rootdir: /Users/odosmatthews/Documents/coding/sparkless
+configfile: pyproject.toml
+plugins: anyio-4.11.0, cov-7.0.0, green-light-0.2.0, asyncio-1.2.0, xdist-3.8.0, timeout-2.4.0, hypothesis-6.148.7, alt-pytest-asyncio-0.9.3, async-sqlalchemy-0.2.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: thread
+timeout func_only: False
+created: 10/10 workers
+10 workers [2771 items]
+
+scheduling tests via LoadScheduling
+
+tests/documentation/test_examples.py::TestExampleScripts::test_basic_usage_runs 
+[gw0] [  0%] SKIPPED tests/documentation/test_examples.py::TestExampleScripts::test_basic_usage_runs 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex 
+tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_basic_parity 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_empty_dataframe 
+tests/test_issue_145_string_cast.py::test_string_cast_works_with_to_timestamp 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_vs_numeric_addition 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_single_column 
+tests/documentation/test_examples.py::TestExampleScripts::test_comprehensive_usage_runs 
+[gw0] [  0%] SKIPPED tests/documentation/test_examples.py::TestExampleScripts::test_comprehensive_usage_runs 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_complex_nested_operations 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_filtered_select 
+tests/documentation/test_examples.py::TestExampleScripts::test_examples_show_v2_features 
+[gw2] [  0%] FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_basic_parity 
+[gw0] [  0%] PASSED tests/documentation/test_examples.py::TestExampleScripts::test_examples_show_v2_features 
+[gw8] [  0%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_complex_nested_operations 
+[gw1] [  0%] PASSED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session 
+[gw7] [  0%] FAILED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_empty_dataframe 
+[gw3] [  0%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex 
+[gw9] [  0%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_single_column 
+[gw5] [  0%] FAILED tests/test_issue_145_string_cast.py::test_string_cast_works_with_to_timestamp 
+tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_multiple_matches_parity 
+[gw2] [  0%] FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_multiple_matches_parity 
+tests/documentation/test_examples.py::TestExampleScripts::test_example_outputs_captured 
+[gw0] [  0%] PASSED tests/documentation/test_examples.py::TestExampleScripts::test_example_outputs_captured 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_all_arithmetic_operators 
+[gw8] [  0%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_all_arithmetic_operators 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_in_groupby_aggregation 
+tests/test_issue_145_string_cast.py::test_string_cast_from_datetime_column 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_nulls 
+[gw4] [  0%] PASSED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_filtered_select 
+[gw5] [  0%] PASSED tests/test_issue_145_string_cast.py::test_string_cast_from_datetime_column 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions 
+[gw9] [  0%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_nulls 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_translate 
+tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity 
+tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_basic_operation 
+[gw6] [  0%] PASSED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_vs_numeric_addition 
+tests/test_issue_149_to_timestamp_string.py::TestIssue149ToTimestampString::test_to_timestamp_with_regexp_replace_cast_string 
+[gw2] [  0%] FAILED tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_reverse_all_operators 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_select 
+[gw8] [  0%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_reverse_all_operators 
+[gw7] [  0%] PASSED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_in_groupby_aggregation 
+[gw5] [  0%] FAILED tests/test_issue_149_to_timestamp_string.py::TestIssue149ToTimestampString::test_to_timestamp_with_regexp_replace_cast_string 
+[gw3] [  0%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_translate 
+[gw9] [  0%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_select 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_with_literal 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_group_by 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_count_star_arithmetic 
+[gw8] [  0%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_count_star_arithmetic 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_multiple_types 
+tests/test_issue_149_to_timestamp_string.py::TestIssue149ToTimestampString::test_to_timestamp_with_nested_cast_string 
+[gw6] [  0%] PASSED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_with_literal 
+tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_basic_parity 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_chained_with_other_operations 
+[gw5] [  0%] PASSED tests/test_issue_149_to_timestamp_string.py::TestIssue149ToTimestampString::test_to_timestamp_with_nested_cast_string 
+[gw9] [  0%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_multiple_types 
+[gw7] [  1%] FAILED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_chained_with_other_operations 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_multiple_string_concat_columns 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_levenshtein 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_empty_group_handling 
+[gw6] [  1%] PASSED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_multiple_string_concat_columns 
+tests/test_issue_149_to_timestamp_string.py::TestIssue149ToTimestampString::test_to_timestamp_with_string_operations 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_expressions 
+[gw0] [  1%] PASSED tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_basic_operation 
+[gw5] [  1%] FAILED tests/test_issue_149_to_timestamp_string.py::TestIssue149ToTimestampString::test_to_timestamp_with_string_operations 
+[gw9] [  1%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_expressions 
+[gw3] [  1%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_levenshtein 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_all_null_columns 
+[gw1] [  1%] FAILED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions 
+[gw8] [  1%] FAILED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_empty_group_handling 
+[gw2] [  1%] PASSED tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_basic_parity 
+[gw7] [  1%] FAILED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_all_null_columns 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_with_select 
+[gw6] [  1%] PASSED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_with_select 
+tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_mock_only 
+[gw0] [  1%] PASSED tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_mock_only 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_chained_operations 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_storage_manager_detached_write_visible_to_session 
+[gw4] [  1%] FAILED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_group_by 
+tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_multiple_aggregations_parity 
+[gw2] [  1%] PASSED tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_multiple_aggregations_parity 
+tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_with_filter_parity 
+[gw2] [  1%] PASSED tests/parity/functions/test_cast_alias_select_parity.py::TestCastAliasSelectParity::test_cast_alias_select_with_filter_parity 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_no_matching_nulls 
+[gw7] [  1%] FAILED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_no_matching_nulls 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_large_numbers 
+[gw8] [  1%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_large_numbers 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_literals 
+[gw9] [  1%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_literals 
+tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_validation_rule_not_null 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_mixed_aggregate_functions 
+[gw8] [  1%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_mixed_aggregate_functions 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_crc32 
+[gw3] [  1%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_crc32 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_xxhash64 
+tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_pyspark_only 
+[gw0] [  1%] SKIPPED tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_pyspark_only 
+[gw6] [  1%] PASSED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_chained_operations 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_without_caching 
+[gw5] [  1%] FAILED tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_validation_rule_not_null 
+tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_datetime_operations 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_mixed_types_and_nulls 
+[gw1] [  1%] SKIPPED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_storage_manager_detached_write_visible_to_session 
+tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_aggregation 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_groupby_agg 
+tests/examples/test_unified_infrastructure_example.py::TestUnifiedInfrastructure::test_comparison 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_arithmetic_with_alias 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_year 
+tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_pipeline_logs_like_write_visible_immediately 
+[gw8] [  1%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_arithmetic_with_alias 
+[gw7] [  1%] FAILED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_mixed_types_and_nulls 
+[gw6] [  1%] FAILED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_string_concat_without_caching 
+[gw5] [  1%] FAILED tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_datetime_operations 
+[gw3] [  2%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_xxhash64 
+[gw2] [  2%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_year 
+[gw9] [  2%] PASSED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_groupby_agg 
+[gw4] [  2%] PASSED tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_aggregation 
+tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafeParity::test_eqnullsafe_parity_with_pyspark 
+[gw7] [  2%] SKIPPED tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafeParity::test_eqnullsafe_parity_with_pyspark 
+[gw1] [  2%] PASSED tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_pipeline_logs_like_write_visible_immediately 
+tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_arithmetic_precedence 
+tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_concat_function_with_caching 
+tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_inner_join_and_aliases 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_field_access 
+[gw6] [  2%] FAILED tests/test_issue_188_string_concat_cache.py::TestStringConcatenationCacheEdgeCases::test_concat_function_with_caching 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_month 
+tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_list_rows_with_column_schema 
+[gw6] [  2%] PASSED tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_list_rows_with_column_schema 
+[gw8] [  2%] PASSED tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_arithmetic_precedence 
+[gw9] [  2%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_field_access 
+[gw5] [  2%] FAILED tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_inner_join_and_aliases 
+tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_with_dict_and_subset 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_nested_struct 
+tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_tuple_rows_still_work 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_example_from_issue_261 
+[gw7] [  2%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_example_from_issue_261 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_inclusive_lower_bound 
+[gw7] [  2%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_inclusive_lower_bound 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_sum_parity 
+[gw1] [  2%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_sum_parity 
+[gw6] [  2%] PASSED tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_tuple_rows_still_work 
+tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_mixed_list_and_tuple_rows 
+[gw6] [  2%] PASSED tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_mixed_list_and_tuple_rows 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_get_json_object 
+[gw3] [  2%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_get_json_object 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_json_tuple 
+[gw3] [  2%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_json_tuple 
+tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_left_join_and_aliases 
+[gw8] [  2%] PASSED tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_with_dict_and_subset 
+tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_with_dict_no_subset 
+[gw8] [  2%] PASSED tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_with_dict_no_subset 
+[gw2] [  2%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_month 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_databases <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+[gw4] [  2%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_databases <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofmonth 
+[gw9] [  2%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_nested_struct 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_arrays 
+[gw9] [  2%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_arrays 
+[gw2] [  2%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofmonth 
+[gw4] [  2%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_inclusive_upper_bound 
+[gw5] [  2%] FAILED tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_left_join_and_aliases 
+tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_list_rows_with_different_data_types 
+[gw6] [  2%] PASSED tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_list_rows_with_different_data_types 
+tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_single_value 
+[gw8] [  3%] PASSED tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_single_value 
+[gw7] [  3%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_inclusive_upper_bound 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_substring_index 
+tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_avg_parity 
+[gw1] [  3%] PASSED tests/parity/dataframe/test_pivot_grouped_data_parity.py::TestPivotGroupedDataParity::test_pivot_avg_parity 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_join 
+[gw9] [  3%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_join 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofweek 
+tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_list_with_single_value 
+tests/test_issue_153_to_timestamp_returns_none.py::TestIssue153ToTimestampReturnsNone::test_to_timestamp_returns_actual_values 
+[gw5] [  3%] FAILED tests/test_issue_153_to_timestamp_returns_none.py::TestIssue153ToTimestampReturnsNone::test_to_timestamp_returns_actual_values 
+tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_single_list_row 
+[gw6] [  3%] PASSED tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_single_list_row 
+tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_aliased_columns 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_with_float_values 
+[gw7] [  3%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_with_float_values 
+[gw8] [  3%] PASSED tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_list_with_single_value 
+[gw3] [  3%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_substring_index 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables_in_database <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+[gw4] [  3%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables_in_database <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+[gw9] [  3%] FAILED tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_aliased_columns 
+tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_table <- ../mock-spark/tests/parity/sql/test_show_describe.py 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_with_null_values 
+[gw7] [  3%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_with_null_values 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_with_string_values 
+[gw7] [  3%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_with_string_values 
+tests/test_issue_261_between.py::TestIssue261Between::test_between_with_literal_bounds 
+[gw7] [  3%] FAILED tests/test_issue_261_between.py::TestIssue261Between::test_between_with_literal_bounds 
+[gw2] [  3%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_dayofweek 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_add 
+[gw2] [  3%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_add 
+tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_sub 
+tests/test_issue_153_to_timestamp_returns_none.py::TestIssue153ToTimestampReturnsNone::test_to_timestamp_with_clean_string 
+[gw5] [  3%] FAILED tests/test_issue_153_to_timestamp_returns_none.py::TestIssue153ToTimestampReturnsNone::test_to_timestamp_with_clean_string 
+tests/test_issue_156_select_dropped_column.py::test_select_dropped_column_raises_proper_error 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_repeat 
+[gw3] [  3%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_repeat 
+tests/parity/functions/test_string.py::TestStringFunctionsParity::test_reverse 
+[gw3] [  3%] FAILED tests/parity/functions/test_string.py::TestStringFunctionsParity::test_reverse 
+[gw2] [  3%] FAILED tests/parity/functions/test_datetime.py::TestDatetimeFunctionsParity::test_date_sub 
+[gw4] [  3%] PASSED tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_table <- ../mock-spark/tests/parity/sql/test_show_describe.py 

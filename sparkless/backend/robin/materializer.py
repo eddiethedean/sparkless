@@ -264,6 +264,42 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             if hasattr(inner, "isNotNull") and callable(getattr(inner, "isNotNull")):
                 return inner.isNotNull()
             return None
+        # between(lower, upper): translate to (col >= lower) & (col <= upper) for Robin parity
+        if op == "between" and col_side is not None and isinstance(val_side, (list, tuple)) and len(val_side) >= 2:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            low_expr = _expression_to_robin(val_side[0])
+            high_expr = _expression_to_robin(val_side[1])
+            if low_expr is None and isinstance(val_side[0], Literal):
+                low_expr = F.lit(_lit_value_for_robin(getattr(val_side[0], "value", val_side[0])))
+            if high_expr is None and isinstance(val_side[1], Literal):
+                high_expr = F.lit(_lit_value_for_robin(getattr(val_side[1], "value", val_side[1])))
+            if low_expr is None:
+                low_expr = F.lit(_lit_value_for_robin(val_side[0]))
+            if high_expr is None:
+                high_expr = F.lit(_lit_value_for_robin(val_side[1]))
+            if low_expr is not None and high_expr is not None:
+                return (inner.ge(low_expr)) & (inner.le(high_expr))
+            return None
+        # eqNullSafe / eq_null_safe: (col.isnull() & other.isnull()) | (col.isnotnull() & other.isnotnull() & (col == other))
+        if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
+            left_expr = _expression_to_robin(col_side)
+            right_expr = _expression_to_robin(val_side) if val_side is not None else None
+            if right_expr is None and isinstance(val_side, Literal):
+                right_expr = F.lit(_lit_value_for_robin(getattr(val_side, "value", val_side)))
+            if right_expr is None and val_side is not None:
+                right_expr = F.lit(_lit_value_for_robin(val_side))
+            if left_expr is not None and right_expr is not None:
+                l_isnull = getattr(left_expr, "isnull", None) or getattr(left_expr, "isNull", None)
+                l_isnotnull = getattr(left_expr, "isnotnull", None) or getattr(left_expr, "isNotNull", None)
+                r_isnull = getattr(right_expr, "isnull", None) or getattr(right_expr, "isNull", None)
+                r_isnotnull = getattr(right_expr, "isnotnull", None) or getattr(right_expr, "isNotNull", None)
+                if all(callable(f) for f in (l_isnull, l_isnotnull, r_isnull, r_isnotnull)):
+                    both_null = l_isnull() & r_isnull()
+                    both_not_null = l_isnotnull() & r_isnotnull()
+                    return both_null | (both_not_null & left_expr.eq(right_expr))
+            return None
         if op not in (">", "<", ">=", "<=", "==", "!="):
             return None
         # Left side: expression (Column or any translatable expression)
@@ -513,6 +549,42 @@ def _expression_to_robin(expr: Any) -> Any:
                 val = val_side
             safe_val = _lit_value_for_robin(val)
             return F.lit(safe_val)  # type: ignore[arg-type]
+        # between(lower, upper): translate to (col >= lower) & (col <= upper) for Robin parity
+        if op == "between" and col_side is not None and isinstance(val_side, (list, tuple)) and len(val_side) >= 2:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            low_expr = _expression_to_robin(val_side[0])
+            if low_expr is None:
+                low_expr = F.lit(_lit_value_for_robin(
+                    getattr(val_side[0], "value", val_side[0]) if isinstance(val_side[0], Literal) else val_side[0]
+                ))
+            high_expr = _expression_to_robin(val_side[1])
+            if high_expr is None:
+                high_expr = F.lit(_lit_value_for_robin(
+                    getattr(val_side[1], "value", val_side[1]) if isinstance(val_side[1], Literal) else val_side[1]
+                ))
+            if low_expr is not None and high_expr is not None:
+                return (inner.ge(low_expr)) & (inner.le(high_expr))
+            return None
+        # eqNullSafe / eq_null_safe in select/withColumn: (both_null) | (both_not_null & eq)
+        if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
+            left_expr = _expression_to_robin(col_side)
+            right_expr = _expression_to_robin(val_side) if val_side is not None else None
+            if right_expr is None and isinstance(val_side, Literal):
+                right_expr = F.lit(_lit_value_for_robin(getattr(val_side, "value", val_side)))
+            if right_expr is None and val_side is not None:
+                right_expr = F.lit(_lit_value_for_robin(val_side))
+            if left_expr is not None and right_expr is not None:
+                l_isnull = getattr(left_expr, "isnull", None) or getattr(left_expr, "isNull", None)
+                l_isnotnull = getattr(left_expr, "isnotnull", None) or getattr(left_expr, "isNotNull", None)
+                r_isnull = getattr(right_expr, "isnull", None) or getattr(right_expr, "isNull", None)
+                r_isnotnull = getattr(right_expr, "isnotnull", None) or getattr(right_expr, "isNotNull", None)
+                if all(callable(f) for f in (l_isnull, l_isnotnull, r_isnull, r_isnotnull)):
+                    both_null = l_isnull() & r_isnull()
+                    both_not_null = l_isnotnull() & r_isnotnull()
+                    return both_null | (both_not_null & left_expr.eq(right_expr))
+            return None
         # Cast / astype (Phase 7; astype is an alias for cast)
         if op in ("cast", "astype") and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -675,13 +747,25 @@ def _expression_to_robin(expr: Any) -> Any:
             robin_cols = [_expression_to_robin(p) for p in parts]
             if None in robin_cols or not robin_cols:
                 return None
-            # If exactly one part is a string Literal (separator), use concat_ws
+            # If exactly one part is a string literal (separator), use concat_ws
+            # so Robin gets concat_ws(sep, col1, col2) instead of concat(col1, lit(sep), col2).
             from sparkless.functions.core.literals import Literal
 
+            def _string_literal_value(p: Any) -> Optional[str]:
+                if isinstance(p, Literal):
+                    v = getattr(p, "value", p)
+                    return v if isinstance(v, str) else None
+                if isinstance(p, ColumnOperation) and getattr(p, "operation", None) == "lit":
+                    v = getattr(p, "value", None)
+                    if isinstance(v, Literal):
+                        v = getattr(v, "value", v)
+                    return v if isinstance(v, str) else None
+                return None
+
             literal_parts = [
-                (i, getattr(p, "value", p))
+                (i, sep_val)
                 for i, p in enumerate(parts)
-                if isinstance(p, Literal)
+                if (sep_val := _string_literal_value(p)) is not None
             ]
             if (
                 len(parts) >= 3

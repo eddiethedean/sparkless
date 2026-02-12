@@ -1,0 +1,102 @@
+================================================================================
+SPARKLESS FULL TEST RUN — FAILURE ANALYSIS (Robin Backend, -n 10)
+================================================================================
+Run: SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin pytest tests/ -n 10 -v --tb=short
+Results saved to: test_results_full.txt
+Summary: 1031 failed, 999 passed, 744 skipped in ~61s
+
+--------------------------------------------------------------------------------
+1. BLAME SUMMARY
+--------------------------------------------------------------------------------
+
+ROBIN-SPARKLESS (backend limitation — Robin does not support the operation):
+  • ~641 failures: SparkUnsupportedOperationError — "Operation '...' is not supported"
+  • ~4 failures: QueryExecutionException (same root: unsupported op in SQL path)
+  • Operations reported as unsupported: select (with certain expressions), withColumn,
+    join, filter (with certain expressions). These are documented v4 gaps; fixing
+    them requires implementing or wiring these operations in robin-sparkless.
+
+SPARKLESS (implementation or test scope):
+  • 3 failures: ModuleNotFoundError: No module named 'polars'
+    Tests: tests/unit/dataframe/test_logical_plan.py (TestLogicalPlanPhase4)
+    Cause: Tests use Polars plan interpreter directly; in v4 with Robin-only backend
+    Polars is not installed. Fix: Skip these tests when SPARKLESS_TEST_BACKEND=robin
+    (or mark as polars-only).
+  • 6 failures: "DID NOT RAISE" (case sensitivity)
+    Tests: tests/integration/test_case_sensitivity.py
+    Cause: Test expects Sparkless to raise when wrong column case is used; in Robin
+    path either Sparkless is not enforcing case sensitivity before calling Robin, or
+    Robin returns a result instead of failing. Fix: Enforce case-sensitive checks in
+    Sparkless for Robin path, or document Robin behavior and relax/skip tests.
+  • 1 failure: test_notebooks.py::test_quickstart — assert 0 == 3 (count).
+    Likely Sparkless or environment (e.g. quickstart expects certain data/setup).
+
+UNKNOWN / SHARED (could be either; needs per-test inspection):
+  • ~95 failures: RuntimeError: not found: Column 'X' not found. Available columns: [...]
+    Pattern: Alias or expression result column not visible to Robin (e.g. select
+    with alias, withColumn with alias). Either Sparkless is not sending the alias/
+    output name in the plan, or Robin is not applying it. Fix: Check plan
+    serialization (alias in logical plan) and Robin’s handling of output names.
+  • ~168 failures: AssertionError / "assert ..." / "DataFrames are not equivalent"
+    Pattern: Result value or schema differs from expected (e.g. parity tests vs
+    PySpark, or Sparkless vs Robin semantics). Could be Sparkless (wrong plan or
+    expression translation), Robin (different semantics), or test expectation
+    (e.g. PySpark-only behavior). Fix: Triage per test (compare expected vs actual;
+    check if test is PySpark-parity and mark/skip for Robin if appropriate).
+
+--------------------------------------------------------------------------------
+2. BREAKDOWN BY ERROR TYPE (from FAILED lines in test_results_full.txt)
+--------------------------------------------------------------------------------
+
+  SparkUnsupportedOperationError (robin-sparkless) .... 637
+  QueryExecutionException (robin-sparkless) ...........   4
+  RuntimeError: Column not found (unknown/shared) ......  95
+  AssertionError / assert (unknown/shared) ............ 168
+  ModuleNotFoundError: polars (sparkless) ...............   3
+  DID NOT RAISE (sparkless) ............................   6
+  Other (misc assertions, env, etc.) .................. ~118
+
+--------------------------------------------------------------------------------
+3. RECOMMENDED ACTIONS
+--------------------------------------------------------------------------------
+
+Robin-sparkless:
+  • Implement or expose support for: select (with expression aliases), withColumn,
+    join, filter (expression-based) so more tests can run without
+    SparkUnsupportedOperationError.
+  • Align column naming: ensure output/alias from the plan is what Sparkless
+    expects (reduces "Column 'X' not found" where X is an alias).
+
+Sparkless:
+  • Skip or mark Polars-only tests when backend is Robin (e.g. test_logical_plan
+    Phase 4 plan_interpreter tests that import polars).
+  • Case sensitivity: enforce or document behavior for Robin path; either enforce
+    case-sensitive checks before calling Robin or adjust/skip case sensitivity
+    tests for Robin.
+  • Alias/plan: verify logical plan and Robin plan serialization send expression
+    aliases / output column names correctly to reduce "Column not found" for
+    aliased columns.
+
+Both:
+  • Triage AssertionError / parity failures: decide expected behavior for Robin
+    (e.g. datetime/string/struct semantics), then either fix implementation or
+    mark/skip parity tests for Robin with a clear reason.
+
+--------------------------------------------------------------------------------
+4. SAMPLE FAILURES BY CATEGORY
+--------------------------------------------------------------------------------
+
+Robin unsupported (SparkUnsupportedOperationError):
+  FAILED tests/test_issue_421_join_column_names.py::... - Operation 'Operations: join' is not supported
+  FAILED tests/test_issue_439_array_distinct.py::... - Operation 'Operations: withColumn' is not supported
+  FAILED tests/test_issue_436_concat_cast_string.py::... - Operation 'Operations: select' is not supported
+
+Column not found (RuntimeError):
+  FAILED tests/test_issue_453_alias_cast_withcolumn.py::... - Column 'a_as_int' not found. Available columns: [a, b]
+  FAILED tests/integration/test_case_sensitivity.py::... - Column 'Alice' not found. Available columns: [Age, Name]
+
+Sparkless (Polars / case sensitivity):
+  FAILED tests/unit/dataframe/test_logical_plan.py::TestLogicalPlanPhase4::test_groupBy_via_plan_interpreter - ModuleNotFoundError: No module named 'polars'
+  FAILED tests/integration/test_case_sensitivity.py::... - Failed: DID NOT RAISE <class 'Exception'>
+
+================================================================================

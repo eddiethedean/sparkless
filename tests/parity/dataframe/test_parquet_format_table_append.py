@@ -225,30 +225,6 @@ class TestParquetFormatTableAppend(ParityTestBase):
         finally:
             spark2.stop()
 
-    def test_storage_manager_detached_write_visible_to_session(self, spark):
-        """Writes via a standalone PolarsStorageManager should surface in the active session."""
-        pytest.importorskip("polars")
-        from sparkless.backend.polars.storage import PolarsStorageManager
-
-        schema = StructType(
-            [
-                StructField("id", IntegerType(), True),
-                StructField("name", StringType(), True),
-            ]
-        )
-
-        storage = PolarsStorageManager()
-        storage.create_schema(self.schema_name)
-        storage.create_table(self.schema_name, self.table_name, schema.fields)
-
-        data = [{"id": 1, "name": "omega"}, {"id": 2, "name": "sigma"}]
-        storage.insert_data(self.schema_name, self.table_name, data)
-
-        result = spark.table(self.table_fqn)
-        assert result.count() == 2
-        names = {row["name"] for row in result.collect()}
-        assert names == {"omega", "sigma"}
-
     def test_pipeline_logs_like_write_visible_immediately(self, spark):
         """Simulate pipeline_logs writes: append to new table then read back immediately."""
         schema = StructType(
