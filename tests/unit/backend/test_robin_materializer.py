@@ -218,3 +218,16 @@ class TestRobinMaterializerExpressionTranslation:
         )
         assert all("rn" in r for r in result)
         assert [r["rn"] for r in result] == [1, 2, 1]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_case_when_in_select_robin(self, spark: Any) -> None:
+        """CaseWhen in select (plan path) produces one column (#472)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame(
+            [(1, 10), (2, 50), (3, 90)], ["id", "score"]
+        )
+        result = df.select(
+            F.when(F.col("score") >= 50, "pass").otherwise("fail").alias("result")
+        ).orderBy("id").collect()
+        assert [r["result"] for r in result] == ["fail", "pass", "pass"]
