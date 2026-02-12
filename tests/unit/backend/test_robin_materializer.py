@@ -174,6 +174,19 @@ class TestRobinMaterializerExpressionTranslation:
         assert cleaned == ["a.b", "x.y"]
 
     @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_split_two_arg_one_row_list_column_robin(self, spark: Any) -> None:
+        """withColumn with split(col, ',') on 1 row: expect 1 row and one list column (pin expected behavior).
+
+        If Robin returns wrong shape, RuntimeError 'lengths don't match' may occur (Robin limitation).
+        """
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([{"s": "a,b,c"}])
+        result = df.withColumn("arr", F.split(F.col("s"), ",")).collect()
+        assert len(result) == 1
+        assert result[0]["arr"] == ["a", "b", "c"]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
     def test_with_column_split_with_limit_robin(self, spark: Any) -> None:
         """withColumn with split(col, ',', -1) is translated for Robin backend (#470)."""
         if get_backend_type() != BackendType.ROBIN:

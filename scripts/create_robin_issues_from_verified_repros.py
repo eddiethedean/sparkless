@@ -21,12 +21,14 @@ from pathlib import Path
 REPO = "eddiethedean/robin-sparkless"
 ROOT = Path(__file__).resolve().parent.parent
 
+# Verified gaps that still need an issue (04/05/06 fixed in Robin 0.8, issues #248/#249/#250).
+# Add new verified repros here; run with --dry-run first, then without to create.
 ISSUES = [
     {
-        "title": "[Parity] Column.eqNullSafe / eq_null_safe missing for null-safe equality in filter",
+        "title": "[Parity] F.split(column, pattern, limit) — limit parameter not supported",
         "body": """## Summary
 
-PySpark's `Column` has `eqNullSafe(other)` (null-safe equality: NULL <=> NULL is true). robin-sparkless Column does not expose `eq_null_safe` or `eqNullSafe`, so filter expressions using null-safe equality cannot be expressed when using Robin directly.
+PySpark supports `F.split(column, pattern, limit)` with an optional third argument to limit the number of splits. Robin's `split` accepts only 2 arguments (column, pattern); passing a limit raises `TypeError: py_split() takes 2 positional arguments but 3 were given`.
 
 ## Current behavior (Robin)
 
@@ -35,57 +37,10 @@ import robin_sparkless as rs
 F = rs
 spark = F.SparkSession.builder().app_name("test").get_or_create()
 create_df = getattr(spark, "create_dataframe_from_rows", None) or getattr(spark, "_create_dataframe_from_rows")
-df = create_df([{"a": 1}, {"a": None}, {"a": 3}], [("a", "int")])
+df = create_df([{"s": "a,b,c"}], [("s", "string")])
 
-# AttributeError or similar: eq_null_safe / eqNullSafe not found
-df.filter(F.col("a").eq_null_safe(F.lit(None))).collect()
-```
-
-Robin Column has no `eq_null_safe` or `eqNullSafe` method.
-
-## Expected behavior (PySpark)
-
-```python
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-spark = SparkSession.builder.master("local[1]").appName("test").getOrCreate()
-df = spark.createDataFrame([{"a": 1}, {"a": None}, {"a": 3}])
-out = df.filter(F.col("a").eqNullSafe(F.lit(None))).collect()  # 1 row (the None row)
-```
-
-## How to reproduce
-
-From the [sparkless](https://github.com/eddiethedean/sparkless) repo (with robin-sparkless and optionally pyspark installed):
-
-```bash
-python scripts/robin_parity_repros/04_filter_eqNullSafe.py
-```
-
-Robin reports: `eq_null_safe / eqNullSafe not found`. PySpark path succeeds.
-
-## Context
-
-- Sparkless uses robin-sparkless as execution backend. Many Sparkless tests fail with "Operation 'Operations: filter' is not supported" when the filter uses eqNullSafe; the Sparkless Robin materializer cannot translate it because Robin Column lacks this method.
-- Representative Sparkless test: `tests/test_issue_260_eq_null_safe.py`
-""",
-    },
-    {
-        "title": "[Parity] soundex() string function missing",
-        "body": """## Summary
-
-PySpark provides `F.soundex(col)` for phonetic encoding of strings. robin-sparkless does not expose a `soundex` function, so string parity tests (e.g. soundex) fail when run with Robin backend (e.g. 0 rows vs expected 3).
-
-## Current behavior (Robin)
-
-```python
-import robin_sparkless as rs
-F = rs
-spark = F.SparkSession.builder().app_name("test").get_or_create()
-create_df = getattr(spark, "create_dataframe_from_rows", None) or getattr(spark, "_create_dataframe_from_rows")
-df = create_df([{"name": "Alice"}, {"name": "Bob"}, {"name": "Robert"}], [("name", "string")])
-
-# F.soundex not found
-df.with_column("snd", F.soundex(F.col("name"))).collect()
+# TypeError: py_split() takes 2 positional arguments but 3 were given
+df.select(F.split(F.col("s"), ",", 2)).collect()
 ```
 
 ## Expected behavior (PySpark)
@@ -94,8 +49,8 @@ df.with_column("snd", F.soundex(F.col("name"))).collect()
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 spark = SparkSession.builder.master("local[1]").appName("test").getOrCreate()
-df = spark.createDataFrame([{"name": "Alice"}, {"name": "Bob"}, {"name": "Robert"}])
-out = df.withColumn("snd", F.soundex(F.col("name"))).collect()  # 3 rows with snd column
+df = spark.createDataFrame([{"s": "a,b,c"}])
+out = df.select(F.split(F.col("s"), ",", 2)).collect()  # [Row(split(s, ,, 2)=['a', 'b,c'])]
 ```
 
 ## How to reproduce
@@ -103,59 +58,15 @@ out = df.withColumn("snd", F.soundex(F.col("name"))).collect()  # 3 rows with sn
 From the [sparkless](https://github.com/eddiethedean/sparkless) repo:
 
 ```bash
-python scripts/robin_parity_repros/05_parity_string_soundex.py
+python scripts/robin_parity_repros/07_split_limit.py
 ```
 
-Robin reports: `F.soundex not found`. PySpark path succeeds.
+Robin fails with `TypeError: py_split() takes 2 positional arguments but 3 were given`. PySpark succeeds.
 
 ## Context
 
-- Sparkless parity test: `tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex` fails with AssertionError (DataFrames not equivalent / row count mismatch) when backend is Robin because soundex is not available.
-""",
-    },
-    {
-        "title": "[Parity] Column.between(low, high) missing for range filter",
-        "body": """## Summary
-
-PySpark's `Column` has `between(low, high)` for inclusive range filters. robin-sparkless Column does not expose `between`, so filter expressions using between cannot be expressed when using Robin directly.
-
-## Current behavior (Robin)
-
-```python
-import robin_sparkless as rs
-F = rs
-spark = F.SparkSession.builder().app_name("test").get_or_create()
-create_df = getattr(spark, "create_dataframe_from_rows", None) or getattr(spark, "_create_dataframe_from_rows")
-df = create_df([{"v": 10}, {"v": 25}, {"v": 50}], [("v", "int")])
-
-# AttributeError: col.between not found
-df.filter(F.col("v").between(F.lit(20), F.lit(30))).collect()
-```
-
-## Expected behavior (PySpark)
-
-```python
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-spark = SparkSession.builder.master("local[1]").appName("test").getOrCreate()
-df = spark.createDataFrame([{"v": 10}, {"v": 25}, {"v": 50}])
-out = df.filter(F.col("v").between(F.lit(20), F.lit(30))).collect()  # 1 row (v=25)
-```
-
-## How to reproduce
-
-From the [sparkless](https://github.com/eddiethedean/sparkless) repo:
-
-```bash
-python scripts/robin_parity_repros/06_filter_between.py
-```
-
-Robin reports: `col.between not found`. PySpark path succeeds.
-
-## Context
-
-- Sparkless tests fail with "Operation 'Operations: filter' is not supported" when the filter uses between(); the Sparkless Robin materializer cannot translate it because Robin Column lacks this method.
-- Representative Sparkless test: `tests/test_issue_261_between.py`
+- Sparkless parity tests for split with limit fail when backend is Robin (e.g. `tests/parity/functions/test_split_limit_parity.py`, `tests/test_issue_328_split_limit.py`). Robin reports "not found: split(Value, ,, -1)" or similar when Sparkless translates the expression.
+- Robin version: 0.8.0+ (sparkless pyproject.toml).
 """,
     },
 ]
