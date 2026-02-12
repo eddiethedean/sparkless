@@ -1151,7 +1151,15 @@ class RobinMaterializer:
             )
         F = robin_sparkless  # type: ignore[union-attr]
         if not schema.fields:
-            raise ValueError("RobinMaterializer requires a non-empty schema")
+            if not operations:
+                # No-op: return data as rows with empty schema (#475)
+                rows = _data_to_robin_rows(data, [])
+                result: List[Row] = [Row(d, schema=schema) for d in rows]
+                return result
+            raise ValueError(
+                "Robin backend does not support empty schema when operations are "
+                "applied; ensure at least one column."
+            )
         # For initial creation, use columns from data to support operations like drop().
         # The passed schema may be the final projected schema (e.g. after drop) which
         # would omit columns we need for intermediate ops. Use data keys first.

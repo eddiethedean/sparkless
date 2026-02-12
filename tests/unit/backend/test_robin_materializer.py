@@ -266,3 +266,32 @@ class TestRobinMaterializerExpressionTranslation:
             .collect()
         )
         assert [r["result"] for r in result] == ["fail", "pass", "pass"]
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(
+    not _HAS_ROBIN, reason="Robin backend requires robin-sparkless to be installed"
+)
+class TestRobinMaterializerEmptySchema:
+    """Empty schema edge case (#475)."""
+
+    def teardown_method(self) -> None:
+        BackendFactory._robin_available_cache = None
+
+    def test_empty_schema_no_operations_returns_rows(self) -> None:
+        """materialize([], empty_schema, []) returns [] without raising."""
+        from sparkless.spark_types import StructType
+
+        mat = BackendFactory.create_materializer("robin")
+        empty_schema = StructType([])
+        result = mat.materialize([], empty_schema, [])
+        assert result == []
+
+    def test_empty_schema_with_operations_raises(self) -> None:
+        """materialize([], empty_schema, [(op, ...)]) raises clear ValueError."""
+        from sparkless.spark_types import StructType
+
+        mat = BackendFactory.create_materializer("robin")
+        empty_schema = StructType([])
+        with pytest.raises(ValueError, match="does not support empty schema when"):
+            mat.materialize([], empty_schema, [("limit", 5)])
