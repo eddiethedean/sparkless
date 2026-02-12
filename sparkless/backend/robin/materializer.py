@@ -73,16 +73,12 @@ def _data_to_robin_rows(data: List[Any], names: List[str]) -> List[dict]:
     rows: List[dict] = []
     for row in data:
         if isinstance(row, dict):
-            rows.append(
-                {n: _row_value_for_robin(row.get(n)) for n in names}
-            )
+            rows.append({n: _row_value_for_robin(row.get(n)) for n in names})
         elif isinstance(row, (list, tuple)):
             values = list(row) + [None] * (len(names) - len(row))
             rows.append(dict(zip(names, (_row_value_for_robin(v) for v in values))))
         else:
-            rows.append(
-                {n: _row_value_for_robin(getattr(row, n, None)) for n in names}
-            )
+            rows.append({n: _row_value_for_robin(getattr(row, n, None)) for n in names})
     return rows
 
 
@@ -112,7 +108,9 @@ def _order_by_payload_to_robin(payload: Any) -> Optional[Tuple[List[str], List[b
             col_name = c
             if isinstance(ascending_param, bool):
                 asc = ascending_param
-            elif isinstance(ascending_param, (list, tuple)) and i < len(ascending_param):
+            elif isinstance(ascending_param, (list, tuple)) and i < len(
+                ascending_param
+            ):
                 asc = bool(ascending_param[i])
             else:
                 asc = True
@@ -124,15 +122,14 @@ def _order_by_payload_to_robin(payload: Any) -> Optional[Tuple[List[str], List[b
                 col_name = getattr(col_side, "name", None)
             if col_name is None:
                 return None
-            if op in _DESC_OPS:
-                asc = False
-            else:
-                asc = True
+            asc = op not in _DESC_OPS
         elif hasattr(c, "name"):
             col_name = getattr(c, "name", None)
             if isinstance(ascending_param, bool):
                 asc = ascending_param
-            elif isinstance(ascending_param, (list, tuple)) and i < len(ascending_param):
+            elif isinstance(ascending_param, (list, tuple)) and i < len(
+                ascending_param
+            ):
                 asc = bool(ascending_param[i])
             else:
                 asc = True
@@ -235,7 +232,11 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             pattern = (
                 val_side
                 if isinstance(val_side, str)
-                else (getattr(val_side, "value", None) if isinstance(val_side, Literal) else None)
+                else (
+                    getattr(val_side, "value", None)
+                    if isinstance(val_side, Literal)
+                    else None
+                )
             )
             if pattern is None or not isinstance(pattern, str):
                 return None
@@ -437,11 +438,14 @@ def _expression_to_robin(expr: Any) -> Any:
         base = F.col(base_col)
         fn_name = (getattr(expr, "function_name", None) or "row_number").lower()
         descending = False
-        if order_names and hasattr(spec, "_order_by"):
-            order_cols = spec._order_by
-            if order_cols and hasattr(order_cols[0], "operation"):
-                if getattr(order_cols[0], "operation", None) == "desc":
-                    descending = True
+        if (
+            order_names
+            and hasattr(spec, "_order_by")
+            and (order_cols := getattr(spec, "_order_by", None))
+            and hasattr(order_cols[0], "operation")
+            and getattr(order_cols[0], "operation", None) == "desc"
+        ):
+            descending = True
         offset = getattr(expr, "offset", 1) or 1
         if fn_name == "row_number":
             if hasattr(base, "row_number"):
@@ -467,9 +471,9 @@ def _expression_to_robin(expr: Any) -> Any:
         elif fn_name == "percent_rank":
             if hasattr(base, "percent_rank"):
                 try:
-                    return base.percent_rank(partition_by, descending)
+                    return base.percent_rank(partition_by, descending)  # type: ignore[call-arg]
                 except TypeError:
-                    return base.percent_rank().over(partition_by)
+                    return base.percent_rank().over(partition_by)  # type: ignore[call-arg]
         elif fn_name in ("sum", "avg", "min", "max"):
             col_name = getattr(expr, "column_name", None) or base_col
             col = F.col(col_name) if isinstance(col_name, str) else base
@@ -508,7 +512,9 @@ def _expression_to_robin(expr: Any) -> Any:
             elif hasattr(val_side, "simpleString") and callable(val_side.simpleString):
                 type_str = val_side.simpleString()
                 robin_type = _SPARK_TYPE_TO_ROBIN_DTYPE.get(
-                    type_str.lower() if isinstance(type_str, str) else str(type_str).lower(),
+                    type_str.lower()
+                    if isinstance(type_str, str)
+                    else str(type_str).lower(),
                     "string",
                 )
             elif isinstance(val_side, str):
@@ -634,6 +640,7 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             # If exactly one part is a string Literal (separator), use concat_ws
             from sparkless.functions.core.literals import Literal
+
             literal_parts = [
                 (i, getattr(p, "value", p))
                 for i, p in enumerate(parts)
@@ -682,9 +689,7 @@ def _expression_to_robin(expr: Any) -> Any:
                 return F.struct(*robin_cols)
         # create_map: value is tuple of key-value columns (k1, v1, k2, v2, ...)
         if op == "create_map":
-            parts = (
-                list(val_side) if isinstance(val_side, (list, tuple)) else []
-            )
+            parts = list(val_side) if isinstance(val_side, (list, tuple)) else []
             robin_cols = [_expression_to_robin(p) for p in parts]
             if None in robin_cols:
                 return None
@@ -693,8 +698,10 @@ def _expression_to_robin(expr: Any) -> Any:
         # map_from_entries: value is single column (array of structs)
         if op == "map_from_entries" and col_side is not None:
             inner = _expression_to_robin(col_side)
-            if inner is not None and hasattr(F, "map_from_entries") and callable(
-                F.map_from_entries
+            if (
+                inner is not None
+                and hasattr(F, "map_from_entries")
+                and callable(F.map_from_entries)
             ):
                 return F.map_from_entries(inner)
         # withField: Robin lacks struct mutation (robin-sparkless #195, #198).
@@ -712,8 +719,8 @@ def _expression_to_robin(expr: Any) -> Any:
                 return inner.getItem(key)
             if hasattr(F, "getItem") and callable(F.getItem):
                 return F.getItem(inner, key)
-            if hasattr(F, "element_at") and callable(F.element_at):
-                return F.element_at(inner, key)
+            if hasattr(F, "element_at") and callable(F.element_at) and key is not None:
+                return F.element_at(inner, key)  # type: ignore[arg-type]
             if isinstance(key, (int, str)):
                 try:
                     return inner[key]

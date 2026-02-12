@@ -10,13 +10,13 @@ create_map(...)), not a reference to the new column name.
 import pytest
 
 try:
-    import robin_sparkless  # noqa: F401
+    import robin_sparkless as _robin_sparkless  # noqa: F401
 except ImportError:
-    robin_sparkless = None
+    _robin_sparkless = None  # type: ignore[assignment]
 
 
 def _robin_available() -> bool:
-    return robin_sparkless is not None
+    return _robin_sparkless is not None
 
 
 def _is_robin_backend(session) -> bool:

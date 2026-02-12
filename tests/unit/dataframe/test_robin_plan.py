@@ -71,4 +71,3 @@ class TestRobinPlan:
         for i, entry in enumerate(plan):
             assert loaded[i]["op"] == entry["op"]
             assert "payload" in loaded[i]
-

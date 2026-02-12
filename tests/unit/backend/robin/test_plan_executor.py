@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from sparkless.backend.factory import BackendFactory
-from sparkless.spark_types import Row, StructField, StructType, LongType, StringType
+from sparkless.spark_types import StructField, StructType, LongType, StringType
 
 _HAS_ROBIN = BackendFactory._robin_available()  # type: ignore[attr-defined]
 
@@ -25,10 +25,12 @@ class TestRobinPlanExecutor:
         from sparkless.backend.robin.plan_executor import execute_robin_plan
 
         data = [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]
-        schema = StructType([
-            StructField("a", LongType()),
-            StructField("b", StringType()),
-        ])
+        schema = StructType(
+            [
+                StructField("a", LongType()),
+                StructField("b", StringType()),
+            ]
+        )
         plan: list = []
         rows = execute_robin_plan(data, schema, plan)
         assert len(rows) == 2
@@ -44,10 +46,12 @@ class TestRobinPlanExecutor:
             {"name": "Bob", "age": 30},
             {"name": "Charlie", "age": 35},
         ]
-        schema = StructType([
-            StructField("name", StringType()),
-            StructField("age", LongType()),
-        ])
+        schema = StructType(
+            [
+                StructField("name", StringType()),
+                StructField("age", LongType()),
+            ]
+        )
         plan = [
             {
                 "op": "filter",
@@ -96,11 +100,13 @@ class TestRobinPlanExecutor:
         from sparkless.backend.robin.plan_executor import robin_expr_to_column
 
         with pytest.raises(ValueError, match="Unsupported Robin plan op"):
-            robin_expr_to_column({
-                "op": "unknown_op",
-                "left": {"col": "a"},
-                "right": {"lit": 1},
-            })
+            robin_expr_to_column(
+                {
+                    "op": "unknown_op",
+                    "left": {"col": "a"},
+                    "right": {"lit": 1},
+                }
+            )
 
     def test_execute_robin_plan_orderby_desc_op_uses_descending(self) -> None:
         """orderBy with {'op': 'desc', 'left': {'col': ...}} sorts in descending order."""
@@ -111,10 +117,12 @@ class TestRobinPlanExecutor:
             {"id": 2, "salary": 50},
             {"id": 3, "salary": 75},
         ]
-        schema = StructType([
-            StructField("id", LongType()),
-            StructField("salary", LongType()),
-        ])
+        schema = StructType(
+            [
+                StructField("id", LongType()),
+                StructField("salary", LongType()),
+            ]
+        )
         plan = [
             {
                 "op": "orderBy",
@@ -141,10 +149,12 @@ class TestRobinPlanExecutor:
             {"id": 2, "salary": 50},
             {"id": 3, "salary": 75},
         ]
-        schema = StructType([
-            StructField("id", LongType()),
-            StructField("salary", LongType()),
-        ])
+        schema = StructType(
+            [
+                StructField("id", LongType()),
+                StructField("salary", LongType()),
+            ]
+        )
         plan = [
             {
                 "op": "orderBy",
@@ -171,10 +181,12 @@ class TestRobinPlanExecutor:
             {"id": 2, "salary": 75},
             {"id": 1, "salary": 100},
         ]
-        schema = StructType([
-            StructField("id", LongType()),
-            StructField("salary", LongType()),
-        ])
+        schema = StructType(
+            [
+                StructField("id", LongType()),
+                StructField("salary", LongType()),
+            ]
+        )
         plan = [
             {
                 "op": "orderBy",

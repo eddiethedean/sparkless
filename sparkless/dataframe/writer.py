@@ -662,7 +662,9 @@ class DataFrameWriter:
         target.parent.mkdir(parents=True, exist_ok=True)
         include_header = self._get_bool_option("header", default=True)
         delimiter = self._options.get("sep", self._options.get("delimiter", ","))
-        rows = [{k: get_row_value(r, k) for k in names} for r in data] if names else data
+        rows = (
+            [{k: get_row_value(r, k) for k in names} for r in data] if names else data
+        )
         with open(target, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=names, delimiter=delimiter)
             if include_header:
