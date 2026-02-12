@@ -9,9 +9,12 @@ This test tries to force the bug by:
 
 import os
 import pytest
+
+pytest.importorskip("polars")
+import polars as pl
+
 from sparkless import SparkSession, functions as F
 from sparkless.backend.factory import BackendFactory
-import polars as pl
 
 
 @pytest.fixture

@@ -4,6 +4,9 @@ This module tests the capability checking functionality in materializers,
 ensuring that unsupported operations are detected upfront and raise clear errors.
 """
 
+import pytest
+
+pytest.importorskip("polars")
 from sparkless import SparkSession, functions as F
 from sparkless.window import Window
 from sparkless.backend.polars.materializer import PolarsMaterializer
