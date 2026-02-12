@@ -72,6 +72,27 @@ def _expr_to_robin(expr: Any) -> Dict[str, Any]:
         # Value is assumed to be JSON-serializable already
         return {"lit": expr.get("value")}
 
+    # CaseWhen: convert to Robin when/then/otherwise form (#472)
+    if expr_type == "case_when":
+        conditions = expr.get("conditions") or []
+        default = expr.get("default")
+        if not conditions or default is None:
+            raise ValueError(
+                "case_when expression requires non-empty conditions and default"
+            )
+        branches: List[List[Dict[str, Any]]] = []
+        for cond_then in conditions:
+            if not isinstance(cond_then, (list, tuple)) or len(cond_then) < 2:
+                raise ValueError("case_when condition must be [cond, then_val]")
+            branches.append(
+                [_expr_to_robin(cond_then[0]), _expr_to_robin(cond_then[1])]
+            )
+        return {
+            "op": "when",
+            "branches": branches,
+            "default": _expr_to_robin(default),
+        }
+
     if expr_type == "op":
         op_name = expr.get("op")
         left = expr.get("left")

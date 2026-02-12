@@ -64,6 +64,24 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
 
     if "op" in expr:
         op = expr["op"]
+        # CaseWhen: when/then/otherwise (#472)
+        if op == "when":
+            branches = expr.get("branches") or []
+            default_d = expr.get("default")
+            if not branches or default_d is None:
+                raise ValueError(
+                    "Robin 'when' expression requires 'branches' and 'default'"
+                )
+            default_col = robin_expr_to_column(default_d)
+            first_cond, first_val = branches[0]
+            out = F.when(robin_expr_to_column(first_cond)).then(
+                robin_expr_to_column(first_val)
+            )
+            for cond_d, val_d in branches[1:]:
+                out = out.when(robin_expr_to_column(cond_d)).then(  # type: ignore[attr-defined]
+                    robin_expr_to_column(val_d)
+                )
+            return out.otherwise(default_col)
         left_d = expr.get("left")
         right_d = expr.get("right")
         if op == "not":

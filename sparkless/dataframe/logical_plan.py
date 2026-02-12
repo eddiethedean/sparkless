@@ -111,6 +111,30 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
         except ImportError:
             pass
 
+    # CaseWhen (when/then/otherwise) for plan path (#472)
+    try:
+        from sparkless.functions.conditional import CaseWhen
+
+        if isinstance(expr, CaseWhen):
+            conditions = getattr(expr, "conditions", []) or []
+            default_value = getattr(expr, "default_value", None)
+            if not conditions or default_value is None:
+                raise ValueError(
+                    "CaseWhen must have at least one condition and a default value"
+                )
+            serialized_conditions: List[List[Dict[str, Any]]] = []
+            for cond, then_val in conditions:
+                serialized_conditions.append(
+                    [serialize_expression(cond), serialize_expression(then_val)]
+                )
+            return {
+                "type": "case_when",
+                "conditions": serialized_conditions,
+                "default": serialize_expression(default_value),
+            }
+    except ImportError:
+        pass
+
     if isinstance(expr, ColumnOperation):
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
