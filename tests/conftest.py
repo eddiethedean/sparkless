@@ -332,6 +332,7 @@ def pytest_collection_modifyitems(config, items):
     # v4 (Robin-only): skip tests that require PySpark backend
     try:
         from sparkless.backend.factory import BackendFactory
+
         available = BackendFactory.list_available_backends()
     except Exception:
         available = []
@@ -339,9 +340,13 @@ def pytest_collection_modifyitems(config, items):
         reason_pyspark = "v4 is Robin-only; this test requires PySpark backend."
         for item in items:
             marker = item.get_closest_marker("backend")
-            if marker and getattr(marker, "args", None) and len(marker.args) > 0:
-                if str(marker.args[0]).strip().lower() == "pyspark":
-                    item.add_marker(pytest.mark.skip(reason=reason_pyspark))
+            if (
+                marker
+                and getattr(marker, "args", None)
+                and len(marker.args) > 0
+                and str(marker.args[0]).strip().lower() == "pyspark"
+            ):
+                item.add_marker(pytest.mark.skip(reason=reason_pyspark))
     if backend != "robin":
         return
     if (os.environ.get("SPARKLESS_ROBIN_NO_SKIP") or "").strip() == "1":

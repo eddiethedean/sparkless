@@ -30,7 +30,6 @@ from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from ..core.interfaces.dataframe import IDataFrame
     from ..core.interfaces.session import ISession
 
@@ -178,7 +177,9 @@ class DataFrameReader:
         if not paths:
             raise AnalysisException(f"No {resolved_format} files found at {path}")
 
-        data_rows, column_names = self._read_data(paths, resolved_format, combined_options)
+        data_rows, column_names = self._read_data(
+            paths, resolved_format, combined_options
+        )
         infer_schema = self._to_bool(
             combined_options.get("inferSchema", "false"),
             default=False,

@@ -52,7 +52,9 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
     if "col" in expr:
         name = expr["col"]
         if not isinstance(name, str):
-            raise ValueError(f"Robin col expression must have string name, got {type(name)!r}")
+            raise ValueError(
+                f"Robin col expression must have string name, got {type(name)!r}"
+            )
         return F.col(name)
 
     if "lit" in expr:
@@ -81,7 +83,9 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
         if op == "cast":
             type_str = right_d.get("lit") if isinstance(right_d, dict) else None
             if not isinstance(type_str, str):
-                raise ValueError("Robin cast requires right to be a string literal (type name)")
+                raise ValueError(
+                    "Robin cast requires right to be a string literal (type name)"
+                )
             if hasattr(left, "cast"):
                 return left.cast(type_str)
             if hasattr(F, "cast") and callable(F.cast):
@@ -91,7 +95,9 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
         if op == "alias":
             alias_name = right_d.get("lit") if isinstance(right_d, dict) else None
             if not isinstance(alias_name, str):
-                raise ValueError("Robin alias requires right to be a string literal (alias name)")
+                raise ValueError(
+                    "Robin alias requires right to be a string literal (alias name)"
+                )
             if hasattr(left, "alias"):
                 return left.alias(alias_name)
             raise ValueError("Robin backend does not support alias")
@@ -124,7 +130,9 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
             return left | right
         raise ValueError(f"Unsupported Robin plan op: {op!r}")
 
-    raise ValueError(f"Robin expression must contain 'col', 'lit', or 'op'; got {list(expr.keys())!r}")
+    raise ValueError(
+        f"Robin expression must contain 'col', 'lit', or 'op'; got {list(expr.keys())!r}"
+    )
 
 
 def execute_robin_plan(
@@ -222,9 +230,7 @@ def execute_robin_plan(
                     if isinstance(ascending, bool):
                         asc_list.append(ascending)
                     else:
-                        asc_list.append(
-                            ascending[i] if i < len(ascending) else True
-                        )
+                        asc_list.append(ascending[i] if i < len(ascending) else True)
                     continue
                 # desc/asc of column: {"op": "desc"|"asc"|..., "left": {"col": name}}
                 if "op" in e:
@@ -250,17 +256,23 @@ def execute_robin_plan(
             expr = robin_expr_to_column(expr_p)
             df = df.with_column(name, expr)
         elif op == "drop":
-            cols = payload.get("cols", payload.get("columns", []))
-            if isinstance(cols, str):
-                cols = [cols]
-            df = df.drop(list(cols))
+            drop_raw = payload.get("cols", payload.get("columns", []))
+            if isinstance(drop_raw, str):
+                drop_cols = [drop_raw]
+            elif isinstance(drop_raw, (list, tuple)):
+                drop_cols = list(drop_raw)
+            else:
+                drop_cols = []
+            df = df.drop(drop_cols)
         elif op == "distinct":
             df = df.distinct()
         elif op == "withColumnRenamed":
             existing = payload.get("existing")
             new = payload.get("new")
             if not existing or not new:
-                raise ValueError("withColumnRenamed payload requires 'existing' and 'new'")
+                raise ValueError(
+                    "withColumnRenamed payload requires 'existing' and 'new'"
+                )
             df = df.with_column_renamed(existing, new)
         elif op == "offset":
             n = payload.get("n", 0)

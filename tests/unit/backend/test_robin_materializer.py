@@ -57,3 +57,35 @@ class TestRobinMaterializerExpressionTranslation:
         assert len(result) == 2
         assert result[0]["triple"] == 15
         assert result[1]["triple"] == 21
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_filter_like_robin(self, spark: Any) -> None:
+        """Filter with F.col('name').like('al%%') is supported when Robin backend is used (#469)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([("alice",), ("bob",), ("alex",)], ["name"])
+        result = df.filter(F.col("name").like("al%")).collect()
+        assert len(result) == 2
+        names = sorted(r["name"] for r in result)
+        assert names == ["alex", "alice"]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_filter_isnull_robin(self, spark: Any) -> None:
+        """Filter with F.col('value').isNull() is supported when Robin backend is used (#469)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([(1, "a"), (2, None), (3, "c")], ["id", "value"])
+        result = df.filter(F.col("value").isNull()).collect()
+        assert len(result) == 1
+        assert result[0]["id"] == 2 and result[0]["value"] is None
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_filter_isnotnull_robin(self, spark: Any) -> None:
+        """Filter with F.col('value').isNotNull() is supported when Robin backend is used (#469)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([(1, "a"), (2, None), (3, "c")], ["id", "value"])
+        result = df.filter(F.col("value").isNotNull()).collect()
+        assert len(result) == 2
+        ids = sorted(r["id"] for r in result)
+        assert ids == [1, 3]

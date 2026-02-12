@@ -79,7 +79,7 @@ class StorageManagerFactory:
         Returns:
             Robin storage manager instance.
         """
-        return RobinStorageManager(db_path=db_path)
+        return RobinStorageManager(db_path=db_path)  # type: ignore[return-value]
 
 
 class UnifiedStorageManager(IStorageManager):

@@ -9,7 +9,7 @@ so the lazy engine can fall back to the existing operation-by-operation path.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from .logical_plan import to_logical_plan as _to_sparkless_plan
 
@@ -83,7 +83,9 @@ def _expr_to_robin(expr: Any) -> Dict[str, Any]:
         if op_name == "alias":
             robin_left = _expr_to_robin(left) if left is not None else None
             if robin_left is None:
-                raise ValueError("Alias expression requires a valid left (inner expression)")
+                raise ValueError(
+                    "Alias expression requires a valid left (inner expression)"
+                )
             alias_name = None
             if right is not None:
                 if isinstance(right, dict) and right.get("type") == "literal":
@@ -93,7 +95,9 @@ def _expr_to_robin(expr: Any) -> Dict[str, Any]:
                     if isinstance(robin_right, dict) and "lit" in robin_right:
                         alias_name = robin_right["lit"]
             if not isinstance(alias_name, str):
-                raise ValueError("Alias expression requires right to be a string literal (alias name)")
+                raise ValueError(
+                    "Alias expression requires right to be a string literal (alias name)"
+                )
             return {"op": "alias", "left": robin_left, "right": {"lit": alias_name}}
 
         # Map Sparkless operator symbols to Robin names where needed
@@ -104,10 +108,13 @@ def _expr_to_robin(expr: Any) -> Dict[str, Any]:
         elif op_name in _LOGICAL_OP_MAP:
             op_name = _LOGICAL_OP_MAP[op_name]
 
-        robin_left = _expr_to_robin(left) if left is not None else None
-        robin_right = _expr_to_robin(right) if right is not None else None
-
-        return {"op": op_name, "left": robin_left, "right": robin_right}
+        op_left: Optional[Dict[str, Any]] = (
+            _expr_to_robin(left) if left is not None else None
+        )
+        op_right: Optional[Dict[str, Any]] = (
+            _expr_to_robin(right) if right is not None else None
+        )
+        return {"op": op_name, "left": op_left, "right": op_right}
 
     # Window and other complex expression types are currently unsupported
     raise ValueError(f"Unsupported expression kind for Robin plan: {expr_type!r}")
@@ -152,16 +159,16 @@ def _convert_payload(op_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     if op_name == "orderBy":
         columns = payload.get("columns", [])
         ascending = payload.get("ascending", [])
-        robin_cols: List[Dict[str, Any]] = []
+        order_cols: List[Dict[str, Any]] = []
         for col in columns:
-            robin_cols.append(_expr_to_robin(col))
-        return {"columns": robin_cols, "ascending": ascending}
+            order_cols.append(_expr_to_robin(col))
+        return {"columns": order_cols, "ascending": ascending}
 
     # groupBy, join, union, and more complex operations are not yet emitted
     raise ValueError(f"Operation '{op_name}' is not yet supported for Robin plans")
 
 
-def to_robin_plan(df: "DataFrame") -> List[Dict[str, Any]]:
+def to_robin_plan(df: DataFrame) -> List[Dict[str, Any]]:
     """Produce a Robin-format logical plan for a DataFrame.
 
     This wraps the existing Sparkless logical plan and converts expression
@@ -179,4 +186,3 @@ def to_robin_plan(df: "DataFrame") -> List[Dict[str, Any]]:
         robin_payload = _convert_payload(op_name, payload)
         robin_plan.append({"op": op_name, "payload": robin_payload})
     return robin_plan
-

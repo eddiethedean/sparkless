@@ -320,8 +320,6 @@ class SchemaInferenceEngine:
     @staticmethod
     def _parse_csv_string_to_type(value: str, data_type: Any) -> Any:
         """Parse CSV string to the given Sparkless data type."""
-        import datetime as dt_module
-
         type_name = getattr(data_type, "typeName", None)
         if callable(type_name):
             type_name = type_name()
@@ -380,8 +378,8 @@ def infer_schema_from_csv_strings(
         Tuple of (inferred_schema, rows_with_parsed_values)
     """
     if not data_rows or not column_names:
-        fields = [StructField(name, StringType()) for name in column_names]
-        return StructType(fields), data_rows
+        early_fields = [StructField(name, StringType()) for name in column_names]
+        return StructType(early_fields), data_rows
 
     fields: List[StructField] = []
     for col in column_names:
@@ -403,7 +401,7 @@ def infer_schema_from_csv_strings(
     normalized = []
     for row in data_rows:
         if not isinstance(row, dict):
-            normalized.append(row)
+            normalized.append(row)  # type: ignore[unreachable]
             continue
         parsed_row: Dict[str, Any] = {}
         for i, col in enumerate(column_names):

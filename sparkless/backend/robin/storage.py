@@ -50,7 +50,8 @@ class RobinStorageManager:
         table_name: str,
         fields: Union[List[Any], StructType],
     ) -> Optional[Any]:
-        return self._file.create_table(schema_name, table_name, fields)
+        self._file.create_table(schema_name, table_name, fields)
+        return None
 
     def drop_table(self, schema_name: str, table_name: str) -> None:
         self._file.drop_table(schema_name, table_name)

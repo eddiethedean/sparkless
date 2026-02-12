@@ -2422,7 +2422,9 @@ class ExpressionEvaluator:
         struct_dict = self._struct_to_dict(value)
         if struct_dict is None:
             return None
-        return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"), default=str)
+        return json.dumps(
+            struct_dict, ensure_ascii=False, separators=(",", ":"), default=str
+        )
 
     def _func_from_csv(self, value: Any, operation: ColumnOperation) -> Any:
         """Parse CSV strings based on optional provided schema."""

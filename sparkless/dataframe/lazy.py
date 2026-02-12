@@ -44,6 +44,7 @@ def _write_debug_dump(
     error: Optional[Exception] = None,
 ) -> None:
     """Write plan/input/result or error to run_dir for maintainer debugging (Phase 4)."""
+
     def _row_to_json_safe(row: Any) -> Any:
         if hasattr(row, "_fields"):
             return {k: getattr(row, k, None) for k in row._fields}
@@ -57,7 +58,12 @@ def _write_debug_dump(
     with open(run_dir / "input_data.json", "w") as f:
         json.dump([_row_to_json_safe(r) for r in input_data], f, indent=2, default=str)
     schema_list = [
-        {"name": f.name, "type": getattr(f.dataType, "typeName", lambda: type(f.dataType).__name__)()}
+        {
+            "name": f.name,
+            "type": getattr(
+                f.dataType, "typeName", lambda: type(f.dataType).__name__
+            )(),
+        }
         for f in schema.fields
     ]
     with open(run_dir / "schema.json", "w") as f:
@@ -557,10 +563,15 @@ class LazyEvaluationEngine:
                 debug_plan = None
                 debug_result = None
                 debug_error = None
-                if backend_type == "robin" and os.environ.get("SPARKLESS_DEBUG_PLAN_DIR"):
+                if backend_type == "robin" and os.environ.get(
+                    "SPARKLESS_DEBUG_PLAN_DIR"
+                ):
                     global _debug_plan_dump_counter
                     _debug_plan_dump_counter += 1
-                    debug_run_dir = Path(os.environ["SPARKLESS_DEBUG_PLAN_DIR"]) / f"run_{_debug_plan_dump_counter:03d}"
+                    debug_run_dir = (
+                        Path(os.environ["SPARKLESS_DEBUG_PLAN_DIR"])
+                        / f"run_{_debug_plan_dump_counter:03d}"
+                    )
 
                 try:
                     # Optional plan-based path: use materialize_from_plan when backend supports it
@@ -568,16 +579,24 @@ class LazyEvaluationEngine:
                     use_plan = getattr(materializer, "materialize_from_plan", None)
                     if use_plan is not None:
                         try:
-                            from sparkless.session.core.session import SparkSession as SS
+                            from sparkless.session.core.session import (
+                                SparkSession as SS,
+                            )
 
                             active = getattr(SS, "_active_sessions", [])
                             session = active[-1] if active else None
                             conf_val = (
-                                session.conf.get("spark.sparkless.useLogicalPlan", "false")
+                                session.conf.get(
+                                    "spark.sparkless.useLogicalPlan", "false"
+                                )
                                 if session and hasattr(session, "conf")
                                 else "false"
                             )
-                            use_plan_flag = str(conf_val).lower() in ("true", "1", "yes")
+                            use_plan_flag = str(conf_val).lower() in (
+                                "true",
+                                "1",
+                                "yes",
+                            )
                         except (AttributeError, TypeError):
                             use_plan_flag = False
                         if use_plan_flag or backend_type == "robin":
@@ -603,15 +622,23 @@ class LazyEvaluationEngine:
                                     debug_result = rows
                             except (ValueError, TypeError):
                                 # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
-                                if backend_type == "robin" and debug_run_dir is not None:
+                                if (
+                                    backend_type == "robin"
+                                    and debug_run_dir is not None
+                                ):
                                     try:
-                                        from ..dataframe.logical_plan import to_logical_plan
+                                        from ..dataframe.logical_plan import (
+                                            to_logical_plan,
+                                        )
+
                                         debug_plan = to_logical_plan(df)
                                     except Exception:
                                         pass
                                 # Re-check capabilities so unsupported ops raise
                                 can_handle_all, unsupported_ops = (
-                                    materializer.can_handle_operations(df._operations_queue)
+                                    materializer.can_handle_operations(
+                                        df._operations_queue
+                                    )
                                 )
                                 if not can_handle_all:
                                     from ..core.exceptions.operation import (
@@ -649,12 +676,17 @@ class LazyEvaluationEngine:
                         if debug_plan is None and backend_type == "robin":
                             try:
                                 from ..dataframe.logical_plan import to_logical_plan
+
                                 debug_plan = to_logical_plan(df)
                             except Exception:
                                 pass
                         _write_debug_dump(
-                            debug_run_dir, df.data, df.schema,
-                            debug_plan, debug_result, debug_error,
+                            debug_run_dir,
+                            df.data,
+                            df.schema,
+                            debug_plan,
+                            debug_result,
+                            debug_error,
                         )
 
                 # Convert rows back to data format using final schema

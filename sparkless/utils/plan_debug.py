@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from sparkless.dataframe import DataFrame
 
 
-def get_logical_plan(df: "DataFrame", format: str = "sparkless") -> List[Any]:
+def get_logical_plan(df: DataFrame, format: str = "sparkless") -> List[Any]:
     """Build the logical plan for a DataFrame.
 
     Args:
@@ -31,15 +31,17 @@ def get_logical_plan(df: "DataFrame", format: str = "sparkless") -> List[Any]:
     """
     if format == "sparkless":
         from sparkless.dataframe.logical_plan import to_logical_plan
+
         return to_logical_plan(df)
     if format == "robin":
         from sparkless.dataframe.robin_plan import to_robin_plan
+
         return to_robin_plan(df)
     raise ValueError(f"Unknown plan format: {format!r}. Use 'sparkless' or 'robin'.")
 
 
 def pretty_print_logical_plan(
-    df: "DataFrame",
+    df: DataFrame,
     format: str = "sparkless",
     return_str: bool = False,
 ) -> str | None:

@@ -324,7 +324,9 @@ class TestLogicalPlanPhase3:
 class TestLogicalPlanPhase4:
     """Phase 4: Polars plan interpreter produces correct results."""
 
-    @pytest.mark.skip(reason="v4 is Robin-only; Polars plan interpreter not used; Robin plan execution not yet wired (Phase 1)")
+    @pytest.mark.skip(
+        reason="v4 is Robin-only; Polars plan interpreter not used; Robin plan execution not yet wired (Phase 1)"
+    )
     def test_polars_materialize_from_plan_simple_pipeline(self):
         """With useLogicalPlan=true and Polars backend, plan path runs and result matches."""
         from sparkless.session.core.session import SparkSession as CoreSession
@@ -509,10 +511,7 @@ class TestLogicalPlanPhase5:
             pytest.skip("Robin backend only")
         data = [{"a": 1, "b": 10}, {"a": 2, "b": 20}, {"a": 3, "b": 30}]
         df = (
-            spark.createDataFrame(data)
-            .filter(F.col("a") > 1)
-            .select("a", "b")
-            .limit(2)
+            spark.createDataFrame(data).filter(F.col("a") > 1).select("a", "b").limit(2)
         )
         rows = df.collect()
         assert len(rows) == 2
