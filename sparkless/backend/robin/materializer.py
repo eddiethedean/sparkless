@@ -963,6 +963,20 @@ def _expression_to_robin(expr: Any) -> Any:
                     return R.col(col_name) % R.lit(lit_val)
         left = _expression_to_robin(col_side) if col_side is not None else None
         right = _expression_to_robin(val_side) if val_side is not None else None
+        # Window + scalar / scalar + window: treat scalar as literal so one Robin expression (#471)
+        if op in ("+", "-", "*", "/", "%"):
+            if (
+                right is None
+                and val_side is not None
+                and isinstance(val_side, (int, float, str, bool, type(None)))
+            ):
+                right = F.lit(_lit_value_for_robin(val_side))  # type: ignore[arg-type]
+            if (
+                left is None
+                and col_side is not None
+                and isinstance(col_side, (int, float, str, bool, type(None)))
+            ):
+                left = F.lit(_lit_value_for_robin(col_side))  # type: ignore[arg-type]
         if left is None or right is None:
             return None
         if isinstance(col_side, Literal) and op in ("+", "*", "==", "!="):

@@ -8,6 +8,7 @@ import pytest
 
 from sparkless.backend.factory import BackendFactory
 from sparkless.functions import F
+from sparkless.window import Window
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 _HAS_ROBIN = BackendFactory._robin_available()  # type: ignore[attr-defined]
@@ -186,3 +187,34 @@ class TestRobinMaterializerExpressionTranslation:
         exploded = arr_df.select(F.explode(F.col("arr")).alias("v")).collect()
         values = sorted(r["v"] for r in exploded)
         assert values == [1, 2, 3, 4, 5, 6]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_window_plus_literal_robin(self, spark: Any) -> None:
+        """withColumn with row_number().over(w) + 10 is one Robin expression (#471)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([("a", 10), ("a", 20), ("b", 5)], ["dept", "salary"])
+        w = Window.partitionBy("dept").orderBy(F.col("salary").desc())
+        result = (
+            df.withColumn("row_plus_10", F.row_number().over(w) + 10)
+            .orderBy("dept", "salary")
+            .collect()
+        )
+        # a: row_number 1,2 -> 11,12; b: row_number 1 -> 11
+        row_plus = [r["row_plus_10"] for r in result]
+        assert 11 in row_plus and 12 in row_plus
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_window_alias_robin(self, spark: Any) -> None:
+        """withColumn with row_number().over(w) or .alias('rn') produces one column (#471)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([("a", 10), ("a", 20), ("b", 5)], ["dept", "salary"])
+        w = Window.partitionBy("dept").orderBy(F.col("salary").desc())
+        result = (
+            df.withColumn("rn", F.row_number().over(w))
+            .orderBy("dept", "salary")
+            .collect()
+        )
+        assert all("rn" in r for r in result)
+        assert [r["rn"] for r in result] == [1, 2, 1]
