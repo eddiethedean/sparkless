@@ -30,7 +30,9 @@ Example:
 """
 
 from typing import Any, Optional, Union
+
 from sparkless.functions.base import Column, ColumnOperation
+from sparkless.functions.core.literals import Literal
 
 
 class StringFunctions:
@@ -615,11 +617,11 @@ class StringFunctions:
         return operation
 
     @staticmethod
-    def concat(*columns: Union[Column, str]) -> ColumnOperation:
+    def concat(*columns: Union[Column, str, Literal]) -> ColumnOperation:
         """Concatenate multiple strings.
 
         Args:
-            *columns: Columns or strings to concatenate.
+            *columns: Columns, strings, or literals (e.g. F.lit(sep)) to concatenate.
 
         Returns:
             ColumnOperation representing the concat function.
