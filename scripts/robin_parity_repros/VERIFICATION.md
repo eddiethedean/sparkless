@@ -13,10 +13,13 @@ Repros are run with: `python scripts/robin_parity_repros/<script>.py` from repo 
 | 05_parity_string_soundex.py | parity_assertion | OK (Robin 0.8+) | OK | No – fixed in 0.8 (issue #249) |
 | 06_filter_between.py | op_filter | OK (Robin 0.8+) | OK | No – fixed in 0.8 (issue #250) |
 | 07_split_limit.py | other (split limit) | FAILED (split 3-arg not supported) | OK | **Yes – F.split(col, pattern, limit) missing** |
+| 08_create_dataframe_array_column.py | other (array schema) | FAILED (unsupported type 'list'/'array') | OK | **Yes – create_dataframe_from_rows rejects array/list schema** |
 
 ## Verified Robin parity issues (current)
 
 1. **F.split(column, pattern, limit)** – PySpark supports `F.split(col, pattern, limit)`; Robin’s `split` takes 2 args only (TypeError: py_split() takes 2 positional arguments but 3 were given). Issue: [#254](https://github.com/eddiethedean/robin-sparkless/issues/254).
+2. **create_dataframe_from_rows with array/list column** – PySpark accepts list column data; Robin rejects schema dtype `'list'` or `'array'` (RuntimeError: unsupported type 'list' for column). Issue: [#256](https://github.com/eddiethedean/robin-sparkless/issues/256).
+3. **order_by with Column.desc_nulls_last()** – PySpark accepts `df.orderBy(F.col("value").desc_nulls_last())`; Robin order_by raises TypeError (PySortOrder object cannot be converted to Sequence). Repro: `scripts/repro_robin_limitations/11_order_by_nulls.py`. Issue: [#257](https://github.com/eddiethedean/robin-sparkless/issues/257).
 
 ## Previously verified (fixed in Robin 0.8+)
 

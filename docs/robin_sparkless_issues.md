@@ -92,6 +92,17 @@ Reproduced with **robin-sparkless** using direct API (no Sparkless). Each gap wa
 
 Created via `python scripts/create_robin_issues_from_verified_repros.py`.
 
+## Issues created from repros (2026-02-12)
+
+Minimal Robin + PySpark repro in each issue body. Repros: `scripts/robin_parity_repros/08_create_dataframe_array_column.py`, `scripts/repro_robin_limitations/11_order_by_nulls.py`.
+
+| # | Title | Link |
+|---|-------|------|
+| 256 | [Parity] create_dataframe_from_rows: unsupported type 'list'/'array' for column | https://github.com/eddiethedean/robin-sparkless/issues/256 |
+| 257 | [Parity] order_by does not accept Column.desc_nulls_last() result (PySortOrder) | https://github.com/eddiethedean/robin-sparkless/issues/257 |
+
+Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file scripts/robin_issue_bodies/issue_*.md`.
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.
