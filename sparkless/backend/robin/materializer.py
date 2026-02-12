@@ -21,6 +21,8 @@ _DESC_OPS = frozenset({"desc", "desc_nulls_last", "desc_nulls_first"})
 
 # Map Sparkless DataType.typeName() to robin_sparkless create_dataframe_from_rows dtype strings.
 # Robin supports: bigint, int, long, double, float, string, str, varchar, boolean, bool, date, timestamp, datetime.
+# ArrayType is not supported: create_dataframe_from_rows rejects 'array'/'list'; array columns fall back to string
+# and posexplode/explode raise "invalid series dtype: expected List, got str". See v4_behavior_changes_and_known_differences.md.
 _SPARK_TYPE_TO_ROBIN_DTYPE: dict[str, str] = {
     "string": "string",
     "int": "int",
@@ -264,7 +266,7 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             if hasattr(inner, "isNotNull") and callable(getattr(inner, "isNotNull")):
                 return inner.isNotNull()
             return None
-        # between(lower, upper): translate to (col >= lower) & (col <= upper) for Robin parity
+        # between(lower, upper): use Robin's native between() when available, else (col >= low) & (col <= high)
         if (
             op == "between"
             and col_side is not None
@@ -289,9 +291,11 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             if high_expr is None:
                 high_expr = F.lit(_lit_value_for_robin(val_side[1]))
             if low_expr is not None and high_expr is not None:
+                if hasattr(inner, "between") and callable(inner.between):
+                    return inner.between(low_expr, high_expr)
                 return (inner.ge(low_expr)) & (inner.le(high_expr))
             return None
-        # eqNullSafe / eq_null_safe: (col.isnull() & other.isnull()) | (col.isnotnull() & other.isnotnull() & (col == other))
+        # eqNullSafe / eq_null_safe: use Robin's native eq_null_safe() when available
         if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
             left_expr = _expression_to_robin(col_side)
             right_expr = (
@@ -304,6 +308,11 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             if right_expr is None and val_side is not None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))
             if left_expr is not None and right_expr is not None:
+                eq_null_safe_fn = getattr(
+                    left_expr, "eq_null_safe", None
+                ) or getattr(left_expr, "eqNullSafe", None)
+                if callable(eq_null_safe_fn):
+                    return eq_null_safe_fn(right_expr)
                 l_isnull = getattr(left_expr, "isnull", None) or getattr(
                     left_expr, "isNull", None
                 )
@@ -358,24 +367,27 @@ def _simple_filter_to_robin(condition: Any) -> Any:
     return None
 
 
-def _join_on_to_column_names(on: Any) -> List[str] | None:
-    """Extract join column names from Sparkless join condition for robin_sparkless join(on=...).
+def _join_on_to_column_names(on: Any) -> Tuple[List[str], List[str]] | None:
+    """Extract (left_col_names, right_col_names) for robin_sparkless join.
 
-    Supports: str -> [str]; list/tuple of str -> list; ColumnOperation(==, col, col) when
-    both sides have .name (same name -> one key); ColumnOperation(&, left, right) when both
-    sides return lists of same names. Returns None if not supported.
+    When same-name keys: returns (names, names). When different-name keys
+    (e.g. left["id"] == right["id_right"]): returns (["id"], ["id_right"]).
+    Caller must rename right df columns to left names before join when they differ.
 
-    Limitation: different-name join keys (e.g. left["id"] == right["id_right"]) are not
-    supported; use same-named columns or on="col" / on=["col", ...] (see #473).
+    Supports: str -> ([s], [s]); list/tuple of str -> (names, names);
+    ColumnOperation(==, col, col) -> ([left_name], [right_name]);
+    ColumnOperation(&, left, right) when both sides return (left_list, right_list).
+    Returns None if not supported.
     """
     from sparkless.functions import ColumnOperation
     from sparkless.functions.core.column import Column
 
     if isinstance(on, str):
-        return [on]
+        return ([on], [on])
     if isinstance(on, (list, tuple)):
         if all(isinstance(x, str) for x in on):
-            return list(on)
+            names = list(on)
+            return (names, names)
         return None
     if isinstance(on, ColumnOperation):
         op = getattr(on, "operation", None)
@@ -386,21 +398,15 @@ def _join_on_to_column_names(on: Any) -> List[str] | None:
                 left_name = getattr(col_side, "name", None)
                 right_name = getattr(val_side, "name", None)
                 if isinstance(left_name, str) and isinstance(right_name, str):
-                    # Robin join(on=[...]) expects same-named columns in both DFs
-                    if left_name == right_name:
-                        return [left_name]
-                    # Different names: robin may need left_on/right_on; for now only same name
-                    return None
+                    return ([left_name], [right_name])
             return None
         if op == "&":
-            left_list = _join_on_to_column_names(col_side) if col_side else None
-            right_list = _join_on_to_column_names(val_side) if val_side else None
-            if (
-                left_list is not None
-                and right_list is not None
-                and left_list == right_list
-            ):
-                return left_list
+            left_pair = _join_on_to_column_names(col_side) if col_side else None
+            right_pair = _join_on_to_column_names(val_side) if val_side else None
+            if left_pair is not None and right_pair is not None:
+                left_list, right_list = left_pair
+                left_list2, right_list2 = right_pair
+                return (left_list + left_list2, right_list + right_list2)
             return None
     return None
 
@@ -559,11 +565,34 @@ def _expression_to_robin(expr: Any) -> Any:
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
         val_side = getattr(expr, "value", None)
-        # Alias: must translate to inner.alias(name) so Robin uses expression, not column lookup
+        # Alias: must translate to inner.alias(name) so Robin uses expression, not column lookup.
+        # posexplode().alias("Name1", "Name2") yields two columns; return a list of two expressions.
         if op == "alias":
             inner = _expression_to_robin(col_side) if col_side is not None else None
             if inner is None:
                 return None
+            alias_names: Optional[Tuple[str, ...]] = None
+            if isinstance(val_side, (list, tuple)) and len(val_side) >= 2:
+                if all(isinstance(x, str) for x in val_side[:2]):
+                    alias_names = (val_side[0], val_side[1])
+            inner_op = getattr(col_side, "operation", None) if col_side else None
+            if alias_names is not None and inner_op in ("posexplode", "posexplode_outer"):
+                name0, name1 = alias_names[0], alias_names[1]
+                c0, c1 = None, None
+                if hasattr(inner, "getField") and callable(getattr(inner, "getField")):
+                    try:
+                        c0 = inner.getField("pos")
+                        c1 = inner.getField("col")
+                    except (AttributeError, TypeError, KeyError):
+                        pass
+                if (c0 is None or c1 is None) and hasattr(inner, "getItem"):
+                    try:
+                        c0 = inner.getItem(0)
+                        c1 = inner.getItem(1)
+                    except (TypeError, AttributeError):
+                        pass
+                if c0 is not None and c1 is not None and hasattr(c0, "alias") and hasattr(c1, "alias"):
+                    return [c0.alias(name0), c1.alias(name1)]
             alias_name = val_side if isinstance(val_side, str) else None
             if alias_name is not None and hasattr(inner, "alias"):
                 return inner.alias(alias_name)
@@ -576,7 +605,7 @@ def _expression_to_robin(expr: Any) -> Any:
                 val = val_side
             safe_val = _lit_value_for_robin(val)
             return F.lit(safe_val)  # type: ignore[arg-type]
-        # between(lower, upper): translate to (col >= lower) & (col <= upper) for Robin parity
+        # between(lower, upper): use Robin's native between() when available
         if (
             op == "between"
             and col_side is not None
@@ -605,9 +634,11 @@ def _expression_to_robin(expr: Any) -> Any:
                     )
                 )
             if low_expr is not None and high_expr is not None:
+                if hasattr(inner, "between") and callable(inner.between):
+                    return inner.between(low_expr, high_expr)
                 return (inner.ge(low_expr)) & (inner.le(high_expr))
             return None
-        # eqNullSafe / eq_null_safe in select/withColumn: (both_null) | (both_not_null & eq)
+        # eqNullSafe / eq_null_safe in select/withColumn: use Robin's native eq_null_safe() when available
         if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
             left_expr = _expression_to_robin(col_side)
             right_expr = (
@@ -620,6 +651,11 @@ def _expression_to_robin(expr: Any) -> Any:
             if right_expr is None and val_side is not None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))
             if left_expr is not None and right_expr is not None:
+                eq_null_safe_fn = getattr(
+                    left_expr, "eq_null_safe", None
+                ) or getattr(left_expr, "eqNullSafe", None)
+                if callable(eq_null_safe_fn):
+                    return eq_null_safe_fn(right_expr)
                 l_isnull = getattr(left_expr, "isnull", None) or getattr(
                     left_expr, "isNull", None
                 )
@@ -690,6 +726,7 @@ def _expression_to_robin(expr: Any) -> Any:
             "dayofyear",
             "weekofyear",
             "quarter",
+            "soundex",
         )
         if op in unary_ops and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -708,27 +745,22 @@ def _expression_to_robin(expr: Any) -> Any:
         if op == "current_date" and col_side is None and hasattr(F, "current_date"):
             return F.current_date()
         # Binary: (column, op, scalar_or_tuple)
+        # split(column, delimiter): Robin 2-arg only (limit not supported, #254).
+        # If Robin returns a series with length != row count, withColumn can raise
+        # "lengths don't match: unable to add a column of length N to a DataFrame of height 1".
+        # Parity tests that rely on split limit or result shape may fail for Robin.
         if op == "split" and col_side is not None:
             inner = _expression_to_robin(col_side)
             if inner is None:
                 return None
             delimiter = ","
-            limit: Any = None
             if isinstance(val_side, str):
                 delimiter = val_side
             elif isinstance(val_side, (list, tuple)) and val_side:
                 delimiter = str(val_side[0])
-                if len(val_side) > 1:
-                    limit = val_side[1]
             if hasattr(F, "split"):
                 split_fn = getattr(F, "split")
-                try:
-                    if limit is not None:
-                        return split_fn(inner, delimiter, limit)  # type: ignore[call-arg]
-                    return split_fn(inner, delimiter)  # type: ignore[call-arg]
-                except TypeError:
-                    # Older robin-sparkless may not accept a limit argument
-                    return split_fn(inner, delimiter)  # type: ignore[call-arg]
+                return split_fn(inner, delimiter)  # type: ignore[call-arg]
         if op in ("substring", "substr") and col_side is not None:
             inner = _expression_to_robin(col_side)
             if inner is None:
@@ -1210,17 +1242,22 @@ class RobinMaterializer:
     def _can_handle_with_column(self, payload: Any) -> bool:
         if not isinstance(payload, (list, tuple)) or len(payload) != 2:
             return False
-        return _expression_to_robin(payload[1]) is not None
+        expr = _expression_to_robin(payload[1])
+        # withColumn adds one column; posexplode().alias(n1, n2) returns a list (two columns)
+        if expr is None or isinstance(expr, (list, tuple)):
+            return False
+        return True
 
     def _can_handle_join(self, payload: Any) -> bool:
         if not isinstance(payload, (list, tuple)) or len(payload) < 3:
             return False
         _other, on, how = payload[0], payload[1], payload[2]
-        if _join_on_to_column_names(on) is not None or isinstance(on, str):
+        if _join_on_to_column_names(on) is not None:
             pass
-        elif isinstance(on, (list, tuple)):
-            if not all(isinstance(x, str) for x in on):
-                return False
+        elif isinstance(on, str):
+            pass
+        elif isinstance(on, (list, tuple)) and all(isinstance(x, str) for x in on):
+            pass
         else:
             return False
         return how in (
@@ -1337,6 +1374,10 @@ class RobinMaterializer:
         spark, create_from_rows = _get_robin_session_and_create_from_rows()
         df = create_from_rows(robin_data, robin_schema)
 
+        # When we use different-name join keys we add temp column(s) to both sides and join on them,
+        # then drop the temp(s), so the result keeps left/right key columns with correct nulls.
+        join_temp_keys: Optional[List[str]] = None
+
         for op_name, payload in operations:
             if op_name == "filter":
                 expr = _simple_filter_to_robin(payload)
@@ -1367,7 +1408,10 @@ class RobinMaterializer:
                                 reason="Backend 'robin' does not support this select expression",
                                 alternative="In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported expressions.",
                             )
-                        robin_cols.append(expr)
+                        if isinstance(expr, (list, tuple)):
+                            robin_cols.extend(expr)
+                        else:
+                            robin_cols.append(expr)
                 df = df.select(*robin_cols)
             elif op_name == "limit":
                 df = df.limit(payload)
@@ -1472,13 +1516,53 @@ class RobinMaterializer:
                     )
                 elif how in ("semi", "anti"):
                     how_str = "left_semi" if how == "semi" else "left_anti"
-                on_names = _join_on_to_column_names(on)
-                if on_names is not None:
-                    on_arg = on_names
+                on_pair = _join_on_to_column_names(on)
+                if on_pair is not None:
+                    names_a, names_b = on_pair
+                    if names_a == names_b:
+                        on_arg = names_a
+                        join_df = other_robin_df
+                    else:
+                        # Map which name is from left df vs right df (condition doesn't order them)
+                        left_cols = []
+                        if hasattr(df, "columns"):
+                            left_cols = list(df.columns) if not callable(df.columns) else list(df.columns())
+                        right_cols = other_names
+                        left_names = []
+                        right_names = []
+                        for a, b in zip(names_a, names_b):
+                            if a in left_cols and b in right_cols:
+                                left_names.append(a)
+                                right_names.append(b)
+                            elif b in left_cols and a in right_cols:
+                                left_names.append(b)
+                                right_names.append(a)
+                            else:
+                                # Fallback: assume (a, b) is (left, right)
+                                left_names.append(a)
+                                right_names.append(b)
+                        # Use temp join key(s) on both sides so result has no duplicate; drop after join.
+                        join_df = other_robin_df
+                        temp_keys: List[str] = []
+                        for i in range(len(left_names)):
+                            tk = (
+                                "__sparkless_join_key__"
+                                if len(left_names) == 1
+                                else f"__sparkless_join_key_{i}__"
+                            )
+                            temp_keys.append(tk)
+                            df = df.with_column(tk, F.col(left_names[i]))
+                            join_df = join_df.with_column(tk, F.col(right_names[i]))
+                        on_arg = temp_keys
+                        join_temp_keys = temp_keys
                 else:
                     on_arg = [on] if isinstance(on, str) else list(on)
+                    join_df = other_robin_df
                 # robin-sparkless expects on= as list (Vec), not string
-                df = df.join(other_robin_df, on=on_arg, how=how_str)
+                df = df.join(join_df, on=on_arg, how=how_str)
+                if join_temp_keys:
+                    df = df.drop(join_temp_keys)
+                    join_temp_keys = None
             elif op_name == "union":
                 other_df = payload
                 other_eager = other_df._materialize_if_lazy()

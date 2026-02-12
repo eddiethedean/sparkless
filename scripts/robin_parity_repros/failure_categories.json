@@ -1,63 +1,74 @@
 {
-  "source_file": "/Users/odosmatthews/Documents/coding/sparkless/test_results_full.txt",
-  "total_failures": 1031,
-  "excluded": 10,
-  "included": 1021,
+  "source_file": "test_results_full.txt",
+  "total_failures": 938,
+  "excluded": 1,
+  "included": 937,
   "categories": [
     {
       "category_id": "op_withColumn",
       "failure_key": "Operations: withColumn",
       "representative_test_ids": [
-        "tests/test_issue_145_string_cast.py::test_string_cast_works_with_to_timestamp",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_single_column",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_nulls"
+        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_join",
+        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_aliased_columns",
+        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_empty_dataframe"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported",
-      "count": 372
+      "count": 326
     },
     {
       "category_id": "parity_assertion",
       "failure_key": "AssertionError / DataFrames not equivalent",
       "representative_test_ids": [
-        "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_soundex",
-        "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_translate",
-        "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_levenshtein"
+        "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_base64",
+        "tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_remove",
+        "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_initcap"
       ],
       "example_error_message": "AssertionError: DataFrames are not equivalent:",
-      "count": 115
+      "count": 132
     },
     {
       "category_id": "col_not_found",
       "failure_key": "RuntimeError: Column not found (alias/schema)",
       "representative_test_ids": [
-        "tests/test_issue_286_aggregate_function_arithmetic.py::TestIssue286AggregateFunctionArithmetic::test_empty_group_handling",
-        "tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_parity",
-        "tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_multiple_fields_parity"
+        "tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_equals",
+        "tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_chained_operations",
+        "tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_and_condition"
       ],
-      "example_error_message": "RuntimeError: not found: Column 'Charlie' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensitive).",
-      "count": 95
+      "example_error_message": "RuntimeError: not found: Column 'IT' not found. Available columns: [dept, name, salary]. Check spelling and case sensitivity (spark.sql.caseSensitive).",
+      "count": 100
+    },
+    {
+      "category_id": "parity_assertion",
+      "failure_key": "assert / wrong result",
+      "representative_test_ids": [
+        "tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions",
+        "tests/test_issue_261_between.py::TestIssue261Between::test_between_in_select_expression",
+        "tests/test_issue_261_between.py::TestIssue261Between::test_between_with_per_row_column_bounds"
+      ],
+      "example_error_message": "assert 0 == 2",
+      "count": 71
     },
     {
       "category_id": "op_filter",
       "failure_key": "Operations: filter",
       "representative_test_ids": [
-        "tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_empty_dataframe",
-        "tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_all_null_columns",
-        "tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_no_matching_nulls"
+        "tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_on_string_column_filter_does_not_error_and_returns_empty",
+        "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_in_filter",
+        "tests/test_issue_164_schema_inference_numeric.py::TestIssue164SchemaInferenceNumeric::test_schema_inference_mixed_types"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported",
-      "count": 89
+      "count": 52
     },
     {
       "category_id": "op_select",
       "failure_key": "Operations: select",
       "representative_test_ids": [
-        "tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_chained_with_other_operations",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_select",
-        "tests/test_issue_261_between.py::TestIssue261Between::test_between_in_select_expression"
+        "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_in_select",
+        "tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_on_numeric_column_true_only_for_nan",
+        "tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_literal_matches_python_math"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: select' is not supported",
-      "count": 76
+      "count": 52
     },
     {
       "category_id": "op_join",
@@ -68,51 +79,40 @@
         "tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join' is not supported",
-      "count": 55
-    },
-    {
-      "category_id": "parity_assertion",
-      "failure_key": "assert / wrong result",
-      "representative_test_ids": [
-        "tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session",
-        "tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions",
-        "tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_validation_rule_not_null"
-      ],
-      "example_error_message": "assert 0 == 2",
-      "count": 52
+      "count": 32
     },
     {
       "category_id": "op_withColumn",
       "failure_key": "Operations: withColumn, withColumn",
       "representative_test_ids": [
-        "tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_datetime_operations",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_nested_struct",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_multiple_operations"
+        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_multiple_operations",
+        "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_in_execution_plan",
+        "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_with_cache"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, withColumn' is not supported",
-      "count": 25
+      "count": 24
     },
     {
       "category_id": "other",
-      "failure_key": "TypeError: select() items must be str (column name) or Column (expression)",
+      "failure_key": "RuntimeError: invalid series dtype: expected `List`, got `str`",
       "representative_test_ids": [
         "tests/test_issue_366_alias_posexplode.py::TestIssue366AliasPosexplode::test_posexplode_alias_select",
         "tests/test_issue_366_alias_posexplode.py::TestIssue366AliasPosexplode::test_posexplode_alias_two_names_select",
         "tests/test_issue_366_alias_posexplode.py::TestIssue366AliasPosexplode::test_posexplode_alias_two_names_no_type_error"
       ],
-      "example_error_message": "TypeError: select() items must be str (column name) or Column (expression)",
+      "example_error_message": "RuntimeError: invalid series dtype: expected `List`, got `str`",
       "count": 18
     },
     {
-      "category_id": "op_withColumn",
-      "failure_key": "Operations: withColumn, withColumn, withColumn",
+      "category_id": "other",
+      "failure_key": "RuntimeError: cannot compare 'date/datetime/time' to a string value",
       "representative_test_ids": [
-        "tests/test_issue_160_actual_bug_reproduction.py::test_bug_with_lazy_polars_expression_reference",
-        "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_in_execution_plan",
-        "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_with_cache"
+        "tests/test_issue_139_datetime_validation_compatibility.py::TestIssue139DatetimeValidationCompatibility::test_validation_with_datetime_comparison",
+        "tests/test_issue_261_between.py::TestIssue261Between::test_between_with_date_values",
+        "tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_filter"
       ],
-      "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, withColumn, withColumn' is not supported",
-      "count": 15
+      "example_error_message": "RuntimeError: cannot compare 'date/datetime/time' to a string value",
+      "count": 13
     },
     {
       "category_id": "other",
@@ -127,22 +127,11 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: cannot compare 'date/datetime/time' to a string value",
-      "representative_test_ids": [
-        "tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_filter",
-        "tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[>-expected_names0]",
-        "tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[>=-expected_names1]"
-      ],
-      "example_error_message": "RuntimeError: cannot compare 'date/datetime/time' to a string value",
-      "count": 12
-    },
-    {
-      "category_id": "other",
       "failure_key": "RuntimeError: array requires at least one column",
       "representative_test_ids": [
-        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_no_args_returns_empty_array",
-        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_list_returns_empty_array",
-        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_show"
+        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_with_different_data_types",
+        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_with_computed_columns",
+        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_in_join"
       ],
       "example_error_message": "RuntimeError: array requires at least one column",
       "count": 12
@@ -162,45 +151,67 @@
       "category_id": "other",
       "failure_key": "RuntimeError: not found: name",
       "representative_test_ids": [
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_different_join_types",
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_multiple_ambiguous_columns",
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_chained_operations_after_select"
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_null_values_in_joined_columns",
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_different_case_variations",
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_with_column_after_select"
       ],
       "example_error_message": "RuntimeError: not found: name",
       "count": 11
     },
     {
+      "category_id": "op_withColumn",
+      "failure_key": "Operations: withColumn, withColumn, withColumn",
+      "representative_test_ids": [
+        "tests/test_issue_296_udf_decorator.py::TestIssue296UdfDecorator::test_udf_decorator_with_different_data_types",
+        "tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294HourMinuteSecondStringTimestamps::test_hour_minute_second_from_string_timestamps",
+        "tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294HourMinuteSecondStringTimestamps::test_hour_minute_second_with_different_timezone_formats"
+      ],
+      "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, withColumn, withColumn' is not supported",
+      "count": 10
+    },
+    {
       "category_id": "other",
       "failure_key": "RuntimeError: cannot compare string with numeric type (i64)",
       "representative_test_ids": [
+        "tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_with_type_coercion",
         "tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_with_first_value",
-        "tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_with_last_value",
-        "tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_string_literal_type_coercion_exact_issue"
+        "tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_with_last_value"
       ],
       "example_error_message": "RuntimeError: cannot compare string with numeric type (i64)",
-      "count": 8
+      "count": 9
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: round can only be used on numeric types",
+      "representative_test_ids": [
+        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_scientific_notation",
+        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_with_whitespace",
+        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_integer_strings"
+      ],
+      "example_error_message": "RuntimeError: round can only be used on numeric types",
+      "count": 9
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: datatypes of join keys don't match - `__sparkless_join_key__`: str",
+      "representative_test_ids": [
+        "tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_inner_join_and_aliases",
+        "tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_left_join_and_aliases",
+        "tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_inner_join"
+      ],
+      "example_error_message": "RuntimeError: datatypes of join keys don't match - `__sparkless_join_key__`: str on left does not match `__sparkless_join_key__`: i64 on right",
+      "count": 7
     },
     {
       "category_id": "other",
       "failure_key": "TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'",
       "representative_test_ids": [
-        "tests/test_issue_406_aggregate_cast_decimal_drop.py::TestIssue406AggregateCastDecimalDrop::test_agg_cast_decimal_drop_then_show_and_collect",
         "tests/test_issue_406_aggregate_cast_decimal_drop.py::TestIssue406AggregateCastDecimalDrop::test_groupby_agg_cast_decimal_drop",
-        "tests/test_issue_406_aggregate_cast_decimal_drop.py::TestIssue406AggregateCastDecimalDrop::test_agg_cast_decimal_drop_different_precision_scale"
+        "tests/test_issue_406_aggregate_cast_decimal_drop.py::TestIssue406AggregateCastDecimalDrop::test_agg_cast_decimal_drop_different_precision_scale",
+        "tests/test_issue_406_aggregate_cast_decimal_drop.py::TestIssue406AggregateCastDecimalDrop::test_agg_cast_decimal_drop_with_nulls"
       ],
       "example_error_message": "TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'",
       "count": 6
-    },
-    {
-      "category_id": "other",
-      "failure_key": "ValueError: Unsupported materializer type: polars. Sparkless v4 supports only th",
-      "representative_test_ids": [
-        "tests/test_issue_160_cache_key_reproduction.py::test_cache_key_includes_column_names",
-        "tests/test_issue_160_cache_key_reproduction.py::test_nested_expression_caching_after_drop",
-        "tests/test_issue_160_exact_150_rows.py::test_exactly_150_rows_without_fix"
-      ],
-      "example_error_message": "ValueError: Unsupported materializer type: polars. Sparkless v4 supports only the Robin backend (robin-sparkless).",
-      "count": 4
     },
     {
       "category_id": "op_join",
@@ -214,22 +225,22 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: casting from null to double not supported",
-      "representative_test_ids": [
-        "tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_schema_merge_with_type_preservation",
-        "tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_merge_schema_bidirectional"
-      ],
-      "example_error_message": "RuntimeError: casting from null to double not supported",
-      "count": 2
-    },
-    {
-      "category_id": "other",
       "failure_key": "TypeError: unsupported operand type(s) for -: 'NoneType' and 'float'",
       "representative_test_ids": [
         "tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_natural_log_parity",
         "tests/test_issue_329_log_float_constant.py::TestIssue329LogFloatConstant::test_log_natural_log"
       ],
       "example_error_message": "TypeError: unsupported operand type(s) for -: 'NoneType' and 'float'",
+      "count": 2
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: casting from null to double not supported",
+      "representative_test_ids": [
+        "tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_schema_merge_with_type_preservation",
+        "tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_merge_schema_bidirectional"
+      ],
+      "example_error_message": "RuntimeError: casting from null to double not supported",
       "count": 2
     },
     {
@@ -263,33 +274,6 @@
       "count": 2
     },
     {
-      "category_id": "op_filter",
-      "failure_key": "Operations: filter, filter",
-      "representative_test_ids": [
-        "tests/test_issue_445_between_string_column_numeric_bounds.py::test_between_string_column_chained_with_select"
-      ],
-      "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter, filter' is not supported",
-      "count": 1
-    },
-    {
-      "category_id": "op_join",
-      "failure_key": "Operations: withColumn, join",
-      "representative_test_ids": [
-        "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_in_join_condition"
-      ],
-      "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, join' is not supported",
-      "count": 1
-    },
-    {
-      "category_id": "op_join",
-      "failure_key": "Operations: join, join",
-      "representative_test_ids": [
-        "tests/test_issue_374_join_aliased_columns.py::TestIssue374JoinAliasedColumns::test_join_multiple_aliased_tables"
-      ],
-      "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: join, join' is not supported",
-      "count": 1
-    },
-    {
       "category_id": "op_select",
       "failure_key": "Operations: select, filter",
       "representative_test_ids": [
@@ -318,15 +302,6 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: casting from null to date not supported",
-      "representative_test_ids": [
-        "tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_null_literal_casting_to_various_types"
-      ],
-      "example_error_message": "RuntimeError: casting from null to date not supported",
-      "count": 1
-    },
-    {
-      "category_id": "other",
       "failure_key": "sparkless.core.exceptions.execution.QueryExecutionException: Failed to execute q",
       "representative_test_ids": [
         "tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_from_select"
@@ -336,20 +311,11 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: not found: NaMe",
+      "failure_key": "RuntimeError: casting from null to date not supported",
       "representative_test_ids": [
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_empty_dataframes"
+        "tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_null_literal_casting_to_various_types"
       ],
-      "example_error_message": "RuntimeError: not found: NaMe",
-      "count": 1
-    },
-    {
-      "category_id": "other",
-      "failure_key": "RuntimeError: datatypes of join keys don't match - `ID`: str on left does not ma",
-      "representative_test_ids": [
-        "tests/test_issue_332_cast_alias_select.py::TestIssue332CastAliasSelect::test_cast_alias_select_with_join"
-      ],
-      "example_error_message": "RuntimeError: datatypes of join keys don't match - `ID`: str on left does not match `ID`: i64 on right",
+      "example_error_message": "RuntimeError: casting from null to date not supported",
       "count": 1
     },
     {
@@ -372,11 +338,20 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1",
+      "failure_key": "RuntimeError: not found: NaMe",
       "representative_test_ids": [
-        "tests/test_issue_432_cast_datetime_date_noop.py::test_cast_date_only_string_to_timestamp"
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_empty_dataframes"
       ],
-      "example_error_message": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1 out of 1 values: [\"2024-01-15\"]",
+      "example_error_message": "RuntimeError: not found: NaMe",
+      "count": 1
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: datatypes of join keys don't match - `ID`: str on left does not ma",
+      "representative_test_ids": [
+        "tests/test_issue_332_cast_alias_select.py::TestIssue332CastAliasSelect::test_cast_alias_select_with_join"
+      ],
+      "example_error_message": "RuntimeError: datatypes of join keys don't match - `ID`: str on left does not match `ID`: i64 on right",
       "count": 1
     },
     {
@@ -386,6 +361,15 @@
         "tests/test_issue_414_row_number_over_descending.py::TestIssue414RowNumberOverDescending::test_row_number_over_partition_order_desc"
       ],
       "example_error_message": "KeyError: 3",
+      "count": 1
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1",
+      "representative_test_ids": [
+        "tests/test_issue_432_cast_datetime_date_noop.py::test_cast_date_only_string_to_timestamp"
+      ],
+      "example_error_message": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1 out of 1 values: [\"2024-01-15\"]",
       "count": 1
     },
     {
@@ -417,15 +401,6 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 'ts_str' ",
-      "representative_test_ids": [
-        "tests/unit/backend/test_robin_materializer.py::TestRobinMaterializerExpressionTranslation::test_with_column_to_timestamp_robin"
-      ],
-      "example_error_message": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 'ts_str' for 1 out of 1 values: [\"2024-01-15 12:34:56\"]",
-      "count": 1
-    },
-    {
-      "category_id": "other",
       "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 'date_str",
       "representative_test_ids": [
         "tests/test_type_strictness.py::TestTypeStrictness::test_to_timestamp_accepts_multiple_types"
@@ -435,11 +410,20 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: not found: ID",
+      "failure_key": "RuntimeError: cannot compare string with numeric type (i32)",
       "representative_test_ids": [
-        "tests/integration/test_case_sensitivity.py::TestCaseSensitivityConfiguration::test_case_insensitive_join"
+        "tests/test_issue_445_between_string_column_numeric_bounds.py::test_between_string_column_in_select_expression"
       ],
-      "example_error_message": "RuntimeError: not found: ID",
+      "example_error_message": "RuntimeError: cannot compare string with numeric type (i32)",
+      "count": 1
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 'ts_str' ",
+      "representative_test_ids": [
+        "tests/unit/backend/test_robin_materializer.py::TestRobinMaterializerExpressionTranslation::test_with_column_to_timestamp_robin"
+      ],
+      "example_error_message": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 'ts_str' for 1 out of 1 values: [\"2024-01-15 12:34:56\"]",
       "count": 1
     }
   ]
