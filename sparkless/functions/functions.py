@@ -307,7 +307,7 @@ class Functions:
         return StringFunctions.substring(column, start, length)
 
     @staticmethod
-    def concat(*columns: Union[Column, str]) -> ColumnOperation:
+    def concat(*columns: Union[Column, str, Literal]) -> ColumnOperation:
         """Concatenate strings."""
         return StringFunctions.concat(*columns)
 
