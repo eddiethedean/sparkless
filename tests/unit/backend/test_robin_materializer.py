@@ -92,6 +92,18 @@ class TestRobinMaterializerExpressionTranslation:
         assert ids == [1, 3]
 
     @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_join_same_name_on_robin(self, spark: Any) -> None:
+        """Join with on='id' (same-name keys) uses op path and returns joined rows (#473)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        left = spark.createDataFrame([(1, "a"), (2, "b")], ["id", "name"])
+        right = spark.createDataFrame([(1, "x"), (2, "y")], ["id", "value"])
+        result = left.join(right, on="id", how="inner").collect()
+        assert len(result) == 2
+        by_id = {r["id"]: (r["name"], r["value"]) for r in result}
+        assert by_id == {1: ("a", "x"), 2: ("b", "y")}
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
     def test_with_column_lit_none_robin(self, spark: Any) -> None:
         """withColumn with F.lit(None) produces a nullable column when Robin backend is used (#470)."""
         if get_backend_type() != BackendType.ROBIN:

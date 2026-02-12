@@ -301,6 +301,9 @@ def _join_on_to_column_names(on: Any) -> List[str] | None:
     Supports: str -> [str]; list/tuple of str -> list; ColumnOperation(==, col, col) when
     both sides have .name (same name -> one key); ColumnOperation(&, left, right) when both
     sides return lists of same names. Returns None if not supported.
+
+    Limitation: different-name join keys (e.g. left["id"] == right["id_right"]) are not
+    supported; use same-named columns or on="col" / on=["col", ...] (see #473).
     """
     from sparkless.functions import ColumnOperation
     from sparkless.functions.core.column import Column

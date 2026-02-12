@@ -600,41 +600,14 @@ class LazyEvaluationEngine:
                         except (AttributeError, TypeError):
                             use_plan_flag = False
                         if use_plan_flag or backend_type == "robin":
-                            try:
-                                if backend_type == "robin":
-                                    # For the Robin backend, build a Robin-format plan that can
-                                    # be consumed by the Robin plan interpreter. Unsupported
-                                    # operations or expressions will cause the builder to
-                                    # raise ValueError, triggering the fallback path below.
-                                    from ..dataframe.robin_plan import to_robin_plan
-
-                                    logical_plan = to_robin_plan(df)
-                                    if debug_run_dir is not None:
-                                        debug_plan = logical_plan
-                                else:
-                                    from ..dataframe.logical_plan import to_logical_plan
-
-                                    logical_plan = to_logical_plan(df)
-                                    if debug_run_dir is not None:
-                                        debug_plan = logical_plan
-                                rows = use_plan(df.data, df.schema, logical_plan)
-                                if debug_run_dir is not None:
-                                    debug_result = rows
-                            except (ValueError, TypeError):
-                                # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
-                                if (
-                                    backend_type == "robin"
-                                    and debug_run_dir is not None
-                                ):
-                                    try:
-                                        from ..dataframe.logical_plan import (
-                                            to_logical_plan,
-                                        )
-
-                                        debug_plan = to_logical_plan(df)
-                                    except Exception:
-                                        pass
-                                # Re-check capabilities so unsupported ops raise
+                            # Join/union not supported in Robin plan path; use op path directly (#473)
+                            op_names = [
+                                op_name for op_name, _ in df._operations_queue
+                            ]
+                            skip_plan_for_robin = backend_type == "robin" and (
+                                "join" in op_names or "union" in op_names
+                            )
+                            if skip_plan_for_robin:
                                 can_handle_all, unsupported_ops = (
                                     materializer.can_handle_operations(
                                         df._operations_queue
@@ -655,6 +628,68 @@ class LazyEvaluationEngine:
                                 )
                                 if debug_run_dir is not None:
                                     debug_result = rows
+                            else:
+                                try:
+                                    if backend_type == "robin":
+                                        # For the Robin backend, build a Robin-format plan that can
+                                        # be consumed by the Robin plan interpreter. Unsupported
+                                        # operations or expressions will cause the builder to
+                                        # raise ValueError, triggering the fallback path below.
+                                        from ..dataframe.robin_plan import (
+                                            to_robin_plan,
+                                        )
+
+                                        logical_plan = to_robin_plan(df)
+                                        if debug_run_dir is not None:
+                                            debug_plan = logical_plan
+                                    else:
+                                        from ..dataframe.logical_plan import (
+                                            to_logical_plan,
+                                        )
+
+                                        logical_plan = to_logical_plan(df)
+                                        if debug_run_dir is not None:
+                                            debug_plan = logical_plan
+                                    rows = use_plan(
+                                        df.data, df.schema, logical_plan
+                                    )
+                                    if debug_run_dir is not None:
+                                        debug_result = rows
+                                except (ValueError, TypeError):
+                                    # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
+                                    if (
+                                        backend_type == "robin"
+                                        and debug_run_dir is not None
+                                    ):
+                                        try:
+                                            from ..dataframe.logical_plan import (
+                                                to_logical_plan,
+                                            )
+
+                                            debug_plan = to_logical_plan(df)
+                                        except Exception:
+                                            pass
+                                    # Re-check capabilities so unsupported ops raise
+                                    can_handle_all, unsupported_ops = (
+                                        materializer.can_handle_operations(
+                                            df._operations_queue
+                                        )
+                                    )
+                                    if not can_handle_all:
+                                        from ..core.exceptions.operation import (
+                                            SparkUnsupportedOperationError,
+                                        )
+
+                                        raise SparkUnsupportedOperationError(
+                                            operation=f"Operations: {', '.join(unsupported_ops)}",
+                                            reason=f"Backend '{backend_type}' does not support these operations",
+                                            alternative="In v4 only the Robin backend is supported; see docs/v4_behavior_changes_and_known_differences.md for supported operations.",
+                                        )
+                                    rows = materializer.materialize(
+                                        df.data, df.schema, df._operations_queue
+                                    )
+                                    if debug_run_dir is not None:
+                                        debug_result = rows
                         else:
                             rows = materializer.materialize(
                                 df.data, df.schema, df._operations_queue
