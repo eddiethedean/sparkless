@@ -101,3 +101,94 @@ class TestRobinPlanExecutor:
                 "left": {"col": "a"},
                 "right": {"lit": 1},
             })
+
+    def test_execute_robin_plan_orderby_desc_op_uses_descending(self) -> None:
+        """orderBy with {'op': 'desc', 'left': {'col': ...}} sorts in descending order."""
+        from sparkless.backend.robin.plan_executor import execute_robin_plan
+
+        data = [
+            {"id": 1, "salary": 100},
+            {"id": 2, "salary": 50},
+            {"id": 3, "salary": 75},
+        ]
+        schema = StructType([
+            StructField("id", LongType()),
+            StructField("salary", LongType()),
+        ])
+        plan = [
+            {
+                "op": "orderBy",
+                "payload": {
+                    # Matches Robin plan shape for F.col("salary").desc()
+                    "columns": [
+                        {"op": "desc", "left": {"col": "salary"}, "right": None},
+                    ],
+                    # Original bug case: ascending=True but op=desc should override
+                    "ascending": [True],
+                },
+            }
+        ]
+        rows = execute_robin_plan(data, schema, plan)
+        salaries = [r["salary"] for r in rows]
+        assert salaries == [100, 75, 50]
+
+    def test_execute_robin_plan_orderby_asc_op_uses_ascending(self) -> None:
+        """orderBy with {'op': 'asc', 'left': {'col': ...}} sorts in ascending order."""
+        from sparkless.backend.robin.plan_executor import execute_robin_plan
+
+        data = [
+            {"id": 1, "salary": 100},
+            {"id": 2, "salary": 50},
+            {"id": 3, "salary": 75},
+        ]
+        schema = StructType([
+            StructField("id", LongType()),
+            StructField("salary", LongType()),
+        ])
+        plan = [
+            {
+                "op": "orderBy",
+                "payload": {
+                    # Matches Robin plan shape for F.col("salary").asc()
+                    "columns": [
+                        {"op": "asc", "left": {"col": "salary"}, "right": None},
+                    ],
+                    # ascending=False should be ignored for explicit asc()
+                    "ascending": [False],
+                },
+            }
+        ]
+        rows = execute_robin_plan(data, schema, plan)
+        salaries = [r["salary"] for r in rows]
+        assert salaries == [50, 75, 100]
+
+    def test_execute_robin_plan_orderby_mixed_col_and_desc(self) -> None:
+        """Mixed plain column and desc op uses payload ascending for plain col and op for desc."""
+        from sparkless.backend.robin.plan_executor import execute_robin_plan
+
+        data = [
+            {"id": 1, "salary": 50},
+            {"id": 2, "salary": 75},
+            {"id": 1, "salary": 100},
+        ]
+        schema = StructType([
+            StructField("id", LongType()),
+            StructField("salary", LongType()),
+        ])
+        plan = [
+            {
+                "op": "orderBy",
+                "payload": {
+                    "columns": [
+                        {"col": "id"},
+                        {"op": "desc", "left": {"col": "salary"}, "right": None},
+                    ],
+                    # First column (id) ascending, second column (salary) desc via op
+                    "ascending": [True, True],
+                },
+            }
+        ]
+        rows = execute_robin_plan(data, schema, plan)
+        result = [(r["id"], r["salary"]) for r in rows]
+        # Sorted by id asc, then salary desc within each id
+        assert result == [(1, 100), (1, 50), (2, 75)]

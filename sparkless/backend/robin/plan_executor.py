@@ -207,16 +207,36 @@ def execute_robin_plan(
         elif op == "orderBy":
             col_specs = payload.get("columns", [])
             ascending = payload.get("ascending", [])
-            col_names = []
-            for e in col_specs:
-                if isinstance(e, dict) and "col" in e:
+            col_names: List[str] = []
+            asc_list: List[bool] = []
+            _DESC_OPS = ("desc", "desc_nulls_last", "desc_nulls_first")
+            _ASC_OPS = ("asc", "asc_nulls_last", "asc_nulls_first")
+            for i, e in enumerate(col_specs):
+                if not isinstance(e, dict):
+                    raise ValueError(
+                        "orderBy column spec must be a dict (column ref or desc/asc)"
+                    )
+                # Plain column reference: {"col": name}
+                if "col" in e:
                     col_names.append(e["col"])
-                else:
-                    raise ValueError("orderBy currently supports only column references in plan")
-            if isinstance(ascending, bool):
-                asc_list = [ascending] * len(col_names)
-            else:
-                asc_list = list(ascending)
+                    if isinstance(ascending, bool):
+                        asc_list.append(ascending)
+                    else:
+                        asc_list.append(
+                            ascending[i] if i < len(ascending) else True
+                        )
+                    continue
+                # desc/asc of column: {"op": "desc"|"asc"|..., "left": {"col": name}}
+                if "op" in e:
+                    left = e.get("left")
+                    if isinstance(left, dict) and "col" in left:
+                        col_names.append(left["col"])
+                        asc_list.append(e["op"] not in _DESC_OPS)
+                        continue
+                raise ValueError(
+                    "orderBy currently supports only column references or "
+                    "desc/asc of a column in plan"
+                )
             if len(asc_list) < len(col_names):
                 asc_list = asc_list + [True] * (len(col_names) - len(asc_list))
             df = df.order_by(col_names, asc_list[: len(col_names)])

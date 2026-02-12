@@ -54,15 +54,38 @@ Example:
 from sparkless.sql import SparkSession
 
 # Case-insensitive (default)
-spark = SparkSession("TestApp")
+spark = SparkSession("ConfigGuide")
+print("Default is_case_sensitive ->", spark.conf.is_case_sensitive())
+
 df = spark.createDataFrame([{"Name": "Alice", "Age": 25}])
 result = df.select("name").collect()  # Works - resolves to "Name"
-assert result[0]["Name"] == "Alice"  # Output uses original case "Name"
+print("\nCase-insensitive select('name').collect() ->")
+for r in result:
+    print(r)
 
 # Case-sensitive
 spark.conf.set("spark.sql.caseSensitive", "true")
-result = df.select("Name").collect()  # Must use exact case
+print("\nAfter enabling caseSensitive, is_case_sensitive ->", spark.conf.is_case_sensitive())
+
+result_exact = df.select("Name").collect()  # Must use exact case
 # df.select("name") would raise column not found error
+print("\nCase-sensitive select('Name').collect() ->")
+for r in result_exact:
+    print(r)
+```
+
+**Output (real run):**
+
+```text
+Default is_case_sensitive -> False
+
+Case-insensitive select('name').collect() ->
+Row(Name=Alice)
+
+After enabling caseSensitive, is_case_sensitive -> True
+
+Case-sensitive select('Name').collect() ->
+Row(Name=Alice)
 ```
 
 ## Backend Configuration (v4)
