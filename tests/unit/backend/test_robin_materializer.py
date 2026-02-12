@@ -89,3 +89,100 @@ class TestRobinMaterializerExpressionTranslation:
         assert len(result) == 2
         ids = sorted(r["id"] for r in result)
         assert ids == [1, 3]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_lit_none_robin(self, spark: Any) -> None:
+        """withColumn with F.lit(None) produces a nullable column when Robin backend is used (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([(1,), (2,)], ["id"])
+        result = df.withColumn("nullable_col", F.lit(None)).collect()
+        assert [r["nullable_col"] for r in result] == [None, None]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_to_date_robin(self, spark: Any) -> None:
+        """withColumn with to_date(col) is translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame(
+            [(1, "2024-01-15"), (2, "2024-02-20")], ["id", "date_str"]
+        )
+        result = (
+            df.withColumn("dt", F.to_date(F.col("date_str"))).orderBy("id").collect()
+        )
+        assert [str(r["dt"]) for r in result] == ["2024-01-15", "2024-02-20"]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_to_timestamp_robin(self, spark: Any) -> None:
+        """withColumn with to_timestamp(col) is translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame(
+            [(1, "2024-01-15 12:34:56")],
+            ["id", "ts_str"],
+        )
+        result = df.withColumn("ts", F.to_timestamp(F.col("ts_str"))).collect()
+        # String representation should contain the date part at least
+        assert "2024-01-15" in str(result[0]["ts"])
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_regexp_replace_robin(self, spark: Any) -> None:
+        """withColumn with regexp_replace is translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([("a.b.123",), ("x.y.456",)], ["text"])
+        result = (
+            df.withColumn("cleaned", F.regexp_replace(F.col("text"), r"\\.\\d+", ""))
+            .orderBy("text")
+            .collect()
+        )
+        cleaned = [r["cleaned"] for r in result]
+        assert cleaned == ["a.b", "x.y"]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_split_with_limit_robin(self, spark: Any) -> None:
+        """withColumn with split(col, ',', -1) is translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([("a,b,c",), ("x,,z",)], ["value"])
+        result = (
+            df.withColumn("arr", F.split(F.col("value"), ",", -1))
+            .orderBy("value")
+            .collect()
+        )
+        assert result[0]["arr"] == ["a", "b", "c"]
+        assert result[1]["arr"] == ["x", "", "z"]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_round_with_scale_robin(self, spark: Any) -> None:
+        """withColumn with round(col, scale) is translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([(3.14159,), (2.71828,)], ["val"])
+        result = df.withColumn("r", F.round(F.col("val"), 2)).orderBy("val").collect()
+        rounded = [r["r"] for r in result]
+        assert rounded == [2.72, 3.14]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_with_column_log10_robin(self, spark: Any) -> None:
+        """withColumn with log10(col) is translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([(10.0,), (100.0,)], ["val"])
+        result = (
+            df.withColumn("log10_val", F.log10(F.col("val"))).orderBy("val").collect()
+        )
+        values = [r["log10_val"] for r in result]
+        assert values[0] == pytest.approx(1.0, rel=1e-6)
+        assert values[1] == pytest.approx(2.0, rel=1e-6)
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_array_and_explode_robin(self, spark: Any) -> None:
+        """array(...) and explode(array_col) are translated for Robin backend (#470)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame([(1, 2, 3), (4, 5, 6)], ["a", "b", "c"])
+        arr_df = df.withColumn("arr", F.array(F.col("a"), F.col("b"), F.col("c")))
+        exploded = arr_df.select(F.explode(F.col("arr")).alias("v")).collect()
+        values = sorted(r["v"] for r in exploded)
+        assert values == [1, 2, 3, 4, 5, 6]

@@ -502,6 +502,14 @@ def _expression_to_robin(expr: Any) -> Any:
             if alias_name is not None and hasattr(inner, "alias"):
                 return inner.alias(alias_name)
             return inner
+        # lit(): ColumnOperation(None, "lit", value)
+        if op == "lit":
+            if isinstance(val_side, Literal):
+                val = getattr(val_side, "value", val_side)
+            else:
+                val = val_side
+            safe_val = _lit_value_for_robin(val)
+            return F.lit(safe_val)  # type: ignore[arg-type]
         # Cast / astype (Phase 7; astype is an alias for cast)
         if op in ("cast", "astype") and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -571,17 +579,23 @@ def _expression_to_robin(expr: Any) -> Any:
             inner = _expression_to_robin(col_side)
             if inner is None:
                 return None
-            delim = (
-                val_side
-                if isinstance(val_side, str)
-                else (
-                    val_side[0]
-                    if isinstance(val_side, (list, tuple)) and val_side
-                    else ","
-                )
-            )
+            delimiter = ","
+            limit: Any = None
+            if isinstance(val_side, str):
+                delimiter = val_side
+            elif isinstance(val_side, (list, tuple)) and val_side:
+                delimiter = str(val_side[0])
+                if len(val_side) > 1:
+                    limit = val_side[1]
             if hasattr(F, "split"):
-                return F.split(inner, delim)
+                split_fn = getattr(F, "split")
+                try:
+                    if limit is not None:
+                        return split_fn(inner, delimiter, limit)  # type: ignore[call-arg]
+                    return split_fn(inner, delimiter)  # type: ignore[call-arg]
+                except TypeError:
+                    # Older robin-sparkless may not accept a limit argument
+                    return split_fn(inner, delimiter)  # type: ignore[call-arg]
         if op in ("substring", "substr") and col_side is not None:
             inner = _expression_to_robin(col_side)
             if inner is None:
@@ -608,6 +622,26 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             if hasattr(F, "replace"):
                 return F.replace(inner, search, replacement)
+        if op == "regexp_replace" and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            pattern = (
+                val_side[0]
+                if isinstance(val_side, (list, tuple)) and val_side
+                else val_side
+            )
+            replacement = (
+                val_side[1]
+                if isinstance(val_side, (list, tuple)) and len(val_side) > 1
+                else ""
+            )
+            if not isinstance(pattern, str):
+                pattern = str(pattern) if pattern is not None else ""
+            if not isinstance(replacement, str):
+                replacement = str(replacement)
+            if hasattr(F, "regexp_replace"):
+                return F.regexp_replace(inner, pattern, replacement)
         if op == "left" and col_side is not None and isinstance(val_side, (int, float)):
             inner = _expression_to_robin(col_side)
             if inner is not None and hasattr(F, "left"):
@@ -687,6 +721,25 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             if hasattr(F, "struct"):
                 return F.struct(*robin_cols)
+        # format_string(format_str, *cols): ColumnOperation(base, "format_string", (format_str, rest))
+        if op == "format_string":
+            if not isinstance(val_side, (list, tuple)) or not val_side:
+                return None
+            format_str = val_side[0]
+            rest = val_side[1] if len(val_side) > 1 else []
+            if not isinstance(rest, (list, tuple)):
+                rest = [rest]
+            cols = [col_side] + list(rest)
+            robin_args = [_expression_to_robin(c) for c in cols]
+            if None in robin_args:
+                return None
+            if not isinstance(format_str, str):
+                format_str = str(format_str)
+            if hasattr(F, "format_string") and callable(getattr(F, "format_string")):
+                return F.format_string(format_str, *robin_args)  # type: ignore[call-arg]
+            if hasattr(F, "printf") and callable(getattr(F, "printf")):
+                # Some APIs expose printf instead of format_string
+                return F.printf(format_str, *robin_args)  # type: ignore[call-arg]
         # create_map: value is tuple of key-value columns (k1, v1, k2, v2, ...)
         if op == "create_map":
             parts = list(val_side) if isinstance(val_side, (list, tuple)) else []
@@ -727,13 +780,124 @@ def _expression_to_robin(expr: Any) -> Any:
                 except (TypeError, KeyError):
                     pass
             return None
-        # to_date, to_timestamp (unary on column)
+        # to_date, to_timestamp (column [, format])
         if op in ("to_date", "to_timestamp") and col_side is not None:
             inner = _expression_to_robin(col_side)
-            if inner is not None:
-                fn = getattr(F, op, None)
-                if callable(fn):
+            if inner is None:
+                return None
+            fmt = val_side if isinstance(val_side, str) else None
+            fn = getattr(F, op, None)
+            if callable(fn):
+                try:
+                    if fmt is not None:
+                        return fn(inner, fmt)
                     return fn(inner)
+                except TypeError:
+                    # Some robin-sparkless versions may not support the format argument
+                    return fn(inner)
+            # Some APIs may expose to_date/to_timestamp as Column methods
+            method = getattr(inner, op, None)
+            if callable(method):
+                try:
+                    if fmt is not None:
+                        return method(fmt)
+                    return method()
+                except TypeError:
+                    return method()
+            return None
+        # round(column, scale)
+        if op == "round" and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            scale = 0
+            if isinstance(val_side, (int, float)):
+                scale = int(val_side)
+            precision = getattr(expr, "precision", None)
+            if isinstance(precision, int):
+                scale = precision
+            if hasattr(F, "round") and callable(getattr(F, "round")):
+                try:
+                    return F.round(inner, scale)  # type: ignore[call-arg]
+                except TypeError:
+                    # Older robin-sparkless may only accept a single-argument round
+                    return F.round(inner)  # type: ignore[call-arg]
+            return None
+        # log / log10
+        if op == "log10" and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            if hasattr(F, "log10") and callable(getattr(F, "log10")):
+                return F.log10(inner)  # type: ignore[call-arg]
+            if hasattr(F, "log") and callable(getattr(F, "log")):
+                try:
+                    return F.log(10, inner)  # type: ignore[call-arg]
+                except TypeError:
+                    return None
+            return None
+        if op == "log" and col_side is not None:
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            base_any: Any = val_side
+            # log(column) -> natural log
+            if base_any is None:
+                if hasattr(F, "log") and callable(getattr(F, "log")):
+                    try:
+                        return F.log(inner)  # type: ignore[call-arg]
+                    except TypeError:
+                        pass
+                if hasattr(F, "ln") and callable(getattr(F, "ln")):
+                    return F.ln(inner)  # type: ignore[call-arg]
+                return None
+            # log(base, column)
+            if isinstance(base_any, (int, float)):
+                arg_base: Any = base_any
+            else:
+                arg_base = _expression_to_robin(base_any)
+            if arg_base is None:
+                return None
+            if hasattr(F, "log") and callable(getattr(F, "log")):
+                try:
+                    return F.log(arg_base, inner)  # type: ignore[call-arg]
+                except TypeError:
+                    return None
+            return None
+        # array(...): ColumnOperation(first_col, "array", value=rest_cols or ())
+        if op == "array":
+            # Empty array: base column is synthetic "__array_empty_base__"
+            if (
+                (val_side == () or val_side is None)
+                and col_side is not None
+                and getattr(col_side, "name", None) == "__array_empty_base__"
+            ):
+                if hasattr(F, "array") and callable(getattr(F, "array")):
+                    return F.array()  # type: ignore[call-arg]
+                return None
+            cols = [col_side] if col_side is not None else []
+            if isinstance(val_side, (list, tuple)):
+                cols.extend(val_side)
+            robin_cols = [_expression_to_robin(c) for c in cols]
+            if not robin_cols or None in robin_cols:
+                return None
+            if hasattr(F, "array") and callable(getattr(F, "array")):
+                return F.array(*robin_cols)  # type: ignore[call-arg]
+            return None
+        # explode(array) and related functions
+        if op in ("explode", "explode_outer", "posexplode", "posexplode_outer") and (
+            col_side is not None
+        ):
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            fn = getattr(F, op, None)
+            if callable(fn):
+                return fn(inner)  # type: ignore[call-arg]
+            method = getattr(inner, op, None)
+            if callable(method):
+                return method()
+            return None
         # Arithmetic and comparison
         # For robin-sparkless 0.4.0, build literal+column in one shot so the
         # Column is created in a single expression (avoids recursive Column
