@@ -110,6 +110,18 @@ During the robin-sparkless limitations and parity review, the following were ide
 
 ---
 
+## 10. Robin materializer: struct with string column names + isnan (2026-02-12) — FIXED
+
+**Symptom:** `Operation 'withColumn' / 'select' / 'filter' is not supported` when using `F.struct("Name", "Value")` or `F.isnan(F.col("x"))`.
+
+**Cause:** (1) struct received string column names; `_expression_to_robin("Value")` returned None. (2) isnan was not translated in `_expression_to_robin` or `_simple_filter_to_robin`.
+
+**Fix (Sparkless):** Done. In materializer: (1) struct branch — for each element, if `isinstance(c, str)` use `F.col(c)`; Robin's `struct()` takes a single list, so use `F.struct(robin_cols)` when `F.struct(*robin_cols)` raises TypeError. (2) Added isnan/is_nan to unary ops in `_expression_to_robin` and unary isnan in `_simple_filter_to_robin`.
+
+**Remaining (Robin behavior):** Struct result shape/field names may differ from PySpark (e.g. dict keys). Robin/Polars does not support `is_nan` on string columns (raises); PySpark returns False. Document and skip affected tests (e.g. test_issue_289_struct_function, test_issue_263_isnan_string) when running with Robin.
+
+---
+
 ## 9. Sparkless Reader: inferSchema string-only (2026-02-11)
 
 **Symptom:** `test_inferschema_parity.py` fails with `AssertionError: id should be LongType` etc.

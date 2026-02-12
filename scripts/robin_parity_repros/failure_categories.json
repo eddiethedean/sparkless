@@ -1,19 +1,19 @@
 {
   "source_file": "test_results_full.txt",
-  "total_failures": 938,
+  "total_failures": 910,
   "excluded": 1,
-  "included": 937,
+  "included": 909,
   "categories": [
     {
       "category_id": "op_withColumn",
       "failure_key": "Operations: withColumn",
       "representative_test_ids": [
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_in_join",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_with_aliased_columns",
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_empty_dataframe"
+        "tests/test_issue_145_string_cast.py::test_string_cast_works_with_to_timestamp",
+        "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_two_arguments",
+        "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_two_arguments_string_names"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn' is not supported",
-      "count": 326
+      "count": 311
     },
     {
       "category_id": "parity_assertion",
@@ -21,7 +21,7 @@
       "representative_test_ids": [
         "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_base64",
         "tests/parity/functions/test_array.py::TestArrayFunctionsParity::test_array_remove",
-        "tests/parity/functions/test_string.py::TestStringFunctionsParity::test_initcap"
+        "tests/test_issue_139_datetime_validation_compatibility.py::TestIssue139DatetimeValidationCompatibility::test_validation_with_multiple_datetime_columns"
       ],
       "example_error_message": "AssertionError: DataFrames are not equivalent:",
       "count": 132
@@ -31,44 +31,44 @@
       "failure_key": "RuntimeError: Column not found (alias/schema)",
       "representative_test_ids": [
         "tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_equals",
-        "tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_chained_operations",
-        "tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_and_condition"
+        "tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_and_condition",
+        "tests/test_issue_287_na_replace.py::TestIssue287NAReplace::test_na_replace_chained_operations"
       ],
       "example_error_message": "RuntimeError: not found: Column 'IT' not found. Available columns: [dept, name, salary]. Check spelling and case sensitivity (spark.sql.caseSensitive).",
-      "count": 100
+      "count": 101
     },
     {
       "category_id": "parity_assertion",
       "failure_key": "assert / wrong result",
       "representative_test_ids": [
-        "tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions",
         "tests/test_issue_261_between.py::TestIssue261Between::test_between_in_select_expression",
-        "tests/test_issue_261_between.py::TestIssue261Between::test_between_with_per_row_column_bounds"
+        "tests/test_issue_261_between.py::TestIssue261Between::test_between_with_per_row_column_bounds",
+        "tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions"
       ],
-      "example_error_message": "assert 0 == 2",
+      "example_error_message": "assert None is True",
       "count": 71
     },
     {
       "category_id": "op_filter",
       "failure_key": "Operations: filter",
       "representative_test_ids": [
-        "tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_on_string_column_filter_does_not_error_and_returns_empty",
         "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_in_filter",
-        "tests/test_issue_164_schema_inference_numeric.py::TestIssue164SchemaInferenceNumeric::test_schema_inference_mixed_types"
+        "tests/test_issue_164_schema_inference_numeric.py::TestIssue164SchemaInferenceNumeric::test_schema_inference_mixed_types",
+        "tests/test_issue_291_power_operator_float_column.py::TestIssue291PowerOperatorFloatColumn::test_power_in_filter"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: filter' is not supported",
-      "count": 52
+      "count": 51
     },
     {
       "category_id": "op_select",
       "failure_key": "Operations: select",
       "representative_test_ids": [
         "tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_in_select",
-        "tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_on_numeric_column_true_only_for_nan",
-        "tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_literal_matches_python_math"
+        "tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_float_base_parity",
+        "tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstantParity::test_log_with_different_bases_parity"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: select' is not supported",
-      "count": 52
+      "count": 47
     },
     {
       "category_id": "op_join",
@@ -85,12 +85,12 @@
       "category_id": "op_withColumn",
       "failure_key": "Operations: withColumn, withColumn",
       "representative_test_ids": [
-        "tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_struct_multiple_operations",
         "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_in_execution_plan",
-        "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_with_cache"
+        "tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedColumnExecutionPlan::test_dropped_column_with_cache",
+        "tests/test_issue_160_reproduce_bug.py::TestIssue160ReproduceBug::test_bug_reproduction_with_150_rows"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, withColumn' is not supported",
-      "count": 24
+      "count": 18
     },
     {
       "category_id": "other",
@@ -118,9 +118,9 @@
       "category_id": "other",
       "failure_key": "RuntimeError: lengths don't match: unable to vstack, column names don't match: \"",
       "representative_test_ids": [
+        "tests/test_issue_413_union_createDataFrame.py::TestIssue413UnionCreateDataFrame::test_union_count",
         "tests/test_issue_413_union_createDataFrame.py::TestIssue413UnionCreateDataFrame::test_union_different_column_order_by_position",
-        "tests/test_issue_413_union_createDataFrame.py::TestIssue413UnionCreateDataFrame::test_union_chained_three_dataframes",
-        "tests/test_issue_413_union_createDataFrame.py::TestIssue413UnionCreateDataFrame::test_union_empty_dataframe_left"
+        "tests/test_issue_413_union_createDataFrame.py::TestIssue413UnionCreateDataFrame::test_union_chained_three_dataframes"
       ],
       "example_error_message": "RuntimeError: lengths don't match: unable to vstack, column names don't match: \"id\" and \"x\"",
       "count": 13
@@ -129,9 +129,9 @@
       "category_id": "other",
       "failure_key": "RuntimeError: array requires at least one column",
       "representative_test_ids": [
-        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_with_different_data_types",
-        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_with_computed_columns",
-        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_in_join"
+        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_no_args_returns_empty_array",
+        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_list_returns_empty_array",
+        "tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty_show"
       ],
       "example_error_message": "RuntimeError: array requires at least one column",
       "count": 12
@@ -151,9 +151,9 @@
       "category_id": "other",
       "failure_key": "RuntimeError: not found: name",
       "representative_test_ids": [
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_null_values_in_joined_columns",
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_different_case_variations",
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_with_column_after_select"
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_join_different_case_select_third_case",
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_join_different_case_select_left_column",
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_different_join_types"
       ],
       "example_error_message": "RuntimeError: not found: name",
       "count": 11
@@ -162,12 +162,12 @@
       "category_id": "op_withColumn",
       "failure_key": "Operations: withColumn, withColumn, withColumn",
       "representative_test_ids": [
-        "tests/test_issue_296_udf_decorator.py::TestIssue296UdfDecorator::test_udf_decorator_with_different_data_types",
         "tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294HourMinuteSecondStringTimestamps::test_hour_minute_second_from_string_timestamps",
-        "tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294HourMinuteSecondStringTimestamps::test_hour_minute_second_with_different_timezone_formats"
+        "tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294HourMinuteSecondStringTimestamps::test_hour_minute_second_with_different_timezone_formats",
+        "tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294HourMinuteSecondStringTimestamps::test_hour_minute_second_with_different_formats"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, withColumn, withColumn' is not supported",
-      "count": 10
+      "count": 9
     },
     {
       "category_id": "other",
@@ -184,9 +184,9 @@
       "category_id": "other",
       "failure_key": "RuntimeError: round can only be used on numeric types",
       "representative_test_ids": [
-        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_scientific_notation",
-        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_with_whitespace",
-        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_integer_strings"
+        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_with_decimals",
+        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_negative_numbers",
+        "tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_string_scientific_notation"
       ],
       "example_error_message": "RuntimeError: round can only be used on numeric types",
       "count": 9
@@ -255,22 +255,22 @@
     },
     {
       "category_id": "other",
-      "failure_key": "RuntimeError: lengths don't match: unable to add a column of length 3 to a DataF",
-      "representative_test_ids": [
-        "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_limit_larger_than_splits",
-        "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_unicode_characters"
-      ],
-      "example_error_message": "RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1",
-      "count": 2
-    },
-    {
-      "category_id": "other",
       "failure_key": "RuntimeError: lengths don't match: unable to add a column of length 5 to a DataF",
       "representative_test_ids": [
         "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_consecutive_delimiters",
         "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_leading_trailing_delimiters"
       ],
       "example_error_message": "RuntimeError: lengths don't match: unable to add a column of length 5 to a DataFrame of height 1",
+      "count": 2
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: lengths don't match: unable to add a column of length 3 to a DataF",
+      "representative_test_ids": [
+        "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_unicode_characters",
+        "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_limit_larger_than_splits"
+      ],
+      "example_error_message": "RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1",
       "count": 2
     },
     {
@@ -289,15 +289,6 @@
         "tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_chained_operations"
       ],
       "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, filter' is not supported",
-      "count": 1
-    },
-    {
-      "category_id": "op_withColumn",
-      "failure_key": "Operations: withColumn, withColumn, withColumn, withColumn",
-      "representative_test_ids": [
-        "tests/test_issue_398_withfield_window.py::TestIssue398WithFieldWindow::test_withfield_chain_three_with_window_middle"
-      ],
-      "example_error_message": "sparkless.core.exceptions.operation.SparkUnsupportedOperationError: Operation 'Operations: withColumn, withColumn, withColumn, withColumn' is not supported",
       "count": 1
     },
     {
@@ -320,29 +311,11 @@
     },
     {
       "category_id": "other",
-      "failure_key": "TypeError: object of type 'NoneType' has no len()",
-      "representative_test_ids": [
-        "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_in_select"
-      ],
-      "example_error_message": "TypeError: object of type 'NoneType' has no len()",
-      "count": 1
-    },
-    {
-      "category_id": "other",
       "failure_key": "RuntimeError: lengths don't match: unable to add a column of length 100 to a Dat",
       "representative_test_ids": [
         "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_very_long_string"
       ],
       "example_error_message": "RuntimeError: lengths don't match: unable to add a column of length 100 to a DataFrame of height 1",
-      "count": 1
-    },
-    {
-      "category_id": "other",
-      "failure_key": "RuntimeError: not found: NaMe",
-      "representative_test_ids": [
-        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_empty_dataframes"
-      ],
-      "example_error_message": "RuntimeError: not found: NaMe",
       "count": 1
     },
     {
@@ -356,20 +329,29 @@
     },
     {
       "category_id": "other",
+      "failure_key": "TypeError: object of type 'NoneType' has no len()",
+      "representative_test_ids": [
+        "tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_in_select"
+      ],
+      "example_error_message": "TypeError: object of type 'NoneType' has no len()",
+      "count": 1
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: not found: NaMe",
+      "representative_test_ids": [
+        "tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferentCaseSelect::test_empty_dataframes"
+      ],
+      "example_error_message": "RuntimeError: not found: NaMe",
+      "count": 1
+    },
+    {
+      "category_id": "other",
       "failure_key": "KeyError: 3",
       "representative_test_ids": [
         "tests/test_issue_414_row_number_over_descending.py::TestIssue414RowNumberOverDescending::test_row_number_over_partition_order_desc"
       ],
       "example_error_message": "KeyError: 3",
-      "count": 1
-    },
-    {
-      "category_id": "other",
-      "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1",
-      "representative_test_ids": [
-        "tests/test_issue_432_cast_datetime_date_noop.py::test_cast_date_only_string_to_timestamp"
-      ],
-      "example_error_message": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1 out of 1 values: [\"2024-01-15\"]",
       "count": 1
     },
     {
@@ -415,6 +397,15 @@
         "tests/test_issue_445_between_string_column_numeric_bounds.py::test_between_string_column_in_select_expression"
       ],
       "example_error_message": "RuntimeError: cannot compare string with numeric type (i32)",
+      "count": 1
+    },
+    {
+      "category_id": "other",
+      "failure_key": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1",
+      "representative_test_ids": [
+        "tests/test_issue_432_cast_datetime_date_noop.py::test_cast_date_only_string_to_timestamp"
+      ],
+      "example_error_message": "RuntimeError: conversion from `str` to `datetime[\u03bcs]` failed in column 's' for 1 out of 1 values: [\"2024-01-15\"]",
       "count": 1
     },
     {

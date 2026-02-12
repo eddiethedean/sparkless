@@ -82,6 +82,7 @@ When running unit tests with **Robin** as the backend (`SPARKLESS_TEST_BACKEND=r
 | nested struct/row | `test_withfield.py` — row values must be scalar types |
 | window / UDF / SQL | Various functions and session tests — window, UDF, or SQL features |
 | map/array/case/issue tests | `test_create_map.py`, `test_issues_225_231.py`, `test_issue_355.py`, etc. |
+| struct / isnan parity | `test_issue_289_struct_function.py`, `test_issue_263_isnan_string.py` — struct result shape/field names differ; Robin does not support isnan on string columns (Polars raises; PySpark returns False). |
 
 Adding or changing unit tests that rely on unsupported features may require updating the skip list so that `SPARKLESS_TEST_BACKEND=robin` runs remain green.
 
@@ -96,6 +97,8 @@ The Robin materializer (and, where noted, the plan path) was extended in Phase 7
 | **cast / astype** | Yes | Yes (alias + cast) | Type name mapped to Robin dtype; some `test_column_astype` tests un-skipped. |
 | **substring / substr** | Yes | No | `F.substring` / `F.substr` fallback; `test_column_substr` skipped (result column naming may differ). |
 | **getItem** | Yes | No | `column[key]` for array index or map key; `test_issues_225_231` still skipped (isin/coercion). |
+| **struct** | Yes | No | `F.struct("a", "b")` and struct with string names translated; Robin struct result shape/field names may differ — tests skipped. |
+| **isnan** | Yes | No | Expression and filter; Robin/Polars does not support isnan on string columns (raises); PySpark returns False — tests skipped. |
 
 **Remaining unsupported (documented gaps)**
 

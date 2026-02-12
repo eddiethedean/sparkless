@@ -77,6 +77,9 @@ tests/unit/session/test_sql_update.py
 tests/unit/spark_types/test_array_type_robust.py
 tests/unit/test_array_parameter_formats.py
 tests/unit/test_create_map.py
+# struct: Robin struct() result shape/field names differ from PySpark; isnan on string: Robin raises (Polars), PySpark returns False
+tests/test_issue_289_struct_function.py
+tests/test_issue_263_isnan_string.py
 # column case / expression
 tests/unit/test_column_case_variations.py
 # first() / other

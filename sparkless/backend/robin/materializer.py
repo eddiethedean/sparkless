@@ -266,6 +266,16 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             if hasattr(inner, "isNotNull") and callable(getattr(inner, "isNotNull")):
                 return inner.isNotNull()
             return None
+        # isnan / is_nan: unary (val_side is None)
+        if op in ("isnan", "is_nan"):
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            if hasattr(inner, "isnan") and callable(getattr(inner, "isnan")):
+                return inner.isnan()
+            if hasattr(F, "isnan") and callable(getattr(F, "isnan")):
+                return F.isnan(inner)  # type: ignore[union-attr]
+            return None
         # between(lower, upper): use Robin's native between() when available, else (col >= low) & (col <= high)
         if (
             op == "between"
@@ -722,6 +732,8 @@ def _expression_to_robin(expr: Any) -> Any:
             "second",
             "isnull",
             "isnotnull",
+            "isnan",
+            "is_nan",
             "dayofweek",
             "dayofyear",
             "weekofyear",
@@ -732,7 +744,9 @@ def _expression_to_robin(expr: Any) -> Any:
             inner = _expression_to_robin(col_side)
             if inner is None:
                 return None
-            fn = getattr(F, op, None)
+            # Robin may use isnan or is_nan
+            fn_name = op if op != "is_nan" else "isnan"
+            fn = getattr(F, fn_name, None) or getattr(F, op, None)
             if callable(fn):
                 return fn(inner)
         # No-column functions
@@ -887,7 +901,7 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             if hasattr(F, "concat_ws"):
                 return F.concat_ws(sep, *robin_cols)
-        # struct: value is tuple/list of columns
+        # struct: value is tuple/list of columns (or string names)
         if op == "struct":
             cols = (
                 val_side
@@ -896,11 +910,23 @@ def _expression_to_robin(expr: Any) -> Any:
             )
             if col_side and not cols:
                 cols = [col_side]
-            robin_cols = [_expression_to_robin(c) for c in cols]
-            if None in robin_cols or not robin_cols:
+            robin_cols = []
+            for c in cols:
+                if isinstance(c, str):
+                    robin_cols.append(F.col(c))
+                else:
+                    rc = _expression_to_robin(c)
+                    if rc is None:
+                        return None
+                    robin_cols.append(rc)
+            if not robin_cols:
                 return None
             if hasattr(F, "struct"):
-                return F.struct(*robin_cols)
+                # Robin's struct() may expect a single Sequence, not *args
+                try:
+                    return F.struct(*robin_cols)
+                except TypeError:
+                    return F.struct(robin_cols)
         # format_string(format_str, *cols): ColumnOperation(base, "format_string", (format_str, rest))
         if op == "format_string":
             if not isinstance(val_side, (list, tuple)) or not val_side:

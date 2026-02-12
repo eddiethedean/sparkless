@@ -1,25 +1,25 @@
 # Robin test failure categories
 
 Source: `test_results_full.txt`
-Total FAILED: 938 | Excluded (non-Robin): 1 | Grouped: 937
+Total FAILED: 910 | Excluded (non-Robin): 1 | Grouped: 909
 
 | Category ID | Failure key | Count | Representative tests |
 |-------------|-------------|-------|----------------------|
-| op_withColumn | Operations: withColumn | 326 | tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_str... |
+| op_withColumn | Operations: withColumn | 311 | tests/test_issue_145_string_cast.py::test_string_cast_works_with_to_timestamp... |
 | parity_assertion | AssertionError / DataFrames not equivalent | 132 | tests/parity/functions/test_string.py::TestStringFunctionsParity::test_base64... |
-| col_not_found | RuntimeError: Column not found (alias/schema) | 100 | tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::tes... |
-| parity_assertion | assert / wrong result | 71 | tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormat... |
-| op_filter | Operations: filter | 52 | tests/test_issue_263_isnan_string.py::TestIssue263IsnanString::test_isnan_on_... |
-| op_select | Operations: select | 52 | tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArgume... |
+| col_not_found | RuntimeError: Column not found (alias/schema) | 101 | tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::tes... |
+| parity_assertion | assert / wrong result | 71 | tests/test_issue_261_between.py::TestIssue261Between::test_between_in_select_... |
+| op_filter | Operations: filter | 51 | tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArgume... |
+| op_select | Operations: select | 47 | tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArgume... |
 | op_join | Operations: join | 32 | tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJ... |
-| op_withColumn | Operations: withColumn, withColumn | 24 | tests/test_issue_289_struct_function.py::TestIssue289StructFunction::test_str... |
+| op_withColumn | Operations: withColumn, withColumn | 18 | tests/test_issue_160_dropped_column_execution_plan.py::TestIssue160DroppedCol... |
 | other | RuntimeError: invalid series dtype: expected `List | 18 | tests/test_issue_366_alias_posexplode.py::TestIssue366AliasPosexplode::test_p... |
 | other | RuntimeError: cannot compare 'date/datetime/time'  | 13 | tests/test_issue_139_datetime_validation_compatibility.py::TestIssue139Dateti... |
 | other | RuntimeError: lengths don't match: unable to vstac | 13 | tests/test_issue_413_union_createDataFrame.py::TestIssue413UnionCreateDataFra... |
-| other | RuntimeError: array requires at least one column | 12 | tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_empty... |
+| other | RuntimeError: array requires at least one column | 12 | tests/test_issue_367_array_empty.py::TestIssue367ArrayEmpty::test_array_no_ar... |
 | other | RuntimeError: lengths don't match: unable to add a | 11 | tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test... |
 | other | RuntimeError: not found: name | 11 | tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferent... |
-| op_withColumn | Operations: withColumn, withColumn, withColumn | 10 | tests/test_issue_296_udf_decorator.py::TestIssue296UdfDecorator::test_udf_dec... |
+| op_withColumn | Operations: withColumn, withColumn, withColumn | 9 | tests/test_issue_294_hour_minute_second_string_timestamps.py::TestIssue294Hou... |
 | other | RuntimeError: cannot compare string with numeric t | 9 | tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe... |
 | other | RuntimeError: round can only be used on numeric ty | 9 | tests/test_issue_373_round_string.py::TestIssue373RoundString::test_round_str... |
 | other | RuntimeError: datatypes of join keys don't match - | 7 | tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::tes... |
@@ -28,24 +28,23 @@ Total FAILED: 938 | Excluded (non-Robin): 1 | Grouped: 937
 | other | TypeError: unsupported operand type(s) for -: 'Non | 2 | tests/parity/functions/test_log_float_constant_parity.py::TestLogFloatConstan... |
 | other | RuntimeError: casting from null to double not supp | 2 | tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test... |
 | other | RuntimeError: lengths don't match: unable to add a | 2 | tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test... |
-| other | RuntimeError: lengths don't match: unable to add a | 2 | tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_... |
 | other | RuntimeError: lengths don't match: unable to add a | 2 | tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_conse... |
+| other | RuntimeError: lengths don't match: unable to add a | 2 | tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_unico... |
 | op_select | Operations: select, filter | 1 | tests/test_issue_436_concat_cast_string.py::test_concat_filter_after |
 | op_withColumn | Operations: withColumn, filter | 1 | tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctio... |
-| op_withColumn | Operations: withColumn, withColumn, withColumn, wi | 1 | tests/test_issue_398_withfield_window.py::TestIssue398WithFieldWindow::test_w... |
 | other | sparkless.core.exceptions.execution.QueryExecution | 1 | tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_from_select |
 | other | RuntimeError: casting from null to date not suppor | 1 | tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test... |
-| other | TypeError: object of type 'NoneType' has no len() | 1 | tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_in_se... |
 | other | RuntimeError: lengths don't match: unable to add a | 1 | tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_very_... |
-| other | RuntimeError: not found: NaMe | 1 | tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferent... |
 | other | RuntimeError: datatypes of join keys don't match - | 1 | tests/test_issue_332_cast_alias_select.py::TestIssue332CastAliasSelect::test_... |
+| other | TypeError: object of type 'NoneType' has no len() | 1 | tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_in_se... |
+| other | RuntimeError: not found: NaMe | 1 | tests/test_issue_297_join_different_case_select.py::TestIssue297JoinDifferent... |
 | other | KeyError: 3 | 1 | tests/test_issue_414_row_number_over_descending.py::TestIssue414RowNumberOver... |
-| other | RuntimeError: conversion from `str` to `datetime[μ | 1 | tests/test_issue_432_cast_datetime_date_noop.py::test_cast_date_only_string_t... |
 | other | KeyError: ('a', 3) | 1 | tests/test_issue_414_row_number_over_descending.py::TestIssue414RowNumberOver... |
 | other | RuntimeError: to_timestamp: invalid series dtype:  | 1 | tests/test_to_timestamp_compatibility.py::TestToTimestampCompatibility::test_... |
 | other | RuntimeError: conversion from `str` to `datetime[μ | 1 | tests/test_to_timestamp_compatibility.py::TestToTimestampCompatibility::test_... |
 | other | RuntimeError: conversion from `str` to `datetime[μ | 1 | tests/test_type_strictness.py::TestTypeStrictness::test_to_timestamp_accepts_... |
 | other | RuntimeError: cannot compare string with numeric t | 1 | tests/test_issue_445_between_string_column_numeric_bounds.py::test_between_st... |
+| other | RuntimeError: conversion from `str` to `datetime[μ | 1 | tests/test_issue_432_cast_datetime_date_noop.py::test_cast_date_only_string_t... |
 | other | RuntimeError: conversion from `str` to `datetime[μ | 1 | tests/unit/backend/test_robin_materializer.py::TestRobinMaterializerExpressio... |
 
 ## Example errors
@@ -71,7 +70,7 @@ RuntimeError: not found: Column 'IT' not found. Available columns: [dept, name, 
 ### parity_assertion (assert / wrong result)
 
 ```
-assert 0 == 2
+assert None is True
 ```
 
 ### op_filter (Operations: filter)
