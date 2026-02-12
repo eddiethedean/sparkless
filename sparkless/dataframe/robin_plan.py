@@ -77,6 +77,25 @@ def _expr_to_robin(expr: Any) -> Dict[str, Any]:
         left = expr.get("left")
         right = expr.get("right")
 
+        # alias: left=expression, right=alias name (literal). Plan executor expects
+        # {"op": "alias", "left": <robin_expr>, "right": {"lit": alias_name}} so
+        # output column name is the alias, not a column lookup.
+        if op_name == "alias":
+            robin_left = _expr_to_robin(left) if left is not None else None
+            if robin_left is None:
+                raise ValueError("Alias expression requires a valid left (inner expression)")
+            alias_name = None
+            if right is not None:
+                if isinstance(right, dict) and right.get("type") == "literal":
+                    alias_name = right.get("value")
+                else:
+                    robin_right = _expr_to_robin(right)
+                    if isinstance(robin_right, dict) and "lit" in robin_right:
+                        alias_name = robin_right["lit"]
+            if not isinstance(alias_name, str):
+                raise ValueError("Alias expression requires right to be a string literal (alias name)")
+            return {"op": "alias", "left": robin_left, "right": {"lit": alias_name}}
+
         # Map Sparkless operator symbols to Robin names where needed
         if op_name in _COMPARISON_OP_MAP:
             op_name = _COMPARISON_OP_MAP[op_name]

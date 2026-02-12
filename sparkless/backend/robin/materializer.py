@@ -266,7 +266,9 @@ def _expression_to_robin(expr: Any) -> Any:
         return None
     F = robin_sparkless  # type: ignore[union-attr]
 
-    if isinstance(expr, Column):
+    # Plain Column only; ColumnOperation is a subclass of Column but must be translated
+    # as an expression (e.g. alias -> inner.alias(name)), not as F.col(name).
+    if isinstance(expr, Column) and not isinstance(expr, ColumnOperation):
         name = getattr(expr, "name", None)
         if isinstance(name, str):
             return F.col(name)
@@ -388,7 +390,7 @@ def _expression_to_robin(expr: Any) -> Any:
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
         val_side = getattr(expr, "value", None)
-        # Alias
+        # Alias: must translate to inner.alias(name) so Robin uses expression, not column lookup
         if op == "alias":
             inner = _expression_to_robin(col_side) if col_side is not None else None
             if inner is None:
@@ -579,6 +581,17 @@ def _expression_to_robin(expr: Any) -> Any:
                 return None
             if hasattr(F, "struct"):
                 return F.struct(*robin_cols)
+        # create_map: value is tuple of key-value columns (k1, v1, k2, v2, ...)
+        if op == "create_map":
+            parts = (
+                list(val_side) if isinstance(val_side, (list, tuple)) else []
+            )
+            robin_cols = [_expression_to_robin(p) for p in parts]
+            if None in robin_cols:
+                return None
+            if hasattr(F, "create_map") and callable(F.create_map):
+                return F.create_map(*robin_cols)
+            return None
         # getItem (Phase 7): column[key] for array index or map key
         if op == "getItem" and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -897,12 +910,12 @@ class RobinMaterializer:
                     if isinstance(c, str):
                         robin_cols.append(c)
                     else:
-                        # Resolve aliased columns: use _original_column when set (Column alias);
-                        # ColumnOperation has _original_column=None from base, so use c.
-                        expr_to_translate = getattr(c, "_original_column", None)
-                        if expr_to_translate is None:
-                            expr_to_translate = c
-                        expr = _expression_to_robin(expr_to_translate)
+                        # Always translate the full expression (c) so that alias is preserved.
+                        # Robin resolves columns by name; passing an alias name as a column
+                        # would make Robin look up a non-existent column (e.g. 'full_name').
+                        # _expression_to_robin(c) handles ColumnOperation(alias, ...) by
+                        # returning inner.alias(alias_name).
+                        expr = _expression_to_robin(c)
                         if expr is None:
                             from sparkless.core.exceptions.operation import (
                                 SparkUnsupportedOperationError,
@@ -936,6 +949,9 @@ class RobinMaterializer:
                 from sparkless.functions.core.column import Column
                 from sparkless.functions.core.literals import Literal
 
+                # Unwrap alias so we translate the inner expression; with_column(name, expr)
+                # receives the name and a Robin Column expression (e.g. create_map(...)),
+                # not a column reference to the new name (Robin would look up 'map_col' and fail).
                 if (
                     isinstance(expression, ColumnOperation)
                     and getattr(expression, "operation", None) == "alias"
