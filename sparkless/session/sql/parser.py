@@ -20,7 +20,7 @@ Example:
     'SELECT'
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 import re
 from ...core.exceptions.analysis import ParseException
 
@@ -392,10 +392,75 @@ class SQLParser:
             "having_conditions": [],
             "order_by_columns": [],
             "limit_value": None,
+            "time_travel": None,  # For Delta Lake time travel syntax
         }
 
         # Simple regex-based parsing for demonstration
         import re
+
+        # Pre-process: Extract time travel syntax from the query
+        # This needs to happen before FROM clause parsing
+        # Patterns:
+        #   FROM table VERSION AS OF 5 [alias]
+        #   FROM table TIMESTAMP AS OF '2024-01-01' [alias]
+        #   FROM table@v5 [alias]
+        #   FROM table@20240101 [alias]
+        time_travel_patterns = [
+            # VERSION AS OF <number>
+            (
+                r"(FROM\s+)([`\w.]+)\s+VERSION\s+AS\s+OF\s+(\d+)",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "version", "value": int(m.group(3))},
+                ),
+            ),
+            # TIMESTAMP AS OF '<timestamp>'
+            (
+                r"(FROM\s+)([`\w.]+)\s+TIMESTAMP\s+AS\s+OF\s+['\"]([^'\"]+)['\"]",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "timestamp", "value": m.group(3)},
+                ),
+            ),
+            # table@v<version>
+            (
+                r"(FROM\s+)([`\w.]+)@v(\d+)",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "version", "value": int(m.group(3))},
+                ),
+            ),
+            # table@<yyyyMMdd> or table@<yyyyMMddHHmmss>
+            (
+                r"(FROM\s+)([`\w.]+)@(\d{8,14})",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "timestamp_compact", "value": m.group(3)},
+                ),
+            ),
+        ]
+
+        processed_query = query
+        for pattern, extractor in time_travel_patterns:
+            match = re.search(pattern, processed_query, re.IGNORECASE)
+            if match:
+                table_name, time_travel_info = extractor(match)
+                components["time_travel"] = {
+                    "table": table_name,
+                    **time_travel_info,
+                }
+                # Replace the time travel syntax with just "FROM table_name"
+                # Keep the FROM prefix and table name, remove the time travel part
+                processed_query = re.sub(
+                    pattern,
+                    r"\1" + table_name,
+                    processed_query,
+                    flags=re.IGNORECASE,
+                )
+                break  # Only handle first time travel match
+
+        # Use processed_query for all subsequent parsing
+        query = processed_query
 
         # Extract SELECT columns (handle multiline queries)
         select_match = re.search(
@@ -1372,3 +1437,74 @@ class SQLParser:
             components["right_query"] = right_query
 
         return components
+
+    def _extract_time_travel(
+        self, table_ref: str
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
+        """Extract time travel syntax from a table reference.
+
+        Delta Lake Time Travel allows querying historical versions of a table:
+        - VERSION AS OF <version_number>
+        - TIMESTAMP AS OF '<timestamp>'
+        - table@v<version> (Databricks shorthand)
+        - table@<yyyyMMdd> (Databricks shorthand)
+
+        Args:
+            table_ref: Table reference that may contain time travel syntax.
+
+        Returns:
+            Tuple of (base_table_name, time_travel_info).
+            time_travel_info is None if no time travel syntax found,
+            otherwise a dict with keys:
+                - type: "version" or "timestamp"
+                - value: The version number or timestamp string
+        """
+        # Pattern 1: VERSION AS OF <number>
+        version_match = re.match(
+            r"([`\w.]+)\s+VERSION\s+AS\s+OF\s+(\d+)",
+            table_ref,
+            re.IGNORECASE,
+        )
+        if version_match:
+            return (
+                version_match.group(1).strip("`"),
+                {"type": "version", "value": int(version_match.group(2))},
+            )
+
+        # Pattern 2: TIMESTAMP AS OF '<timestamp>' or TIMESTAMP AS OF "<timestamp>"
+        timestamp_match = re.match(
+            r"([`\w.]+)\s+TIMESTAMP\s+AS\s+OF\s+['\"]([^'\"]+)['\"]",
+            table_ref,
+            re.IGNORECASE,
+        )
+        if timestamp_match:
+            return (
+                timestamp_match.group(1).strip("`"),
+                {"type": "timestamp", "value": timestamp_match.group(2)},
+            )
+
+        # Pattern 3: table@v<version> (Databricks shorthand)
+        at_version_match = re.match(
+            r"([`\w.]+)@v(\d+)",
+            table_ref,
+            re.IGNORECASE,
+        )
+        if at_version_match:
+            return (
+                at_version_match.group(1).strip("`"),
+                {"type": "version", "value": int(at_version_match.group(2))},
+            )
+
+        # Pattern 4: table@<yyyyMMdd> or table@<yyyyMMddHHmmss> (Databricks timestamp shorthand)
+        at_timestamp_match = re.match(
+            r"([`\w.]+)@(\d{8,14})",
+            table_ref,
+        )
+        if at_timestamp_match:
+            return (
+                at_timestamp_match.group(1).strip("`"),
+                {"type": "timestamp_compact", "value": at_timestamp_match.group(2)},
+            )
+
+        # No time travel syntax found
+        return (table_ref.strip("`"), None)
