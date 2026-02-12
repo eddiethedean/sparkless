@@ -10,8 +10,11 @@ The bug might occur when:
 
 import os
 import pytest
-from sparkless import SparkSession, functions as F
+
+pytest.importorskip("polars")
 import polars as pl
+
+from sparkless import SparkSession, functions as F
 
 
 @pytest.fixture

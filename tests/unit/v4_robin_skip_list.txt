@@ -89,3 +89,7 @@ tests/unit/backend/test_robin_unsupported_raises.py::TestRobinUnsupportedRaises:
 tests/unit/backend/test_robin_unsupported_raises.py::TestRobinUnsupportedRaises::test_unsupported_raises_with_clear_message
 # window arithmetic
 tests/unit/test_window_arithmetic.py
+# Polars-only: backend capability model and issue 160 cache tests (#476)
+tests/test_backend_capability_model.py
+tests/test_issue_160_manual_cache_manipulation.py
+tests/test_issue_160_nested_operations.py

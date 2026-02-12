@@ -8,7 +8,6 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless.spark_types import StructType, StructField, IntegerType, StringType
 from sparkless.sql import SparkSession
-from sparkless.backend.polars.storage import PolarsStorageManager
 
 
 class TestParquetFormatTableAppend(ParityTestBase):
@@ -228,6 +227,9 @@ class TestParquetFormatTableAppend(ParityTestBase):
 
     def test_storage_manager_detached_write_visible_to_session(self, spark):
         """Writes via a standalone PolarsStorageManager should surface in the active session."""
+        pytest.importorskip("polars")
+        from sparkless.backend.polars.storage import PolarsStorageManager
+
         schema = StructType(
             [
                 StructField("id", IntegerType(), True),
