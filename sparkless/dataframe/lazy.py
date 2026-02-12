@@ -601,9 +601,7 @@ class LazyEvaluationEngine:
                             use_plan_flag = False
                         if use_plan_flag or backend_type == "robin":
                             # Join/union not supported in Robin plan path; use op path directly (#473)
-                            op_names = [
-                                op_name for op_name, _ in df._operations_queue
-                            ]
+                            op_names = [op_name for op_name, _ in df._operations_queue]
                             skip_plan_for_robin = backend_type == "robin" and (
                                 "join" in op_names or "union" in op_names
                             )
@@ -650,9 +648,7 @@ class LazyEvaluationEngine:
                                         logical_plan = to_logical_plan(df)
                                         if debug_run_dir is not None:
                                             debug_plan = logical_plan
-                                    rows = use_plan(
-                                        df.data, df.schema, logical_plan
-                                    )
+                                    rows = use_plan(df.data, df.schema, logical_plan)
                                     if debug_run_dir is not None:
                                         debug_result = rows
                                 except (ValueError, TypeError):

@@ -236,10 +236,12 @@ class TestRobinMaterializerExpressionTranslation:
         """CaseWhen in select (plan path) produces one column (#472)."""
         if get_backend_type() != BackendType.ROBIN:
             pytest.skip("Robin backend only")
-        df = spark.createDataFrame(
-            [(1, 10), (2, 50), (3, 90)], ["id", "score"]
+        df = spark.createDataFrame([(1, 10), (2, 50), (3, 90)], ["id", "score"])
+        result = (
+            df.select(
+                F.when(F.col("score") >= 50, "pass").otherwise("fail").alias("result")
+            )
+            .orderBy("id")
+            .collect()
         )
-        result = df.select(
-            F.when(F.col("score") >= 50, "pass").otherwise("fail").alias("result")
-        ).orderBy("id").collect()
         assert [r["result"] for r in result] == ["fail", "pass", "pass"]
