@@ -227,6 +227,42 @@ def _simple_filter_to_robin(condition: Any) -> Any:
                 eq_expr = robin_col.eq(lit_val)
                 result = eq_expr if result is None else (result | eq_expr)
             return result
+        # like: ColumnOperation("like", column, pattern)
+        if op == "like":
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            pattern = (
+                val_side
+                if isinstance(val_side, str)
+                else (getattr(val_side, "value", None) if isinstance(val_side, Literal) else None)
+            )
+            if pattern is None or not isinstance(pattern, str):
+                return None
+            if hasattr(inner, "like") and callable(getattr(inner, "like")):
+                return inner.like(pattern)
+            if hasattr(F, "like") and callable(getattr(F, "like")):
+                return F.like(inner, pattern)  # type: ignore[union-attr]
+            return None
+        # isnull / isnotnull: unary (val_side is None)
+        if op == "isnull":
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            if hasattr(inner, "isnull") and callable(getattr(inner, "isnull")):
+                return inner.isnull()
+            if hasattr(inner, "isNull") and callable(getattr(inner, "isNull")):
+                return inner.isNull()
+            return None
+        if op == "isnotnull":
+            inner = _expression_to_robin(col_side)
+            if inner is None:
+                return None
+            if hasattr(inner, "isnotnull") and callable(getattr(inner, "isnotnull")):
+                return inner.isnotnull()
+            if hasattr(inner, "isNotNull") and callable(getattr(inner, "isNotNull")):
+                return inner.isNotNull()
+            return None
         if op not in (">", "<", ">=", "<=", "==", "!="):
             return None
         # Left side: expression (Column or any translatable expression)
