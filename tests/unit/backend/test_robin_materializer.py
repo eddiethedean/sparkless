@@ -104,6 +104,27 @@ class TestRobinMaterializerExpressionTranslation:
         assert by_id == {1: ("a", "x"), 2: ("b", "y")}
 
     @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
+    def test_concat_with_literal_separator_robin(self, spark: Any) -> None:
+        """concat(col, lit(' '), col) is translated for Robin backend (#474)."""
+        if get_backend_type() != BackendType.ROBIN:
+            pytest.skip("Robin backend only")
+        df = spark.createDataFrame(
+            [("alice", "x"), ("bob", "y")],
+            ["first_name", "last_name"],
+        )
+        result = (
+            df.withColumn(
+                "full_name",
+                F.concat(F.col("first_name"), F.lit(" "), F.col("last_name")),
+            )
+            .orderBy("first_name")
+            .select("full_name")
+            .collect()
+        )
+        full_names = [r["full_name"] for r in result]
+        assert full_names == ["alice x", "bob y"]
+
+    @pytest.mark.backend("robin")  # type: ignore[untyped-decorator]
     def test_with_column_lit_none_robin(self, spark: Any) -> None:
         """withColumn with F.lit(None) produces a nullable column when Robin backend is used (#470)."""
         if get_backend_type() != BackendType.ROBIN:
