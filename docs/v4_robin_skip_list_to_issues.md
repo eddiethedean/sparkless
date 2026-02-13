@@ -47,7 +47,7 @@ See [robin_sparkless_issues.md](robin_sparkless_issues.md) for policy and how to
 | Why skipped | PySpark behavior | Robin gap | Issue |
 |-------------|------------------|-----------|--------|
 | Empty data with schema, or empty schema | PySpark allows `createDataFrame([], schema)` or empty schema for empty DataFrame | Robin raises e.g. "schema must not be empty" or rejects empty data | **To file:** [Parity] create_dataframe_from_rows: allow empty data with schema or empty schema |
-| Tuple/list rows with schema (positional) | createDataFrame(list_of_tuples, schema) | "function not subscriptable", "no len()" suggest row/schema handling differs | **Check** [#256](https://github.com/eddiethedean/robin-sparkless/issues/256) (array column). If tuple/list rows not covered, **To file:** [Parity] create_dataframe_from_rows: accept tuple/list rows with StructType |
+| Tuple/list rows with schema (positional) | createDataFrame(list_of_tuples, schema) | — | **Checked:** Robin accepts `create_dataframe_from_rows([("a",1),("b",2)], [("name","string"),("value","int")])`. Repro: `scripts/robin_parity_repros/29_create_dataframe_tuple_rows.py`. #256 is array column type only; tuple rows are supported. No new issue. |
 
 ---
 
@@ -64,7 +64,47 @@ See [robin_sparkless_issues.md](robin_sparkless_issues.md) for policy and how to
 | Why skipped | PySpark behavior | Robin gap | Issue |
 |-------------|------------------|-----------|--------|
 | test_first_ignorenulls, test_first_method | F.first(col, ignorenulls=True) or GroupedData.first() | first() / first_ignore_nulls may be missing or different | **To file:** [Parity] first() / first_ignore_nulls() aggregate (if missing) |
-| test_approx_count_distinct_rsd | F.approx_count_distinct(column, rsd=...) | rsd parameter or function may differ | **Check**; file if missing. |
+| test_approx_count_distinct_rsd | F.approx_count_distinct(column, rsd=...) | Robin has no approx_count_distinct in Python API | **Filed:** [#297](https://github.com/eddiethedean/robin-sparkless/issues/297). Repro: `scripts/robin_parity_repros/28_approx_count_distinct_rsd.py`. |
+
+---
+
+## Function checklist (creative parity hunting, 2026-02-13)
+
+Gaps found via Spark built-in function list and repros 30–41 (not from skip list). See [robin_parity_function_checklist.md](robin_parity_function_checklist.md) and [robin_sparkless_issues.md](robin_sparkless_issues.md) (section "Issues from creative parity hunting").
+
+| Function / area | Filed issue |
+|-----------------|-------------|
+| approx_percentile | [#300](https://github.com/eddiethedean/robin-sparkless/issues/300) |
+| any_value | [#301](https://github.com/eddiethedean/robin-sparkless/issues/301) |
+| count_if | [#302](https://github.com/eddiethedean/robin-sparkless/issues/302) |
+| max_by / min_by | [#303](https://github.com/eddiethedean/robin-sparkless/issues/303) |
+| try_sum / try_avg | [#304](https://github.com/eddiethedean/robin-sparkless/issues/304) |
+| explode_outer (wrong behavior) | [#305](https://github.com/eddiethedean/robin-sparkless/issues/305) |
+| inline / array of structs | [#306](https://github.com/eddiethedean/robin-sparkless/issues/306) |
+| encode / decode | [#307](https://github.com/eddiethedean/robin-sparkless/issues/307) |
+
+Repros: `scripts/robin_parity_repros/30_approx_percentile.py` through `41_ascii_unbase64.py`.
+
+### Second batch (repros 42–57, 2026-02-13)
+
+| Function / area | Filed issue |
+|-----------------|-------------|
+| collect_list | [#309](https://github.com/eddiethedean/robin-sparkless/issues/309) |
+| collect_set | [#310](https://github.com/eddiethedean/robin-sparkless/issues/310) |
+| corr | [#311](https://github.com/eddiethedean/robin-sparkless/issues/311) |
+| covar_pop | [#312](https://github.com/eddiethedean/robin-sparkless/issues/312) |
+| hour | [#313](https://github.com/eddiethedean/robin-sparkless/issues/313) |
+| bool_and / every | [#314](https://github.com/eddiethedean/robin-sparkless/issues/314) |
+| last_day | [#315](https://github.com/eddiethedean/robin-sparkless/issues/315) |
+| array_remove | [#316](https://github.com/eddiethedean/robin-sparkless/issues/316) |
+| element_at | [#317](https://github.com/eddiethedean/robin-sparkless/issues/317) |
+| flatten / array of arrays | [#318](https://github.com/eddiethedean/robin-sparkless/issues/318) |
+| lag / lead | [#319](https://github.com/eddiethedean/robin-sparkless/issues/319) |
+| dense_rank | [#320](https://github.com/eddiethedean/robin-sparkless/issues/320) |
+| skewness / kurtosis | [#321](https://github.com/eddiethedean/robin-sparkless/issues/321) |
+| to_date | [#322](https://github.com/eddiethedean/robin-sparkless/issues/322) |
+
+Repros: `scripts/robin_parity_repros/42_collect_list.py` through `57_to_date.py`.
 
 ---
 

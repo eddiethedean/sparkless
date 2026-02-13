@@ -143,6 +143,49 @@ Created from [docs/v4_robin_skip_list_to_issues.md](v4_robin_skip_list_to_issues
 | 291 | [Parity] create_dataframe_from_rows: allow empty data with schema or empty schema | https://github.com/eddiethedean/robin-sparkless/issues/291 |
 | 292 | [Parity] union_by_name(allow_missing_columns=True) | https://github.com/eddiethedean/robin-sparkless/issues/292 |
 | 293 | [Parity] first() / first_ignore_nulls() aggregate | https://github.com/eddiethedean/robin-sparkless/issues/293 |
+| 297 | [Parity] approx_count_distinct(column, rsd=...) missing | https://github.com/eddiethedean/robin-sparkless/issues/297 |
+
+Issue #297 created from "Check; file if missing" in v4 skip list (2026-02-13). Repro: `scripts/robin_parity_repros/28_approx_count_distinct_rsd.py`. Body: `scripts/robin_issue_bodies/skip_approx_count_distinct_rsd.md`. Tuple/list rows with schema checked via `29_create_dataframe_tuple_rows.py` — Robin supports; no issue.
+
+## Issues from creative parity hunting (2026-02-13)
+
+Created from Spark built-in function checklist and repros `scripts/robin_parity_repros/30_*.py` through `41_*.py`. See [robin_parity_function_checklist.md](robin_parity_function_checklist.md).
+
+| # | Title | Link |
+|---|-------|------|
+| 300 | [Parity] approx_percentile(col, percentage [, accuracy]) missing | https://github.com/eddiethedean/robin-sparkless/issues/300 |
+| 301 | [Parity] any_value(expr [, isIgnoreNull]) missing | https://github.com/eddiethedean/robin-sparkless/issues/301 |
+| 302 | [Parity] count_if(expr) missing | https://github.com/eddiethedean/robin-sparkless/issues/302 |
+| 303 | [Parity] max_by(x, y) / min_by(x, y) missing | https://github.com/eddiethedean/robin-sparkless/issues/303 |
+| 304 | [Parity] try_sum(expr) / try_avg(expr) missing | https://github.com/eddiethedean/robin-sparkless/issues/304 |
+| 305 | [Parity] explode_outer() wrong behavior — lengths don't match when input has NULL/empty | https://github.com/eddiethedean/robin-sparkless/issues/305 |
+| 306 | [Parity] inline(array of structs) and createDataFrame with array of structs | https://github.com/eddiethedean/robin-sparkless/issues/306 |
+| 307 | [Parity] encode(col, charset) / decode(col, charset) missing | https://github.com/eddiethedean/robin-sparkless/issues/307 |
+
+Repros: 30_approx_percentile, 31_any_value_ignore_nulls, 32_count_if, 33_max_by_min_by, 35_try_sum, 37_explode_outer, 38_inline, 40_encode_decode. Body files: `scripts/robin_issue_bodies/skip_approx_percentile.md` etc.
+
+### Second batch (2026-02-13): repros 42–57
+
+Same strategy; functions from API diff (collect_list, collect_set, corr, covar_pop, bool_and/every, hour, last_day, array_remove, flatten, element_at, lag/lead, dense_rank, skewness, to_date).
+
+| # | Title | Link |
+|---|-------|------|
+| 309 | [Parity] collect_list(expr) missing | https://github.com/eddiethedean/robin-sparkless/issues/309 |
+| 310 | [Parity] collect_set(expr) missing | https://github.com/eddiethedean/robin-sparkless/issues/310 |
+| 311 | [Parity] corr(expr1, expr2) missing | https://github.com/eddiethedean/robin-sparkless/issues/311 |
+| 312 | [Parity] covar_pop(expr1, expr2) missing | https://github.com/eddiethedean/robin-sparkless/issues/312 |
+| 313 | [Parity] hour(col) missing | https://github.com/eddiethedean/robin-sparkless/issues/313 |
+| 314 | [Parity] bool_and(expr) / every(expr) missing | https://github.com/eddiethedean/robin-sparkless/issues/314 |
+| 315 | [Parity] last_day(col) missing | https://github.com/eddiethedean/robin-sparkless/issues/315 |
+| 316 | [Parity] array_remove(col, element) missing | https://github.com/eddiethedean/robin-sparkless/issues/316 |
+| 317 | [Parity] element_at(col, index) missing | https://github.com/eddiethedean/robin-sparkless/issues/317 |
+| 318 | [Parity] flatten(col) or createDataFrame array of arrays | https://github.com/eddiethedean/robin-sparkless/issues/318 |
+| 319 | [Parity] lag(col, offset) / lead(col, offset) missing | https://github.com/eddiethedean/robin-sparkless/issues/319 |
+| 320 | [Parity] dense_rank() window function missing | https://github.com/eddiethedean/robin-sparkless/issues/320 |
+| 321 | [Parity] skewness(col) / kurtosis(col) missing | https://github.com/eddiethedean/robin-sparkless/issues/321 |
+| 322 | [Parity] to_date(col [, format]) missing | https://github.com/eddiethedean/robin-sparkless/issues/322 |
+
+Repros: 42_collect_list through 57_to_date. Body files: `scripts/robin_issue_bodies/skip_collect_list.md` etc.
 
 ## Sparkless parity issues created (earlier)
 
