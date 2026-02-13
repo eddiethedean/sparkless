@@ -193,7 +193,6 @@ module = [
     "sparkless.functions.datetime",
     "sparkless.functions.xml",
     "sparkless.dataframe.grouped.base",
-    "sparkless.backend.polars.export",
     "sparkless.functions.functions",
     "sparkless.dataframe.operations.set_operations",
     "sparkless.core.schema_inference",

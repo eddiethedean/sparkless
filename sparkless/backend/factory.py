@@ -1,20 +1,17 @@
 """
 Backend factory for creating backend instances.
 
-This module provides a centralized factory for creating backend instances.
-In v4 only the Robin backend is supported.
+In v4 Sparkless re-exports Robin via sparkless.sql. This factory only provides
+create_storage_backend for code that needs file-based catalog/table storage.
 """
 
 import importlib.util
 from typing import Any, List, Optional, cast
-from .protocols import StorageBackend, DataMaterializer, ExportBackend
+from .protocols import StorageBackend
 
 
 class BackendFactory:
-    """Factory for creating backend instances.
-
-    In v4 only the Robin backend is supported. Other backend types raise ValueError.
-    """
+    """Factory for creating backend instances. Only storage is supported."""
 
     _robin_available_cache: Optional[bool] = None
 
@@ -55,106 +52,23 @@ class BackendFactory:
         return cast("StorageBackend", RobinStorageManager(db_path=db_path))
 
     @staticmethod
-    def create_materializer(
-        backend_type: str = "robin",
-        max_memory: str = "1GB",
-        allow_disk_spillover: bool = False,
-        **kwargs: Any,
-    ) -> DataMaterializer:
-        """Create a data materializer instance.
-
-        Args:
-            backend_type: Must be "robin" (v4 only supports Robin).
-            max_memory: Kept for API compatibility; ignored.
-            allow_disk_spillover: Kept for API compatibility; ignored.
-            **kwargs: Additional materializer-specific arguments
-
-        Returns:
-            Data materializer instance
-
-        Raises:
-            ValueError: If backend_type is not "robin"
-        """
-        if backend_type != "robin":
-            raise ValueError(
-                f"Unsupported materializer type: {backend_type}. "
-                "Sparkless v4 supports only the Robin backend (robin-sparkless)."
-            )
-        if not BackendFactory._robin_available():
-            raise ValueError(
-                "Robin backend is not available. Install with: pip install robin-sparkless."
-            )
-        from .robin.materializer import RobinMaterializer
-
-        return RobinMaterializer()
-
-    @staticmethod
-    def create_export_backend(backend_type: str = "robin") -> ExportBackend:
-        """Create an export backend instance.
-
-        Args:
-            backend_type: Must be "robin" (v4 only supports Robin).
-
-        Returns:
-            Export backend instance
-
-        Raises:
-            ValueError: If backend_type is not "robin"
-        """
-        if backend_type != "robin":
-            raise ValueError(
-                f"Unsupported export backend type: {backend_type}. "
-                "Sparkless v4 supports only the Robin backend (robin-sparkless)."
-            )
-        if not BackendFactory._robin_available():
-            raise ValueError(
-                "Robin backend is not available. Install with: pip install robin-sparkless."
-            )
-        from .robin.export import RobinExporter
-
-        return RobinExporter()
-
-    @staticmethod
     def get_backend_type(storage: StorageBackend) -> str:
-        """Detect backend type from storage instance.
-
-        Args:
-            storage: Storage backend instance
-
-        Returns:
-            Backend type string ("polars", "memory", "file", etc.)
-
-        Raises:
-            ValueError: If backend type cannot be determined
-        """
-        # Use module path inspection to detect backend type
+        """Detect backend type from storage instance."""
         module_name = type(storage).__module__
-
         if "robin" in module_name:
             return "robin"
-        elif "polars" in module_name:
-            return "polars"
-        elif "duckdb" in module_name:
-            return "duckdb"
-        elif "memory" in module_name:
+        if "memory" in module_name:
             return "memory"
-        elif "file" in module_name:
+        if "file" in module_name:
             return "file"
-        else:
-            # Fallback: try to match class name
-            class_name = type(storage).__name__.lower()
-            if "robin" in class_name:
-                return "robin"
-            elif "polars" in class_name:
-                return "polars"
-            elif "duckdb" in class_name:
-                return "duckdb"
-            elif "memory" in class_name:
-                return "memory"
-            elif "file" in class_name:
-                return "file"
-            else:
-                raise ValueError(f"Cannot determine backend type for {type(storage)}")
+        class_name = type(storage).__name__.lower()
+        if "robin" in class_name:
+            return "robin"
+        if "memory" in class_name:
+            return "memory"
+        if "file" in class_name:
+            return "file"
+        return "robin"  # default
 
     @staticmethod
     def list_available_backends() -> List[str]:
@@ -163,14 +77,7 @@ class BackendFactory:
 
     @staticmethod
     def validate_backend_type(backend_type: str) -> None:
-        """Validate that a backend type is supported.
-
-        Args:
-            backend_type: Backend type to validate
-
-        Raises:
-            ValueError: If backend type is not supported
-        """
+        """Validate that a backend type is supported."""
         available_backends = BackendFactory.list_available_backends()
         if backend_type not in available_backends:
             raise ValueError(
@@ -180,16 +87,13 @@ class BackendFactory:
 
     @staticmethod
     def _robin_available() -> bool:
-        """Check whether the optional Robin (robin-sparkless) backend is available."""
-
+        """Check whether Robin (robin-sparkless) is available."""
         if BackendFactory._robin_available_cache is not None:
             return BackendFactory._robin_available_cache
-
         try:
             spec = importlib.util.find_spec("robin_sparkless")
         except ModuleNotFoundError:
             BackendFactory._robin_available_cache = False
         else:
             BackendFactory._robin_available_cache = spec is not None
-
         return BackendFactory._robin_available_cache

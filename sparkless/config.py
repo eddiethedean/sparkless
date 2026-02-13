@@ -16,7 +16,7 @@ ENV_PROFILE_TOGGLE = "SPARKLESS_PROFILE"
 _ENV_FEATURE_PREFIX = "SPARKLESS_FEATURE_"
 _FEATURE_FLAG_DEFAULTS: Dict[str, bool] = {
     "enable_performance_profiling": False,
-    "enable_polars_vectorized_shortcuts": False,
+    "enable_polars_vectorized_shortcuts": False,  # No-op in v4 (no Polars backend)
     "enable_expression_translation_cache": False,
     "enable_adaptive_execution_simulation": False,
 }

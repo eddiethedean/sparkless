@@ -1,24 +1,13 @@
 """
 Session management module for Sparkless.
 
-This module provides session management, SQL processing, and configuration
-management for Sparkless, following the Single Responsibility Principle
-and enabling better testability and modularity.
-
-Components:
-    - SparkSession: Main session class
-    - SparkContext: Spark context management
-    - Catalog: Database and table catalog operations
-    - Configuration management
-    - SQL processing pipeline
+Sparkless v4 re-exports Robin via sparkless.sql. This module re-exports
+SparkSession (Robin-backed) and SparkSessionBuilder from sql; SparkContext
+and JVMContext remain for compatibility.
 """
 
-from .core import (
-    SparkSession,
-    SparkSessionBuilder,
-    SparkContext,
-    JVMContext,
-)
+from ..sql import SparkSession, SparkSessionBuilder
+from .context import SparkContext, JVMContext
 from .catalog import Catalog, Database, Table
 from .config import Configuration
 

@@ -2,6 +2,8 @@
 
 This directory contains archived test directories that have been superseded by the unified parity testing architecture in `tests/parity/`.
 
+**v4 note:** Some archived tests (e.g. under `unit/backend/`) target pre-v4 backends: Polars backend, Robin materializer, plan executor, and `BackendFactory.create_materializer` / `create_export_backend`. In Sparkless v4, only the Robin backend is supported and the public API is `sparkless.sql` (re-export of robin-sparkless); those tests are kept here for reference only.
+
 ## Archive Date
 
 **2025-01-15**

@@ -1,27 +1,20 @@
 """
 DataFrame module for Sparkless.
 
-This module provides DataFrame functionality organized into submodules.
+Sparkless v4 re-exports Robin's DataFrame and related types. All DataFrame
+operations use Robin (robin-sparkless) as the execution engine.
 """
 
-from .dataframe import DataFrame
-from .writer import DataFrameWriter
-from .reader import DataFrameReader
-from .grouped import (
+from ..sql import (
+    DataFrame,
+    DataFrameWriter,
+    DataFrameReader,
     GroupedData,
-    RollupGroupedData,
-    CubeGroupedData,
-    PivotGroupedData,
 )
-from .rdd import MockRDD
 
 __all__ = [
     "DataFrame",
     "DataFrameWriter",
     "DataFrameReader",
     "GroupedData",
-    "RollupGroupedData",
-    "CubeGroupedData",
-    "PivotGroupedData",
-    "MockRDD",
 ]

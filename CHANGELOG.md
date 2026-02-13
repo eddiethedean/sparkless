@@ -24,6 +24,12 @@
 - **Phase 6:** Unit test run with Robin: skip list in `tests/unit/v4_robin_skip_list.txt`; tests that require unsupported operations are skipped when `SPARKLESS_TEST_BACKEND=robin`.
 - **Phase 7:** Expression coverage for Robin materializer and plan path: **cast/astype** (materializer + plan path with alias); **substring/substr** (materializer, fallback); **getItem** (materializer). Alias handling fixed for plan path; logical plan serializes alias value as literal. CaseWhen and window in select documented as gaps.
 
+### Cleanup (v4 migration follow-up)
+
+- **Backend factory:** `create_materializer` and `create_export_backend` were removed; only `create_storage_backend("robin")` remains. Tests that referenced the removed APIs were archived or updated.
+- **Tests:** `test_plan_executor.py`, `test_robin_materializer.py`, and `test_logical_plan.py` moved to `tests/archive/unit/` (plan executor and materializer removed in v4). `test_robin_optional.py` no longer tests `create_materializer`/`create_export_backend`.
+- **Docs:** `docs/backend_architecture.md` updated for v4 (Robin-only, storage-only factory). Config flag `enable_polars_vectorized_shortcuts` documented as no-op in v4.
+
 ---
 
 ## 3.31.0 — 2026-02-05

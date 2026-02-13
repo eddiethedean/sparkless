@@ -115,7 +115,7 @@ def run_sparkless_robin_mode() -> None:
         )
         print("When run in Robin mode, this test either:")
         print(
-            "  - Raises SparkUnsupportedOperationError (Robin materializer does not support select with expressions),"
+            "  - Raises SparkUnsupportedOperationError (Robin does not support select with expressions),"
         )
         print("  - Or stalls (e.g. first-time Robin session init in a worker).")
         return

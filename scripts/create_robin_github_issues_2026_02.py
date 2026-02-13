@@ -75,7 +75,7 @@ When `other` is a scalar (int, float, str, etc.), wrap in `lit()` before calling
 
 - **Source:** Sparkless project uses robin-sparkless as an optional backend
 - **Analysis:** [sparkless/docs/robin_sparkless_ownership_analysis.md](https://github.com/eddiethedean/sparkless/blob/main/docs/robin_sparkless_ownership_analysis.md)
-- **Workaround:** Sparkless Robin materializer was updated to use `.gt()`, `.lt()`, etc. instead of operators, but upstream support would benefit all PySpark-style integrations.
+- **Workaround:** Sparkless was updated to use `.gt()`, `.lt()`, etc. instead of operators when calling Robin; upstream support would benefit all PySpark-style integrations.
 """,
     },
     {
@@ -121,7 +121,7 @@ In the Python bindings for `join`, accept `on` as:
 
 ## Context
 
-- **Source:** Sparkless Robin materializer; PySpark-style join APIs often pass `on="col"` for single-column joins
+- **Source:** Sparkless (v4 uses Robin as engine); PySpark-style join APIs often pass `on="col"` for single-column joins
 - **Workaround:** Callers can wrap: `on=[col] if isinstance(col, str) else col`
 """,
     },

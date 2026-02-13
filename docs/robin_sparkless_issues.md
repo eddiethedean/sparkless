@@ -117,6 +117,16 @@ Reproduced with **robin-sparkless 0.8.3** using direct API (no Sparkless). Each 
 
 Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file scripts/robin_issue_bodies/verified_*.md`.
 
+## Issues created from parity repro run (2026-02-13)
+
+Repros run from sparkless repo: `python scripts/robin_parity_repros/run_all_repros.py` and individual scripts. Only gap still showing Robin FAIL + PySpark OK after deduplication: posexplode() API (Robin requires Column, PySpark accepts string column name).
+
+| # | Title | Link |
+|---|-------|------|
+| 280 | [Parity] posexplode() should accept column name (string) for PySpark compatibility | https://github.com/eddiethedean/robin-sparkless/issues/280 |
+
+Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file scripts/robin_issue_bodies/parity_posexplode_accept_string.md`. Repro: `scripts/robin_parity_repros/11_posexplode_array.py`. Related: #264 (posexplode missing).
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.

@@ -82,7 +82,7 @@ def mock_spark_session():
     from sparkless import SparkSession
 
     session = SparkSession("test_app")
-    # When robin mode is requested, ensure we did not silently get polars
+    # v4: When Robin mode is requested, ensure session is Robin (no silent fallback).
     if (
         os.environ.get("SPARKLESS_TEST_BACKEND") or ""
     ).strip().lower() == "robin" and getattr(session, "backend_type", None) != "robin":
@@ -183,7 +183,7 @@ def spark(request):
             if actual != "robin":
                 raise RuntimeError(
                     f"Robin mode was requested but session has backend_type={actual!r}. "
-                    "Tests must not silently run in polars/mock when SPARKLESS_TEST_BACKEND=robin."
+                    "Tests must not silently run in a different backend when SPARKLESS_TEST_BACKEND=robin."
                 )
     except ValueError:
         # When Robin is requested but not available, do not skip: let the test fail so we never
@@ -285,9 +285,9 @@ def temp_file_storage_path():
 
 def pytest_configure(config):
     """Configure pytest with custom markers and enforce robin mode when requested."""
-    # When robin mode is requested, sync SPARKLESS_BACKEND so no test silently runs in polars/mock.
+    # v4: When Robin mode is requested, sync SPARKLESS_BACKEND so tests use Robin only.
     # If robin is not installed, we do not exit: all tests run and those that need a session will
-    # fail (no silent skip or fallback to polars).
+    # fail (no silent skip or fallback to another backend).
     _test_backend = (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower()
     if _test_backend == "robin":
         os.environ["SPARKLESS_BACKEND"] = "robin"

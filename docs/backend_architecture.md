@@ -3,7 +3,7 @@
 
 ## Overview
 
-This document describes the backend architecture with Polars as the default backend (v3.0.0+). The architecture supports multiple backends (Polars, memory, file) through a pluggable system with protocol-based interfaces.
+This document describes the backend architecture. **In v4**, Sparkless re-exports Robin (robin-sparkless) as the execution engine; the only backend supported is Robin. The `BackendFactory` provides storage backend creation for catalog/table use; materializer and export backends have been removed.
 
 ## Architecture Changes
 
@@ -29,43 +29,25 @@ sparkless/
 - Difficult to test modules independently
 - No clear separation between backend and business logic
 
-### Current Architecture (v3.0.0+)
+### Current Architecture (v4)
 
 ```
 sparkless/
   backend/
     __init__.py
-    protocols.py             # Protocol definitions
-    factory.py               # Backend factory
-    polars/
+    protocols.py             # Protocol definitions (StorageBackend; materializer/export removed)
+    factory.py               # Backend factory (create_storage_backend("robin") only)
+    robin/
       __init__.py
-      storage.py             # Polars storage backend (Parquet-based)
-      materializer.py        # Polars lazy evaluation
-      expression_translator.py  # MockColumn → Polars expressions
-      operation_executor.py    # DataFrame operations
-      window_handler.py        # Window functions
-      export.py              # Polars export utilities
-      type_mapper.py         # Type conversion
-      schema_registry.py     # JSON schema storage
-      parquet_storage.py     # Parquet file operations
-  session/
-    core/
-      session.py             # Uses BackendFactory + protocols
-  dataframe/
-    lazy.py                  # Uses BackendFactory
-    export.py                # Delegates to backend
+      storage.py             # Robin storage backend for catalog/table use
+  sql/
+    _session.py              # Thin SparkSession wrapper around Robin; createDataFrame(data, schema)
+    __init__.py               # Re-exports Robin's DataFrame, Column, F, etc.
   storage/
-    __init__.py              # Re-exports for backward compatibility
+    __init__.py               # Re-exports for backward compatibility
 ```
 
-**Benefits:**
-- All backend logic centralized in `sparkless/backend/`
-- Modules decoupled via protocol interfaces
-- Dependency injection via `BackendFactory`
-- Easy to test with mock backends
-- Clear separation of concerns
-- Multiple backend support (Polars default, memory, file)
-- Thread-safe by design (Polars backend)
+**v4:** Sparkless re-exports Robin (robin-sparkless). Execution uses Robin's DataFrame and session. The factory only provides storage for code that needs catalog/table persistence. Materializer and export backends have been removed.
 
 ## Protocol Definitions
 
@@ -77,18 +59,6 @@ Defines the interface for executing queries on data.
 class QueryExecutor(Protocol):
     def execute_query(self, query: str) -> List[Dict[str, Any]]: ...
     def create_table(self, name: str, schema: MockStructType, data: List[Dict]): ...
-    def close(self) -> None: ...
-```
-
-### DataMaterializer Protocol
-
-Defines the interface for materializing lazy DataFrame operations.
-
-```python
-class DataMaterializer(Protocol):
-    def materialize(
-        self, data: List[Dict], schema: MockStructType, operations: List[Tuple]
-    ) -> List[MockRow]: ...
     def close(self) -> None: ...
 ```
 
@@ -105,28 +75,14 @@ class StorageBackend(Protocol):
     # ... other storage methods
 ```
 
-### ExportBackend Protocol
-
-Defines the interface for DataFrame export operations.
-
-```python
-class ExportBackend(Protocol):
-    # Export methods are implemented directly in backend implementations
-    ...
-```
-
 ## Backend Factory
 
-The `BackendFactory` provides centralized backend instantiation with dependency injection support.
+In **v4**, Sparkless re-exports Robin (robin-sparkless) as the execution engine. The `BackendFactory` provides only storage backend creation for code that needs file-based catalog/table storage.
 
 ```python
-# Creating backends (Polars is default)
-storage = BackendFactory.create_storage_backend("polars")
-materializer = BackendFactory.create_materializer("polars")
-exporter = BackendFactory.create_export_backend("polars")
-
-# Using in session with DI
-spark = SparkSession("app", storage_backend=custom_storage)
+# v4: Only storage is supported; materializer and export backends were removed.
+storage = BackendFactory.create_storage_backend("robin")
+# BackendFactory.create_materializer and create_export_backend no longer exist.
 ```
 
 ## Usage Examples
@@ -146,11 +102,10 @@ spark = SparkSession("MyApp")
 from sparkless.sql import SparkSession
 from sparkless.backend.factory import BackendFactory
 
-# Create custom backend (Polars)
-custom_storage = BackendFactory.create_storage_backend("polars")
-
-# Inject into session
-spark = SparkSession("MyApp", storage_backend=custom_storage)
+# v4: Robin is the only supported backend.
+custom_storage = BackendFactory.create_storage_backend("robin")
+# Sparkless.sql session uses Robin; custom_storage is for catalog/table use only.
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
 ```
 
 ### Testing with Mock Backend
@@ -179,31 +134,15 @@ Backend selection is now configurable through the session builder's `.config()` 
 ```python
 from sparkless.sql import SparkSession
 
-# Default backend (Polars) - v3.0.0+
-spark = SparkSession("MyApp")
-
-# Explicit backend selection
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "polars") \
-    .getOrCreate()
-
-# Memory backend for lightweight testing
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "memory") \
-    .getOrCreate()
-
-# File backend for persistent storage
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "file") \
-    .config("spark.sparkless.backend.basePath", "/tmp/sparkless") \
-    .getOrCreate()
+# v4: Robin is the only backend; session uses Robin by default.
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
 ```
 
 ### Configuration Keys
 
 | Key | Description | Default | Example |
 |-----|-------------|---------|---------|
-| `spark.sparkless.backend` | Backend type | `"polars"` | `"polars"`, `"memory"`, `"file"` |
+| `spark.sparkless.backend` | Backend type (v4: Robin only) | `"robin"` | `"robin"` |
 | `spark.sparkless.backend.maxMemory` | Memory limit | `"1GB"` | `"4GB"`, `"8GB"` |
 | `spark.sparkless.backend.allowDiskSpillover` | Allow disk usage | `false` | `true`, `false` |
 | `spark.sparkless.backend.basePath` | Base path for file backend | `"sparkless_storage"` | `"/tmp/data"` |
@@ -215,16 +154,16 @@ The system automatically detects backend types from storage instances:
 ```python
 from sparkless.backend.factory import BackendFactory
 
-# Create a storage backend
-storage = BackendFactory.create_storage_backend("polars")
+# v4: Only Robin storage is supported.
+storage = BackendFactory.create_storage_backend("robin")
 
 # Detect the backend type
 backend_type = BackendFactory.get_backend_type(storage)
-print(backend_type)  # "robin" (v4)
+print(backend_type)  # "robin"
 
 # List available backends
 available = BackendFactory.list_available_backends()
-print(available)  # ["polars", "memory", "file"]
+print(available)  # ["robin"]
 ```
 
 ### Adding New Backends
@@ -311,20 +250,19 @@ Each synthesized `REPARTITION` operation carries structured metadata (`reason`,
 `target_split_factor`, `skew_metrics`) that downstream components can use to
 adjust execution strategies or produce diagnostics.
 
-## Backward Compatibility
+## Backward Compatibility (v4)
 
-All existing imports continue to work via re-exports:
+In v4, use the Robin-backed session and factory for storage only:
 
 ```python
-# Still works - imports from new location transparently
-from sparkless.storage import PolarsStorageManager
+# Recommended: use sparkless.sql for session and DataFrames
+from sparkless.sql import SparkSession, DataFrame, F
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
+df = spark.createDataFrame([{"a": 1}])
 
-# Also works - explicit new import
-from sparkless.backend.polars import PolarsStorageManager
-
-# Factory pattern (recommended)
+# Storage (for catalog/table use only)
 from sparkless.backend.factory import BackendFactory
-storage = BackendFactory.create_storage_backend("polars")
+storage = BackendFactory.create_storage_backend("robin")
 ```
 
 ## Migration Guide
@@ -376,10 +314,10 @@ Potential improvements enabled by this architecture:
 
 ## File Mapping
 
-The backend architecture centralizes all backend logic in `sparkless/backend/`:
-- Polars backend: `backend/polars/`
-- Memory backend: `storage/backends/memory.py`
-- File backend: `storage/backends/file.py`
+The backend architecture centralizes backend logic in `sparkless/backend/` (v4):
+- Robin storage: `backend/robin/storage.py` (catalog/table use)
+- Memory backend: `storage/backends/memory.py` (if still used by tests/legacy)
+- Execution: via re-export from `sparkless.sql` (Robin's DataFrame/session)
 
 ## Summary
 

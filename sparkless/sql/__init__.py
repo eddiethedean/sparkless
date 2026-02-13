@@ -1,69 +1,61 @@
 """
 Sparkless SQL module - PySpark-compatible SQL interface.
 
-This module provides a complete mock implementation of PySpark's SQL module
-that behaves identically to the real PySpark SQL interface for testing and development.
-
-Key Features:
-    - Complete PySpark SQL API compatibility
-    - SparkSession, DataFrame, Column, Row, Window
-    - All data types (StringType, IntegerType, etc.)
-    - Functions namespace (F)
-    - StructType and StructField for schema definition
-
-Example:
-    >>> from sparkless.sql import SparkSession, DataFrame, functions as F
-    >>> from sparkless.sql.types import StringType, IntegerType, StructType, StructField
-    >>> spark = SparkSession("MyApp")
-    >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
-    >>> df = spark.createDataFrame(data)
-    >>> df.select(F.upper(F.col("name"))).show()
-    DataFrame[2 rows, 1 columns]
-
-    upper(name)
-    ALICE
-    BOB
+This module re-exports Robin (robin-sparkless) as the execution engine so that
+existing imports like `from sparkless.sql import SparkSession, DataFrame, functions as F`
+work without change. SparkSession is a thin wrapper that adds createDataFrame(data, schema=None).
 """
 
-# Core classes
-from ..session import SparkSession  # noqa: E402
-from ..dataframe import DataFrame, DataFrameWriter, GroupedData  # noqa: E402
-from ..functions import Column, ColumnOperation, F, Functions  # noqa: E402
-from ..window import Window, WindowSpec  # noqa: E402
-from ..spark_types import Row  # noqa: E402
+from __future__ import annotations
 
-# Import exceptions (PySpark 3.5+ compatibility)
-from ..core.exceptions import PySparkTypeError, PySparkValueError  # noqa: E402
+import robin_sparkless as _robin
 
-# Import types submodule
-from . import types  # noqa: E402
+from sparkless.sql._session import SparkSession, SparkSessionBuilder
+from sparkless.spark_types import Row
 
-# Import functions submodule
-from . import functions  # noqa: E402
+# Re-export from Robin
+DataFrame = _robin.DataFrame
+Column = _robin.Column
+DataFrameWriter = _robin.DataFrameWriter
+DataFrameReader = _robin.DataFrameReader
+GroupedData = _robin.GroupedData
+Window = _robin.Window
+# Robin may use WindowSpec or similar; expose if present
+WindowSpec = getattr(_robin, "WindowSpec", Window)
+# Functions namespace (Robin module is the F namespace)
+Functions = _robin
+F = _robin
+functions = _robin
 
-# Import utils submodule (PySpark-compatible exception exports)
-from . import utils  # noqa: E402
+# ColumnOperation: Robin may not expose this name; keep for compatibility if code references it
+ColumnOperation = getattr(_robin, "ColumnOperation", Column)
+
+# Types submodule (Sparkless types for PySpark compatibility)
+from sparkless.sql import types  # noqa: E402
+
+# Utils submodule (exceptions)
+from sparkless.sql import utils  # noqa: E402
+
+# Exceptions (PySpark 3.5+ compatibility)
+from sparkless.core.exceptions import PySparkTypeError, PySparkValueError  # noqa: E402
 
 __all__ = [
-    # Core classes
     "SparkSession",
+    "SparkSessionBuilder",
     "DataFrame",
     "DataFrameWriter",
+    "DataFrameReader",
     "GroupedData",
     "Column",
     "ColumnOperation",
     "Row",
     "Window",
     "WindowSpec",
-    # Functions
     "Functions",
     "F",
     "functions",
-    # Types submodule
     "types",
-    # Utils submodule (exceptions)
     "utils",
-    # Exceptions (PySpark 3.5+ compatibility)
     "PySparkTypeError",
     "PySparkValueError",
 ]

@@ -180,7 +180,7 @@ SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest \\
 
 ## Context
 
-Sparkless uses robin-sparkless as an optional execution backend. The Sparkless Robin materializer calls robin-sparkless APIs (`create_dataframe_from_rows`, `filter`, `select`, `join`, `collect`, etc.). This failure may indicate:
+Sparkless v4 uses robin-sparkless as the execution engine and calls its APIs (`create_dataframe_from_rows`, `filter`, `select`, `join`, `collect`, etc.). This failure may indicate:
 
 - Incorrect result from a robin-sparkless API (e.g. `join` or `collect` returning empty/wrong rows)
 - API contract mismatch (e.g. parameter format for `on=` or `how=`)
