@@ -84,8 +84,10 @@ tests/test_issue_263_isnan_string.py
 tests/unit/test_column_case_variations.py
 # first() / other
 tests/unit/test_first_method.py
-# filter/unionByName
-tests/unit/test_issue_355.py
+# filter/unionByName (Phase 6: diamond fix - bool conversion for Robin join)
+# tests/unit/test_issue_355.py re-enabled; skip only tests needing computed column fix
+tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_complex_expressions
+tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_nested_transformations
 # getItem / isin / coercion
 tests/unit/test_issues_225_231.py
 # unsupported select: expect SparkUnsupportedOperationError; Robin may resolve first (not found: m)

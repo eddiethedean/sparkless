@@ -62,6 +62,59 @@ def robin_expr_to_column(expr: Dict[str, Any]) -> Any:
         safe = _lit_value_for_robin(val)
         return F.lit(safe)  # type: ignore[arg-type]
 
+    # Window functions: build Robin Column from window spec (#472)
+    if "window" in expr:
+        w = expr["window"]
+        if not isinstance(w, dict):
+            raise ValueError("Robin window expression must be a dict")
+        func = w.get("function") or "row_number"
+        col_name = w.get("column")
+        part_by = w.get("partition_by") or []
+        order_by = w.get("order_by") or []
+        alias_name = w.get("alias")
+        partition_by = part_by if part_by else [
+            ob.get("name") for ob in order_by if isinstance(ob, dict)
+        ]
+        if not partition_by and order_by:
+            partition_by = [
+                ob.get("name")
+                for ob in order_by
+                if isinstance(ob, dict) and ob.get("name")
+            ]
+        base_col_name = col_name or (partition_by[0] if partition_by else "id")
+        base = F.col(base_col_name)
+        descending = False
+        if order_by and isinstance(order_by[0], dict):
+            descending = bool(order_by[0].get("descending", False))
+        result = None
+        if func == "row_number" and hasattr(base, "row_number"):
+            result = base.row_number(descending=descending).over(partition_by)
+        elif func == "rank" and hasattr(base, "rank"):
+            result = base.rank(descending=descending).over(partition_by)
+        elif func == "dense_rank" and hasattr(base, "dense_rank"):
+            result = base.dense_rank(descending=descending).over(partition_by)
+        elif func == "percent_rank" and hasattr(base, "percent_rank"):
+            try:
+                result = base.percent_rank(partition_by, descending)
+            except TypeError:
+                result = base.percent_rank().over(partition_by)
+        elif func in ("sum", "avg", "min", "max"):
+            agg_col = col_name or base_col_name
+            c = F.col(agg_col) if isinstance(agg_col, str) else base
+            if func == "sum" and hasattr(c, "sum"):
+                result = c.sum().over(partition_by)
+            elif func == "avg" and hasattr(c, "avg"):
+                result = c.avg().over(partition_by)
+            elif func == "min" and hasattr(c, "min"):
+                result = c.min().over(partition_by)
+            elif func == "max" and hasattr(c, "max"):
+                result = c.max().over(partition_by)
+        if result is None:
+            raise ValueError(f"Robin does not support window function: {func!r}")
+        if alias_name and hasattr(result, "alias"):
+            return result.alias(alias_name)
+        return result
+
     if "op" in expr:
         op = expr["op"]
         # CaseWhen: when/then/otherwise (#472)

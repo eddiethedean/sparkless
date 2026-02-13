@@ -70,17 +70,43 @@ def _row_value_for_robin(val: Any) -> Any:
     return str(val)
 
 
-def _data_to_robin_rows(data: List[Any], names: List[str]) -> List[dict]:
-    """Convert Sparkless row data to list of dicts for create_dataframe_from_rows."""
+def _data_to_robin_rows(
+    data: List[Any],
+    names: List[str],
+    schema: Optional[Any] = None,
+) -> List[dict]:
+    """Convert Sparkless row data to list of dicts for create_dataframe_from_rows.
+
+    When schema is provided, converts int 1/0 to bool True/False for BooleanType
+    columns (Robin rejects int for bool and produces None - unionByName diamond fix).
+    """
+    bool_cols: set = set()
+    if schema is not None and hasattr(schema, "fields"):
+        for f in schema.fields:
+            dt = getattr(f, "dataType", None)
+            if dt is not None:
+                nm = getattr(dt, "__class__", None)
+                nm = getattr(nm, "__name__", "") if nm else ""
+                if nm == "BooleanType":
+                    bool_cols.add(getattr(f, "name", ""))
+
+    def _convert_val(val: Any, col_name: str) -> Any:
+        v = _row_value_for_robin(val)
+        if col_name in bool_cols and isinstance(v, int) and v in (0, 1):
+            return bool(v)
+        return v
+
     rows: List[dict] = []
     for row in data:
         if isinstance(row, dict):
-            rows.append({n: _row_value_for_robin(row.get(n)) for n in names})
+            rows.append({n: _convert_val(row.get(n), n) for n in names})
         elif isinstance(row, (list, tuple)):
             values = list(row) + [None] * (len(names) - len(row))
-            rows.append(dict(zip(names, (_row_value_for_robin(v) for v in values))))
+            rows.append(
+                dict(zip(names, (_convert_val(v, n) for v, n in zip(values, names))))
+            )
         else:
-            rows.append({n: _row_value_for_robin(getattr(row, n, None)) for n in names})
+            rows.append({n: _convert_val(getattr(row, n, None), n) for n in names})
     return rows
 
 
@@ -425,6 +451,66 @@ def _simple_filter_to_robin(
                     both_not_null = l_not() & r_not()
                     return both_null | (both_not_null & left_expr.eq(right_expr))
             return None
+        # Unary NOT: ColumnOperation("!", column=inner, value=None)
+        # Robin may lack __invert__/not_(); fallback: NOT (a == b) -> (a != b)
+        if op == "!" and val_side is None:
+            inner_op = getattr(col_side, "operation", None)
+            inner_col = getattr(col_side, "column", None)
+            inner_val = getattr(col_side, "value", None)
+            if inner_op == "==" and inner_col is not None:
+                left = _expression_to_robin(inner_col, available_columns, case_sensitive)
+                right = _expression_to_robin(
+                    inner_val, available_columns, case_sensitive
+                ) if inner_val is not None else None
+                if right is None and inner_val is not None:
+                    right = F.lit(_lit_value_for_robin(
+                        getattr(inner_val, "value", inner_val)
+                        if isinstance(inner_val, Literal)
+                        else inner_val
+                    ))
+                if left is not None and right is not None:
+                    return left.ne(right)
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
+            if inner is None:
+                return None
+            if hasattr(inner, "__invert__"):
+                return ~inner
+            if hasattr(inner, "not_") and callable(inner.not_):
+                return inner.not_()
+            return None
+        # startswith / contains: string ops that produce boolean
+        if op == "startswith":
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
+            if inner is None:
+                return None
+            substr = (
+                val_side
+                if isinstance(val_side, str)
+                else (getattr(val_side, "value", None) if isinstance(val_side, Literal) else None)
+            )
+            if substr is None or not isinstance(substr, str):
+                return None
+            if hasattr(inner, "startswith") and callable(inner.startswith):
+                return inner.startswith(substr)
+            if hasattr(F, "startswith") and callable(getattr(F, "startswith")):
+                return F.startswith(inner, substr)  # type: ignore[union-attr]
+            return None
+        if op == "contains":
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
+            if inner is None:
+                return None
+            substr = (
+                val_side
+                if isinstance(val_side, str)
+                else (getattr(val_side, "value", None) if isinstance(val_side, Literal) else None)
+            )
+            if substr is None or not isinstance(substr, str):
+                return None
+            if hasattr(inner, "contains") and callable(inner.contains):
+                return inner.contains(substr)
+            if hasattr(F, "contains") and callable(getattr(F, "contains")):
+                return F.contains(inner, substr)  # type: ignore[union-attr]
+            return None
         if op not in (">", "<", ">=", "<=", "==", "!="):
             return None
         # Left side: expression (Column or any translatable expression)
@@ -561,6 +647,9 @@ def _expression_to_robin(
         val = getattr(expr, "value", expr)
         safe_val = _lit_value_for_robin(val)
         return F.lit(safe_val)  # type: ignore[arg-type]
+    # Plain Python literals (e.g. F.col("x") == "Alice" passes "Alice" as str)
+    if isinstance(expr, (int, float, str, bool, type(None))):
+        return F.lit(_lit_value_for_robin(expr))  # type: ignore[arg-type]
     # CaseWhen -> Robin when(cond).then(val).otherwise(default)
     try:
         from sparkless.functions.conditional import CaseWhen
@@ -687,6 +776,14 @@ def _expression_to_robin(
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
         val_side = getattr(expr, "value", None)
+        # When expr has _alias_name (e.g. (window*100).alias("percentile")), wrap result with .alias()
+        _alias_name = getattr(expr, "_alias_name", None)
+
+        def _wrap_alias(res: Any) -> Any:
+            if _alias_name and res is not None and hasattr(res, "alias"):
+                return res.alias(_alias_name)
+            return res
+
         # Alias: must translate to inner.alias(name) so Robin uses expression, not column lookup.
         # posexplode().alias("Name1", "Name2") yields two columns; return a list of two expressions.
         if op == "alias":
@@ -1322,28 +1419,28 @@ def _expression_to_robin(
             left, right = right, left
         if op in (">", "<", ">=", "<=", "==", "!="):
             if op == ">":
-                return left.gt(right)
+                return _wrap_alias(left.gt(right))
             if op == "<":
-                return left.lt(right)
+                return _wrap_alias(left.lt(right))
             if op == ">=":
-                return left.ge(right)
+                return _wrap_alias(left.ge(right))
             if op == "<=":
-                return left.le(right)
+                return _wrap_alias(left.le(right))
             if op == "==":
-                return left.eq(right)
+                return _wrap_alias(left.eq(right))
             if op == "!=":
-                return left.ne(right)
+                return _wrap_alias(left.ne(right))
         if op in ("+", "-", "*", "/"):
             if op == "+":
-                return left + right
+                return _wrap_alias(left + right)
             if op == "-":
-                return left - right
+                return _wrap_alias(left - right)
             if op == "*":
-                return left * right
+                return _wrap_alias(left * right)
             if op == "/":
-                return left / right
+                return _wrap_alias(left / right)
         if op == "%" and hasattr(left, "__mod__"):
-            return left % right
+            return _wrap_alias(left % right)
     return None
 
 
@@ -1696,7 +1793,9 @@ class RobinMaterializer:
                     (f.name, _spark_type_to_robin_dtype(f.dataType))
                     for f in other_eager.schema.fields
                 ]
-                other_robin_data = _data_to_robin_rows(other_eager.data, other_names)
+                other_robin_data = _data_to_robin_rows(
+                    other_eager.data, other_names, schema=other_eager.schema
+                )
                 other_robin_df = create_from_rows(other_robin_data, other_robin_schema)
                 how_str = "outer" if how == "full" else how
                 if how_str in ("left_semi", "leftsemi", "left_anti", "leftanti"):
@@ -1785,7 +1884,9 @@ class RobinMaterializer:
                     (f.name, _spark_type_to_robin_dtype(f.dataType))
                     for f in other_eager.schema.fields
                 ]
-                other_robin_data = _data_to_robin_rows(other_eager.data, other_names)
+                other_robin_data = _data_to_robin_rows(
+                    other_eager.data, other_names, schema=other_eager.schema
+                )
                 other_robin_df = create_from_rows(other_robin_data, other_robin_schema)
                 df = df.union(other_robin_df)
             elif op_name == "distinct":

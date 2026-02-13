@@ -137,7 +137,30 @@ def _expr_to_robin(expr: Any) -> Dict[str, Any]:
         )
         return {"op": op_name, "left": op_left, "right": op_right}
 
-    # Window and other complex expression types are currently unsupported
+    # Window functions: convert to Robin-format for plan executor (#472)
+    if expr_type == "window":
+        if expr.get("opaque"):
+            raise ValueError(
+                f"Opaque window expression cannot be converted: {expr.get('repr', '')}"
+            )
+        func = expr.get("function") or "row_number"
+        col_name = expr.get("column")
+        part_by = expr.get("partition_by") or []
+        order_by = expr.get("order_by") or []
+        alias_name = expr.get("alias")
+        out: Dict[str, Any] = {
+            "window": {
+                "function": func,
+                "column": col_name,
+                "partition_by": part_by,
+                "order_by": order_by,
+            }
+        }
+        if alias_name and isinstance(alias_name, str):
+            out["window"]["alias"] = alias_name
+        return out
+
+    # Other complex expression types are currently unsupported
     raise ValueError(f"Unsupported expression kind for Robin plan: {expr_type!r}")
 
 
