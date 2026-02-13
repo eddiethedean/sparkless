@@ -175,12 +175,59 @@ def _get_robin_session_and_create_from_rows():  # type: () -> Tuple[Any, Any]
     return (spark, create_fn)
 
 
-def _simple_filter_to_robin(condition: Any) -> Any:
+def _get_case_sensitive() -> bool:
+    """Get case sensitivity setting from active session.
+
+    Returns:
+        True if case-sensitive mode is enabled, False otherwise.
+        Defaults to False (case-insensitive) to match PySpark behavior.
+    """
+    try:
+        from sparkless.session.core.session import SparkSession
+
+        active_sessions = getattr(SparkSession, "_active_sessions", [])
+        if active_sessions:
+            session = active_sessions[-1]
+            if hasattr(session, "conf"):
+                return bool(session.conf.is_case_sensitive())
+    except (AttributeError, TypeError):
+        pass
+    return False  # Default to case-insensitive (matching PySpark)
+
+
+def _resolve_col_for_robin(
+    col_name: str,
+    available_columns: List[str],
+    case_sensitive: bool,
+) -> str:
+    """Resolve column name for Robin; raise if case_sensitive and not found."""
+    from sparkless.core.column_resolver import ColumnResolver
+    from sparkless.core.exceptions.operation import SparkColumnNotFoundError
+
+    resolved = ColumnResolver.resolve_column_name(
+        col_name, available_columns, case_sensitive
+    )
+    if resolved is not None:
+        return resolved
+    if case_sensitive:
+        raise SparkColumnNotFoundError(col_name, available_columns)
+    # Case-insensitive fallback: use original (Robin may still resolve)
+    return col_name
+
+
+def _simple_filter_to_robin(
+    condition: Any,
+    available_columns: Optional[List[str]] = None,
+    case_sensitive: Optional[bool] = None,
+) -> Any:
     """Translate a Sparkless filter to robin_sparkless Column expression.
 
     Supports: ColumnOperation with op in (>, <, >=, <=, ==, !=), column = Column(name),
     value = scalar or Literal; and ColumnOperation("&", left, right) / ("|", left, right)
     recursively. Returns None if not supported.
+
+    When available_columns and case_sensitive are provided, resolves column names
+    and raises SparkColumnNotFoundError when case_sensitive and column not found.
     """
     from sparkless.functions import ColumnOperation
     from sparkless.functions.core.column import Column
@@ -196,29 +243,42 @@ def _simple_filter_to_robin(condition: Any) -> Any:
         val_side = getattr(condition, "value", None)
         # AND/OR: recurse
         if op == "&":
-            left_expr = _simple_filter_to_robin(col_side)
-            right_expr = _simple_filter_to_robin(val_side)
+            left_expr = _simple_filter_to_robin(
+                col_side, available_columns, case_sensitive
+            )
+            right_expr = _simple_filter_to_robin(
+                val_side, available_columns, case_sensitive
+            )
             if left_expr is not None and right_expr is not None:
                 return left_expr & right_expr
             return None
         if op == "|":
-            left_expr = _simple_filter_to_robin(col_side)
-            right_expr = _simple_filter_to_robin(val_side)
+            left_expr = _simple_filter_to_robin(
+                col_side, available_columns, case_sensitive
+            )
+            right_expr = _simple_filter_to_robin(
+                val_side, available_columns, case_sensitive
+            )
             if left_expr is not None and right_expr is not None:
                 return left_expr | right_expr
             return None
         # isin: ColumnOperation("isin", column=Column, value=list)
-        # Robin doesn't have col.isin([...]); translate to (col==v1) | (col==v2) | ...
+        # Robin 0.8.3 supports col.isin([]) natively; for non-empty list, build (col==v1) | (col==v2) | ...
         if op == "isin":
             if not isinstance(col_side, Column):
                 return None
             col_name = getattr(col_side, "name", None)
             if not isinstance(col_name, str):
                 return None
+            if available_columns is not None and case_sensitive is not None:
+                col_name = _resolve_col_for_robin(col_name, available_columns, case_sensitive)
             values = val_side if isinstance(val_side, (list, tuple)) else []
-            if not values:
-                return None
             robin_col = F.col(col_name)
+            if not values:
+                # isin([]) matches no rows; Robin 0.8.3 supports it
+                if hasattr(robin_col, "isin") and callable(robin_col.isin):
+                    return robin_col.isin([])
+                return F.lit(False)  # fallback: filter that matches nothing
             # Build OR chain: (col==v1) | (col==v2) | ...
             result: Any = None
             for v in values:
@@ -228,7 +288,9 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             return result
         # like: ColumnOperation("like", column, pattern)
         if op == "like":
-            inner = _expression_to_robin(col_side)
+            inner = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             if inner is None:
                 return None
             pattern = (
@@ -249,7 +311,9 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             return None
         # isnull / isnotnull: unary (val_side is None)
         if op == "isnull":
-            inner = _expression_to_robin(col_side)
+            inner = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             if inner is None:
                 return None
             if hasattr(inner, "isnull") and callable(getattr(inner, "isnull")):
@@ -258,7 +322,9 @@ def _simple_filter_to_robin(condition: Any) -> Any:
                 return inner.isNull()
             return None
         if op == "isnotnull":
-            inner = _expression_to_robin(col_side)
+            inner = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             if inner is None:
                 return None
             if hasattr(inner, "isnotnull") and callable(getattr(inner, "isnotnull")):
@@ -268,7 +334,9 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             return None
         # isnan / is_nan: unary (val_side is None)
         if op in ("isnan", "is_nan"):
-            inner = _expression_to_robin(col_side)
+            inner = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             if inner is None:
                 return None
             if hasattr(inner, "isnan") and callable(getattr(inner, "isnan")):
@@ -283,11 +351,17 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             and isinstance(val_side, (list, tuple))
             and len(val_side) >= 2
         ):
-            inner = _expression_to_robin(col_side)
+            inner = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             if inner is None:
                 return None
-            low_expr = _expression_to_robin(val_side[0])
-            high_expr = _expression_to_robin(val_side[1])
+            low_expr = _expression_to_robin(
+                val_side[0], available_columns, case_sensitive
+            )
+            high_expr = _expression_to_robin(
+                val_side[1], available_columns, case_sensitive
+            )
             if low_expr is None and isinstance(val_side[0], Literal):
                 low_expr = F.lit(
                     _lit_value_for_robin(getattr(val_side[0], "value", val_side[0]))
@@ -307,9 +381,13 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             return None
         # eqNullSafe / eq_null_safe: use Robin's native eq_null_safe() when available
         if op in ("eqNullSafe", "eq_null_safe") and col_side is not None:
-            left_expr = _expression_to_robin(col_side)
+            left_expr = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             right_expr = (
-                _expression_to_robin(val_side) if val_side is not None else None
+                _expression_to_robin(val_side, available_columns, case_sensitive)
+                if val_side is not None
+                else None
             )
             if right_expr is None and isinstance(val_side, Literal):
                 right_expr = F.lit(
@@ -349,7 +427,11 @@ def _simple_filter_to_robin(condition: Any) -> Any:
         if op not in (">", "<", ">=", "<=", "==", "!="):
             return None
         # Left side: expression (Column or any translatable expression)
-        left_expr = _expression_to_robin(col_side) if col_side is not None else None
+        left_expr = (
+            _expression_to_robin(col_side, available_columns, case_sensitive)
+            if col_side is not None
+            else None
+        )
         if left_expr is None:
             return None
         # Right side: Literal/scalar or expression
@@ -357,7 +439,9 @@ def _simple_filter_to_robin(condition: Any) -> Any:
             val = getattr(val_side, "value", val_side)
             right_expr = F.lit(_lit_value_for_robin(val))  # type: ignore[arg-type]
         else:
-            right_expr = _expression_to_robin(val_side)
+            right_expr = _expression_to_robin(
+                val_side, available_columns, case_sensitive
+            )
             if right_expr is None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))  # type: ignore[arg-type]
         if right_expr is None:
@@ -431,7 +515,11 @@ def _lit_value_for_robin(val: Any) -> Any:
     return str(val)
 
 
-def _expression_to_robin(expr: Any) -> Any:
+def _expression_to_robin(
+    expr: Any,
+    available_columns: Optional[List[str]] = None,
+    case_sensitive: Optional[bool] = None,
+) -> Any:
     """Translate a Sparkless Column expression to robin_sparkless Column.
 
     Supports: Column, Literal, alias; arithmetic (+, -, *, /, %); comparisons;
@@ -439,6 +527,9 @@ def _expression_to_robin(expr: Any) -> Any:
     binary (split, substring, replace, left, right, add_months);
     concat, struct; current_timestamp/current_date.
     Returns None if not supported.
+
+    When available_columns and case_sensitive are provided, resolves plain Column
+    names and raises SparkColumnNotFoundError when case_sensitive and not found.
     """
     from sparkless.functions import ColumnOperation
     from sparkless.functions.core.column import Column
@@ -448,11 +539,21 @@ def _expression_to_robin(expr: Any) -> Any:
         return None
     F = robin_sparkless  # type: ignore[union-attr]
 
-    # Plain Column only; ColumnOperation is a subclass of Column but must be translated
-    # as an expression (e.g. alias -> inner.alias(name)), not as F.col(name).
+    # Aliased Column (e.g. F.col("d_name").alias("dept_name")): name is the alias output,
+    # _original_column is the inner expression. Must translate inner.alias(name), not F.col(name).
     if isinstance(expr, Column) and not isinstance(expr, ColumnOperation):
+        alias_name = getattr(expr, "_alias_name", None)
+        original = getattr(expr, "_original_column", None)
+        if alias_name is not None and original is not None:
+            inner = _expression_to_robin(original)
+            if inner is not None and hasattr(inner, "alias"):
+                return inner.alias(alias_name)
+            return None
+        # Plain Column: name is the column reference
         name = getattr(expr, "name", None)
         if isinstance(name, str):
+            if available_columns is not None and case_sensitive is not None:
+                name = _resolve_col_for_robin(name, available_columns, case_sensitive)
             return F.col(name)
         return None
     if isinstance(expr, Literal):
@@ -741,14 +842,20 @@ def _expression_to_robin(expr: Any) -> Any:
             "soundex",
         )
         if op in unary_ops and col_side is not None:
-            inner = _expression_to_robin(col_side)
+            inner = _expression_to_robin(
+                col_side, available_columns, case_sensitive
+            )
             if inner is None:
                 return None
-            # Robin may use isnan or is_nan
+            # Robin may use F.upper(inner) or inner.upper(); prefer column method
             fn_name = op if op != "is_nan" else "isnan"
             fn = getattr(F, fn_name, None) or getattr(F, op, None)
             if callable(fn):
                 return fn(inner)
+            # Fallback: use column method (e.g. inner.upper() when F.upper missing)
+            col_fn = getattr(inner, fn_name, None) or getattr(inner, op, None)
+            if callable(col_fn):
+                return col_fn()
         # No-column functions
         if (
             op == "current_timestamp"
@@ -768,12 +875,17 @@ def _expression_to_robin(expr: Any) -> Any:
             if inner is None:
                 return None
             delimiter = ","
+            limit: Optional[int] = None
             if isinstance(val_side, str):
                 delimiter = val_side
             elif isinstance(val_side, (list, tuple)) and val_side:
                 delimiter = str(val_side[0])
+                if len(val_side) >= 2:
+                    limit = val_side[1] if val_side[1] is not None else -1
             if hasattr(F, "split"):
                 split_fn = getattr(F, "split")
+                if limit is not None:
+                    return split_fn(inner, delimiter, limit)  # type: ignore[call-arg]
                 return split_fn(inner, delimiter)  # type: ignore[call-arg]
         if op in ("substring", "substr") and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -1406,24 +1518,46 @@ class RobinMaterializer:
 
         for op_name, payload in operations:
             if op_name == "filter":
-                expr = _simple_filter_to_robin(payload)
+                avail_cols = (
+                    list(df.columns)
+                    if hasattr(df, "columns") and not callable(df.columns)
+                    else list(df.columns())
+                    if hasattr(df, "columns") and callable(df.columns)
+                    else []
+                )
+                expr = _simple_filter_to_robin(
+                    payload,
+                    available_columns=avail_cols,
+                    case_sensitive=_get_case_sensitive(),
+                )
                 if expr is not None:
                     df = df.filter(expr)
             elif op_name == "select":
                 cols = (
                     list(payload) if isinstance(payload, (list, tuple)) else [payload]
                 )
+                avail_cols = (
+                    list(df.columns)
+                    if hasattr(df, "columns") and not callable(df.columns)
+                    else list(df.columns())
+                    if hasattr(df, "columns") and callable(df.columns)
+                    else []
+                )
+                case_sens = _get_case_sensitive()
                 robin_cols: List[Any] = []
                 for c in cols:
                     if isinstance(c, str):
-                        robin_cols.append(c)
+                        resolved = _resolve_col_for_robin(c, avail_cols, case_sens)
+                        robin_cols.append(resolved)
                     else:
                         # Always translate the full expression (c) so that alias is preserved.
                         # Robin resolves columns by name; passing an alias name as a column
                         # would make Robin look up a non-existent column (e.g. 'full_name').
                         # _expression_to_robin(c) handles ColumnOperation(alias, ...) by
                         # returning inner.alias(alias_name).
-                        expr = _expression_to_robin(c)
+                        expr = _expression_to_robin(
+                            c, available_columns=avail_cols, case_sensitive=case_sens
+                        )
                         if expr is None:
                             from sparkless.core.exceptions.operation import (
                                 SparkUnsupportedOperationError,
@@ -1452,6 +1586,15 @@ class RobinMaterializer:
                 from sparkless.functions import ColumnOperation
                 from sparkless.functions.core.column import Column
                 from sparkless.functions.core.literals import Literal
+
+                wc_avail_cols = (
+                    list(df.columns)
+                    if hasattr(df, "columns") and not callable(df.columns)
+                    else list(df.columns())
+                    if hasattr(df, "columns") and callable(df.columns)
+                    else []
+                )
+                wc_case_sens = _get_case_sensitive()
 
                 # Unwrap alias so we translate the inner expression; with_column(name, expr)
                 # receives the name and a Robin Column expression (e.g. create_map(...)),
@@ -1520,7 +1663,11 @@ class RobinMaterializer:
                                 elif op == "/":
                                     robin_expr = F.col(cname) / F.lit(lit_val)
                 if robin_expr is None:
-                    robin_expr = _expression_to_robin(expression)
+                    robin_expr = _expression_to_robin(
+                        expression,
+                        available_columns=wc_avail_cols,
+                        case_sensitive=wc_case_sens,
+                    )
                 if robin_expr is not None:
                     df = df.with_column(col_name, robin_expr)
             elif op_name == "join":
@@ -1568,6 +1715,9 @@ class RobinMaterializer:
                                 left_names.append(a)
                                 right_names.append(b)
                         # Use temp join key(s) on both sides so result has no duplicate; drop after join.
+                        # Cast both sides to string to avoid "datatypes of join keys don't match"
+                        # (Robin rejects str vs i64 when left/right have different column names).
+                        # PySpark coerces; string is most permissive.
                         join_df = other_robin_df
                         temp_keys: List[str] = []
                         for i in range(len(left_names)):
@@ -1577,8 +1727,13 @@ class RobinMaterializer:
                                 else f"__sparkless_join_key_{i}__"
                             )
                             temp_keys.append(tk)
-                            df = df.with_column(tk, F.col(left_names[i]))
-                            join_df = join_df.with_column(tk, F.col(right_names[i]))
+                            left_expr = F.col(left_names[i])
+                            right_expr = F.col(right_names[i])
+                            if hasattr(left_expr, "cast") and hasattr(right_expr, "cast"):
+                                left_expr = left_expr.cast("string")
+                                right_expr = right_expr.cast("string")
+                            df = df.with_column(tk, left_expr)
+                            join_df = join_df.with_column(tk, right_expr)
                         on_arg = temp_keys
                         join_temp_keys = temp_keys
                 else:

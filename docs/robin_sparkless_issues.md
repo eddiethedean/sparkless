@@ -103,6 +103,20 @@ Minimal Robin + PySpark repro in each issue body. Repros: `scripts/robin_parity_
 
 Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file scripts/robin_issue_bodies/issue_*.md`.
 
+## Issues created from verified parity repros (2026-02-12, Robin 0.8.3)
+
+Reproduced with **robin-sparkless 0.8.3** using direct API (no Sparkless). Each gap was run with Robin and with PySpark; only cases where Robin failed and PySpark succeeded were filed. Repros: `scripts/robin_parity_repros/09_round_string_column.py` through `14_eqnullsafe_type_coercion.py`. See `scripts/robin_parity_repros/VERIFICATION.md`.
+
+| # | Title | Link |
+|---|-------|------|
+| 262 | [Parity] F.round() on string column — Robin raises "round can only be used on numeric types" | https://github.com/eddiethedean/robin-sparkless/issues/262 |
+| 263 | [Parity] F.array() with no args — Robin raises "array requires at least one column" | https://github.com/eddiethedean/robin-sparkless/issues/263 |
+| 264 | [Parity] posexplode() missing from robin_sparkless module | https://github.com/eddiethedean/robin-sparkless/issues/264 |
+| 265 | [Parity] date/datetime vs string comparison — Robin raises "cannot compare date to string" | https://github.com/eddiethedean/robin-sparkless/issues/265 |
+| 266 | [Parity] eqNullSafe type coercion — Robin raises "cannot compare string with numeric type" | https://github.com/eddiethedean/robin-sparkless/issues/266 |
+
+Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file scripts/robin_issue_bodies/verified_*.md`.
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.

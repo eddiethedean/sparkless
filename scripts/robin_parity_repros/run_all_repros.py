@@ -12,7 +12,10 @@ REPROS_DIR = Path(__file__).resolve().parent
 
 
 def main() -> int:
-    scripts = sorted(REPROS_DIR.glob("0*.py"))
+    scripts = sorted(
+        p for p in REPROS_DIR.glob("*.py")
+        if p.name != "__init__.py"
+    )
     if not scripts:
         print("No 0*.py repro scripts found", file=sys.stderr)
         return 1
