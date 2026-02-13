@@ -107,15 +107,24 @@ def _order_by_payload_to_robin(payload: Any) -> Optional[Tuple[List[str], List[b
         col_name: Optional[str] = None
         asc: Optional[bool] = None
         if isinstance(c, str):
-            col_name = c
-            if isinstance(ascending_param, bool):
-                asc = ascending_param
-            elif isinstance(ascending_param, (list, tuple)) and i < len(
-                ascending_param
-            ):
-                asc = bool(ascending_param[i])
-            else:
+            # Parse "colname DESC" / "colname ASC" (Robin expects col name, not full expr)
+            s = c.strip()
+            if s.upper().endswith(" DESC"):
+                col_name = s[:-5].strip()
+                asc = False
+            elif s.upper().endswith(" ASC"):
+                col_name = s[:-4].strip()
                 asc = True
+            else:
+                col_name = c
+                if isinstance(ascending_param, bool):
+                    asc = ascending_param
+                elif isinstance(ascending_param, (list, tuple)) and i < len(
+                    ascending_param
+                ):
+                    asc = bool(ascending_param[i])
+                else:
+                    asc = True
         elif hasattr(c, "operation") and hasattr(c, "column"):
             # ColumnOperation (e.g. col("x").desc())
             op = getattr(c, "operation", None)
@@ -604,6 +613,16 @@ def _expression_to_robin(
         for c in order_by:
             if isinstance(c, str):
                 order_names.append(c)
+            elif hasattr(c, "column"):
+                # ColumnOperation(desc, column=Column): use column.name, not c.name
+                # (c.name is "score DESC", Robin expects "score")
+                col_side = getattr(c, "column", None)
+                if col_side is not None and hasattr(col_side, "name"):
+                    n = getattr(col_side, "name", None)
+                    if isinstance(n, str):
+                        order_names.append(n)
+                elif hasattr(c, "name") and isinstance(getattr(c, "name"), str):
+                    order_names.append(c.name)
             elif hasattr(c, "name") and isinstance(getattr(c, "name"), str):
                 order_names.append(c.name)
         partition_by = partition_names if partition_names else order_names
@@ -1060,13 +1079,14 @@ def _expression_to_robin(
                 # Some APIs expose printf instead of format_string
                 return F.printf(format_str, *robin_args)  # type: ignore[call-arg]
         # create_map: value is tuple of key-value columns (k1, v1, k2, v2, ...)
+        # Robin expects create_map(cols) with cols as a list, not *args
         if op == "create_map":
             parts = list(val_side) if isinstance(val_side, (list, tuple)) else []
             robin_cols = [_expression_to_robin(p) for p in parts]
             if None in robin_cols:
                 return None
             if hasattr(F, "create_map") and callable(F.create_map):
-                return F.create_map(*robin_cols)
+                return F.create_map(robin_cols)
         # map_from_entries: value is single column (array of structs)
         if op == "map_from_entries" and col_side is not None:
             inner = _expression_to_robin(col_side)
@@ -1687,25 +1707,34 @@ class RobinMaterializer:
                     )
                 elif how in ("semi", "anti"):
                     how_str = "left_semi" if how == "semi" else "left_anti"
+                # Resolve join column names against actual df columns (case-insensitive)
+                left_cols = (
+                    list(df.columns)
+                    if hasattr(df, "columns") and not callable(df.columns)
+                    else (list(df.columns()) if hasattr(df, "columns") else [])
+                )
+                right_cols = other_names
+                case_sens = _get_case_sensitive()
                 on_pair = _join_on_to_column_names(on)
                 if on_pair is not None:
                     names_a, names_b = on_pair
-                    if names_a == names_b:
-                        on_arg = names_a
+                    # Resolve plan names to actual column names in each df
+                    resolved_a = [
+                        _resolve_col_for_robin(n, left_cols, case_sens)
+                        for n in names_a
+                    ]
+                    resolved_b = [
+                        _resolve_col_for_robin(n, right_cols, case_sens)
+                        for n in names_b
+                    ]
+                    if resolved_a == resolved_b:
+                        on_arg = resolved_a
                         join_df = other_robin_df
                     else:
                         # Map which name is from left df vs right df (condition doesn't order them)
-                        left_cols = []
-                        if hasattr(df, "columns"):
-                            left_cols = (
-                                list(df.columns)
-                                if not callable(df.columns)
-                                else list(df.columns())
-                            )
-                        right_cols = other_names
                         left_names = []
                         right_names = []
-                        for a, b in zip(names_a, names_b):
+                        for a, b in zip(resolved_a, resolved_b):
                             if a in left_cols and b in right_cols:
                                 left_names.append(a)
                                 right_names.append(b)
