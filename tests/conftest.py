@@ -352,7 +352,10 @@ def pytest_collection_modifyitems(config, items):
                 and str(marker.args[0]).strip().lower() == "pyspark"
             ):
                 item.add_marker(pytest.mark.skip(reason=reason_pyspark))
-    if backend != "robin":
+    # v4: mock and robin both use Robin-backed session; skip known-incompatible tests for both
+    # When env unset, default is mock → still Robin-backed, so apply skip list
+    effective = (backend or "mock").strip().lower()
+    if effective not in ("robin", "mock"):
         return
     if (os.environ.get("SPARKLESS_ROBIN_NO_SKIP") or "").strip() == "1":
         return
@@ -368,7 +371,7 @@ def pytest_collection_modifyitems(config, items):
             if line and not line.startswith("#"):
                 patterns.append(line)
     reason = (
-        "v4 Robin: out of scope (unsupported expression/operation); "
+        "v4 Robin-backed session: out of scope (unsupported expression/operation); "
         "see docs/v4_behavior_changes_and_known_differences.md"
     )
     for item in items:

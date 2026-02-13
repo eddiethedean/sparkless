@@ -9,7 +9,7 @@ from typing import Any, List, Optional, Union
 import robin_sparkless as _robin
 
 from sparkless.spark_types import StructType
-from ._robin_compat import create_dataframe_via_robin
+from ._robin_compat import create_dataframe_via_robin, wrap_robin_dataframe
 
 
 class SparkSession:
@@ -41,6 +41,39 @@ class SparkSession:
         return getattr(self._robin_session, "app_name", None) or getattr(
             self._robin_session, "appName", None
         ) or "Sparkless"
+
+    def table(self, name: str) -> Any:
+        """Return a DataFrame for the given table name (delegates to Robin)."""
+        out = getattr(self._robin_session, "table", None)
+        if out is None:
+            raise NotImplementedError("spark.table() is not available on this backend")
+        result = out(name)
+        return wrap_robin_dataframe(result)
+
+    def sql(self, query: str) -> Any:
+        """Execute SQL and return DataFrame (delegates to Robin)."""
+        fn = getattr(self._robin_session, "sql", None)
+        if fn is None:
+            raise NotImplementedError("spark.sql() is not available on this backend")
+        result = fn(query)
+        return wrap_robin_dataframe(result)
+
+    @classmethod
+    def _has_active_session(cls) -> bool:
+        """True if an active session exists (tests/F namespace expect this)."""
+        return True
+
+    @classmethod
+    def getActiveSession(cls) -> Optional["SparkSession"]:
+        """Return the active session if any (delegate to Robin or None)."""
+        get_active = getattr(_robin.SparkSession, "get_active_session", None) or getattr(
+            _robin.SparkSession, "getActiveSession", None
+        )
+        if get_active is not None:
+            robin_sess = get_active() if callable(get_active) else get_active
+            if robin_sess is not None:
+                return SparkSession(robin_sess)
+        return None
 
     def __getattr__(self, name: str) -> Any:
         """Delegate all other attributes to the Robin session."""

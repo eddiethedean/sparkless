@@ -127,6 +127,23 @@ Repros run from sparkless repo: `python scripts/robin_parity_repros/run_all_repr
 
 Created via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file scripts/robin_issue_bodies/parity_posexplode_accept_string.md`. Repro: `scripts/robin_parity_repros/11_posexplode_array.py`. Related: #264 (posexplode missing).
 
+## Issues from v4 skip list (Sparkless tests)
+
+Created from [docs/v4_robin_skip_list_to_issues.md](v4_robin_skip_list_to_issues.md). Each gap corresponds to skipped Sparkless tests when running with Robin-backed session. Repros: `scripts/robin_parity_repros/19_*.py` through `27_*.py`. Body files: `scripts/robin_issue_bodies/skip_*.md`.
+
+| # | Title | Link |
+|---|-------|------|
+| 284 | [Parity] SparkSession.sql() and SparkSession.table() for PySpark compatibility | https://github.com/eddiethedean/robin-sparkless/issues/284 |
+| 285 | [Parity] DataFrame.createOrReplaceTempView() and temp view resolution in sql()/table() | https://github.com/eddiethedean/robin-sparkless/issues/285 |
+| 286 | [Parity] getActiveSession or session registry so aggregate functions (sum/avg/count) work | https://github.com/eddiethedean/robin-sparkless/issues/286 |
+| 287 | [Parity] DataFrame.agg(*exprs) for global aggregation (no groupBy) | https://github.com/eddiethedean/robin-sparkless/issues/287 |
+| 288 | [Parity] Window.partitionBy() / orderBy() accept column names (str) not only Column | https://github.com/eddiethedean/robin-sparkless/issues/288 |
+| 289 | [Parity] DataFrame.na.drop() and na.fill() with subset, how, thresh | https://github.com/eddiethedean/robin-sparkless/issues/289 |
+| 290 | [Parity] DataFrame.fillna(value, subset=[...]) | https://github.com/eddiethedean/robin-sparkless/issues/290 |
+| 291 | [Parity] create_dataframe_from_rows: allow empty data with schema or empty schema | https://github.com/eddiethedean/robin-sparkless/issues/291 |
+| 292 | [Parity] union_by_name(allow_missing_columns=True) | https://github.com/eddiethedean/robin-sparkless/issues/292 |
+| 293 | [Parity] first() / first_ignore_nulls() aggregate | https://github.com/eddiethedean/robin-sparkless/issues/293 |
+
 ## Sparkless parity issues created (earlier)
 
 - **#1–#17:** Created from initial subset (join, filter, select, transformations); see `scripts/create_robin_github_issues.py`.
