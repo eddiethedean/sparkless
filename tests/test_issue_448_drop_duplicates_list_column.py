@@ -160,8 +160,8 @@ def test_drop_duplicates_with_dict_column_mock_only(spark, spark_backend):
 # --- Additional robust tests (PySpark-compatible) ---
 
 
-def test_drop_duplicates_alias_lowercase(spark, spark_backend):
-    """drop_duplicates() alias works same as dropDuplicates()."""
+def test_dropDuplicates_removes_duplicates(spark, spark_backend):
+    """dropDuplicates() (PySpark API) removes duplicate rows."""
     df = spark.createDataFrame(
         [
             {"k": 1, "v": [1, 2]},
@@ -169,7 +169,7 @@ def test_drop_duplicates_alias_lowercase(spark, spark_backend):
             {"k": 2, "v": [1, 2]},
         ]
     )
-    result = df.drop_duplicates()
+    result = df.dropDuplicates()
     rows = result.collect()
     assert len(rows) == 2
     assert {_row_val(r, "k") for r in rows} == {1, 2}

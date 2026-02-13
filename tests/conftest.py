@@ -3,6 +3,11 @@ Global pytest configuration for mock-spark tests.
 
 This configuration ensures proper resource cleanup to prevent test leaks.
 Supports both mock-spark and PySpark backends for unified testing.
+
+API alignment: Tests must use the PySpark-style (camelCase) API only, e.g.
+createDataFrame, groupBy, withColumn, orderBy, dropDuplicates, selectExpr,
+withColumnRenamed, unionByName, so that behavior matches PySpark regardless
+of backend (Robin, mock-spark, or PySpark).
 """
 
 import contextlib

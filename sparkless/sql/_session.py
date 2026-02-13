@@ -15,11 +15,17 @@ from ._robin_compat import create_dataframe_via_robin
 class SparkSession:
     """Sparkless SparkSession: wraps Robin's SparkSession and adds createDataFrame(data, schema=None)."""
 
-    def __init__(self, robin_session: Any = None) -> None:
+    def __init__(self, robin_session: Any = None, **kwargs: Any) -> None:
+        # kwargs e.g. backend_type="robin" from fixtures; ignored
         if isinstance(robin_session, str):
             self._robin_session = _robin.SparkSession.builder().app_name(robin_session).get_or_create()
         else:
             self._robin_session = robin_session
+
+    @property
+    def backend_type(self) -> str:
+        """Backend in use; tests may expect this."""
+        return "robin"
 
     def createDataFrame(
         self,

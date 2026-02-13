@@ -3,14 +3,35 @@ Minimal compatibility layer for using Robin (robin-sparkless) as the Sparkless e
 
 Provides conversion from PySpark-style createDataFrame(data, schema=None) to
 Robin's _create_dataframe_from_rows(data, schema) where schema is list of (name, dtype_str).
+
+Exposes only PySpark camelCase API: wraps Robin's DataFrame/GroupedData so that
+Sparkless public API matches PySpark (groupBy, withColumn, orderBy, etc.) with no
+extra snake_case aliases.
 """
 
 from __future__ import annotations
 
 from typing import Any, List, Optional, Tuple, Union
 
-from sparkless.spark_types import StructType, StructField
+from sparkless.spark_types import StructType, StructField, Row, StringType
 from sparkless.core.schema_inference import SchemaInferenceEngine
+
+# PySpark camelCase -> Robin snake_case (DataFrame methods)
+_CAMEL_TO_SNAKE_DF: dict[str, str] = {
+    "groupBy": "group_by",
+    "withColumn": "with_column",
+    "orderBy": "order_by",
+    "withColumnRenamed": "with_column_renamed",
+    "dropDuplicates": "drop_duplicates",
+    "unionByName": "union_by_name",
+    "selectExpr": "select_expr",
+    "withColumnsRenamed": "with_columns_renamed",
+    "createOrReplaceTempView": "create_or_replace_temp_view",
+    "printSchema": "print_schema",
+    "sortWithinPartitions": "sort_within_partitions",
+    "orderByExprs": "order_by_exprs",
+}
+# dropDuplicates: Robin may have drop_duplicates or only distinct
 
 # Map Sparkless/PySpark DataType.typeName() to Robin dtype strings.
 _SPARK_TYPE_TO_ROBIN_DTYPE: dict[str, str] = {
@@ -154,4 +175,163 @@ def create_dataframe_via_robin(
         robin_schema = _struct_type_to_robin_schema(schema)
 
     rows = _data_to_robin_rows(data, names, schema)
-    return create_fn(rows, robin_schema)
+    robin_df = create_fn(rows, robin_schema)
+    return wrap_robin_dataframe(robin_df)
+
+
+def _is_robin_dataframe(obj: Any) -> bool:
+    """True if obj looks like a Robin DataFrame (needs wrapping)."""
+    if obj is None or type(obj).__name__ == "_PySparkCompatDataFrame":
+        return False
+    return type(obj).__name__ == "DataFrame" and (
+        type(obj).__module__.startswith("robin") or hasattr(obj, "group_by")
+    )
+
+
+def _is_robin_grouped_data(obj: Any) -> bool:
+    """True if obj looks like Robin GroupedData (needs wrapping)."""
+    if obj is None or type(obj).__name__ == "_PySparkCompatGroupedData":
+        return False
+    return type(obj).__name__ == "GroupedData" and (
+        type(obj).__module__.startswith("robin") or hasattr(obj, "agg")
+    )
+
+
+def _wrap_if_dataframe(obj: Any) -> Any:
+    """Wrap Robin DataFrame/GroupedData in PySpark-compat wrapper if applicable."""
+    if obj is None:
+        return None
+    if _is_robin_dataframe(obj):
+        return wrap_robin_dataframe(obj)
+    if _is_robin_grouped_data(obj):
+        return wrap_robin_grouped_data(obj)
+    return obj
+
+
+def wrap_robin_grouped_data(robin_gd: Any) -> "_PySparkCompatGroupedData":
+    """Wrap Robin GroupedData to expose PySpark camelCase (agg, count, sum, etc.)."""
+    return _PySparkCompatGroupedData(robin_gd)
+
+
+def wrap_robin_dataframe(robin_df: Any) -> "_PySparkCompatDataFrame":
+    """Wrap Robin DataFrame to expose only PySpark camelCase API."""
+    return _PySparkCompatDataFrame(robin_df)
+
+
+class _PySparkCompatGroupedData:
+    """Wraps Robin GroupedData; exposes PySpark camelCase (agg, count, sum, avg, min, max)."""
+
+    def __init__(self, robin_gd: Any) -> None:
+        self._robin_gd = robin_gd
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._robin_gd, name)
+
+    def agg(self, *exprs: Any, **kwargs: Any) -> Any:
+        return _wrap_if_dataframe(self._robin_gd.agg(*exprs, **kwargs))
+
+    def count(self) -> Any:
+        return _wrap_if_dataframe(self._robin_gd.count())
+
+    def sum(self, *cols: Any) -> Any:
+        return _wrap_if_dataframe(getattr(self._robin_gd, "sum", lambda *a: self._robin_gd.agg(*a))(*cols))
+
+    def avg(self, *cols: Any) -> Any:
+        return _wrap_if_dataframe(getattr(self._robin_gd, "avg", lambda *a: self._robin_gd.agg(*a))(*cols))
+
+    def min(self, *cols: Any) -> Any:
+        return _wrap_if_dataframe(getattr(self._robin_gd, "min", lambda *a: self._robin_gd.agg(*a))(*cols))
+
+    def max(self, *cols: Any) -> Any:
+        return _wrap_if_dataframe(getattr(self._robin_gd, "max", lambda *a: self._robin_gd.agg(*a))(*cols))
+
+    def mean(self, *cols: Any) -> Any:
+        return _wrap_if_dataframe(getattr(self._robin_gd, "mean", self._robin_gd.avg)(*cols))
+
+
+class _PySparkCompatDataFrame:
+    """Wraps Robin DataFrame; exposes only PySpark camelCase method names."""
+
+    def __init__(self, robin_df: Any) -> None:
+        self._robin_df = robin_df
+
+    @property
+    def schema(self) -> Any:
+        """PySpark-compatible schema (StructType)."""
+        robin_df = self._robin_df
+        s = getattr(robin_df, "schema", None)
+        if s is not None and hasattr(s, "fields") and hasattr(s, "fieldNames"):
+            return s
+        cols = getattr(robin_df, "columns", None)
+        if callable(cols):
+            cols = cols()
+        cols = cols or []
+        if not cols:
+            return StructType([])
+        return StructType([StructField(c, StringType()) for c in cols])
+
+    def __getattr__(self, name: str) -> Any:
+        # Map PySpark camelCase to Robin snake_case
+        snake = _CAMEL_TO_SNAKE_DF.get(name)
+        if snake and hasattr(self._robin_df, snake):
+            robin_method = getattr(self._robin_df, snake)
+
+            def _wrapped(*args: Any, **kwargs: Any) -> Any:
+                result = robin_method(*args, **kwargs)
+                return _wrap_if_dataframe(result)
+
+            return _wrapped
+        # dropDuplicates: Robin may have drop_duplicates or distinct
+        if name == "dropDuplicates":
+            if hasattr(self._robin_df, "drop_duplicates"):
+                def _drop_dup(*args: Any, **kwargs: Any) -> Any:
+                    return _wrap_if_dataframe(self._robin_df.drop_duplicates(*args, **kwargs))
+                return _drop_dup
+            def _distinct() -> Any:
+                return _wrap_if_dataframe(self._robin_df.distinct())
+            return _distinct
+        # Pass through (select, filter, join, limit, distinct, drop, collect, columns, etc.)
+        attr = getattr(self._robin_df, name)
+        if callable(attr):
+            def _wrapped(*args: Any, **kwargs: Any) -> Any:
+                result = attr(*args, **kwargs)
+                if name == "collect":
+                    return _wrap_collect_rows(result)
+                return _wrap_if_dataframe(result)
+            return _wrapped
+        return attr
+
+    def groupBy(self, *cols: Any, **kwargs: Any) -> Any:
+        """PySpark: groupBy(*cols). Robin: group_by accepts list for single col."""
+        robin_df = self._robin_df
+        if hasattr(robin_df, "group_by"):
+            # Robin may expect list when single column
+            if len(cols) == 1 and isinstance(cols[0], str):
+                result = robin_df.group_by([cols[0]])
+            else:
+                result = robin_df.group_by(list(cols) if cols else [])
+            return wrap_robin_grouped_data(result)
+        raise AttributeError("group_by")
+
+    def orderBy(self, *cols: Any, **kwargs: Any) -> Any:
+        if hasattr(self._robin_df, "order_by"):
+            return _wrap_if_dataframe(self._robin_df.order_by(*cols, **kwargs))
+        return _wrap_if_dataframe(getattr(self._robin_df, "orderBy", lambda *a, **k: self._robin_df.order_by(*a, **k))(*cols, **kwargs))
+
+    def sort(self, *cols: Any, **kwargs: Any) -> Any:
+        return self.orderBy(*cols, **kwargs)
+
+
+def _wrap_collect_rows(rows: Any) -> List[Any]:
+    """Wrap collect() result so each row supports PySpark Row-style attribute access."""
+    if not rows:
+        return rows
+    out: List[Any] = []
+    for r in rows:
+        if hasattr(r, "asDict"):
+            out.append(Row(r.asDict()))
+        elif isinstance(r, dict):
+            out.append(Row(r))
+        else:
+            out.append(r)
+    return out

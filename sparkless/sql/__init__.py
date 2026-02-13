@@ -11,14 +11,16 @@ from __future__ import annotations
 import robin_sparkless as _robin
 
 from sparkless.sql._session import SparkSession, SparkSessionBuilder
+from sparkless.sql._robin_compat import (
+    _PySparkCompatDataFrame as DataFrame,
+    _PySparkCompatGroupedData as GroupedData,
+)
 from sparkless.spark_types import Row
 
-# Re-export from Robin
-DataFrame = _robin.DataFrame
+# Re-export from Robin (Column, Writer, Reader, Window, F)
 Column = _robin.Column
 DataFrameWriter = _robin.DataFrameWriter
 DataFrameReader = _robin.DataFrameReader
-GroupedData = _robin.GroupedData
 Window = _robin.Window
 # Robin may use WindowSpec or similar; expose if present
 WindowSpec = getattr(_robin, "WindowSpec", Window)

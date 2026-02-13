@@ -43,7 +43,7 @@ def test_reexport_dataframe_functions() -> None:
     spark = SparkSession("F_smoke")
     df = spark.createDataFrame([{"a": 1, "b": 2}])
     assert isinstance(df, DataFrame)
-    # Robin uses snake_case; F.col and F.lit should exist
+    # PySpark-style API (camelCase); F.col and F.lit are available
     out = df.select(F.col("a"), F.lit(1).alias("one")).collect()
     assert len(out) == 1
     assert out[0]["a"] == 1 and out[0]["one"] == 1
