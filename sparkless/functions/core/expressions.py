@@ -25,16 +25,36 @@ class ExpressionFunctions:
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        from sparkless.session.core.session import SparkSession
+        # PySpark: has its own session management
+        try:
+            from pyspark.sql import SparkSession as PySparkSession
 
-        # Use getActiveSession() for PySpark compatibility
-        if SparkSession.getActiveSession() is None:
-            raise RuntimeError(
-                f"Cannot perform {operation_name}: "
-                "No active SparkSession found. "
-                "This operation requires an active SparkSession, similar to PySpark. "
-                "Create a SparkSession first: spark = SparkSession('app_name')"
-            )
+            if PySparkSession.getActiveSession() is not None:
+                return
+        except (ImportError, AttributeError):
+            pass
+
+        # Sparkless core session
+        from sparkless.session.core.session import SparkSession as CoreSparkSession
+
+        if CoreSparkSession.getActiveSession() is not None:
+            return
+
+        # Sparkless SQL/Robin session
+        try:
+            from sparkless.sql._session import SparkSession as SqlSparkSession
+
+            if SqlSparkSession.getActiveSession() is not None:
+                return
+        except (ImportError, AttributeError):
+            pass
+
+        raise RuntimeError(
+            f"Cannot perform {operation_name}: "
+            "No active SparkSession found. "
+            "This operation requires an active SparkSession, similar to PySpark. "
+            "Create a SparkSession first: spark = SparkSession('app_name')"
+        )
 
     @staticmethod
     def col(name: str) -> Column:

@@ -53,8 +53,6 @@ class AggregateFunctions:
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        from sparkless.session.core.session import SparkSession
-
         # Check if we're running in PySpark mode by trying to import PySpark
         try:
             from pyspark.sql import SparkSession as PySparkSession
@@ -65,14 +63,27 @@ class AggregateFunctions:
         except (ImportError, AttributeError):
             pass  # PySpark not available, continue with Sparkless check
 
-        # Check for Sparkless session
-        if not SparkSession._has_active_session():
-            raise RuntimeError(
-                f"Cannot perform {operation_name}: "
-                "No active SparkSession found. "
-                "This operation requires an active SparkSession, similar to PySpark. "
-                "Create a SparkSession first: spark = SparkSession('app_name')"
-            )
+        # Check for Sparkless core session (session.core)
+        from sparkless.session.core.session import SparkSession as CoreSparkSession
+
+        if CoreSparkSession._has_active_session():
+            return
+
+        # Check for Sparkless SQL/Robin session (sparkless.sql.SparkSession)
+        try:
+            from sparkless.sql._session import SparkSession as SqlSparkSession
+
+            if SqlSparkSession.getActiveSession() is not None:
+                return
+        except (ImportError, AttributeError):
+            pass
+
+        raise RuntimeError(
+            f"Cannot perform {operation_name}: "
+            "No active SparkSession found. "
+            "This operation requires an active SparkSession, similar to PySpark. "
+            "Create a SparkSession first: spark = SparkSession('app_name')"
+        )
 
     @staticmethod
     def count(column: Union[Column, str, None] = None) -> ColumnOperation:

@@ -51,8 +51,6 @@ tests/unit/dataframe/test_string_arithmetic.py
 tests/unit/dataframe/test_union_type_coercion.py
 # nested struct/row values not supported
 tests/unit/dataframe/test_withfield.py
-# window expressions
-tests/unit/functions/test_approx_count_distinct_rsd.py
 # column ordering / expression
 tests/unit/functions/test_column_ordering.py
 # date_trunc / backend-specific
