@@ -144,8 +144,11 @@ Created from [docs/v4_robin_skip_list_to_issues.md](v4_robin_skip_list_to_issues
 | 292 | [Parity] union_by_name(allow_missing_columns=True) | https://github.com/eddiethedean/robin-sparkless/issues/292 |
 | 293 | [Parity] first() / first_ignore_nulls() aggregate | https://github.com/eddiethedean/robin-sparkless/issues/293 |
 | 297 | [Parity] approx_count_distinct(column, rsd=...) missing | https://github.com/eddiethedean/robin-sparkless/issues/297 |
+| 342 | [Parity] approx_count_distinct() should accept column name (string) as well as Column | https://github.com/eddiethedean/robin-sparkless/issues/342 |
 
 Issue #297 created from "Check; file if missing" in v4 skip list (2026-02-13). Repro: `scripts/robin_parity_repros/28_approx_count_distinct_rsd.py`. Body: `scripts/robin_issue_bodies/skip_approx_count_distinct_rsd.md`. Tuple/list rows with schema checked via `29_create_dataframe_tuple_rows.py` — Robin supports; no issue.
+
+**approx_count_distinct accept string:** Robin has `approx_count_distinct` but only accepts a Column; PySpark accepts string or Column. Filed as #342.
 
 ## Issues from creative parity hunting (2026-02-13)
 
