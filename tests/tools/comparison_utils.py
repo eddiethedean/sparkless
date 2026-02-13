@@ -23,7 +23,7 @@ def _safe_repr_for_assert(v: Any) -> str:
     if v is None:
         return "None"
     if hasattr(v, "isoformat") and callable(getattr(v, "isoformat")):
-        return v.isoformat()
+        return str(v.isoformat())
     return str(v)
 
 

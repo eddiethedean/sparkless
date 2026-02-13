@@ -271,7 +271,9 @@ def _simple_filter_to_robin(
             if not isinstance(col_name, str):
                 return None
             if available_columns is not None and case_sensitive is not None:
-                col_name = _resolve_col_for_robin(col_name, available_columns, case_sensitive)
+                col_name = _resolve_col_for_robin(
+                    col_name, available_columns, case_sensitive
+                )
             values = val_side if isinstance(val_side, (list, tuple)) else []
             robin_col = F.col(col_name)
             if not values:
@@ -288,9 +290,7 @@ def _simple_filter_to_robin(
             return result
         # like: ColumnOperation("like", column, pattern)
         if op == "like":
-            inner = _expression_to_robin(
-                col_side, available_columns, case_sensitive
-            )
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
             if inner is None:
                 return None
             pattern = (
@@ -311,9 +311,7 @@ def _simple_filter_to_robin(
             return None
         # isnull / isnotnull: unary (val_side is None)
         if op == "isnull":
-            inner = _expression_to_robin(
-                col_side, available_columns, case_sensitive
-            )
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
             if inner is None:
                 return None
             if hasattr(inner, "isnull") and callable(getattr(inner, "isnull")):
@@ -322,9 +320,7 @@ def _simple_filter_to_robin(
                 return inner.isNull()
             return None
         if op == "isnotnull":
-            inner = _expression_to_robin(
-                col_side, available_columns, case_sensitive
-            )
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
             if inner is None:
                 return None
             if hasattr(inner, "isnotnull") and callable(getattr(inner, "isnotnull")):
@@ -334,9 +330,7 @@ def _simple_filter_to_robin(
             return None
         # isnan / is_nan: unary (val_side is None)
         if op in ("isnan", "is_nan"):
-            inner = _expression_to_robin(
-                col_side, available_columns, case_sensitive
-            )
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
             if inner is None:
                 return None
             if hasattr(inner, "isnan") and callable(getattr(inner, "isnan")):
@@ -351,9 +345,7 @@ def _simple_filter_to_robin(
             and isinstance(val_side, (list, tuple))
             and len(val_side) >= 2
         ):
-            inner = _expression_to_robin(
-                col_side, available_columns, case_sensitive
-            )
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
             if inner is None:
                 return None
             low_expr = _expression_to_robin(
@@ -396,9 +388,9 @@ def _simple_filter_to_robin(
             if right_expr is None and val_side is not None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))
             if left_expr is not None and right_expr is not None:
-                eq_null_safe_fn = getattr(
-                    left_expr, "eq_null_safe", None
-                ) or getattr(left_expr, "eqNullSafe", None)
+                eq_null_safe_fn = getattr(left_expr, "eq_null_safe", None) or getattr(
+                    left_expr, "eqNullSafe", None
+                )
                 if callable(eq_null_safe_fn):
                     return eq_null_safe_fn(right_expr)
                 l_isnull = getattr(left_expr, "isnull", None) or getattr(
@@ -683,11 +675,17 @@ def _expression_to_robin(
             if inner is None:
                 return None
             alias_names: Optional[Tuple[str, ...]] = None
-            if isinstance(val_side, (list, tuple)) and len(val_side) >= 2:
-                if all(isinstance(x, str) for x in val_side[:2]):
-                    alias_names = (val_side[0], val_side[1])
+            if (
+                isinstance(val_side, (list, tuple))
+                and len(val_side) >= 2
+                and all(isinstance(x, str) for x in val_side[:2])
+            ):
+                alias_names = (val_side[0], val_side[1])
             inner_op = getattr(col_side, "operation", None) if col_side else None
-            if alias_names is not None and inner_op in ("posexplode", "posexplode_outer"):
+            if alias_names is not None and inner_op in (
+                "posexplode",
+                "posexplode_outer",
+            ):
                 name0, name1 = alias_names[0], alias_names[1]
                 c0, c1 = None, None
                 if hasattr(inner, "getField") and callable(getattr(inner, "getField")):
@@ -702,7 +700,12 @@ def _expression_to_robin(
                         c1 = inner.getItem(1)
                     except (TypeError, AttributeError):
                         pass
-                if c0 is not None and c1 is not None and hasattr(c0, "alias") and hasattr(c1, "alias"):
+                if (
+                    c0 is not None
+                    and c1 is not None
+                    and hasattr(c0, "alias")
+                    and hasattr(c1, "alias")
+                ):
                     return [c0.alias(name0), c1.alias(name1)]
             alias_name = val_side if isinstance(val_side, str) else None
             if alias_name is not None and hasattr(inner, "alias"):
@@ -762,9 +765,9 @@ def _expression_to_robin(
             if right_expr is None and val_side is not None:
                 right_expr = F.lit(_lit_value_for_robin(val_side))
             if left_expr is not None and right_expr is not None:
-                eq_null_safe_fn = getattr(
-                    left_expr, "eq_null_safe", None
-                ) or getattr(left_expr, "eqNullSafe", None)
+                eq_null_safe_fn = getattr(left_expr, "eq_null_safe", None) or getattr(
+                    left_expr, "eqNullSafe", None
+                )
                 if callable(eq_null_safe_fn):
                     return eq_null_safe_fn(right_expr)
                 l_isnull = getattr(left_expr, "isnull", None) or getattr(
@@ -842,9 +845,7 @@ def _expression_to_robin(
             "soundex",
         )
         if op in unary_ops and col_side is not None:
-            inner = _expression_to_robin(
-                col_side, available_columns, case_sensitive
-            )
+            inner = _expression_to_robin(col_side, available_columns, case_sensitive)
             if inner is None:
                 return None
             # Robin may use F.upper(inner) or inner.upper(); prefer column method
@@ -1034,11 +1035,11 @@ def _expression_to_robin(
             if not robin_cols:
                 return None
             if hasattr(F, "struct"):
-                # Robin's struct() may expect a single Sequence, not *args
+                # Robin's struct() may expect *args or a single Sequence
                 try:
                     return F.struct(*robin_cols)
                 except TypeError:
-                    return F.struct(robin_cols)
+                    return F.struct(robin_cols)  # type: ignore[arg-type]
         # format_string(format_str, *cols): ColumnOperation(base, "format_string", (format_str, rest))
         if op == "format_string":
             if not isinstance(val_side, (list, tuple)) or not val_side:
@@ -1382,21 +1383,18 @@ class RobinMaterializer:
             return False
         expr = _expression_to_robin(payload[1])
         # withColumn adds one column; posexplode().alias(n1, n2) returns a list (two columns)
-        if expr is None or isinstance(expr, (list, tuple)):
-            return False
-        return True
+        return expr is not None and not isinstance(expr, (list, tuple))
 
     def _can_handle_join(self, payload: Any) -> bool:
         if not isinstance(payload, (list, tuple)) or len(payload) < 3:
             return False
         _other, on, how = payload[0], payload[1], payload[2]
-        if _join_on_to_column_names(on) is not None:
-            pass
-        elif isinstance(on, str):
-            pass
-        elif isinstance(on, (list, tuple)) and all(isinstance(x, str) for x in on):
-            pass
-        else:
+        valid_on = (
+            _join_on_to_column_names(on) is not None
+            or isinstance(on, str)
+            or (isinstance(on, (list, tuple)) and all(isinstance(x, str) for x in on))
+        )
+        if not valid_on:
             return False
         return how in (
             "inner",
@@ -1699,7 +1697,11 @@ class RobinMaterializer:
                         # Map which name is from left df vs right df (condition doesn't order them)
                         left_cols = []
                         if hasattr(df, "columns"):
-                            left_cols = list(df.columns) if not callable(df.columns) else list(df.columns())
+                            left_cols = (
+                                list(df.columns)
+                                if not callable(df.columns)
+                                else list(df.columns())
+                            )
                         right_cols = other_names
                         left_names = []
                         right_names = []
@@ -1729,7 +1731,9 @@ class RobinMaterializer:
                             temp_keys.append(tk)
                             left_expr = F.col(left_names[i])
                             right_expr = F.col(right_names[i])
-                            if hasattr(left_expr, "cast") and hasattr(right_expr, "cast"):
+                            if hasattr(left_expr, "cast") and hasattr(
+                                right_expr, "cast"
+                            ):
                                 left_expr = left_expr.cast("string")
                                 right_expr = right_expr.cast("string")
                             df = df.with_column(tk, left_expr)
