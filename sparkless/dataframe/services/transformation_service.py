@@ -10,6 +10,7 @@ from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField, get_row_value, _make_hashable
 from ...core.exceptions import PySparkValueError
 from ...core.column_resolver import ColumnResolver
+from ...sql._robin_compat import get_column_names
 
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
@@ -36,7 +37,7 @@ class TransformationService:
             Uses ColumnResolver to respect spark.sql.caseSensitive configuration.
         """
         case_sensitive = self._df._is_case_sensitive()
-        available_columns = self._df.columns
+        available_columns = get_column_names(self._df)
         return ColumnResolver.resolve_column_name(
             column_name, available_columns, case_sensitive
         )
@@ -90,14 +91,14 @@ class TransformationService:
                     # Validate the struct column exists
                     actual_struct_col = self._find_column(struct_col)
                     if actual_struct_col is None:
-                        raise SparkColumnNotFoundError(struct_col, self._df.columns)
+                        raise SparkColumnNotFoundError(struct_col, get_column_names(self._df))
                     # For nested fields, we don't validate the field name here
                     # as it will be validated during execution
                 else:
                     # Regular column validation
                     actual_col_name = self._find_column(col_name)
                     if actual_col_name is None:
-                        raise SparkColumnNotFoundError(col_name, self._df.columns)
+                        raise SparkColumnNotFoundError(col_name, get_column_names(self._df))
 
     @overload
     def select(self, *columns: str) -> "SupportsDataFrameOps":
@@ -186,7 +187,7 @@ class TransformationService:
                                 )
 
                                 raise SparkColumnNotFoundError(
-                                    struct_col, self._df.columns
+                                    struct_col, get_column_names(self._df)
                                 )
                             resolved_columns.append(f"{actual_struct_col}.{parts[1]}")
                     else:
@@ -199,7 +200,7 @@ class TransformationService:
                                 SparkColumnNotFoundError,
                             )
 
-                            raise SparkColumnNotFoundError(col, self._df.columns)
+                            raise SparkColumnNotFoundError(col, get_column_names(self._df))
                         # Keep the original requested column name (PySpark preserves requested case)
                         # The actual column name is resolved during materialization
                         resolved_columns.append(col)
@@ -261,7 +262,7 @@ class TransformationService:
                                         )
 
                                         raise SparkColumnNotFoundError(
-                                            struct_col, self._df.columns
+                                            struct_col, get_column_names(self._df)
                                         )
                                     resolved_columns.append(col)
                             else:
@@ -273,7 +274,7 @@ class TransformationService:
                                     )
 
                                     raise SparkColumnNotFoundError(
-                                        col_name, self._df.columns
+                                        col_name, get_column_names(self._df)
                                     )
                                 # For Column objects, we just validate that the column exists
                                 # The Column object itself can be used as-is (it references the correct column)
@@ -422,7 +423,7 @@ class TransformationService:
                             SparkColumnNotFoundError,
                         )
 
-                        raise SparkColumnNotFoundError(colname, self._df.columns)
+                        raise SparkColumnNotFoundError(colname, get_column_names(self._df))
                     if alias:
                         # alias() returns IColumn, but we need ColumnOperation for the list type
                         aliased_col = Column(resolved_colname).alias(alias)
@@ -449,7 +450,7 @@ class TransformationService:
                             SparkColumnNotFoundError,
                         )
 
-                        raise SparkColumnNotFoundError(text, self._df.columns)
+                        raise SparkColumnNotFoundError(text, get_column_names(self._df))
                     columns.append(resolved_text)
                 else:
                     # Complex expression without alias
@@ -677,7 +678,7 @@ class TransformationService:
             if actual_col is None:
                 from ...core.exceptions.operation import SparkColumnNotFoundError
 
-                raise SparkColumnNotFoundError(col_name, self._df.columns)
+                raise SparkColumnNotFoundError(col_name, get_column_names(self._df))
             actual_subset.append(actual_col)
 
         seen = set()
@@ -814,7 +815,7 @@ class TransformationService:
         if subset:
             from ...core.column_resolver import ColumnResolver
 
-            available_cols = self._df.columns
+            available_cols = get_column_names(self._df)
             case_sensitive = self._df._is_case_sensitive()
             target_columns = []
             for col in subset:
@@ -827,7 +828,7 @@ class TransformationService:
                     raise ColumnNotFoundException(col)
                 target_columns.append(resolved_col)
         else:
-            target_columns = self._df.columns
+            target_columns = get_column_names(self._df)
 
         # Build replacement map
         replace_map: Dict[Any, Any] = {}
@@ -896,7 +897,7 @@ class TransformationService:
             pattern = pattern[1:-1]
 
         # Find matching columns (preserve order from DataFrame)
-        matching_cols = [col for col in self._df.columns if re.match(pattern, col)]
+        matching_cols = [col for col in get_column_names(self._df) if re.match(pattern, col)]
 
         if not matching_cols:
             # Return empty column if no matches (PySpark behavior)

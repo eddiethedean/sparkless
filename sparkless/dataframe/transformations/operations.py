@@ -22,6 +22,7 @@ from typing import (
 from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField, get_row_value, _make_hashable
 from ...core.exceptions import PySparkValueError
+from ...sql._robin_compat import get_column_names
 from ..protocols import SupportsDataFrameOps
 
 SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
@@ -100,24 +101,24 @@ class TransformationOperations(Generic[SupportsDF]):
             for col in columns:
                 if isinstance(col, str) and col != "*":
                     # Check if column exists
-                    if col not in self.columns:
+                    if col not in get_column_names(self):
                         from ...core.exceptions.operation import (
                             SparkColumnNotFoundError,
                         )
 
-                        raise SparkColumnNotFoundError(col, self.columns)
+                        raise SparkColumnNotFoundError(col, get_column_names(self))
                 elif isinstance(col, Column):
                     if hasattr(col, "operation"):
                         # Complex expression - validate column references
                         self._validate_expression_columns(col, "select")
                     else:
                         # Simple column reference - validate
-                        if col.name not in self.columns:
+                        if col.name not in get_column_names(self):
                             from ...core.exceptions.operation import (
                                 SparkColumnNotFoundError,
                             )
 
-                            raise SparkColumnNotFoundError(col.name, self.columns)
+                            raise SparkColumnNotFoundError(col.name, get_column_names(self))
                 elif isinstance(col, ColumnOperation) and not (
                     hasattr(col, "operation")
                     and col.operation in ["months_between", "datediff"]
@@ -549,7 +550,7 @@ class TransformationOperations(Generic[SupportsDF]):
         from copy import deepcopy
 
         # Determine columns to apply replacement to
-        target_columns = subset if subset else self.columns
+        target_columns = subset if subset else get_column_names(self)
 
         # Build replacement map
         replace_map: Dict[Any, Any] = {}
@@ -615,7 +616,7 @@ class TransformationOperations(Generic[SupportsDF]):
             pattern = pattern[1:-1]
 
         # Find matching columns (preserve order from DataFrame)
-        matching_cols = [col for col in self.columns if re.match(pattern, col)]
+        matching_cols = [col for col in get_column_names(self) if re.match(pattern, col)]
 
         if not matching_cols:
             # Return empty column if no matches (PySpark behavior)

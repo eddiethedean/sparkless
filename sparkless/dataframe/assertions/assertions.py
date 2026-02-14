@@ -7,6 +7,7 @@ Extracted from dataframe.py to improve organization and maintainability.
 
 from typing import Any, Dict, List, TYPE_CHECKING
 
+from ...sql._robin_compat import get_column_names
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class DataFrameAssertions:
         Raises:
             AssertionError: If any expected columns are missing
         """
-        actual_columns = df.columns
+        actual_columns = get_column_names(df)
         missing = set(expected_columns) - set(actual_columns)
         if missing:
             raise AssertionError(f"Missing columns: {sorted(missing)}")

@@ -1,0 +1,696 @@
+# Robin parity failures by category
+
+## aggregate_duplicate_column_alias
+
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_to_different_types
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_null_values
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_column_name_format
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_multiple_casts_same_aggregate
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_with_empty_groups
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_cast_chain_operations
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/parity/functions/test_aggregate_cast_parity.py::TestAggregateCastParity::test_all_aggregate_functions_with_string_cast
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+- tests/unit/functions/test_aggregate_function_cast.py::test_aggregate_function_cast_with_different_aggregates
+  RuntimeError: duplicate: column with name 'value' has more than one occurrence
+
+## argument_sequence_type
+
+- tests/test_issue_326_format_string.py::TestIssue326FormatString::test_format_string_format_specifiers
+  TypeError: argument 'cols': 'Column' object cannot be converted to 'Sequence'
+- tests/test_issue_326_format_string.py::TestIssue326FormatString::test_format_string_precision_formatting
+  TypeError: argument 'cols': 'Column' object cannot be converted to 'Sequence'
+
+## catalog_api
+
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_databases
+  AttributeError: 'builtin_function_or_method' object has no attribute 'listDatabases'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_create_database_catalog
+  AttributeError: 'builtin_function_or_method' object has no attribute 'createDatabase'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_drop_database_catalog
+  AttributeError: 'builtin_function_or_method' object has no attribute 'createDatabase'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_set_current_database
+  AttributeError: 'builtin_function_or_method' object has no attribute 'createDatabase'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_tables_in_database
+  AttributeError: 'builtin_function_or_method' object has no attribute 'createDatabase'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_table_exists_in_database
+  AttributeError: 'builtin_function_or_method' object has no attribute 'createDatabase'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_get_table_in_database
+  AttributeError: 'builtin_function_or_method' object has no attribute 'createDatabase'
+
+## column_eqnullsafe
+
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_literal_semantics[x-y-False]
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_in_select_expression
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_chained_with_other_operations
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_literal_semantics[None-None-True]
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_literal_semantics[None-x-False]
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_literal_semantics[x-None-False]
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+- tests/test_issue_260_eq_null_safe.py::TestIssue260EqNullSafe::test_eqnullsafe_literal_semantics[x-x-True]
+  AttributeError: 'builtins.Column' object has no attribute 'eqNullSafe'
+
+## column_isnull
+
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_when_otherwise
+  AttributeError: 'builtins.Column' object has no attribute 'isNull'
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_ifnull
+  AttributeError: 'builtins.Column' object has no attribute 'isNull'
+
+## column_resolution
+
+- tests/test_issue_202_select_with_list.py::TestIssue202SelectWithList::test_select_star_with_list_does_not_unpack
+  RuntimeError: not found: Column '*' not found. Available columns: [dept, name]. Check spelling and case sensitivity (spark.sql.caseSensitive).
+- tests/test_issue_156_select_dropped_column.py::test_select_dropped_column_minimal_repro
+  RuntimeError: not found: Column 'col2' not found. Available columns: [col1]. Check spelling and case sensitivity (spark.sql.caseSensitive).
+- tests/test_issue_158_dropped_column_error.py::TestIssue158DroppedColumnError::test_minimal_reproduction
+  RuntimeError: not found: Column 'col2' not found. Available columns: [col1]. Check spelling and case sensitivity (spark.sql.caseSensitive).
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_case_insensitive_nonexistent
+  RuntimeError: not found: Column 'DOES-NOT-EXIST' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_chained_with_nonexistent
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [FullName, Value]. Check spelling and case sensitivity (spark.sql.caseS
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnsRenamed_with_nonexistent_columns
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnsRenamed_all_nonexistent_no_op
+  RuntimeError: not found: Column 'Does-Not-Exist-1' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSen
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_operations
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_empty_dataframe
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_with_null_values
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_different_data_types
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [active, age, birth_date, created_at, name, salary]. Check spelling and
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_special_characters_in_names
+  RuntimeError: not found: Column 'col@with#special$chars' not found. Available columns: [col-with-dash, col.with.dot, col_with_underscore]. Check spell
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_unicode_column_names
+  RuntimeError: not found: Column '不存在' not found. Available columns: [値, 姓名, 年龄]. Check spelling and case sensitivity (spark.sql.caseSensitive).
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_very_long_column_name
+  RuntimeError: not found: Column 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_join
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [id, name, value]. Check spelling and case sensitivity (spark.sql.caseS
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_select
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [name, age]. Check spelling and case sensitivity (spark.sql.caseSensiti
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_orderby
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [age, name]. Check spelling and case sensitivity (spark.sql.caseSensiti
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_multiple_chained_nonexistent
+  RuntimeError: not found: Column 'Does-Not-Exist-1' not found. Available columns: [age, name]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_mixed_existing_and_nonexistent_chained
+  RuntimeError: not found: Column 'Does-Not-Exist-1' not found. Available columns: [age, city, full_name]. Check spelling and case sensitivity (spark.sq
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnsRenamed_mixed_existing_nonexistent_complex
+  RuntimeError: not found: Column 'Does-Not-Exist-1' not found. Available columns: [a, b, c, d]. Check spelling and case sensitivity (spark.sql.caseSens
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_distinct
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [dept, name]. Check spelling and case sensitivity (spark.sql.caseSensit
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_withColumn
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [age, name, double_age]. Check spelling and case sensitivity (spark.sql
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_after_drop
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [age, name]. Check spelling and case sensitivity (spark.sql.caseSensiti
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_whitespace_in_column_names
+  RuntimeError: not found: Column 'Does Not Exist' not found. Available columns: [age, name]. Check spelling and case sensitivity (spark.sql.caseSensiti
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_idempotent_behavior
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [age, name]. Check spelling and case sensitivity (spark.sql.caseSensiti
+- tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_parity
+  RuntimeError: not found: Column 'StructValue.E1' not found. Available columns: [Name, StructValue]. Check spelling and case sensitivity (spark.sql.cas
+- tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_multiple_fields_parity
+  RuntimeError: not found: Column 'StructValue.E1' not found. Available columns: [Name, StructValue]. Check spelling and case sensitivity (spark.sql.cas
+- tests/parity/functions/test_struct_field_alias_parity.py::TestStructFieldAliasParity::test_struct_field_with_alias_and_other_columns_parity
+  RuntimeError: not found: Column 'StructValue.E1' not found. Available columns: [Name, StructValue]. Check spelling and case sensitivity (spark.sql.cas
+- tests/test_issue_295_withColumnRenamed_nonexistent.py::TestIssue295WithColumnRenamedNonexistent::test_withColumnRenamed_nonexistent_column_no_op
+  RuntimeError: not found: Column 'Does-Not-Exist' not found. Available columns: [Name, Value]. Check spelling and case sensitivity (spark.sql.caseSensi
+- tests/test_issue_359_na_drop.py::TestIssue359NADropRobust::test_na_drop_invalid_subset_column_raises
+  RuntimeError: not found: unable to find column "NonExistentColumn"; valid columns: ["Name", "Value"]
+- tests/unit/dataframe/test_na_fill.py::TestNaFill::test_na_fill_nonexistent_column
+  RuntimeError: not found: Column 'nonexistent' not found. Available columns: [col1, col2]. Check spelling and case sensitivity (spark.sql.caseSensitive
+- tests/unit/dataframe/test_fillna_subset.py::TestFillnaSubset::test_fillna_subset_multiple_nonexistent_columns_raises_error
+  RuntimeError: not found: Column 'nonexistent' not found. Available columns: [key, value]. Check spelling and case sensitivity (spark.sql.caseSensitive
+- tests/unit/test_column_case_variations.py::TestColumnCaseVariations::test_dropna_all_case_variations
+  RuntimeError: not found: unable to find column "name"; valid columns: ["Age", "Name", "Salary"]
+- tests/unit/test_column_case_variations.py::TestColumnCaseVariations::test_nested_struct_field_access_all_cases
+  RuntimeError: not found: Column 'Person.name' not found. Available columns: [Person]. Check spelling and case sensitivity (spark.sql.caseSensitive).
+
+## dataframe_agg_global
+
+- tests/parity/dataframe/test_aggregations.py::TestAggregationsParity::test_global_aggregation
+  TypeError: DataFrame.agg() takes 1 positional arguments but 3 were given
+
+## describe_or_show_mode
+
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_extended
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_describe_column
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_columns
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_list_tables
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_table_exists
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_get_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_inner_join_and_aliases
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/test_issue_152_sql_column_aliases.py::TestIssue152SQLColumnAliases::test_sql_with_left_join_and_aliases
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_cache_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_uncache_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/internal/test_catalog.py::TestCatalogParity::test_is_cached
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_inner_join
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_left_join
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_order_by
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_limit
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_having
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_union
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_subquery
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_case_when
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_like
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_in_clause
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_from_dataframe
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_table_with_select
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_into_specific_columns
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_multiple_values
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_update_multiple_columns
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_from_table
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_delete_all_rows
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_dml.py::TestSQLDMLParity::test_insert_from_select
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_basic_select
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_filtered_select
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_group_by
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_queries.py::TestSQLQueriesParity::test_aggregation
+  AttributeError: 'function' object has no attribute 'mode'
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables
+  AttributeError: 'function' object has no attribute 'mode'
+
+## filter_condition_type
+
+- tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_expression
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_equals
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_f_col_expression_still_works
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_290_udf_multiple_arguments.py::TestIssue290UdfMultipleArguments::test_udf_in_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_203_filter_with_string.py::TestIssue203FilterWithString::test_filter_with_string_and_condition
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_158_dropped_column_error.py::TestIssue158DroppedColumnError::test_filter_dropped_column_raises_consistent_error
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[>-expected_names0]
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[>=-expected_names1]
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[<-expected_names2]
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[<=-expected_names3]
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[==-expected_names4]
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_column_all_operators[!=-expected_names5]
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_datetime_column_vs_string_column_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_datetime_column_vs_string_column_all_operators
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_date_column_vs_string_literal
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_string_column_vs_date_literal_all_operators
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_invalid_or_null_date_strings_do_not_raise
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_259_datetime_string_comparison.py::TestIssue259DatetimeStringComparison::test_string_values_that_look_like_dates_but_both_sides_string
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_136_column_rename_validation.py::TestIssue136ColumnRenameValidation::test_multiple_column_renames
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_296_udf_decorator.py::TestIssue296UdfDecorator::test_udf_decorator_in_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_with_chained_filters
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_chained_operations
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_337_grouped_data_mean.py::TestIssue337GroupedDataMean::test_grouped_data_mean_with_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_339_column_subscript.py::TestIssue339ColumnSubscript::test_column_subscript_in_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_with_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_370_filter_in_string.py::TestIssue370FilterInString::test_filter_values_in_string_literal
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_370_filter_in_string.py::TestIssue370FilterInString::test_filter_values_in_numeric_literal
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_370_filter_in_string.py::TestIssue370FilterInString::test_filter_in_string_show
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_370_filter_in_string.py::TestIssue370FilterInString::test_filter_equality_string_works
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_370_filter_in_string.py::TestIssue370FilterInString::test_filter_in_multiple_literals
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_numeric_and_string
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_exact_issue
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_not_like_exact_issue
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_336_window_function_comparison.py::TestIssue336WindowFunctionComparison::test_window_function_comparison_direct_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_select_after
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_with_show
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_is_null_and_string_equality
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_337_grouped_data_mean.py::TestIssue337GroupedDataMean::test_grouped_data_mean_with_complex_chained_operations
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_415_orderby_list.py::test_filter_then_orderby_list
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_prefix_pattern
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_underscore_wildcard
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_433_regexp_in_expr.py::test_filter_regexp_exact_issue_433
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_not_like_multiple_rows
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_433_regexp_in_expr.py::test_filter_rlike_same_as_regexp
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_with_integer_literal_exact_issue
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_suffix_pattern
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_433_regexp_in_expr.py::test_expr_regexp_single_match
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_and_combined
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_string_literal_type_coercion_exact_issue
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_433_regexp_in_expr.py::test_expr_regexp_no_match
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_or_combined
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_workaround_still_works
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_empty_result
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_with_string_column
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_multiple_underscores
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_multiple_values_or
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_and_condition
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_multiple_in_or
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_with_nulls
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_float_column_or
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_394_like_in_expr.py::TestIssue394LikeInExpr::test_filter_like_middle_wildcard
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_empty_result
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_multiple_strings_or
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_string_equality_exact_issue
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_419_filter_in_or_parse_exception.py::TestIssue419FilterInOrParseException::test_filter_in_or_with_show
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_string_equality_with_show
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_is_null_workaround_still_works
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_or_string_equality
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_string_and_is_null
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_literal_contains_and
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_or_with_is_null
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_434_ltrim_rtrim_in_expr.py::test_expr_filter_with_ltrim
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_string_equality_single_condition
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/test_issue_395_filter_and_string_expr.py::TestIssue395FilterAndStringExpr::test_filter_and_string_equality_empty_result
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/functions/test_udf_comprehensive.py::TestUDFInDifferentOperations::test_udf_in_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_array_parameter_formats.py::TestArrayParameterFormats::test_array_after_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_create_map.py::TestCreateMap::test_create_map_empty_after_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_create_map.py::TestCreateMap::test_create_map_after_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_create_map.py::TestCreateMap::test_create_map_empty_list_after_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_first_method.py::TestDataFrameFirst::test_first_after_filter
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_first_method.py::TestDataFrameFirst::test_first_after_multiple_transformations
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_three_branches
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_with_filters
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_nested_transformations
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_empty_branch
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_preserves_original_data
+  TypeError: condition must be a Column or literal bool (True/False)
+- tests/unit/test_issue_355.py::TestIssue355DiamondDependency::test_unionByName_diamond_dependency_multiple_unions
+  TypeError: condition must be a Column or literal bool (True/False)
+
+## functions_variadic_coalesce
+
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_coalesce
+  TypeError: py_coalesce() takes 1 positional arguments but 2 were given
+- tests/unit/test_column_case_variations.py::TestColumnCaseVariations::test_coalesce_all_case_variations
+  TypeError: py_coalesce() takes 1 positional arguments but 3 were given
+
+## functions_variadic_greatest_least
+
+- tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_greatest
+  TypeError: py_greatest() takes 1 positional arguments but 3 were given
+- tests/parity/functions/test_math.py::TestMathFunctionsParity::test_math_least
+  TypeError: py_least() takes 1 positional arguments but 3 were given
+
+## groupeddata_avg_multiple_cols
+
+- tests/parity/dataframe/test_grouped_data_mean_parity.py::TestGroupedDataMeanParity::test_grouped_data_mean_multiple_columns
+  TypeError: GroupedData.avg() takes 1 positional arguments but 2 were given
+- tests/test_issue_337_grouped_data_mean.py::TestIssue337GroupedDataMean::test_grouped_data_mean_multiple_columns
+  TypeError: GroupedData.avg() takes 1 positional arguments but 2 were given
+
+## join_on_column_not_accepted
+
+- tests/parity/dataframe/test_join.py::TestJoinParity::test_inner_join
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/dataframe/test_join.py::TestJoinParity::test_left_join
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/dataframe/test_join.py::TestJoinParity::test_right_join
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/dataframe/test_join.py::TestJoinParity::test_outer_join
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/dataframe/test_join.py::TestJoinParity::test_semi_join
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/dataframe/test_join.py::TestJoinParity::test_anti_join
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_basic_parity
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_multiple_matches_parity
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/parity/functions/test_array_contains_join_parity.py::TestArrayContainsJoinParity::test_array_contains_join_left_parity
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_438_leftsemi_join.py::TestIssue438LeftsemiJoin::test_leftsemi_join_with_column_expression
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_exact_issue
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_reverse_order
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_left_no_match
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_inner
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_right
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_outer
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_with_show
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_different_column_names_with_select
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/test_issue_421_join_column_names.py::TestIssue421JoinColumnNames::test_join_dot_notation_still_works
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/unit/dataframe/test_join_type_coercion.py::TestJoinTypeCoercion::test_join_with_left_on_right_on
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/unit/dataframe/test_join_type_coercion.py::TestJoinTypeCoercionParity::test_pyspark_parity_left_on_right_on_different_names
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+- tests/integration/test_case_sensitivity.py::TestCaseSensitivityConfiguration::test_case_sensitive_join_fails_with_wrong_case
+  TypeError: argument 'on': join 'on' must be str or list/tuple of str
+
+## lengths_dont_match
+
+- tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_parity
+  RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1
+- tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_without_limit_parity
+  RuntimeError: lengths don't match: unable to add a column of length 4 to a DataFrame of height 1
+- tests/parity/functions/test_split_limit_parity.py::TestSplitLimitParity::test_split_with_limit_minus_one_parity
+  RuntimeError: lengths don't match: unable to add a column of length 4 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_without_limit
+  RuntimeError: lengths don't match: unable to add a column of length 4 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_limit_larger_than_splits
+  RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_limit_minus_one
+  RuntimeError: lengths don't match: unable to add a column of length 4 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_multi_char_delimiter
+  RuntimeError: lengths don't match: unable to add a column of length 2 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_special_regex_characters
+  RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_whitespace_delimiter
+  RuntimeError: lengths don't match: unable to add a column of length 2 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_consecutive_delimiters
+  RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_limit_zero
+  RuntimeError: lengths don't match: unable to add a column of length 4 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_unicode_characters
+  RuntimeError: lengths don't match: unable to add a column of length 2 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_very_long_string
+  RuntimeError: lengths don't match: unable to add a column of length 10 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_leading_trailing_delimiters
+  RuntimeError: lengths don't match: unable to add a column of length 4 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_limit
+  RuntimeError: lengths don't match: unable to add a column of length 3 to a DataFrame of height 1
+- tests/test_issue_328_split_limit.py::TestIssue328SplitLimit::test_split_with_limit_2
+  RuntimeError: lengths don't match: unable to add a column of length 2 to a DataFrame of height 1
+- tests/unit/test_column_case_variations.py::TestColumnCaseVariations::test_unionByName_all_case_variations
+  RuntimeError: lengths don't match: unable to vstack, column names don't match: "Age" and "AGE"
+- tests/integration/test_case_sensitivity.py::TestCaseSensitivityConfiguration::test_case_insensitive_unionByName
+  RuntimeError: lengths don't match: unable to vstack, column names don't match: "Age" and "AGE"
+- tests/unit/test_issues_225_231.py::TestIssue230CaseInsensitiveColumnMatching::test_unionByName_case_insensitive
+  RuntimeError: lengths don't match: unable to vstack, column names don't match: "Age" and "AGE"
+
+## order_by_ascending_type
+
+- tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_orderby_ascending_true_parity
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_orderby_ascending_false_parity
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/parity/functions/test_orderby_ascending_parity.py::TestOrderByAscendingParity::test_sort_with_ascending_parity
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_ascending_true
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_ascending_false
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_numeric_ascending
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_numeric_descending
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_multiple_columns_ascending
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_multiple_columns_descending
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_with_column_object
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_sort_with_ascending_parameter
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_with_null_values
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_single_row
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_all_null_values
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_mixed_nulls_and_values
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_negative_numbers
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_floating_point
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_boolean_column
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_unicode_strings
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_special_characters
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_very_long_strings
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_multiple_orderby_calls
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_with_limit
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_case_insensitive_column_name
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_three_columns
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_327_orderby_ascending.py::TestIssue327OrderByAscending::test_orderby_duplicate_values
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+- tests/test_issue_415_orderby_list.py::test_orderby_desc_with_list
+  TypeError: argument 'ascending': 'bool' object cannot be converted to 'Sequence'
+
+## order_by_pysortorder
+
+- tests/test_issue_392_window_sum_peers.py::TestIssue392WindowSumPeers::test_sum_order_by_col_desc_still_subset
+  ValueError: Invalid column type: <class 'builtins.PySortOrder'>. Must be str or Column
+- tests/unit/test_window_arithmetic.py::TestWindowFunctionArithmetic::test_rank_with_arithmetic
+  ValueError: Invalid column type: <class 'builtins.PySortOrder'>. Must be str or Column
+- tests/unit/test_window_arithmetic.py::TestWindowFunctionArithmetic::test_dense_rank_with_arithmetic
+  ValueError: Invalid column type: <class 'builtins.PySortOrder'>. Must be str or Column
+
+## result_parity_null_handling
+
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnull
+  AssertionError: DataFrames are not equivalent:
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_isnotnull
+  AssertionError: DataFrames are not equivalent:
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nvl
+  AssertionError: DataFrames are not equivalent:
+- tests/parity/functions/test_null_handling.py::TestNullHandlingFunctionsParity::test_nullif
+  AssertionError: DataFrames are not equivalent:
+
+## result_parity_schema_type
+
+- tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_validation_rule_not_null
+  AssertionError: Expected TimestampType, got StringType(nullable=True)
+- tests/test_issue_151_to_timestamp_validation.py::TestIssue151ToTimestampValidation::test_to_timestamp_with_datetime_operations
+  AssertionError: Expected TimestampType, got StringType(nullable=True)
+- tests/test_issue_153_to_timestamp_returns_none.py::TestIssue153ToTimestampReturnsNone::test_to_timestamp_returns_actual_values
+  AssertionError: assert 'StringType' == 'TimestampType'
+
+## result_parity_type_coercion
+
+- tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_list_rows_with_different_data_types
+  AssertionError: assert '25' == 25
+- tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_single_list_row
+  AssertionError: assert '25' == 25
+- tests/test_issue_200_list_rows_with_column_schema.py::TestIssue200ListRowsWithColumnSchema::test_createDataFrame_list_rows_with_none_values
+  AssertionError: assert '25' == 25
+
+## sql_ddl_not_supported
+
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_tables_in_database
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "show_db", quote_style: None }]), if_not_exists:
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_schema_merge_with_type_preservation
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_cbcf4fd5", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_delta_create_or_replace_table_as_select
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "ctas_schema_7db91a9a", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_immediate_table_access
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_51ff51d9", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_basic_schema_evolution
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_7670a2e4", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_overwrite_schema_option
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_d2c405e8", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_preserve_existing_columns
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_8130b48f", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_schema_merge_on_overwrite
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_1d075d30", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_merge_schema_append
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_220e5e89", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_merge_schema_bidirectional
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_9a04a95f", quote_style: No
+- tests/test_delta_lake_schema_evolution.py::TestDeltaLakeSchemaEvolution::test_complete_schema_evolution_scenario
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema_7d96e4d7", quote_style: No
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_database
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "test_db", quote_style: None }]), if_not_exists:
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_database_if_not_exists
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "test_db2", quote_style: None }]), if_not_exists
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_drop_database
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "test_db3", quote_style: None }]), if_not_exists
+- tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_data_visible_immediately
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_append_to_new_table
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_table_append_persistence.py::TestTableAppendPersistence::test_multiple_append_operations
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_create_schema
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_set_current_database
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "test_current_db", quote_style: None }]), if_not
+- tests/parity/sql/test_ddl.py::TestSQLDDLParity::test_table_in_specific_database
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "test_db_specific", quote_style: None }]), if_no
+- tests/parity/sql/test_show_describe.py::TestSQLShowDescribeParity::test_show_databases
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "show_test_db", quote_style: None }]), if_not_ex
+- tests/unit/session/test_sql_describe_detail.py::TestDescribeDetail::test_describe_detail_with_schema
+  RuntimeError: SQL: only SELECT is supported, got CreateDatabase { db_name: ObjectName([Ident { value: "test_schema_detail", quote_style: None }]), if_
+- tests/parity/dataframe/test_filter.py::TestFilterParity::test_filter_on_table_with_complex_schema
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_filter_on_table_with_comparison_operations
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_arithmetic_operations_in_filters
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_complex_nested_operations_in_filters
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_filter_isinstance_ordering.py::TestIsInstanceOrdering::test_string_operations_in_filters
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_existing_table
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_to_new_table
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_multiple_append_operations
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_active_session
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_parquet_format_append_detached_df_visible_to_multiple_sessions
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+- tests/parity/dataframe/test_parquet_format_table_append.py::TestParquetFormatTableAppend::test_pipeline_logs_like_write_visible_immediately
+  RuntimeError: SQL: only SELECT is supported, got CreateSchema { schema_name: Simple(ObjectName([Ident { value: "test_schema", quote_style: None }])), 
+
+## whenthen_when_chain
+
+- tests/test_issue_288_casewhen_operators.py::TestIssue288CaseWhenOperators::test_casewhen_multiple_when_conditions
+  AttributeError: 'builtins.WhenThen' object has no attribute 'when'
+
+## window_partition_by_type
+
+- tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_rsd_issue_266
+  TypeError: argument 'partition_by': 'WindowSpec' object cannot be converted to 'Sequence'
+- tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_parity
+  TypeError: argument 'partition_by': 'WindowSpec' object cannot be converted to 'Sequence'
+- tests/parity/functions/test_approx_count_distinct_rsd_parity.py::TestApproxCountDistinctRsdParity::test_approx_count_distinct_window_without_rsd_parity
+  TypeError: argument 'partition_by': 'WindowSpec' object cannot be converted to 'Sequence'
+- tests/test_issue_393_sum_string_column.py::TestIssue393SumStringColumn::test_sum_string_column_with_show
+  TypeError: argument 'partition_by': 'WindowSpec' object cannot be converted to 'Sequence'
+- tests/test_issue_392_window_sum_peers.py::TestIssue392WindowSumPeers::test_sum_order_by_same_as_partition_by
+  TypeError: argument 'partition_by': 'WindowSpec' object cannot be converted to 'Sequence'
+- tests/test_issue_393_sum_string_column.py::TestIssue393SumStringColumn::test_sum_string_column_partition_by_order_by
+  TypeError: argument 'partition_by': 'WindowSpec' object cannot be converted to 'Sequence'
+

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from ..protocols import SupportsDataFrameOps
 
 from ...core.exceptions import IllegalArgumentException
+from ...sql._robin_compat import get_column_names
 from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundException
 
 
@@ -85,7 +86,7 @@ class MiscService:
         if subset:
             from ...core.column_resolver import ColumnResolver
 
-            available_cols = self._df.columns
+            available_cols = get_column_names(self._df)
             case_sensitive = self._df._is_case_sensitive()
             resolved_subset = []
             for col in subset:
@@ -378,7 +379,7 @@ class MiscService:
         # Resolve column name case-insensitively
         from ...core.column_resolver import ColumnResolver
 
-        available_cols = self._df.columns
+        available_cols = get_column_names(self._df)
         case_sensitive = self._df._is_case_sensitive()
         resolved_col = ColumnResolver.resolve_column_name(
             col, available_cols, case_sensitive
@@ -671,7 +672,7 @@ class MiscService:
         # Resolve column names case-insensitively
         from ...core.column_resolver import ColumnResolver
 
-        available_cols = self._df.columns
+        available_cols = get_column_names(self._df)
         case_sensitive = self._df._is_case_sensitive()
         resolved_col1 = ColumnResolver.resolve_column_name(
             col1, available_cols, case_sensitive
@@ -742,7 +743,7 @@ class MiscService:
         # Resolve column names case-insensitively
         from ...core.column_resolver import ColumnResolver
 
-        available_cols = self._df.columns
+        available_cols = get_column_names(self._df)
         case_sensitive = self._df._is_case_sensitive()
         resolved_cols = []
         for col in cols:
@@ -1054,7 +1055,7 @@ class MiscService:
         # Validate columns exist and resolve case-insensitively
         from ...core.column_resolver import ColumnResolver
 
-        available_cols = materialized.columns
+        available_cols = get_column_names(materialized)
         case_sensitive = materialized._is_case_sensitive()  # type: ignore[attr-defined]
 
         resolved_id_cols = []
@@ -1064,7 +1065,7 @@ class MiscService:
             )
             if resolved_col is None:
                 raise AnalysisException(
-                    f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
+                    f"Cannot resolve column name '{col}' among ({', '.join(get_column_names(materialized))})"
                 )
             resolved_id_cols.append(resolved_col)
 
@@ -1075,7 +1076,7 @@ class MiscService:
             )
             if resolved_col is None:
                 raise AnalysisException(
-                    f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
+                    f"Cannot resolve column name '{col}' among ({', '.join(get_column_names(materialized))})"
                 )
             resolved_value_cols.append(resolved_col)
 

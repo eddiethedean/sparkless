@@ -28,6 +28,7 @@ from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.session import ISession
 from ...dataframe import DataFrame
 from ...spark_types import StructType
+from ...sql._robin_compat import get_column_names
 from .parser import SQLAST
 
 # Import types for runtime use (needed for type annotations and cast() calls)
@@ -243,7 +244,7 @@ class SQLExecutor:
                         # First join: prefix left (df) with table1_alias; every join: prefix right with table2_alias
                         df_renamed = df
                         if idx == 0:
-                            for c in df.columns:
+                            for c in get_column_names(df):
                                 df_renamed = cast(
                                     "DataFrame",
                                     df_renamed.withColumnRenamed(
@@ -251,7 +252,7 @@ class SQLExecutor:
                                     ),
                                 )
                         df2_renamed = df2
-                        for c in df2.columns:
+                        for c in get_column_names(df2):
                             df2_renamed = cast(
                                 "DataFrame",
                                 df2_renamed.withColumnRenamed(c, f"{table2_alias}_{c}"),
@@ -274,21 +275,21 @@ class SQLExecutor:
                                 left_key = f"{alias1}.{col1}"
                                 df1_join_col = ColumnResolver.resolve_column_name(
                                     left_key,
-                                    df_renamed.columns,
+                                    get_column_names(df_renamed),
                                     case_sensitive_join,
                                 )
                                 if df1_join_col is None:
                                     df1_join_col = f"{alias1}_{col1}"
                                 df2_join_col = f"{table2_alias}_{col2}"
-                                if df1_join_col not in df_renamed.columns:
+                                if df1_join_col not in get_column_names(df_renamed):
                                     raise ValueError(
                                         f"Join column '{df1_join_col}' not in left. "
-                                        f"Available: {df_renamed.columns}"
+                                        f"Available: {get_column_names(df_renamed)}"
                                     )
-                                if df2_join_col not in df2_renamed.columns:
+                                if df2_join_col not in get_column_names(df2_renamed):
                                     raise ValueError(
                                         f"Join column '{df2_join_col}' not in right. "
-                                        f"Available: {df2_renamed.columns}"
+                                        f"Available: {get_column_names(df2_renamed)}"
                                     )
                                 join_col = (
                                     df_renamed[df1_join_col]
@@ -308,8 +309,8 @@ class SQLExecutor:
                                 )
                             else:
                                 join_type = join_info.get("type", "inner")
-                                common = set(df_renamed.columns) & set(
-                                    df2_renamed.columns
+                                common = set(get_column_names(df_renamed)) & set(
+                                    get_column_names(df2_renamed)
                                 )
                                 if common:
                                     jc = list(common)[0]
@@ -432,7 +433,7 @@ class SQLExecutor:
                 if subquery_result.count() > 0:
                     row = subquery_result.collect()[0]
                     # Get first column value
-                    subquery_col_name = subquery_result.columns[0]
+                    subquery_col_name = get_column_names(subquery_result)[0]
                     scalar_value = row[subquery_col_name]
 
                     # Replace subquery with scalar value in WHERE condition
@@ -465,7 +466,7 @@ class SQLExecutor:
                 col_name = like_match.group(1)
                 pattern = like_match.group(2)
                 resolved_col = ColumnResolver.resolve_column_name(
-                    col_name, df.columns, case_sensitive
+                    col_name, get_column_names(df), case_sensitive
                 )
                 if resolved_col:
                     df = cast(
@@ -485,7 +486,7 @@ class SQLExecutor:
                     col_name = eq_match.group(1)
                     value = eq_match.group(2)
                     resolved_col = ColumnResolver.resolve_column_name(
-                        col_name, df.columns, case_sensitive
+                        col_name, get_column_names(df), case_sensitive
                     )
                     if resolved_col:
                         df = cast(
@@ -520,7 +521,7 @@ class SQLExecutor:
                             values.append(val)
 
                     resolved_col = ColumnResolver.resolve_column_name(
-                        col_name, df.columns, case_sensitive
+                        col_name, get_column_names(df), case_sensitive
                     )
                     if resolved_col:
                         df = cast(
@@ -546,7 +547,7 @@ class SQLExecutor:
 
                     # Resolve column name case-insensitively
                     resolved_col = ColumnResolver.resolve_column_name(
-                        col_name, df.columns, case_sensitive
+                        col_name, get_column_names(df), case_sensitive
                     )
                     if resolved_col:
                         if operator == ">":
@@ -728,7 +729,7 @@ class SQLExecutor:
                     else:
                         # Not a comparison (parenthesized), resolve and use as column name
                         resolved_gb = ColumnResolver.resolve_column_name(
-                            col_expr, temp_df.columns, case_sensitive_group
+                            col_expr, temp_get_column_names(df), case_sensitive_group
                         )
                         group_by_cols.append(
                             resolved_gb if resolved_gb is not None else col_expr
@@ -736,7 +737,7 @@ class SQLExecutor:
                 else:
                     # Regular column name (resolve d.dept_name -> d_dept_name)
                     resolved_gb = ColumnResolver.resolve_column_name(
-                        col_expr, temp_df.columns, case_sensitive_group
+                        col_expr, temp_get_column_names(df), case_sensitive_group
                     )
                     group_by_cols.append(
                         resolved_gb if resolved_gb is not None else col_expr
@@ -779,8 +780,8 @@ class SQLExecutor:
                     # Find matching column in result - check both aliased and generated names
                     # The column might be aliased (e.g., "avg_salary") or use generated name (e.g., "avg(salary)")
                     having_col_name: Optional[str] = None
-                    # Check in df_ops.columns since that's what we're filtering
-                    for col in df_ops.columns:
+                    # Check in get_column_names(df_ops) since that's what we're filtering
+                    for col in get_column_names(df_ops):
                         # Check if column name matches the aggregate function pattern
                         if agg_func_name in ["AVG", "MEAN"]:
                             if (
@@ -823,16 +824,16 @@ class SQLExecutor:
                     if not having_col_name:
                         # Try generated name first (e.g., "avg(salary)")
                         generated_name = f"{agg_func_name.lower()}({agg_col_name})"
-                        if generated_name in df_ops.columns:
+                        if generated_name in get_column_names(df_ops):
                             having_col_name = generated_name
                         else:
                             # Try alias pattern (lowercase with underscore, e.g., "avg_salary")
                             alias_name = f"{agg_func_name.lower()}_{agg_col_name}"
-                            if alias_name in df_ops.columns:
+                            if alias_name in get_column_names(df_ops):
                                 having_col_name = alias_name
                             else:
                                 # Last resort: find any column that contains the function name and column name
-                                for col in df_ops.columns:
+                                for col in get_column_names(df_ops):
                                     if (
                                         agg_func_name.lower() in col.lower()
                                         and agg_col_name.lower() in col.lower()
@@ -841,8 +842,8 @@ class SQLExecutor:
                                         break
 
                     # Apply filter if column found
-                    # Check in df_ops.columns since that's what we're filtering
-                    if having_col_name and having_col_name in df_ops.columns:
+                    # Check in get_column_names(df_ops) since that's what we're filtering
+                    if having_col_name and having_col_name in get_column_names(df_ops):
                         if operator == ">":
                             df = cast(
                                 "DataFrame",
@@ -881,7 +882,7 @@ class SQLExecutor:
                             value = int(simple_match.group(3))
 
                             # Check if column exists in result
-                            if col_name in df_ops.columns:
+                            if col_name in get_column_names(df_ops):
                                 if operator == ">":
                                     df = cast(
                                         "DataFrame",
@@ -930,7 +931,7 @@ class SQLExecutor:
                 # Use resolved group_by_cols (e.g. d_dept_name) not group_by_columns (e.g. d.dept_name)
                 # Only keep group-by column when it is referenced in SELECT (e.g. d.dept_name -> dept_name)
                 cols_to_keep = []
-                for col in df_ops.columns:
+                for col in get_column_names(df_ops):
                     in_select = col in select_col_names or col in select_aliases
                     in_group_by = col in group_by_cols
                     gb_in_select = in_group_by and (
@@ -967,7 +968,7 @@ class SQLExecutor:
                         df_ops.select(
                             *[
                                 F.col(c)
-                                for c in df_ops.columns
+                                for c in get_column_names(df_ops)
                                 if c in select_col_names
                                 or c in select_aliases
                                 or any(
@@ -987,7 +988,7 @@ class SQLExecutor:
                     value = int(simple_match.group(3))
 
                     # Check if column exists in result
-                    if col_name in df.columns:
+                    if col_name in get_column_names(df):
                         if operator == ">":
                             df = cast(
                                 "DataFrame", df_ops.filter(F.col(col_name) > value)
@@ -1201,7 +1202,7 @@ class SQLExecutor:
                             # After a join, columns are renamed with table alias prefix.
                             # Use df_ops (current DataFrame) so resolution sees the join result
                             # schema (prefixed columns), e.g. for CTE with JOIN (issue #354).
-                            available_columns = df_ops.columns
+                            available_columns = get_column_names(df_ops)
                             if (
                                 "." in col
                                 and not col.startswith("'")

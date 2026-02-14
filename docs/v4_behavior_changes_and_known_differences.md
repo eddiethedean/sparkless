@@ -116,3 +116,4 @@ Workarounds: use supported expressions only in select/withColumn/filter; for Cas
 - [sparkless_v4_roadmap.md](sparkless_v4_roadmap.md) §7.3, §7.3.1, §7.6, §7.6.1
 - [migration_v3_to_v4.md](migration_v3_to_v4.md)
 - [backend_selection.md](backend_selection.md)
+- [SPARKLESS_FAILURES_BACKLOG.md](SPARKLESS_FAILURES_BACKLOG.md) — test failures classified as Sparkless’s fault (compat layer, wrapper API, fixtures) to fix in Sparkless; see also [robin_parity_to_file_0.9.1.md](robin_parity_to_file_0.9.1.md) for Robin parity issues to file upstream.

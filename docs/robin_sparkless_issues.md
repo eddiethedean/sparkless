@@ -13,7 +13,20 @@ If something **PySpark can do** and **robin-sparkless** does not support it (or 
 - **File** via `gh issue create -R eddiethedean/robin-sparkless --title "..." --body-file <path>` with summary, PySpark expected behavior, Robin actual behavior, and repro steps.
 - **Document** the issue number in this file and in [v4_behavior_changes_and_known_differences.md](v4_behavior_changes_and_known_differences.md) where relevant.
 
-Minimal repro scripts live in `scripts/repro_robin_limitations/` and `scripts/robin_parity_repros/`; use them as templates for new gaps.
+Minimal repro scripts live in `scripts/repro_robin_limitations/`, `scripts/robin_parity_repros/`, and `scripts/robin_parity_repros_0.9.1/`; use them as templates for new gaps.
+
+## Issues created from test run 2026-02-13 (robin-sparkless 0.9.1)
+
+Failures from full test run (no skips) were classified into **Robin parity** vs **Sparkless backlog**. Four Robin parity issues were verified with minimal Robin + PySpark repros and created:
+
+| # | Title | Link |
+|---|-------|------|
+| 344 | [Parity] greatest() / least() should accept multiple arguments (variadic) | https://github.com/eddiethedean/robin-sparkless/issues/344 |
+| 345 | [Parity] coalesce() should accept multiple arguments (variadic) | https://github.com/eddiethedean/robin-sparkless/issues/345 |
+| 346 | [Parity] GroupedData.avg() should accept multiple column names | https://github.com/eddiethedean/robin-sparkless/issues/346 |
+| 347 | [Parity] SQL: support CREATE SCHEMA / CREATE DATABASE (DDL) | https://github.com/eddiethedean/robin-sparkless/issues/347 |
+
+Repro scripts: `scripts/robin_parity_repros_0.9.1/`. Body files: `docs/robin_issue_bodies_0.9.1/`. Full to-file list and other categories: [robin_parity_to_file_0.9.1.md](robin_parity_to_file_0.9.1.md). **Sparkless-only failures:** [SPARKLESS_FAILURES_BACKLOG.md](SPARKLESS_FAILURES_BACKLOG.md). **Classification output:** `tests/robin_parity_failures.txt`, `tests/sparkless_backlog_failures.txt`.
 
 ## Issues created from robin_sparkless_needs.md (2026-02-08)
 

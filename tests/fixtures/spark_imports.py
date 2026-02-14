@@ -97,7 +97,7 @@ class SparkImports:
             DecimalType,
             Row,
         )
-        from sparkless.window import Window
+        from sparkless.sql import Window
         from sparkless.dataframe import DataFrameReader
 
         self.SparkSession = SparkSession

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 from ...core.exceptions import IllegalArgumentException
 from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundException
+from ...sql._robin_compat import get_column_names
 
 
 class MiscellaneousOperations:
@@ -867,16 +868,17 @@ class MiscellaneousOperations:
         value_cols = [values] if isinstance(values, str) else values
 
         # Validate columns exist
-        all_cols = set(materialized.columns)
+        mat_cols = get_column_names(materialized)
+        all_cols = set(mat_cols)
         for col in id_cols:
             if col not in all_cols:
                 raise AnalysisException(
-                    f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
+                    f"Cannot resolve column name '{col}' among ({', '.join(mat_cols)})"
                 )
         for col in value_cols:
             if col not in all_cols:
                 raise AnalysisException(
-                    f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
+                    f"Cannot resolve column name '{col}' among ({', '.join(mat_cols)})"
                 )
 
         # Create unpivoted data

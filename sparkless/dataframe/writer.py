@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from .dataframe import DataFrame
 
 from ..spark_types import StructField, StructType, get_row_value
+from ...sql._robin_compat import get_column_names
 
 logger = logging.getLogger(__name__)
 
@@ -1020,7 +1021,7 @@ class DataFrameWriter:
 
         # If all else fails, raise error with helpful message
         df_type = type(df).__name__
-        columns = df.columns if hasattr(df, "columns") else "unknown"
+        columns = get_column_names(df) if (hasattr(df, "columns") or hasattr(df, "_robin_df")) else "unknown"
         raise RuntimeError(
             f"Could not extract schema from DataFrame for catalog registration. "
             f"DataFrame type: {df_type}, columns: {columns}. "
