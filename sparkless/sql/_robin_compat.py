@@ -169,6 +169,13 @@ def create_dataframe_via_robin(
         if data and not isinstance(data[0], dict):
             data = [dict(zip(names, row)) for row in data]
         schema = None
+    elif schema is not None and not isinstance(schema, StructType) and getattr(
+        schema, "typeName", None
+    ):
+        # Single DataType (e.g. IntegerType(), StringType()) - wrap in one-field StructType
+        schema = StructType([StructField("value", schema)])
+        names = ["value"]
+        robin_schema = _struct_type_to_robin_schema(schema)
     else:
         # StructType
         names = schema.fieldNames()
@@ -274,6 +281,12 @@ def _get_robin_module() -> Any:
     return _r
 
 
+# Known function names we allow to call on Robin module (scalar-in-function / function-like ops)
+_ROBIN_FUNCTION_OPS: frozenset[str] = frozenset({
+    "log", "array_contains", "array_position",
+    "to_timestamp", "to_date", "concat", "regexp_replace",
+})
+
 # Map Sparkless ColumnOperation.operation to Robin Column method for binary ops
 _BINARY_OP_TO_ROBIN: dict[str, str] = {
     "+": "__add__",
@@ -292,6 +305,19 @@ _BINARY_OP_TO_ROBIN: dict[str, str] = {
 }
 
 
+def _to_robin_column_or_name(expr: Any, robin_module: Any) -> Tuple[Any, Optional[str]]:
+    """Convert to Robin Column and return (column, name) when expr is a simple column reference."""
+    if isinstance(expr, str):
+        return robin_module.col(expr), expr
+    mod = getattr(type(expr), "__module__", "") or ""
+    if type(expr).__name__ == "Column" and "sparkless" in mod:
+        name = getattr(expr, "name", None) or getattr(expr, "column_name", None)
+        if isinstance(name, str) and name:
+            return robin_module.col(name), name
+    robin_col = _to_robin_column(expr, robin_module)
+    return robin_col, None
+
+
 def _to_robin_column(expr: Any, robin_module: Any) -> Any:
     """Convert expression to Robin Column when possible; pass through Robin Column."""
     try:
@@ -302,6 +328,15 @@ def _to_robin_column(expr: Any, robin_module: Any) -> Any:
         # Scalars -> lit()
         if isinstance(expr, (int, float, bool)):
             return robin_module.lit(expr)
+        # list -> array(*converted) when Robin has array
+        if isinstance(expr, list):
+            try:
+                converted = [_to_robin_column(x, robin_module) for x in expr]
+                if hasattr(robin_module, "array"):
+                    return robin_module.array(*converted)
+            except Exception:
+                pass
+            return expr
         mod = getattr(type(expr), "__module__", "") or ""
         if mod.startswith("robin"):
             return expr
@@ -337,6 +372,36 @@ def _to_robin_column(expr: Any, robin_module: Any) -> Any:
                     method = _BINARY_OP_TO_ROBIN.get(op)
                     if method and hasattr(robin_left, method):
                         return getattr(robin_left, method)(robin_right)
+            elif op == "cast":
+                robin_left = _to_robin_column(left, robin_module)
+                if (getattr(type(robin_left), "__module__", "") or "").startswith("robin") and hasattr(
+                    robin_left, "cast"
+                ):
+                    if isinstance(right, str):
+                        type_str = right
+                    else:
+                        type_name_attr = getattr(right, "typeName", None)
+                        type_str = (
+                            type_name_attr() if callable(type_name_attr) else (type_name_attr or str(right))
+                        )
+                    return robin_left.cast(type_str)
+            elif op == "alias" or getattr(expr, "_alias_name", None) is not None:
+                robin_left = _to_robin_column(left, robin_module)
+                alias_name = getattr(expr, "_alias_name", None) or (right if isinstance(right, str) else None)
+                if (
+                    (getattr(type(robin_left), "__module__", "") or "").startswith("robin")
+                    and hasattr(robin_left, "alias")
+                    and alias_name is not None
+                ):
+                    return robin_left.alias(alias_name)
+            elif op in _ROBIN_FUNCTION_OPS and hasattr(robin_module, op):
+                robin_fn = getattr(robin_module, op)
+                if isinstance(right, (list, tuple)):
+                    converted = [_to_robin_column(x, robin_module) for x in right]
+                    return robin_fn(*converted)
+                robin_left = _to_robin_column(left, robin_module)
+                robin_right = _to_robin_column(right, robin_module)
+                return robin_fn(robin_left, robin_right)
     except Exception:
         pass
     return expr
@@ -535,7 +600,16 @@ class _PySparkCompatDataFrame:
             if callable(attr):
                 def _wrapped_select(*args: Any, **kwargs: Any) -> Any:
                     robin = _get_robin_module()
-                    converted = [_to_robin_column(a, robin) for a in args]
+                    # Flatten tuple/list of column names into a flat list of items
+                    flat_args: List[Any] = []
+                    for arg in args:
+                        if isinstance(arg, (list, tuple)) and all(
+                            isinstance(x, str) for x in arg
+                        ):
+                            flat_args.extend(arg)
+                        else:
+                            flat_args.append(arg)
+                    converted = [_to_robin_column(a, robin) for a in flat_args]
                     result = attr(*converted, **kwargs)
                     return _wrap_if_dataframe(result)
                 return _wrapped_select
@@ -562,6 +636,8 @@ class _PySparkCompatDataFrame:
     def join(self, other: Any, on: Any = None, how: str = "inner") -> Any:
         """Join with other DataFrame; unwrap compat wrapper so Robin receives native DataFrame."""
         robin_other = getattr(other, "_robin_df", other)
+        if on is not None:
+            on = _to_robin_column(on, _get_robin_module())
         result = self._robin_df.join(robin_other, on=on, how=how)
         return _wrap_if_dataframe(result)
 
@@ -586,13 +662,20 @@ class _PySparkCompatDataFrame:
         return _wrap_if_dataframe(result)
 
     def groupBy(self, *cols: Any, **kwargs: Any) -> Any:
-        """PySpark: groupBy(*cols). Robin: group_by accepts list of column names or Column objects."""
+        """PySpark: groupBy(*cols). Robin: group_by may expect column names (str) or Column objects."""
         robin_df = self._robin_df
         if hasattr(robin_df, "group_by"):
             robin = _get_robin_module()
-            col_list = [_to_robin_column(c, robin) for c in (cols or [])]
-            if len(col_list) == 1 and isinstance(col_list[0], str):
-                col_list = [col_list[0]]
+            pairs = [_to_robin_column_or_name(c, robin) for c in (cols or [])]
+            names = [n for _, n in pairs]
+            col_list = [robin_col for robin_col, _ in pairs]
+            # If all are simple column refs, pass names (Robin may expect PyString)
+            if pairs and all(n is not None for n in names):
+                try:
+                    result = robin_df.group_by(names)
+                    return wrap_robin_grouped_data(result)
+                except (TypeError, Exception):
+                    pass
             result = robin_df.group_by(col_list)
             return wrap_robin_grouped_data(result)
         raise AttributeError("group_by")
@@ -603,7 +686,15 @@ class _PySparkCompatDataFrame:
         if not hasattr(robin_df, "order_by"):
             return _wrap_if_dataframe(getattr(robin_df, "orderBy", lambda *a, **k: None)(*cols, **kwargs))
         robin = _get_robin_module()
-        converted = [_to_robin_column(c, robin) for c in (cols or [])]
+        pairs = [_to_robin_column_or_name(c, robin) for c in (cols or [])]
+        names = [n for _, n in pairs]
+        converted = [robin_col for robin_col, _ in pairs]
+        if pairs and all(n is not None for n in names):
+            try:
+                result = robin_df.order_by(names, **kwargs)
+                return _wrap_if_dataframe(result)
+            except (TypeError, Exception):
+                pass
         if len(converted) == 1 and not isinstance(converted[0], (list, tuple)):
             result = robin_df.order_by([converted[0]], **kwargs)
         else:

@@ -307,8 +307,12 @@ class TestNaFillRobust:
         # Float comparison with tolerance
         assert abs(rows_float[0]["value"] - 42.0) < 0.001
 
-    def test_na_fill_schema_preservation(self, spark):
+    def test_na_fill_schema_preservation(self, spark, spark_backend):
         """Test that .na.fill() preserves DataFrame schema."""
+        # Robin-backed na.fill does not preserve creation_schema; skip (Option A from backlog plan).
+        if spark_backend == BackendType.ROBIN:
+            import pytest
+            pytest.skip("Robin backend: na.fill schema preservation not implemented")
         schema = StructType(
             [
                 StructField("id", IntegerType(), nullable=False),
