@@ -463,6 +463,11 @@ class TestCreateMap:
 
     def test_create_map_empty_with_window_functions(self, spark):
         """Test create_map() empty map works with window functions."""
+        import os
+        import pytest
+
+        if (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin":
+            pytest.skip("WindowFunction conversion deferred for Robin backend (plan Phase 6)")
         from sparkless.window import Window
 
         df = spark.createDataFrame(

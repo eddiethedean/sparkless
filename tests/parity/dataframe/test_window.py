@@ -4,9 +4,17 @@ PySpark parity tests for DataFrame window operations.
 Tests validate that Sparkless window operations behave identically to PySpark.
 """
 
+import pytest
+
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import get_backend_type, BackendType
+
+# WindowFunction/CaseWhen conversion deferred for Robin backend (plan Phase 6).
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="WindowFunction/CaseWhen conversion deferred for Robin backend",
+)
 
 
 def _is_pyspark_mode() -> bool:

@@ -286,6 +286,20 @@ _ROBIN_FUNCTION_OPS: frozenset[str] = frozenset({
     "log", "array_contains", "array_position",
     "to_timestamp", "to_date", "concat", "regexp_replace",
 })
+# Zero-arg or single-value functions (column is None or value in right)
+_ROBIN_ZEROARG_OPS: frozenset[str] = frozenset({"current_date", "current_timestamp", "lit"})
+
+def _is_robin_column_like(obj: Any) -> bool:
+    """True if obj is a Robin Column (or similar) we can call .cast/.alias on. Robin may use __module__ 'builtins'."""
+    if obj is None:
+        return False
+    mod = (getattr(type(obj), "__module__", "") or "")
+    if mod.startswith("robin"):
+        return True
+    if type(obj).__name__ == "Column" and "sparkless" not in mod and hasattr(obj, "cast"):
+        return True
+    return False
+
 
 # Map Sparkless ColumnOperation.operation to Robin Column method for binary ops
 _BINARY_OP_TO_ROBIN: dict[str, str] = {
@@ -358,25 +372,34 @@ def _to_robin_column(expr: Any, robin_module: Any) -> Any:
             right = getattr(expr, "value", None)
             if op is None:
                 pass
+            elif op == "lit":
+                return robin_module.lit(right)
+            elif left is None and op in _ROBIN_ZEROARG_OPS and hasattr(robin_module, op):
+                robin_fn = getattr(robin_module, op)
+                if right is not None:
+                    return robin_fn(right)
+                return robin_fn()
             elif right is None and op == "-":
                 # Unary minus
                 robin_left = _to_robin_column(left, robin_module)
-                if (getattr(type(robin_left), "__module__", "") or "").startswith("robin"):
+                if _is_robin_column_like(robin_left):
                     return getattr(robin_left, "__neg__", lambda: expr)()
             elif op in _BINARY_OP_TO_ROBIN:
                 robin_left = _to_robin_column(left, robin_module)
-                robin_right = _to_robin_column(right, robin_module)
-                rmod_left = (getattr(type(robin_left), "__module__", "") or "").startswith("robin")
-                rmod_right = (getattr(type(robin_right), "__module__", "") or "").startswith("robin")
+                # In comparisons (==, !=, etc.) str/int/float/bool are literals, not column names
+                if isinstance(right, (str, int, float, bool)):
+                    robin_right = robin_module.lit(right)
+                else:
+                    robin_right = _to_robin_column(right, robin_module)
+                rmod_left = _is_robin_column_like(robin_left)
+                rmod_right = _is_robin_column_like(robin_right) or isinstance(robin_right, (int, float, bool))
                 if rmod_left and (rmod_right or robin_right is not None):
                     method = _BINARY_OP_TO_ROBIN.get(op)
                     if method and hasattr(robin_left, method):
                         return getattr(robin_left, method)(robin_right)
             elif op == "cast":
                 robin_left = _to_robin_column(left, robin_module)
-                if (getattr(type(robin_left), "__module__", "") or "").startswith("robin") and hasattr(
-                    robin_left, "cast"
-                ):
+                if _is_robin_column_like(robin_left) and hasattr(robin_left, "cast"):
                     if isinstance(right, str):
                         type_str = right
                     else:
@@ -385,21 +408,51 @@ def _to_robin_column(expr: Any, robin_module: Any) -> Any:
                             type_name_attr() if callable(type_name_attr) else (type_name_attr or str(right))
                         )
                     return robin_left.cast(type_str)
+            elif op == "array" and hasattr(robin_module, "array"):
+                # F.array() / F.array([]) -> value is () or []
+                if right is None or right == () or right == [] or (
+                    isinstance(right, (list, tuple)) and len(right) == 0
+                ):
+                    return robin_module.array()
+                # F.array(col1, col2, ...) or F.array([col1, col2])
+                if isinstance(right, (list, tuple)):
+                    converted = [_to_robin_column(x, robin_module) for x in right]
+                    return robin_module.array(*converted)
+            elif op == "create_map" and hasattr(robin_module, "create_map"):
+                # value is tuple/list of key-value columns (or empty)
+                if isinstance(right, (list, tuple)):
+                    converted = [_to_robin_column(x, robin_module) for x in right]
+                    return robin_module.create_map(*converted)
+                if right is None or right == () or right == []:
+                    return robin_module.create_map()
+                return expr
             elif op == "alias" or getattr(expr, "_alias_name", None) is not None:
                 robin_left = _to_robin_column(left, robin_module)
                 alias_name = getattr(expr, "_alias_name", None) or (right if isinstance(right, str) else None)
-                if (
-                    (getattr(type(robin_left), "__module__", "") or "").startswith("robin")
-                    and hasattr(robin_left, "alias")
-                    and alias_name is not None
-                ):
+                if _is_robin_column_like(robin_left) and hasattr(robin_left, "alias") and alias_name is not None:
                     return robin_left.alias(alias_name)
             elif op in _ROBIN_FUNCTION_OPS and hasattr(robin_module, op):
                 robin_fn = getattr(robin_module, op)
-                if isinstance(right, (list, tuple)):
-                    converted = [_to_robin_column(x, robin_module) for x in right]
-                    return robin_fn(*converted)
                 robin_left = _to_robin_column(left, robin_module)
+                # Scalars (str, int, float, bool): pass as-is for string args (format, pattern), as lit() for log/array_contains base/value
+                if isinstance(right, (list, tuple)):
+                    args = [robin_left]
+                    for x in right:
+                        if isinstance(x, (str, int, float, bool)):
+                            # log(col, base): base must be Column/lit in some backends; array_contains value ditto
+                            if op in ("log", "array_contains", "array_position"):
+                                args.append(robin_module.lit(x))
+                            else:
+                                args.append(x)
+                        else:
+                            args.append(_to_robin_column(x, robin_module))
+                    return robin_fn(*args)
+                if isinstance(right, (str, int, float, bool)):
+                    if op in ("log", "array_contains", "array_position"):
+                        return robin_fn(robin_left, robin_module.lit(right))
+                    return robin_fn(robin_left, right)
+                if right is None:
+                    return robin_fn(robin_left)
                 robin_right = _to_robin_column(right, robin_module)
                 return robin_fn(robin_left, robin_right)
     except Exception:

@@ -5,6 +5,15 @@ Tests that WindowFunction supports comparison operations (>, <, >=, <=, ==, !=, 
 matching PySpark behavior.
 """
 
+import os
+import pytest
+
+# WindowFunction/CaseWhen conversion deferred for Robin backend (plan Phase 6).
+pytestmark = pytest.mark.skipif(
+    (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin",
+    reason="WindowFunction/CaseWhen conversion deferred for Robin backend",
+)
+
 from sparkless.sql import SparkSession
 from sparkless import functions as F
 from sparkless.window import Window

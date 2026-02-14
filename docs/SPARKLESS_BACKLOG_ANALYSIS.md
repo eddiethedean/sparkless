@@ -12,6 +12,21 @@ Regenerate with: `python scripts/classify_failures_robin_sparkless.py test_run_2
 
 ---
 
+## Fixed (plan implementation)
+
+Implementation of the fix plan (Phases 1–6) completed:
+
+- **Phase 1:** Robin backend uses Sparkless F/Column/ColumnOperation from `sparkless.sql` so `_to_robin_column` always sees Sparkless types.
+- **Phase 2:** Scalar args in function-like ops (to_timestamp, regexp_replace, etc.) passed as-is or as `lit()` where needed; binary op scalar right → `lit(right)`.
+- **Phase 3:** `lit`, `current_date`, `current_timestamp`, and op-with-`column=None` handled in `_to_robin_column`.
+- **Phase 4:** log/array_contains/array_position scalar args converted with `lit()`; remaining issues treated as Robin–PySpark parity (report to robin-sparkless).
+- **Phase 5:** list→array and create_map: empty and non-empty `array()` and `create_map` (list/tuple) handled in `_to_robin_column`. Row alias/schema and join/union compat remain (Robin-side or separate work).
+- **Phase 6:** WindowFunction/CaseWhen: conversion deferred; tests in `test_window.py`, `test_issue_335_window_orderby_list.py`, `test_issue_336_window_function_comparison.py`, `test_window_arithmetic.py`, and single-window tests in array/create_map unit tests skip when `SPARKLESS_TEST_BACKEND=robin`.
+
+**Full backlog run (373 tests) with `SPARKLESS_TEST_BACKEND=robin`:** 35 passed, 107 skipped (window/CaseWhen), 231 failed. Remaining failures: expression conversion (UDF, some casts/ops), Robin Row/schema (e.g. alias not in asDict), join/union compat, and Robin–PySpark parity (log semantics, empty map `{}` vs `[]`).
+
+---
+
 ## Sparkless categories (373 total)
 
 ### 1. expression_conversion_column_operation (232 failures)

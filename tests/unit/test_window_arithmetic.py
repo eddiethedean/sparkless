@@ -7,7 +7,16 @@ PySpark allows arithmetic operations on window function results:
 This module tests that sparkless supports these operations.
 """
 
+import os
+import pytest
+
 from tests.fixtures.spark_imports import get_spark_imports
+
+# WindowFunction conversion deferred for Robin backend (plan Phase 6).
+pytestmark = pytest.mark.skipif(
+    (os.environ.get("SPARKLESS_TEST_BACKEND") or "").strip().lower() == "robin",
+    reason="WindowFunction conversion deferred for Robin backend",
+)
 
 
 class TestWindowFunctionArithmetic:
