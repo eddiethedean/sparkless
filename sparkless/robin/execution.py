@@ -1,0 +1,51 @@
+"""
+Robin execution bridge for Sparkless.
+
+This module adapts Sparkless logical plans into the LOGICAL_PLAN_FORMAT
+expected by the robin-sparkless Rust crate and executes them via the
+``sparkless._robin`` PyO3 extension (wrapped in ``sparkless.robin.native``).
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Sequence
+
+from sparkless.dataframe.logical_plan import (
+    _serialize_data,
+    serialize_schema,
+    to_logical_plan,
+)
+from sparkless.spark_types import Row, StructType
+
+from . import native as _native
+
+
+def execute_via_robin(
+    data: Sequence[Any],
+    schema: StructType,
+    operations_df: "Any",
+) -> List[Row]:
+    """
+    Execute the lazy operations for a DataFrame using Robin.
+
+    Args:
+        data: Underlying eager data for the DataFrame (df.data).
+        schema: Current StructType schema for the DataFrame.
+        operations_df: The DataFrame instance whose operations queue should
+            be converted to a logical plan (typically the same df).
+
+    Returns:
+        List[Row]: Materialized rows returned from Robin.
+    """
+    logical_plan = to_logical_plan(operations_df)
+    robin_schema: List[Dict[str, str]] = serialize_schema(schema)
+    robin_data: List[Dict[str, Any]] = _serialize_data(list(data), schema)
+
+    result_rows: List[Dict[str, Any]] = _native.execute_plan_via_robin(
+        robin_data,
+        robin_schema,
+        logical_plan,
+    )
+
+    return [Row(row, schema=schema) for row in result_rows]
+

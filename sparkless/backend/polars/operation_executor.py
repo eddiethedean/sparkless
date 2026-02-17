@@ -4395,12 +4395,15 @@ class PolarsOperationExecutor:
         sort_by = []
         descending_flags = []
         nulls_last_flags = []
+        case_sensitive = self._get_case_sensitive()
         for col in columns:
             is_desc = False
             nulls_last = None  # None means default behavior
             col_name = None
             if isinstance(col, str):
-                col_name = col
+                # Resolve column name with case-sensitivity settings to match PySpark
+                resolved = self._find_column(df, col, case_sensitive)
+                col_name = resolved if resolved is not None else col
                 is_desc = not ascending
                 nulls_last = True  # PySpark default: nulls last
             elif hasattr(col, "operation"):

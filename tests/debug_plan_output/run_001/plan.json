@@ -1,0 +1,19 @@
+[
+  {
+    "op": "filter",
+    "payload": {
+      "condition": {
+        "type": "op",
+        "op": ">",
+        "left": {
+          "type": "column",
+          "name": "a"
+        },
+        "right": {
+          "type": "literal",
+          "value": 0
+        }
+      }
+    }
+  }
+]

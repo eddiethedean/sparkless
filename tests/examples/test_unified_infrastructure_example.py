@@ -7,6 +7,12 @@ This module shows how to write tests that work with both PySpark and mock-spark.
 import pytest
 from tests.fixtures.comparison import assert_dataframes_equal
 
+try:
+    import pyspark  # type: ignore[unused-import]
+    _HAS_PYSPARK = True
+except Exception:
+    _HAS_PYSPARK = False
+
 
 class TestUnifiedInfrastructure:
     """Examples of using the unified test infrastructure."""
@@ -29,6 +35,10 @@ class TestUnifiedInfrastructure:
         assert df.count() == 1
 
     @pytest.mark.backend("pyspark")
+    @pytest.mark.skipif(
+        not _HAS_PYSPARK,
+        reason="PySpark is not installed; skipping PySpark-only example.",
+    )
     def test_pyspark_only(self, spark):
         """Test that only runs with PySpark.
 

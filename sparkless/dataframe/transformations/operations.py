@@ -23,6 +23,7 @@ from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField, get_row_value, _make_hashable
 from ...core.exceptions import PySparkValueError
 from ..protocols import SupportsDataFrameOps
+from sparkless.core.column_resolver import ColumnResolver
 
 SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
 
@@ -463,6 +464,35 @@ class TransformationOperations(Generic[SupportsDF]):
         if len(columns) == 1 and isinstance(columns[0], (list, tuple)):  # type: ignore[unreachable]
             # Unpack list/tuple of columns
             columns = tuple(columns[0])  # type: ignore[unreachable]
+
+        # Resolve string column names to actual schema columns using ColumnResolver so that
+        # downstream execution engines (Polars, Robin) see the canonical case.
+        resolved_cols: List[Union[str, Column]] = []
+        available_columns: List[str] = []
+        schema = getattr(self, "schema", None)
+        if schema is not None and hasattr(schema, "fieldNames"):
+            try:
+                available_columns = list(schema.fieldNames())  # type: ignore[call-arg]
+            except Exception:
+                available_columns = []
+        case_sensitive = False
+        if hasattr(self, "_is_case_sensitive"):
+            try:
+                case_sensitive = bool(self._is_case_sensitive())  # type: ignore[attr-defined]
+            except Exception:
+                case_sensitive = False
+
+        for col in columns:
+            if isinstance(col, str) and available_columns:
+                actual = ColumnResolver.resolve_column_name(
+                    col, available_columns, case_sensitive
+                )
+                resolved_cols.append(actual if actual is not None else col)
+            else:
+                resolved_cols.append(col)
+
+        columns = tuple(resolved_cols)
+
         # Pass columns and ascending as a tuple: (columns, ascending)
         return cast(
             "SupportsDF",

@@ -37,6 +37,7 @@ from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 import polars as pl
 
 from sparkless.backend.polars.schema_utils import align_frame_to_schema
+from sparkless.dataframe.logical_plan import serialize_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
 
 if TYPE_CHECKING:
@@ -490,6 +491,8 @@ class DataFrameWriter:
             self._write_csv(polars_frame, target_path)
         elif resolved_format == "text":
             self._write_text(data_frame.data, data_frame.schema, target_path)
+        elif resolved_format == "delta":
+            self._write_delta_via_robin(data_frame, str(target_path))
         else:
             raise AnalysisException(
                 f"File format '{self.format_name}' is not supported."
@@ -689,6 +692,17 @@ class DataFrameWriter:
                 value = get_row_value(row, column_name)
                 handle.write("" if value is None else str(value))
                 handle.write(os.linesep)
+
+    def _write_delta_via_robin(self, data_frame: "DataFrame", path: str) -> None:
+        """Write DataFrame to Delta table at path using the Robin Rust crate."""
+        from sparkless.robin import native as robin_native
+
+        dict_data = [
+            row.asDict() if hasattr(row, "asDict") else row for row in data_frame.data
+        ]
+        schema_list = serialize_schema(data_frame.schema)
+        overwrite = self.save_mode == "overwrite"
+        robin_native.write_delta_via_robin(dict_data, schema_list, path, overwrite)
 
     def _get_bool_option(self, key: str, default: bool = False) -> bool:
         """Resolve boolean option values with Spark-compatible parsing."""

@@ -127,9 +127,33 @@ flowchart LR
 
 ---
 
-## Process: Robin feature gaps
+## Process: Robin feature gaps & PySpark parity
 
-When implementation uncovers **missing features in the Robin crate** that Sparkless needs, **create an issue** in the robin-sparkless repo: [https://github.com/eddiethedean/robin-sparkless](https://github.com/eddiethedean/robin-sparkless). Describe the Sparkless use case and the required API or behavior. Keep a "Robin gaps" list in Sparkless and link to those issues.
+Robin is the **only** execution engine in v4, and PySpark parity is a hard requirement. When you hit a behavior gap, follow this flow:
+
+1. **Always verify against PySpark first**
+   - Reduce the failing Sparkless test to a **minimal example**.
+   - Run the same logic against a real PySpark session (matching our supported versions).
+   - Confirm that **Sparkless+Robin** and **PySpark** disagree in behavior or results.
+
+2. **Decide where the gap lives**
+   - If Sparkless is clearly mis-translating plans / expressions or misusing the Robin API, fix Sparkless.
+   - If Sparkless is correctly asking for the PySpark behavior but the **robin-sparkless crate** produces a different result than PySpark, treat this as a **Robin parity issue**.
+
+3. **File an upstream issue in robin-sparkless**
+   - Open an issue in [eddiethedean/robin-sparkless](https://github.com/eddiethedean/robin-sparkless) with:
+     - A clear **title** mentioning “PySpark parity” and the affected area (e.g. “PySpark parity: regexp_extract_all + select”).
+     - A **minimal reproducible example** that:
+       - Shows the behavior using the **robin-sparkless crate or its Python bindings**.
+       - Shows the **equivalent PySpark code** and its output.
+     - Environment details (crate version, PySpark version, platform).
+     - A short note that this blocks Sparkless parity in v4 (link to any Sparkless GitHub issue if it exists).
+
+4. **Track the gap on the Sparkless side**
+   - Keep a “Robin gaps” list in Sparkless (docs or issues) and link to the upstream robin-sparkless issue.
+   - In Sparkless tests / docs, clearly mark these as **known Robin parity gaps** until the upstream fix lands.
+
+This process is **not optional**: for any observed PySpark/Sparkless difference, we must first prove that PySpark behaves differently, and then, when the root cause is in the Robin crate, file (and link to) a proper upstream issue demonstrating *robin-sparkless vs PySpark* behavior.
 
 ---
 

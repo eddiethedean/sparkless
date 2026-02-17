@@ -22,15 +22,15 @@ _FEATURE_FLAG_DEFAULTS: Dict[str, bool] = {
 
 
 def resolve_backend_type(explicit_backend: Optional[str] = None) -> str:
-    """Resolve the backend type using overrides, environment variables, and defaults."""
+    """Resolve the backend type (deprecated; kept for backward compatibility).
 
-    candidate = explicit_backend or os.getenv(ENV_BACKEND_KEY) or DEFAULT_BACKEND
-    candidate_normalized = candidate.strip().lower()
+    In v4, Sparkless is Robin-only. This helper now always returns ``"robin"``
+    regardless of configuration, so older code paths which still call it will
+    naturally select the Robin execution engine.
+    """
 
-    from sparkless.backend.factory import BackendFactory
-
-    BackendFactory.validate_backend_type(candidate_normalized)
-    return candidate_normalized
+    _ = explicit_backend
+    return "robin"
 
 
 @lru_cache(maxsize=1)

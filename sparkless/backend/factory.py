@@ -78,14 +78,12 @@ class BackendFactory:
             base_path = kwargs.get("base_path", "sparkless_storage")
             return FileStorageManager(base_path)
         elif backend_type == "robin":
-            if not BackendFactory._robin_available():
-                raise ValueError(
-                    "Robin backend is not available. Install with: pip install sparkless[robin] "
-                    "(or pip install robin-sparkless)."
-                )
-            from .robin.storage import RobinStorageManager
+            # In v4, Robin uses the Rust crate and PyO3 extension directly.
+            # The storage layer no longer has a special Robin implementation;
+            # fall back to the default Polars-based storage.
+            from .polars.storage import PolarsStorageManager
 
-            return cast("StorageBackend", RobinStorageManager(db_path=db_path))
+            return PolarsStorageManager(db_path=db_path)
         else:
             raise ValueError(f"Unsupported backend type: {backend_type}")
 
@@ -135,14 +133,12 @@ class BackendFactory:
 
             return PolarsMaterializer()
         elif backend_type == "robin":
-            if not BackendFactory._robin_available():
-                raise ValueError(
-                    "Robin backend is not available. Install with: pip install sparkless[robin] "
-                    "(or pip install robin-sparkless)."
-                )
-            from .robin.materializer import RobinMaterializer
-
-            return RobinMaterializer()
+            # Robin materialization is handled via the PyO3 extension in
+            # sparkless.robin.execution; there is no separate materializer.
+            raise ValueError(
+                "Robin materialization is no longer provided via BackendFactory; "
+                "use the unified Robin execution path instead."
+            )
         else:
             raise ValueError(f"Unsupported materializer type: {backend_type}")
 
@@ -184,14 +180,11 @@ class BackendFactory:
 
             return PolarsExporter()
         elif backend_type == "robin":
-            if not BackendFactory._robin_available():
-                raise ValueError(
-                    "Robin backend is not available. Install with: pip install sparkless[robin] "
-                    "(or pip install robin-sparkless)."
-                )
-            from .robin.export import RobinExporter
-
-            return RobinExporter()
+            # Robin export is now expected to go through the Robin-backed catalog
+            # and DataFrame APIs; there is no separate export backend.
+            raise ValueError(
+                "Robin export backend is no longer provided; use Robin catalog/DataFrame APIs."
+            )
         else:
             raise ValueError(f"Unsupported export backend type: {backend_type}")
 
@@ -247,8 +240,8 @@ class BackendFactory:
         backends: list[str] = ["polars", "memory", "file"]
         if BackendFactory._duckdb_available():
             backends.append("duckdb")
-        if BackendFactory._robin_available():
-            backends.append("robin")
+        # In v4, Robin is always available as the core engine.
+        backends.append("robin")
         return backends
 
     @staticmethod
@@ -288,14 +281,7 @@ class BackendFactory:
     def _robin_available() -> bool:
         """Check whether the optional Robin (robin-sparkless) backend is available."""
 
-        if BackendFactory._robin_available_cache is not None:
-            return BackendFactory._robin_available_cache
-
-        try:
-            spec = importlib.util.find_spec("robin_sparkless")
-        except ModuleNotFoundError:
-            BackendFactory._robin_available_cache = False
-        else:
-            BackendFactory._robin_available_cache = spec is not None
-
-        return BackendFactory._robin_available_cache
+        # In v4, the Robin engine comes from the Rust crate via PyO3, not
+        # the robin_sparkless Python package. Treat it as available.
+        BackendFactory._robin_available_cache = True
+        return True

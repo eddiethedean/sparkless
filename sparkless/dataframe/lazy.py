@@ -475,12 +475,25 @@ class LazyEvaluationEngine:
         # Check if operations require manual materialization
         if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
             return LazyEvaluationEngine._materialize_manual(df)
-        # Use backend factory to get materializer
+        # Use backend factory to get materializer, with a special path for Robin.
         try:
             from sparkless.backend.factory import BackendFactory
 
             # Detect backend type from DataFrame's storage
             backend_type = BackendFactory.get_backend_type(df.storage)
+
+            # Robin backend: delegate to the PyO3 extension via the execution bridge.
+            if backend_type == "robin":
+                from ..dataframe.schema.schema_manager import SchemaManager
+                from sparkless.robin.execution import execute_via_robin
+                from ..dataframe import DataFrame
+
+                final_schema = SchemaManager.project_schema_with_operations(
+                    df.schema, df._operations_queue
+                )
+                rows = execute_via_robin(df.data, final_schema, df)
+                return DataFrame(rows, final_schema, df.storage)
+
             materializer = BackendFactory.create_materializer(backend_type)
             try:
                 # Check capabilities upfront before materialization
@@ -2723,7 +2736,7 @@ class LazyEvaluationEngine:
             new_fields.append(StructField(col_name, TimestampType()))
         elif isinstance(col, ColumnOperation) and hasattr(col, "operation"):
             # For other ColumnOperations, use SchemaManager to infer type
-            from ..schema.schema_manager import SchemaManager
+            from .schema.schema_manager import SchemaManager
 
             inferred_field = SchemaManager._infer_expression_type(col)
             new_fields.append(

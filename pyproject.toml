@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0,<70", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "sparkless"
@@ -63,6 +63,7 @@ dev = [
     "pandas>=1.3.0,<3",
     "pandas-stubs>=2.0.0,<3",
     "types-psutil>=6.0.0",
+    "maturin>=1.5,<2.0",
 ]
 test = [
     "pytest>=7.0.0",
@@ -79,9 +80,6 @@ docs = [
     "sphinx-rtd-theme>=1.0.0",
     "myst-parser>=1.0.0",
     "sphinx-autodoc-typehints>=1.19.0",
-]
-robin = [
-    "robin-sparkless>=0.4.0",
 ]
 
 [project.urls]
@@ -272,3 +270,7 @@ exclude = [
 [tool.ruff.lint]
 extend-select = ["C4", "SIM", "TCH", "UP"]
 ignore = ["UP006", "UP007", "UP045"]  # Ignore Python 3.9+ syntax suggestions for Python 3.8 compatibility
+
+[tool.maturin]
+bindings = "pyo3"
+module-name = "sparkless._robin"

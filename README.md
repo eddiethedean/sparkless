@@ -577,11 +577,35 @@ ruff check .
 
 We welcome contributions! Areas of interest:
 
-- ⚡ **Performance** - Further Polars optimizations
+- ⚡ **Performance** - Further Polars/Robin optimizations
 - 📚 **Documentation** - Examples, guides, tutorials
 - 🐛 **Bug Fixes** - Edge cases and compatibility issues
 - 🧪 **PySpark API Coverage** - Additional functions and methods
 - 🧪 **Tests** - Additional test coverage and scenarios
+
+### Robin + PySpark parity workflow (important)
+
+Sparkless aims for **PySpark-parity semantics**, and in v4 runs entirely on the **robin-sparkless** Rust engine. When you work on a behavior bug or apparent mismatch:
+
+1. **Verify the behavior against real PySpark**
+   - Reduce the failing case to a small, self-contained example.
+   - Run it against PySpark (3.2–3.5) and record the output.
+   - Run the equivalent logic through Sparkless (and Robin) and confirm they differ.
+
+2. **Identify whether the bug is in Sparkless or robin-sparkless**
+   - If Sparkless is building the wrong logical plan, using the wrong types, or otherwise mis-translating the API, fix Sparkless.
+   - If Sparkless is making the correct request but the **robin-sparkless crate** itself disagrees with PySpark, treat this as an **upstream Robin parity issue**.
+
+3. **For Robin parity issues, always file an upstream issue**
+   - Open an issue in [`eddiethedean/robin-sparkless`](https://github.com/eddiethedean/robin-sparkless) that:
+     - Clearly states this is a **PySpark parity gap**.
+     - Includes a **minimal repro** showing:
+       - How to reproduce using robin-sparkless (crate or Python bindings).
+       - The equivalent PySpark code and its expected output.
+     - Mentions your Sparkless context and links to any Sparkless issue/PR.
+   - In the Sparkless PR/issue, link to the upstream robin-sparkless ticket and mark the test as a **known Robin parity gap** if we must temporarily skip or soften assertions.
+
+This parity-first workflow keeps Sparkless honest to PySpark, and ensures Robin’s behavior stays aligned with the expectations of the broader PySpark ecosystem.
 
 ---
 

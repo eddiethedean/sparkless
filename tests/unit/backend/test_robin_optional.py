@@ -1,4 +1,9 @@
-"""Tests for optional Robin (robin-sparkless) backend availability and error messages."""
+"""Tests for Robin backend availability and error messages in v4.
+
+In v4, Robin is the core engine provided by the robin-sparkless Rust crate
+via PyO3, not an optional Python package. These tests assert the new
+semantics instead of the old \"optional backend\" behavior.
+"""
 
 from unittest.mock import patch
 
@@ -9,35 +14,36 @@ from sparkless.backend.factory import BackendFactory
 
 @pytest.mark.unit
 class TestRobinBackendOptional:
-    """When robin_sparkless is not installed, robin is excluded and create_* raise with install hint."""
+    """Robin backend is always available; legacy factory paths behave per v4 design."""
 
     def teardown_method(self) -> None:
         """Clear robin availability cache so other tests get real availability."""
         BackendFactory._robin_available_cache = None
 
-    def test_list_available_backends_excludes_robin_when_not_available(self) -> None:
-        """list_available_backends() does not include 'robin' when _robin_available() is False."""
-        with patch.object(BackendFactory, "_robin_available", return_value=False):
-            backends = BackendFactory.list_available_backends()
-        assert "robin" not in backends
+    def test_list_available_backends_includes_robin_v4(self) -> None:
+        """list_available_backends() always includes 'robin' in v4."""
+        backends = BackendFactory.list_available_backends()
+        assert "robin" in backends
 
-    def test_create_storage_backend_robin_raises_when_not_available(self) -> None:
-        """create_storage_backend('robin') raises ValueError with install hint when not available."""
-        with patch.object(
-            BackendFactory, "_robin_available", return_value=False
-        ), pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
-            BackendFactory.create_storage_backend("robin")
+    def test_create_storage_backend_robin_uses_polars_storage_v4(self) -> None:
+        """create_storage_backend('robin') returns a storage backend (Polars-based) in v4."""
+        storage = BackendFactory.create_storage_backend("robin")
+        # We don't assert exact type here to keep the test resilient; just ensure it behaves like a storage backend.
+        assert storage is not None
 
-    def test_create_materializer_robin_raises_when_not_available(self) -> None:
-        """create_materializer('robin') raises ValueError with install hint when not available."""
-        with patch.object(
-            BackendFactory, "_robin_available", return_value=False
-        ), pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
+    def test_create_materializer_robin_raises_with_v4_message(self) -> None:
+        """create_materializer('robin') raises ValueError with v4 unified execution message."""
+        with pytest.raises(
+            ValueError,
+            match="Robin materialization is no longer provided via BackendFactory; "
+            "use the unified Robin execution path instead.",
+        ):
             BackendFactory.create_materializer("robin")
 
-    def test_create_export_backend_robin_raises_when_not_available(self) -> None:
-        """create_export_backend('robin') raises ValueError with install hint when not available."""
-        with patch.object(
-            BackendFactory, "_robin_available", return_value=False
-        ), pytest.raises(ValueError, match="sparkless\\[robin\\]|robin-sparkless"):
+    def test_create_export_backend_robin_raises_with_v4_message(self) -> None:
+        """create_export_backend('robin') raises ValueError with v4 export message."""
+        with pytest.raises(
+            ValueError,
+            match="Robin export backend is no longer provided; use Robin catalog/DataFrame APIs.",
+        ):
             BackendFactory.create_export_backend("robin")

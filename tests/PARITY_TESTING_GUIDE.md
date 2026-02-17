@@ -273,6 +273,12 @@ python tests/tools/generate_expected_outputs.py --category category_name
 4. **Use Expected Input Data**: Always use `expected["input_data"]` for creating DataFrames
 5. **Document Edge Cases**: Add comments for non-obvious test scenarios
 6. **Test Null Handling**: Include tests with null values where applicable
+7. **For Robin parity issues, always double-check PySpark and file upstream**
+   - If a parity test fails, first **reproduce the behavior in real PySpark** and confirm that Sparkless (via Robin) disagrees.
+   - When the root cause is in the **robin-sparkless** crate (not Sparkless’s plumbing or plan translation), open an issue in [`eddiethedean/robin-sparkless`](https://github.com/eddiethedean/robin-sparkless) with:
+     - A minimal example runnable against robin-sparkless.
+     - The equivalent PySpark code and expected behavior.
+   - Link the upstream issue from the Sparkless test/issue and clearly mark the test as a **known Robin parity gap** if it must be skipped or relaxed temporarily.
 
 ## Migration from Old Test Structure
 

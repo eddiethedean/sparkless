@@ -79,7 +79,7 @@ class SparkSessionBuilder:
         """
         # Return existing singleton if present; otherwise create and cache
         if SparkSession._singleton_session is None:
-            # Extract backend configuration
+            # Extract backend configuration (now always resolves to 'robin' in v4).
             backend_override = self._config.get("spark.sparkless.backend")
             backend_type = resolve_backend_type(backend_override)
             max_memory = self._config.get("spark.sparkless.backend.maxMemory", "1GB")

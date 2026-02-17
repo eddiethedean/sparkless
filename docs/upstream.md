@@ -1,5 +1,17 @@
 # Upstream Coordination Notes
 
+## Robin-Sparkless PySpark parity
+
+- **Goal:** Sparkless v4 runs entirely on the `robin-sparkless` Rust engine while preserving **PySpark semantics**.
+- **Policy:** For any observed behavior difference between Sparkless and PySpark:
+  - First, **verify the mismatch against real PySpark** with a minimal, self-contained example.
+  - If the minimal example shows that **robin-sparkless** itself disagrees with PySpark (independent of Sparkless glue code), treat this as an **upstream Robin parity gap**.
+  - Open an issue in [eddiethedean/robin-sparkless](https://github.com/eddiethedean/robin-sparkless) that:
+    - Clearly labels the problem as “PySpark parity” in the title.
+    - Includes code samples for both robin-sparkless and PySpark demonstrating the difference.
+    - Notes the exact crate/PySpark versions and links back to any Sparkless issue/PR.
+  - In Sparkless, keep a short “Robin gaps” list and link each entry to the corresponding upstream issue so we can clean up skips/workarounds once the crate is fixed.
+
 ## Delta Schema Evolution
 - **Issue:** Polars backend raises `ValueError: type String is incompatible with expected type Null`
   when appending with `mergeSchema=true`.

@@ -161,15 +161,22 @@ class DataFrameReader:
         combined_options: Dict[str, Any] = {**self._options, **options}
 
         if resolved_format == "delta":
-            # Delegate to table() for Delta path semantics
             if path is None:
                 raise IllegalArgumentException(
                     "load() with format 'delta' requires a path. "
                     "Use read.format('delta').table('schema.table') for tables."
                 )
-            # Treat path segments as schema.table if possible
-            table_name = Path(path).name
-            return self.table(table_name)
+            # Read Delta table via Robin Rust crate
+            from ..robin import native as robin_native
+
+            version_as_of = combined_options.get("versionAsOf")
+            if version_as_of is not None:
+                rows = robin_native.read_delta_version_via_robin(
+                    str(Path(path).resolve()), int(version_as_of)
+                )
+            else:
+                rows = robin_native.read_delta_via_robin(str(Path(path).resolve()))
+            return self.session.createDataFrame(rows)
 
         if path is None:
             raise IllegalArgumentException(
