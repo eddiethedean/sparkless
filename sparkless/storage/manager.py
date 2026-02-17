@@ -79,9 +79,10 @@ class StorageManagerFactory:
             Polars storage manager instance.
         """
         # Deferred import to avoid hard dependency on backend.polars in v4.
-        from sparkless.backend.polars import PolarsStorageManager
+        # v4 Robin-only: use in-memory storage (no Polars backend)
+        from sparkless.storage.backends.memory import MemoryStorageManager
 
-        return PolarsStorageManager(db_path=db_path)
+        return MemoryStorageManager()
 
 
 class UnifiedStorageManager(IStorageManager):

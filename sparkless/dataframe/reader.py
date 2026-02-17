@@ -37,8 +37,7 @@ import polars as pl
 from ..errors import AnalysisException, IllegalArgumentException
 from ..spark_types import StructField, StructType
 from ..core.ddl_adapter import parse_ddl_schema
-from ..backend.polars.schema_utils import align_frame_to_schema
-from ..backend.polars.type_mapper import polars_dtype_to_mock_type
+from ..polars_utils import align_frame_to_schema, polars_dtype_to_mock_type
 
 
 class DataFrameReader:

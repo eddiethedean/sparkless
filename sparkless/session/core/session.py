@@ -16,10 +16,8 @@ from ..context import SparkContext
 from ..catalog import Catalog
 from ..config import Configuration, SparkConfig
 from ..sql.executor import SQLExecutor
-from sparkless.backend.factory import BackendFactory
-from sparkless.backend.protocols import StorageBackend
-from sparkless.config import resolve_backend_type
 from sparkless.dataframe import DataFrame, DataFrameReader
+from sparkless.storage.backends.memory import MemoryStorageManager
 from ...spark_types import (
     StructType,
 )
@@ -78,51 +76,16 @@ class SparkSession:
         enable_lazy_evaluation: bool = True,
         max_memory: str = "1GB",
         allow_disk_spillover: bool = False,
-        storage_backend: Optional[StorageBackend] = None,
-        backend_type: Optional[str] = None,
-        db_path: Optional[str] = None,
         performance_mode: str = "fast",
     ):
-        """Initialize SparkSession.
-
-        Args:
-            app_name: Application name for the Spark session.
-            validation_mode: "strict", "relaxed", or "minimal" validation behavior.
-            enable_type_coercion: Whether to coerce basic types during DataFrame creation.
-            enable_lazy_evaluation: Whether to enable lazy evaluation (default True).
-            max_memory: Maximum memory for backend to use (e.g., '1GB', '4GB', '8GB').
-                       Default is '1GB' for test isolation.
-            allow_disk_spillover: If True, allows backend to spill to disk when memory is full.
-                                 If False (default), disables spillover for test isolation.
-            storage_backend: Optional storage backend instance. If None, creates backend based on backend_type.
-            backend_type: Type of backend to use ("polars", "memory", "file", optional "duckdb").
-                If omitted, resolves from the ``MOCK_SPARK_BACKEND`` environment variable or defaults
-                to "polars".
-            db_path: Optional path to persistent database file. If provided, tables will persist across sessions.
-                    If None (default), uses in-memory storage and tables don't persist.
-                    For test scenarios requiring table persistence across multiple pipeline runs,
-                    provide a db_path (e.g., "test.db" or ":memory:" for in-memory).
-                    Note: In-memory storage (default) provides test isolation but tables don't persist
-                    between session restarts. Use persistent storage for incremental pipeline testing.
-        """
+        """Initialize SparkSession (v4 Robin-only: single in-memory catalog, no backend selection)."""
         self.app_name = app_name
         self.performance_mode = performance_mode
         self._jvm_overhead = 0.001 if performance_mode == "realistic" else 0.00001
-        resolved_backend_type = resolve_backend_type(backend_type)
-        self.backend_type = resolved_backend_type
-        # Use dependency injection for storage backend
-        if storage_backend is None:
-            self._storage = BackendFactory.create_storage_backend(
-                backend_type=resolved_backend_type,
-                db_path=db_path,
-                max_memory=max_memory,
-                allow_disk_spillover=allow_disk_spillover,
-            )
-        else:
-            self._storage = storage_backend
-        from typing import cast
-
+        self._storage = MemoryStorageManager()
+        self.backend_type = "robin"  # v4 Robin-only; kept for test/fixture compatibility
         self._catalog = Catalog(self._storage, spark=self)
+        from typing import cast
         self.sparkContext = SparkContext(app_name)
         self._conf = Configuration()
         from ..._version import __version__

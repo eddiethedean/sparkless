@@ -8,8 +8,6 @@ with PySpark's SparkSession.builder interface.
 
 from typing import Any, Dict, Union
 
-from sparkless.config import resolve_backend_type
-
 from .session import SparkSession
 
 
@@ -79,20 +77,7 @@ class SparkSessionBuilder:
         """
         # Return existing singleton if present; otherwise create and cache
         if SparkSession._singleton_session is None:
-            # Extract backend configuration (now always resolves to 'robin' in v4).
-            backend_override = self._config.get("spark.sparkless.backend")
-            backend_type = resolve_backend_type(backend_override)
-            max_memory = self._config.get("spark.sparkless.backend.maxMemory", "1GB")
-            allow_disk_spillover = self._config.get(
-                "spark.sparkless.backend.allowDiskSpillover", False
-            )
-
-            session = SparkSession(
-                self._app_name,
-                backend_type=backend_type,
-                max_memory=max_memory,
-                allow_disk_spillover=allow_disk_spillover,
-            )
+            session = SparkSession(self._app_name)
             for key, value in self._config.items():
                 session.conf.set(key, value)
             SparkSession._singleton_session = session

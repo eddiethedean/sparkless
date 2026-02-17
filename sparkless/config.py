@@ -7,8 +7,6 @@ import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-DEFAULT_BACKEND = "polars"
-ENV_BACKEND_KEY = "SPARKLESS_BACKEND"
 ENV_FEATURE_FLAGS_KEY = "SPARKLESS_FEATURE_FLAGS"
 ENV_PROFILE_TOGGLE = "SPARKLESS_PROFILE"
 
@@ -19,18 +17,6 @@ _FEATURE_FLAG_DEFAULTS: Dict[str, bool] = {
     "enable_expression_translation_cache": False,
     "enable_adaptive_execution_simulation": False,
 }
-
-
-def resolve_backend_type(explicit_backend: Optional[str] = None) -> str:
-    """Resolve the backend type (deprecated; kept for backward compatibility).
-
-    In v4, Sparkless is Robin-only. This helper now always returns ``"robin"``
-    regardless of configuration, so older code paths which still call it will
-    naturally select the Robin execution engine.
-    """
-
-    _ = explicit_backend
-    return "robin"
 
 
 @lru_cache(maxsize=1)

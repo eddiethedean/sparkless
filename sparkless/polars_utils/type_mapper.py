@@ -60,7 +60,6 @@ def mock_type_to_polars_dtype(mock_type: DataType) -> pl.DataType:
     elif isinstance(mock_type, TimestampNTZType):
         return pl.Datetime(time_unit="us", time_zone=None)
     elif isinstance(mock_type, DecimalType):
-        # Polars supports Decimal(precision, scale) - use it for round-trip (Issue #406)
         return pl.Decimal(mock_type.precision, mock_type.scale)
     elif isinstance(mock_type, BinaryType):
         return pl.Binary
@@ -77,7 +76,6 @@ def mock_type_to_polars_dtype(mock_type: DataType) -> pl.DataType:
             ]
         )
     elif isinstance(mock_type, StructType):
-        # Convert struct fields to Polars struct
         fields = []
         for field in mock_type.fields:
             field_type = mock_type_to_polars_dtype(field.dataType)
@@ -90,24 +88,13 @@ def mock_type_to_polars_dtype(mock_type: DataType) -> pl.DataType:
     elif isinstance(mock_type, NullType):
         return pl.Null
     elif isinstance(mock_type, StructField):
-        # StructField was passed instead of DataType (e.g. from _infer_expression_type)
         return mock_type_to_polars_dtype(mock_type.dataType)
     else:
         raise ValueError(f"Unsupported Sparkless type: {type(mock_type)}")
 
 
 def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
-    """Convert Polars dtype to Sparkless type.
-
-    Args:
-        polars_dtype: Polars data type
-
-    Returns:
-        Sparkless data type
-
-    Raises:
-        ValueError: If the type is not supported
-    """
+    """Convert Polars dtype to Sparkless type."""
     if polars_dtype == pl.Utf8:
         return StringType()
     elif polars_dtype == pl.Int32:
@@ -132,7 +119,6 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
         element_type = polars_dtype_to_mock_type(polars_dtype.inner)
         return ArrayType(element_type=element_type)
     elif isinstance(polars_dtype, pl.Struct):
-        # Convert struct to StructType
         from sparkless.spark_types import StructField
 
         fields = []
@@ -141,31 +127,22 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
             fields.append(StructField(field.name, field_type))
         return StructType(fields)
     elif polars_dtype == pl.Object:
-        # Object dtype is used for Python objects (dicts, etc.)
-        # For withField results, these are structs, so return StructType
-        # We can't infer the exact structure, so return an empty StructType
-        # The actual data will be preserved as Python dicts
         return StructType([])
     elif polars_dtype == pl.Int16:
         return ShortType()
     elif polars_dtype == pl.Int8:
         return ByteType()
     elif polars_dtype == pl.UInt32:
-        # Polars UInt32 from list.len() - convert to IntegerType for PySpark compatibility
         return IntegerType()
     elif polars_dtype == pl.UInt64:
-        # Polars UInt64 - convert to LongType for PySpark compatibility
         return LongType()
     elif polars_dtype == pl.UInt16:
-        # Polars UInt16 - convert to ShortType for PySpark compatibility
         return ShortType()
     elif polars_dtype == pl.UInt8:
-        # Polars UInt8 - convert to ByteType for PySpark compatibility
         return ByteType()
     elif polars_dtype == pl.Null:
         return NullType()
     elif isinstance(polars_dtype, pl.Decimal):
-        # Polars Decimal(precision, scale) -> Sparkless DecimalType (Issue #406)
         precision = getattr(polars_dtype, "precision", None) or 38
         scale = getattr(polars_dtype, "scale", None) or 0
         return DecimalType(precision=precision, scale=scale)

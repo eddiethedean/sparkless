@@ -170,13 +170,22 @@ class MemorySchema:
 
 
 class MemoryStorageManager(IStorageManager):
-    """In-memory storage manager implementation."""
+    """In-memory storage manager implementation (Robin-only v4 catalog backing)."""
 
     def __init__(self) -> None:
         """Initialize memory storage manager."""
         self.schemas: Dict[str, MemorySchema] = {}
-        # Create default schema
         self.schemas["default"] = MemorySchema("default")
+        self._current_schema: str = "default"
+
+    def get_current_schema(self) -> str:
+        """Get current schema name."""
+        return self._current_schema
+
+    def set_current_schema(self, schema_name: str) -> None:
+        """Set current schema (used by Catalog.setCurrentDatabase)."""
+        if schema_name in self.schemas:
+            self._current_schema = schema_name
 
     def create_schema(self, schema: str) -> None:
         """Create a new schema.

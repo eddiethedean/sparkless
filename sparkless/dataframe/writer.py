@@ -36,12 +36,12 @@ from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
 import polars as pl
 
-from sparkless.backend.polars.schema_utils import align_frame_to_schema
 from sparkless.dataframe.logical_plan import serialize_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
+from sparkless.polars_utils import align_frame_to_schema
 
 if TYPE_CHECKING:
-    from sparkless.backend.protocols import StorageBackend
+    from sparkless.core.interfaces.storage import IStorageManager
     from .dataframe import DataFrame
 
 from ..spark_types import StructField, StructType, get_row_value
@@ -66,7 +66,7 @@ class DataFrameWriter:
         >>> df.write.format("parquet").mode("overwrite").saveAsTable("my_table")
     """
 
-    def __init__(self, df: DataFrame, storage: StorageBackend):
+    def __init__(self, df: DataFrame, storage: "IStorageManager"):
         """Initialize DataFrameWriter.
 
         Args:

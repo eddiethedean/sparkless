@@ -8,7 +8,6 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless.spark_types import StructType, StructField, IntegerType, StringType
 from sparkless.sql import SparkSession
-from sparkless.backend.polars.storage import PolarsStorageManager
 
 
 class TestParquetFormatTableAppend(ParityTestBase):
@@ -31,8 +30,8 @@ class TestParquetFormatTableAppend(ParityTestBase):
         self.spark.sql(f"DROP TABLE IF EXISTS {self.table_fqn}")
         self.spark.sql(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE")
 
-        # Clean up any created parquet files manually if not in-memory
-        if self.spark._storage.db_path != ":memory:":
+        # v4: session uses MemoryStorageManager (no db_path); skip file cleanup
+        if hasattr(self.spark._storage, "db_path") and self.spark._storage.db_path and self.spark._storage.db_path != ":memory:":
             table_path = os.path.join(
                 self.spark._storage.db_path,
                 self.schema_name,
@@ -227,7 +226,7 @@ class TestParquetFormatTableAppend(ParityTestBase):
             spark2.stop()
 
     def test_storage_manager_detached_write_visible_to_session(self, spark):
-        """Writes via a standalone PolarsStorageManager should surface in the active session."""
+        """Writes via the session's storage should be visible via spark.table()."""
         schema = StructType(
             [
                 StructField("id", IntegerType(), True),
@@ -235,7 +234,7 @@ class TestParquetFormatTableAppend(ParityTestBase):
             ]
         )
 
-        storage = PolarsStorageManager()
+        storage = spark._storage  # v4: session uses single MemoryStorageManager
         storage.create_schema(self.schema_name)
         storage.create_table(self.schema_name, self.table_name, schema.fields)
 

@@ -54,10 +54,10 @@ if TYPE_CHECKING:
 
 if TYPE_CHECKING:
     from .lazy import LazyEvaluationEngine
-    from ..backend.protocols import StorageBackend
+    from ..core.interfaces.storage import IStorageManager
     from .grouped import GroupedData
 else:
-    StorageBackend = Any
+    IStorageManager = Any  # type: ignore[misc, assignment]
 
 from ..spark_types import (
     StructType,
@@ -107,7 +107,7 @@ class DataFrame:
 
     data: List[Dict[str, Any]]
     _schema: StructType
-    storage: StorageBackend
+    storage: IStorageManager
     _operations_queue: List[Tuple[str, Any]]
     _cached_count: Optional[int]
     _watermark_col: Optional[str]
@@ -117,7 +117,7 @@ class DataFrame:
         self,
         data: List[Dict[str, Any]],
         schema: StructType,
-        storage: Optional["StorageBackend"] = None,
+        storage: Optional["IStorageManager"] = None,
         operations: Optional[List[Tuple[str, Any]]] = None,
     ):
         """Initialize DataFrame.
@@ -131,7 +131,7 @@ class DataFrame:
         """
         self.data = data
         self._schema = schema
-        self.storage: StorageBackend = storage or MemoryStorageManager()
+        self.storage: IStorageManager = storage or MemoryStorageManager()
         self._cached_count: Optional[int] = None
         self._operations_queue: List[Tuple[str, Any]] = operations or []
 
