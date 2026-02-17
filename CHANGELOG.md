@@ -1,5 +1,40 @@
 # Changelog
 
+## 4.0.0 — 2026-02-17
+
+### Summary
+
+Sparkless v4 is **Robin-only**: execution is entirely via the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate (0.11.3+), integrated with PyO3. The Polars backend, backend selection, and the `sparkless.backend` package have been removed.
+
+### Added
+
+- **Robin engine** – Single execution path; logical plans are executed by the robin-sparkless crate (built into the native extension). No separate `pip install robin-sparkless`.
+- **robin-sparkless 0.11.3** – Fixes all reported Sparkless parity issues (e.g. [#492](https://github.com/eddiethedean/robin-sparkless/issues/492), [#176](https://github.com/eddiethedean/robin-sparkless/issues/176), [#503](https://github.com/eddiethedean/robin-sparkless/issues/503)).
+- **Documentation** – [docs/robin_parity_from_skipped_tests.md](docs/robin_parity_from_skipped_tests.md), [docs/upstream.md](docs/upstream.md) (Robin version and parity policy), updated README and backend/configuration docs for v4.
+
+### Removed
+
+- **Backend selection** – No `spark.sparkless.backend`, no `BackendFactory`, no `backend_type` constructor argument.
+- **sparkless.backend package** – Entire package removed (factory, protocols, polars storage/materializer/export, etc.).
+- **Polars / memory / file backends** – Execution is Robin-only.
+- **db_path** – Session no longer accepts `db_path`; storage is in-memory via `MemoryStorageManager`.
+
+### Changed
+
+- **Session** – Always creates `MemoryStorageManager`; no backend or storage type configuration.
+- **Lazy execution** – `dataframe/lazy.py` calls `execute_via_robin()` only; no materializer abstraction.
+- **SQL** – `spark.sql()` executes via Robin when the crate is built with the `sql` feature.
+- **Delta** – Delta read/write use Robin when the crate is built with the `delta` feature; clear errors when the feature is not enabled.
+- **Tests** – Many tests skipped or updated for v4 (backend removal, plan-interpreter removal); run with `SPARKLESS_TEST_BACKEND=robin pytest tests/ -n 12 --ignore=tests/archive`.
+
+### Migration
+
+- Replace any `SparkSession(..., backend_type="...")` or `.config("spark.sparkless.backend", ...)` with `SparkSession.builder.appName("MyApp").getOrCreate()`.
+- Remove reliance on `db_path`; use in-process catalog and storage.
+- See [docs/robin_v4_overhaul_plan.md](docs/robin_v4_overhaul_plan.md) and [docs/backend_selection.md](docs/backend_selection.md) for full migration notes.
+
+---
+
 ## 3.31.0 — 2026-02-05
 
 ### Added

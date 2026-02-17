@@ -9,13 +9,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
 [![Documentation](https://readthedocs.org/projects/sparkless/badge/?version=latest)](https://sparkless.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/tests-2314+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
+[![Tests](https://img.shields.io/badge/tests-850+%20passing%20(Robin)-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
 [![Type Checked](https://img.shields.io/badge/mypy-501%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-**Current release:** 3.29.0
+**Current release:** 4.0.0
 
-*⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🧵 Thread-safe Polars backend*
+*⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🦀 Robin (Rust) engine*
 
 📚 **[Full Documentation →](https://sparkless.readthedocs.io/)**
 
@@ -43,13 +43,13 @@ from sparkless.sql import SparkSession
 |---------|-------------|
 | ⚡ **10x Faster** | No JVM startup (30s → 0.1s) |
 | 🎯 **Drop-in Replacement** | Use existing PySpark code unchanged |
-| 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
-| 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
-| 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 2314+ passing tests, 100% mypy typed |
-| 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
+| 📦 **Zero Java** | Python + Robin (Rust) engine via PyO3; no JVM |
+| 🧪 **PySpark Parity** | Full PySpark 3.2–3.5 API surface; execution via robin-sparkless crate |
+| 🔄 **Lazy Evaluation** | Logical plans executed by Robin engine |
+| 🏭 **Production Ready** | 850+ passing tests (Robin), 100% mypy typed |
+| 🦀 **Robin Engine** | Single execution path: [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) crate (0.11.3+) |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
-| 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
+| 🎯 **Type Safe** | Full type checking with mypy, comprehensive type annotations |
 
 ### Perfect For
 
@@ -268,103 +268,73 @@ result = (
 
 ---
 
-## Backend Architecture
+## Engine (v4)
 
-### Polars Backend (Default)
+Sparkless v4 runs on a **single execution engine**: the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate, integrated via a PyO3-built native extension. There is no backend selection; the crate is compiled into Sparkless (no separate `pip install robin-sparkless`).
 
-Sparkless uses **Polars** as the default backend, providing:
-
-- 🧵 **Thread Safety** - Designed for parallel execution
-- ⚡ **High Performance** - Optimized DataFrame operations
-- 📊 **Parquet Storage** - Tables persist as Parquet files
-- 🔄 **Lazy Evaluation** - Automatic query optimization
+- 🦀 **Robin 0.11.3+** – Logical plans are translated and executed by the crate
+- ⚡ **No JVM** – Pure Python API with Rust execution
+- 📊 **Catalog & SQL** – Optional `sql` and `delta` features in the crate
+- 🔄 **Lazy Evaluation** – Plans built in Python, executed in Robin
 
 ```python
-# Default backend (Polars) - thread-safe, high-performance
-spark = SparkSession("MyApp")
-
-# Explicit backend selection
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "polars") \
-    .getOrCreate()
-```
-
-### Alternative Backends
-
-```python
-# Memory backend for lightweight testing
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "memory") \
-    .getOrCreate()
-
-# File backend for persistent storage
-spark = SparkSession.builder \
-    .config("spark.sparkless.backend", "file") \
-    .config("spark.sparkless.backend.basePath", "/tmp/sparkless") \
-    .getOrCreate()
+# v4: single engine (Robin); no backend config
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
 ```
 
 ---
 
 ## Advanced Features
 
-### Table Persistence
+### Table Persistence (v4)
 
-Tables created with `saveAsTable()` can persist across multiple sessions:
+Tables created with `saveAsTable()` use the in-process catalog and storage (Robin engine). In v4, the default storage is in-memory; tables are visible within the same process/session lifecycle.
 
 ```python
-# First session - create table
-spark1 = SparkSession("App1", db_path="test.db")
-df = spark1.createDataFrame([{"id": 1, "name": "Alice"}])
+# Create table in catalog
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
+df = spark.createDataFrame([{"id": 1, "name": "Alice"}])
 df.write.mode("overwrite").saveAsTable("schema.my_table")
-spark1.stop()
 
-# Second session - table persists
-spark2 = SparkSession("App2", db_path="test.db")
-assert spark2.catalog.tableExists("schema", "my_table")  # ✅ True
-result = spark2.table("schema.my_table").collect()  # ✅ Works!
-spark2.stop()
+# Same session: table is visible
+assert spark.catalog.tableExists("schema", "my_table")
+result = spark.table("schema.my_table").collect()
 ```
 
 **Key Features:**
-- **Cross-Session Persistence**: Tables persist when using `db_path` parameter
-- **Schema Discovery**: Automatically discovers existing schemas and tables
-- **Catalog Synchronization**: Reliable `catalog.tableExists()` checks
-- **Data Integrity**: Full support for `append` and `overwrite` modes
+- **Catalog**: Schemas and tables managed by the Robin session
+- **Data Integrity**: Support for `append` and `overwrite` modes
+- **Delta**: Optional Delta Lake format when the crate is built with the `delta` feature
 
-### Configurable Memory & Isolation
-
-Control memory usage and test isolation:
+### Session Options (v4)
 
 ```python
-# Default: 1GB memory limit, no disk spillover (best for tests)
-spark = SparkSession("MyApp")
+# Standard usage
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
 
-# Custom memory limit
-spark = SparkSession("MyApp", max_memory="4GB")
-
-# Allow disk spillover for large datasets
-spark = SparkSession(
-    "MyApp",
-    max_memory="8GB",
-    allow_disk_spillover=True  # Uses unique temp directory per session
-)
+# With validation and type coercion options
+spark = SparkSession.builder \
+    .appName("MyApp") \
+    .config("spark.sparkless.useLogicalPlan", "true") \
+    .getOrCreate()
 ```
 
 ---
 
 ## Performance Comparison
 
-Real-world test suite improvements:
+Benchmarks: Sparkless v4 (Robin) vs PySpark. Run `python scripts/benchmark_sparkless_vs_pyspark.py` to reproduce (requires PySpark and Java 17+ for PySpark numbers).
 
-| Operation | PySpark | Sparkless | Speedup |
-|-----------|---------|------------|---------|
-| Session Creation | 30-45s | 0.1s | **300x** |
-| Simple Query | 2-5s | 0.01s | **200x** |
-| Window Functions | 5-10s | 0.05s | **100x** |
-| Full Test Suite | 5-10min | 30-60s | **10x** |
+| Operation | PySpark | Sparkless (Robin) | Speedup |
+|-----------|---------|-------------------|---------|
+| Session creation | 30–45s | &lt;0.1s | **300x+** |
+| Simple query (10k rows) | 2–5s | ~0.02s | **100–200x** |
+| Count / aggregation (10k rows) | 2–4s | ~0.02s | **100x+** |
+| Full test suite (850+ tests) | 5–10 min | ~1 min | **~10x** |
 
-### Performance Tooling
+*PySpark figures are typical (JVM startup, local mode). Sparkless numbers from `scripts/benchmark_sparkless_vs_pyspark.py` (session creation &lt;1 ms, count 0.02s mean; full suite with `-n 12`).*
+
+### Performance tooling
 
 - 📊 [Hot path profiling guide](https://sparkless.readthedocs.io/en/latest/performance/profiling.html)
 - 📈 [Pandas fallback vs native benchmarks](https://sparkless.readthedocs.io/en/latest/performance/pandas_fallback.html)
@@ -374,6 +344,14 @@ Real-world test suite improvements:
 ---
 
 ## Recent Updates
+
+### Version 4.0.0 - Robin-only engine (v4)
+
+- 🦀 **Single engine** – Execution is entirely via the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate (0.11.3+), integrated with PyO3. No backend selection; no Polars or other Python execution backends.
+- 📦 **No robin-sparkless Python package** – The crate is compiled into Sparkless; you do not need `pip install robin-sparkless`.
+- 🗑️ **Removed** – `BackendFactory`, backend config (`spark.sparkless.backend`), `db_path`, and the legacy `sparkless.backend` package.
+- ✅ **Robin 0.11.3** – Fixes all reported Sparkless parity issues: [#492](https://github.com/eddiethedean/robin-sparkless/issues/492), [#176](https://github.com/eddiethedean/robin-sparkless/issues/176), [#503](https://github.com/eddiethedean/robin-sparkless/issues/503) (select payload), and others.
+- 📚 **Docs** – See [robin_v4_overhaul_plan.md](docs/robin_v4_overhaul_plan.md), [upstream.md](docs/upstream.md), and [robin_parity_from_skipped_tests.md](docs/robin_parity_from_skipped_tests.md) for parity notes.
 
 ### Version 3.26.0 - Missing String & JSON Functions (Issue #189)
 
@@ -551,13 +529,18 @@ See [Migration Guide](https://sparkless.readthedocs.io/en/latest/migration_from_
 
 ## Development Setup
 
+Sparkless v4 includes a Rust extension (robin-sparkless crate). You need Rust and maturin to build from source.
+
 ```bash
-# Install for development
+# Install for development (builds the Robin extension)
 git clone https://github.com/eddiethedean/sparkless.git
 cd sparkless
 pip install -e ".[dev]"
+# Or: maturin develop (to build the extension in-place)
 
-# Run all tests (with proper isolation)
+# Run all tests (Robin backend)
+SPARKLESS_TEST_BACKEND=robin pytest tests/ -n 12 -v --ignore=tests/archive
+# Or use the test script
 bash tests/run_all_tests.sh
 
 # Format code
@@ -577,7 +560,7 @@ ruff check .
 
 We welcome contributions! Areas of interest:
 
-- ⚡ **Performance** - Further Polars/Robin optimizations
+- ⚡ **Performance** - Robin engine and plan translation optimizations
 - 📚 **Documentation** - Examples, guides, tutorials
 - 🐛 **Bug Fixes** - Edge cases and compatibility issues
 - 🧪 **PySpark API Coverage** - Additional functions and methods

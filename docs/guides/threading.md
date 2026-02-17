@@ -140,27 +140,13 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 
 ## Troubleshooting
 
-### No Threading Issues!
+### No Threading Issues! (v4)
 
-With Polars backend, threading issues should be completely eliminated. If you encounter any issues:
+Sparkless v4 uses the Robin (Rust) engine only. No backend selection or threading-specific configuration is required. If you encounter threading issues, ensure you are running a recent Sparkless build with the Robin extension (e.g. `maturin develop` or install from wheel).
 
-1. **Verify Backend**: Ensure you're using Polars backend (default in v3.0.0+)
-   ```python
-   from sparkless.backend.factory import BackendFactory
-   backend_type = BackendFactory.get_backend_type(spark._storage)
-   assert backend_type == "polars"
-   ```
+## Migration from DuckDB (v2/v3)
 
-2. **Check Polars Version**: Ensure you have a recent version of Polars
-   ```bash
-   pip install polars>=0.20.0
-   ```
-
-3. **No Special Configuration**: No threading-related configuration needed
-
-## Migration from DuckDB
-
-If you're migrating from DuckDB backend and had threading issues:
+If you're migrating from an older DuckDB backend and had threading issues:
 
 - **No more locks**: Remove any threading workarounds
 - **No retry logic**: Remove schema creation retries

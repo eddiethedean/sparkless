@@ -2,10 +2,12 @@
 
 ## Robin-sparkless crate version
 
-Sparkless v4 depends on **robin-sparkless 0.11.1** (see `Cargo.toml`). As of 0.11.1, the following upstream issues are fixed and used by Sparkless:
+Sparkless v4 depends on **robin-sparkless 0.11.3** (see `Cargo.toml`). 0.11.3 fixes all reported Sparkless parity issues, including:
 
 - **[#492](https://github.com/eddiethedean/robin-sparkless/issues/492)** — Case-insensitive `orderBy` on mixed-case column names (PySpark parity).
 - **[#176](https://github.com/eddiethedean/robin-sparkless/issues/176)** — `select()` with column expressions and `regexp_extract_all` for PySpark compatibility.
+- **[#503](https://github.com/eddiethedean/robin-sparkless/issues/503)** — `select()` with column names: accept `payload.columns` (invalid plan error).
+- Other parity issues reported from Sparkless v4 testing (e.g. groupBy agg, window, between/power/cast, empty DataFrame parquet).
 
 ## Robin-Sparkless PySpark parity
 

@@ -1,11 +1,12 @@
 # Migration from v2 to v3
 
+> **v4 note:** Sparkless **v4** is Robin-only (no Polars/memory/file backend selection). If you are on v4, see [backend_selection.md](backend_selection.md) and [robin_v4_overhaul_plan.md](robin_v4_overhaul_plan.md). This document describes the **v2 → v3** migration (DuckDB → Polars).
 
 > **Versioning Note:** The functionality described here now ships as Sparkless `0.0.x`–`0.3.x` in the semver-aligned roadmap. References to “v3.0.0” map directly to the current `0.0.0` baseline release.
 
 ## Overview
 
-Sparkless v3.0.0 introduces a **complete migration from DuckDB to Polars** as the default backend. This is a **breaking change** that requires attention when upgrading.
+Sparkless v3.0.0 introduced a **complete migration from DuckDB to Polars** as the default backend. This is a **breaking change** that requires attention when upgrading.
 
 ## Key Changes
 

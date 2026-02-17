@@ -1,7 +1,7 @@
 # Getting Started
 
 
-> **Compatibility Snapshot:** This guide targets Sparkless `3.31.0`, which provides parity with PySpark 3.2–3.5 and ships with 2400+ passing regression tests.
+> **Compatibility Snapshot:** This guide targets Sparkless **v4 (4.0.0)**, which runs on the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust engine and aims for PySpark 3.2–3.5 parity.
 
 ## Installation
 
