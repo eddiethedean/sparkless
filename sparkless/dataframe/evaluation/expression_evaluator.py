@@ -40,6 +40,7 @@ from ...spark_types import (
     StructType,
     TimestampType,
     get_row_value,
+    row_keys,
 )
 from ...core.ddl_adapter import parse_ddl_schema
 
@@ -159,7 +160,7 @@ class ExpressionEvaluator:
             # If not found, try case-insensitive match using ColumnResolver
             from ...core.column_resolver import ColumnResolver
 
-            available_columns = list(row.keys())
+            available_columns = row_keys(row)
             case_sensitive = False
             # Try to get case sensitivity from dataframe context if available
             if (
@@ -209,7 +210,7 @@ class ExpressionEvaluator:
         # Start with the row - resolve first part (struct column name) case-insensitively
         from ...core.column_resolver import ColumnResolver
 
-        available_columns = list(row.keys())
+        available_columns = row_keys(row)
         resolved_first_part = ColumnResolver.resolve_column_name(
             parts[0], available_columns, case_sensitive
         )
@@ -856,7 +857,7 @@ class ExpressionEvaluator:
                             # Try case-insensitive match using ColumnResolver
                             from ...core.column_resolver import ColumnResolver
 
-                            available_columns = list(row.keys())
+                            available_columns = row_keys(row)
                             case_sensitive = False
                             if (
                                 self._dataframe_context is not None

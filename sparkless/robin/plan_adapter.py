@@ -19,6 +19,8 @@ _OP_COMPARISON_MAP = {
     "<=": "le",
 }
 _OP_LOGICAL_UNCHANGED = {"and", "or", "not"}
+# Sparkless uses &/| for logical and/or; Robin expects "and"/"or"
+_OP_LOGICAL_ALIAS = {"&": "and", "|": "or"}
 _OP_EQ_NULL_SAFE = "eqNullSafe"  # -> "eq_null_safe"
 _OP_BETWEEN = "between"
 _OP_POW = "**"  # -> "pow" (Robin accepts "**"|"pow" at op level)
@@ -69,7 +71,9 @@ def expr_to_robin_format(expr: Any) -> Any:
                 "right": expr_to_robin_format(right) if right is not None else None,
             }
 
-        # Logical (and, or, not)
+        # Logical: and, or, not; also & -> and, | -> or
+        if op in _OP_LOGICAL_ALIAS:
+            op = _OP_LOGICAL_ALIAS[op]
         if op in _OP_LOGICAL_UNCHANGED:
             out: Dict[str, Any] = {"op": op}
             if op == "not":
@@ -141,6 +145,24 @@ def expr_to_robin_format(expr: Any) -> Any:
                 ],
             }
 
+        # isnull / isnotnull: unary -> Robin op "is_null" / "is_not_null" with "arg"
+        if op in ("isnull", "isnotnull"):
+            robin_op = "is_null" if op == "isnull" else "is_not_null"
+            return {
+                "op": robin_op,
+                "arg": expr_to_robin_format(left) if left is not None else None,
+            }
+
+        # isin: left = column expr, right = list of values or expr -> fn "isin" with args
+        if op == "isin":
+            left_expr = expr_to_robin_format(left) if left is not None else None
+            # right can be a list of literals (already serialized as list) or an expression
+            if isinstance(right, list):
+                right_expr = {"lit": right}
+            else:
+                right_expr = expr_to_robin_format(right) if right is not None else None
+            return {"fn": "isin", "args": [left_expr, right_expr]}
+
         # Other ops: pass through with converted left/right/arg so structure is valid
         out = {"op": op}
         if left is not None:
@@ -161,6 +183,22 @@ def expr_to_robin_format(expr: Any) -> Any:
             "args": [expr_to_robin_format(a) for a in args],
         }
 
+    # CaseWhen: recursive conversion of branches and otherwise (crate may support case_when)
+    if expr.get("type") == "case_when":
+        branches = [
+            {
+                "condition": expr_to_robin_format(b.get("condition")),
+                "value": expr_to_robin_format(b.get("value")),
+            }
+            for b in expr.get("branches", [])
+        ]
+        otherwise = expr.get("otherwise")
+        return {
+            "type": "case_when",
+            "branches": branches,
+            "otherwise": expr_to_robin_format(otherwise) if otherwise is not None else None,
+        }
+
     # Unknown shape: pass through
     return dict(expr)
 
@@ -179,7 +217,32 @@ def adapt_plan_for_robin(plan: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         op_name = step.get("op")
         payload = step.get("payload")
 
-        if op_name == "filter" and isinstance(payload, dict):
+        if op_name == "select" and isinstance(payload, dict):
+            # Robin expects each column item to have "name" (and optionally "expr")
+            columns_in = payload.get("columns", [])
+            robin_columns: List[Dict[str, Any]] = []
+            for col_item in columns_in:
+                if not isinstance(col_item, dict):
+                    robin_columns.append({"name": str(col_item)})
+                    continue
+                if col_item.get("type") == "column" and "name" in col_item:
+                    # Simple column ref -> {name: n}; Robin may also want expr for column ref
+                    n = col_item["name"]
+                    robin_columns.append({"name": n, "expr": {"col": n}})
+                else:
+                    # Expression (alias, window, etc.) -> {name: alias, expr: robin_expr}
+                    alias = col_item.get("name") or col_item.get("alias") or col_item.get("_name")
+                    robin_expr = expr_to_robin_format(col_item)
+                    if alias:
+                        robin_columns.append({"name": str(alias), "expr": robin_expr})
+                    else:
+                        robin_columns.append({"name": "col", "expr": robin_expr})
+            result.append({"op": "select", "payload": {"columns": robin_columns}})
+        elif op_name == "drop" and isinstance(payload, dict):
+            # Robin expects "columns"; Sparkless sends "cols"
+            cols = payload.get("cols", payload.get("columns", []))
+            result.append({"op": "drop", "payload": {"columns": list(cols)}})
+        elif op_name == "filter" and isinstance(payload, dict):
             # Robin expects payload = expression; Sparkless sends {"condition": <expr>}
             condition = payload.get("condition", payload)
             result.append({

@@ -22,6 +22,7 @@ from ..spark_types import (
     StructType,
     StringType,
     get_row_value,
+    row_keys,
     _make_hashable,
 )
 
@@ -949,8 +950,7 @@ class LazyEvaluationEngine:
                 # Get keys that exist in the actual data
                 data_keys: Set[str] = set()
                 for row in df.data:
-                    if isinstance(row, dict):
-                        data_keys.update(row.keys())
+                    data_keys.update(row_keys(row))
 
                 # Filter df._schema.fields to only include fields whose names exist in data
                 base_fields = [

@@ -52,6 +52,39 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
     if isinstance(expr, Literal):
         return {"type": "literal", "value": _json_safe_value(expr.value)}
 
+    # Tuple: used for create_map pairs, between bounds, etc. Serialize as literal list.
+    if isinstance(expr, tuple):
+        return {"type": "literal", "value": [_json_safe_value(v) for v in expr]}
+
+    # CaseWhen: serialize branches and otherwise for Robin/crate
+    try:
+        from sparkless.functions.conditional import CaseWhen
+
+        if isinstance(expr, CaseWhen):
+            branches = []
+            for cond, val in getattr(expr, "conditions", []):
+                try:
+                    c_ser = serialize_expression(cond)
+                except ValueError:
+                    c_ser = {"type": "opaque", "repr": str(cond)}
+                try:
+                    v_ser = serialize_expression(val)
+                except ValueError:
+                    v_ser = {"type": "opaque", "repr": str(val)}
+                branches.append({"condition": c_ser, "value": v_ser})
+            otherwise = getattr(expr, "default_value", None)
+            try:
+                otherwise_ser = serialize_expression(otherwise) if otherwise is not None else None
+            except ValueError:
+                otherwise_ser = {"type": "opaque", "repr": str(otherwise)} if otherwise is not None else None
+            return {
+                "type": "case_when",
+                "branches": branches,
+                "otherwise": otherwise_ser,
+            }
+    except ImportError:
+        pass
+
     # Window functions: structured serialization for plan interpreter
     try:
         from sparkless.functions.window_execution import WindowFunction
@@ -111,6 +144,17 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
         except ImportError:
             pass
 
+    def _value_as_expression(v: Any) -> Any:
+        """Serialize value side of an op: scalars as literal, else full expression (avoids str as column)."""
+        if v is None:
+            return None
+        if isinstance(v, (str, int, float, bool)):
+            return {"type": "literal", "value": _json_safe_value(v)}
+        try:
+            return serialize_expression(v)
+        except ValueError:
+            return {"type": "literal", "value": _json_safe_value(v)}
+
     if isinstance(expr, ColumnOperation):
         op = getattr(expr, "operation", None)
         col_side = getattr(expr, "column", None)
@@ -125,7 +169,7 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
             )
 
         left = serialize_expression(col_side) if col_side is not None else None
-        right = serialize_expression(val_side) if val_side is not None else None
+        right = _value_as_expression(val_side)
 
         # Unary ops: desc, asc, -, !, isnull, isnotnull, etc.
         if right is None and op in (
@@ -170,9 +214,7 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
                     _json_safe_value(getattr(v, "value", v)) for v in val_side
                 ]
             else:
-                right_val = (
-                    serialize_expression(val_side) if val_side is not None else None
-                )
+                right_val = _value_as_expression(val_side)
             return {"type": "op", "op": "isin", "left": left, "right": right_val}
 
         if op == "between":
@@ -230,24 +272,38 @@ def serialize_schema(schema: Any) -> List[Dict[str, Any]]:
 
 
 def _serialize_data(data: List[Any], schema: Any) -> List[Dict[str, Any]]:
-    """Serialize DataFrame data (list of dict/Row) to JSON-serializable list of dicts."""
+    """Serialize DataFrame data (list of dict/Row) to JSON-serializable list of dicts.
+    Always returns list of dicts so Robin and any code using row.keys() see dicts only.
+    """
     if not data:
         return []
-    from sparkless.spark_types import get_row_value
+    from sparkless.spark_types import get_row_value, row_keys
 
     field_names = (
         list(schema.fieldNames()) if schema and hasattr(schema, "fieldNames") else []
     )
-    out = []
+    out: List[Dict[str, Any]] = []
     for row in data:
         if isinstance(row, dict):
             out.append({k: _json_safe_value(v) for k, v in row.items()})
-        elif field_names:
+            continue
+        # Convert Row or other row-like to dict so we never append non-dict
+        if hasattr(row, "asDict"):
+            d = row.asDict()
+            out.append({k: _json_safe_value(v) for k, v in d.items()})
+            continue
+        if field_names:
             out.append(
                 {n: _json_safe_value(get_row_value(row, n)) for n in field_names}
             )
+            continue
+        # No schema: try to get keys from row (Row may have _fields or support iteration)
+        keys = row_keys(row)
+        if keys:
+            out.append({k: _json_safe_value(get_row_value(row, k)) for k in keys})
         else:
-            out.append(_json_safe_value(row))
+            # Fallback: single value or opaque
+            out.append({"_value": _json_safe_value(row)})
     return out
 
 

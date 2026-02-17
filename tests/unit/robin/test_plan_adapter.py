@@ -208,7 +208,10 @@ def test_adapt_plan_passthrough_other_steps() -> None:
         {"op": "select", "payload": {"columns": [{"type": "column", "name": "id"}]}},
     ]
     got = adapt_plan_for_robin(plan)
-    assert got == plan
+    # limit is unchanged; select is adapted to Robin shape (name + expr)
+    assert got[0] == plan[0]
+    assert got[1]["op"] == "select"
+    assert got[1]["payload"]["columns"] == [{"name": "id", "expr": {"col": "id"}}]
 
 
 @pytest.mark.unit

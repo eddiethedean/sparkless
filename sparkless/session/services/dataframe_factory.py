@@ -463,6 +463,8 @@ class DataFrameFactory:
             Tuple of (inferred_schema, normalized_data).
         """
         if schema is None:
+            if not data:
+                raise ValueError("can not infer schema from empty dataset")
             from sparkless.core.schema_inference import SchemaInferenceEngine
 
             return SchemaInferenceEngine.infer_from_data(data)
