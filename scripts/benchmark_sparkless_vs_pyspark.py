@@ -8,7 +8,7 @@ Run from repo root with the venv that has the wheel built with robin-sparkless 0
 To ensure robin-sparkless 0.11.3: maturin build --release && .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall
 
 Prints mean times (seconds) and speedup. PySpark is skipped if not installed.
-Dataset: 100k rows (id, x, key, value). Filter/withColumn may show ERROR on some
+Dataset: 10k rows (id, x, key, value). Filter/withColumn may show ERROR on some
 Robin versions due to expression plan format; other queries (select, count, groupBy+agg,
 orderBy+limit) run on Robin 0.11.3+.
 """
@@ -29,7 +29,7 @@ except ImportError:
 
 WARMUP = 1
 RUNS = 5
-ROWS = 100_000
+ROWS = 10_000
 
 
 def _time_operation(operation, name: str) -> float | None:
@@ -49,7 +49,7 @@ def _time_operation(operation, name: str) -> float | None:
 
 
 def _bench_data():
-    """Build 100k-row dataset: id, x, key (for groupBy), value."""
+    """Build 10k-row dataset: id, x, key (for groupBy), value."""
     return [
         {"id": j, "x": j * 2, "key": j % 100, "value": j * 2}
         for j in range(ROWS)
