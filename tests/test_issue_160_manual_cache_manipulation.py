@@ -1,14 +1,12 @@
 """
 Test to manually manipulate the cache to simulate the bug condition.
 
-This test tries to force the bug by:
-1. Manually caching an expression that references a column
-2. Dropping that column
-3. Trying to use the cached expression
+v4: Uses BackendFactory; backend removed. Skipped.
 """
 
 import os
 import pytest
+pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
 from sparkless import SparkSession, functions as F
 from sparkless.backend.factory import BackendFactory
 import polars as pl

@@ -2,11 +2,15 @@
 
 This module tests the capability checking functionality in materializers,
 ensuring that unsupported operations are detected upfront and raise clear errors.
-"""
 
-from sparkless import SparkSession, functions as F
-from sparkless.window import Window
-from sparkless.backend.polars.materializer import PolarsMaterializer
+v4: Backend and PolarsMaterializer removed; execution is Robin-only.
+"""
+import pytest
+
+pytest.skip(
+    "v4: backend package and PolarsMaterializer removed; execution is Robin-only",
+    allow_module_level=True,
+)
 
 
 class TestBackendCapabilityModel:

@@ -2,10 +2,14 @@
 Test to reproduce the bug WITHOUT the fix.
 
 This test temporarily removes the cache clearing logic to see if the bug occurs.
-"""
 
+v4: Uses BackendFactory.create_materializer('polars'); backend removed. Skipped.
+"""
 import os
 import pytest
+
+pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
+
 from sparkless import SparkSession, functions as F
 
 

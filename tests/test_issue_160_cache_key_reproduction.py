@@ -1,15 +1,12 @@
 """
 Test to reproduce issue #160 by testing cache key behavior.
 
-The bug might occur when:
-1. An expression with a column name gets cached
-2. The column is dropped
-3. A similar expression with a different column name tries to use the cached version
-   (if cache key doesn't properly include column names)
+v4: Uses BackendFactory; backend removed. Skipped.
 """
 
 import os
 import pytest
+pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
 from sparkless import SparkSession, functions as F
 from sparkless.backend.factory import BackendFactory
 

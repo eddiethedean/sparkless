@@ -1,9 +1,12 @@
 """
 Test with exactly 150 rows to match the issue description threshold.
+
+v4: Uses BackendFactory; backend removed. Skipped.
 """
 
 import os
 import pytest
+pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
 from sparkless import SparkSession, functions as F
 
 

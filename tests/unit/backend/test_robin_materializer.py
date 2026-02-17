@@ -1,22 +1,17 @@
-"""Tests for Robin materializer _expression_to_robin (alias, literal-on-left, etc.)."""
+"""Tests for Robin materializer _expression_to_robin (alias, literal-on-left, etc.).
 
+v4: Backend package removed; execution is via sparkless.robin.execution only.
+"""
 from __future__ import annotations
-
-from typing import Any
 
 import pytest
 
-from sparkless.backend.factory import BackendFactory
-from sparkless.functions import F
-from tests.fixtures.spark_backend import BackendType, get_backend_type
-
-_HAS_ROBIN = BackendFactory._robin_available()  # type: ignore[attr-defined]
-
-
-@pytest.mark.unit
-@pytest.mark.skipif(
-    not _HAS_ROBIN, reason="Robin backend requires robin-sparkless to be installed"
+pytest.skip(
+    "v4: backend package removed; Robin execution is in sparkless.robin",
+    allow_module_level=True,
 )
+
+
 class TestRobinMaterializerExpressionTranslation:
     """Test _expression_to_robin supports alias and literal-on-left for withColumn (robin-sparkless 0.4.0+)."""
 

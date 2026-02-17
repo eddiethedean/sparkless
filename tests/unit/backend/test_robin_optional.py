@@ -1,15 +1,14 @@
 """Tests for Robin backend availability and error messages in v4.
 
-In v4, Robin is the core engine provided by the robin-sparkless Rust crate
-via PyO3, not an optional Python package. These tests assert the new
-semantics instead of the old \"optional backend\" behavior.
+In v4, Robin is the core engine; backend package was removed. Session always
+uses MemoryStorageManager and Robin execution (no BackendFactory).
 """
-
-from unittest.mock import patch
-
 import pytest
 
-from sparkless.backend.factory import BackendFactory
+pytest.skip(
+    "v4: backend package removed; session is always Robin-only",
+    allow_module_level=True,
+)
 
 
 @pytest.mark.unit

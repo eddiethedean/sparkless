@@ -1,14 +1,11 @@
 """
 Test to force reproduction of issue #160 by manipulating the cache directly.
 
-The bug occurs when cached Polars expressions reference dropped columns.
-This test tries to force the bug by:
-1. Creating an expression that references a column (gets cached)
-2. Dropping that column
-3. Trying to reuse a similar expression that would use the cached version
+v4: Uses BackendFactory; backend removed. Skipped.
 """
 
 import pytest
+pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
 from sparkless import SparkSession, functions as F
 from sparkless.core.exceptions.operation import SparkColumnNotFoundError
 

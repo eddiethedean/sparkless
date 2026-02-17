@@ -5,16 +5,8 @@ Single execution path: no backend or materializer abstraction.
 Execution and catalog delegate to the Robin session directly.
 """
 
-from sparkless.robin.execution import (
-    execute_operations,
-    execute_plan,
-    get_robin_session,
-    materialize,
-)
+from sparkless.robin.execution import execute_via_robin
 
 __all__ = [
-    "execute_operations",
-    "execute_plan",
-    "get_robin_session",
-    "materialize",
+    "execute_via_robin",
 ]

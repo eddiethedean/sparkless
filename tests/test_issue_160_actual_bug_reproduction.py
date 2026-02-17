@@ -1,20 +1,12 @@
 """
 Test to reproduce issue #160 by simulating the exact bug scenario.
 
-The bug might occur when:
-1. Expressions are translated and cached during withColumn operations
-2. Column is dropped via select()
-3. The cached Polars expressions still reference the dropped column name
-4. When the lazy DataFrame is collected, Polars tries to resolve the column reference and fails
-
-Let's try to trigger this by:
-- Creating a scenario where expressions are cached
-- Dropping the column
-- Then trying to use the cached expressions (maybe through lazy evaluation)
+v4: Uses BackendFactory; backend removed. Skipped.
 """
 
 import os
 import pytest
+pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
 from sparkless import SparkSession, functions as F
 
 

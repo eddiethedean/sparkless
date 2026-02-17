@@ -3388,9 +3388,9 @@ dependencies = [
 
 [[package]]
 name = "robin-sparkless"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46f7530cf39e752fc2e3edbf0d8a00e50dae2f30fb8f845d650080b5776808c4"
+checksum = "146182a6a1bb5e9766ec2fd17afa8efb9ef45659f002f9020ad1dbd1d446d9cf"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3415,6 +3415,7 @@ dependencies = [
  "sha1",
  "sha2",
  "soundex",
+ "spark-ddl-parser",
  "sqlparser 0.45.0",
  "strsim",
  "thiserror 1.0.69",
@@ -3752,6 +3753,12 @@ checksum = "4cb2858d06ea70c4c79a4f456c94643fee213a799bbff9fc9293b47550fc238c"
 dependencies = [
  "itertools 0.6.5",
 ]
+
+[[package]]
+name = "spark-ddl-parser"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d6f9626159c0e181f8c2449788ff754d54a93bdec0c09027d5098845565aee1"
 
 [[package]]
 name = "sparkless-robin"
