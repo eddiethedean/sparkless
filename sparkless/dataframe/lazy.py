@@ -475,175 +475,36 @@ class LazyEvaluationEngine:
         # Check if operations require manual materialization
         if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
             return LazyEvaluationEngine._materialize_manual(df)
-        # Use backend factory to get materializer, with a special path for Robin.
+
+        # In v4, all lazy execution is handled via the Robin engine.
+        # We no longer route through backend-specific materializers.
         try:
-            from sparkless.backend.factory import BackendFactory
+            from ..dataframe.schema.schema_manager import SchemaManager
+            from sparkless.robin.execution import execute_via_robin
+            from ..dataframe import DataFrame
 
-            # Detect backend type from DataFrame's storage
-            backend_type = BackendFactory.get_backend_type(df.storage)
+            # Compute the final schema after all queued operations.
+            final_schema = SchemaManager.project_schema_with_operations(
+                df.schema, df._operations_queue
+            )
 
-            # Robin backend: delegate to the PyO3 extension via the execution bridge.
-            if backend_type == "robin":
-                from ..dataframe.schema.schema_manager import SchemaManager
-                from sparkless.robin.execution import execute_via_robin
-                from ..dataframe import DataFrame
+            # Delegate execution to the Robin PyO3 bridge.
+            rows = execute_via_robin(df.data, final_schema, df)
 
-                final_schema = SchemaManager.project_schema_with_operations(
-                    df.schema, df._operations_queue
-                )
-                rows = execute_via_robin(df.data, final_schema, df)
-                return DataFrame(rows, final_schema, df.storage)
-
-            materializer = BackendFactory.create_materializer(backend_type)
-            try:
-                # Check capabilities upfront before materialization
-                can_handle_all, unsupported_ops = materializer.can_handle_operations(
-                    df._operations_queue
-                )
-
-                if not can_handle_all:
-                    from ..core.exceptions.operation import (
-                        SparkUnsupportedOperationError,
-                    )
-
-                    raise SparkUnsupportedOperationError(
-                        operation=f"Operations: {', '.join(unsupported_ops)}",
-                        reason=f"Backend '{backend_type}' does not support these operations",
-                        alternative="Consider using a different backend (e.g. polars)",
-                    )
-
-                # Compute final schema after all operations
-                from ..dataframe.schema.schema_manager import SchemaManager
-
-                final_schema = SchemaManager.project_schema_with_operations(
-                    df.schema, df._operations_queue
-                )
-
-                # Optional plan-based path: use materialize_from_plan when backend supports it
-                # and session is configured (spark.sparkless.useLogicalPlan=true) or backend is robin
-                use_plan = getattr(materializer, "materialize_from_plan", None)
-                if use_plan is not None:
-                    try:
-                        from sparkless.session.core.session import SparkSession as SS
-
-                        active = getattr(SS, "_active_sessions", [])
-                        session = active[-1] if active else None
-                        conf_val = (
-                            session.conf.get("spark.sparkless.useLogicalPlan", "false")
-                            if session and hasattr(session, "conf")
-                            else "false"
-                        )
-                        use_plan_flag = str(conf_val).lower() in ("true", "1", "yes")
-                    except (AttributeError, TypeError):
-                        use_plan_flag = False
-                    if use_plan_flag or backend_type == "robin":
-                        from ..dataframe.logical_plan import to_logical_plan
-
-                        try:
-                            logical_plan = to_logical_plan(df)
-                            rows = use_plan(df.data, df.schema, logical_plan)
-                        except (ValueError, TypeError):
-                            # Plan path doesn't support this plan (e.g. window, opaque, CaseWhen)
-                            # Re-check capabilities so unsupported ops raise
-                            can_handle_all, unsupported_ops = (
-                                materializer.can_handle_operations(df._operations_queue)
-                            )
-                            if not can_handle_all:
-                                from ..core.exceptions.operation import (
-                                    SparkUnsupportedOperationError,
-                                )
-
-                                raise SparkUnsupportedOperationError(
-                                    operation=f"Operations: {', '.join(unsupported_ops)}",
-                                    reason=f"Backend '{backend_type}' does not support these operations",
-                                    alternative="Consider using a different backend (e.g. polars)",
-                                )
-                            rows = materializer.materialize(
-                                df.data, df.schema, df._operations_queue
-                            )
-                    else:
-                        rows = materializer.materialize(
-                            df.data, df.schema, df._operations_queue
-                        )
-                else:
-                    rows = materializer.materialize(
-                        df.data, df.schema, df._operations_queue
-                    )
-
-                # Convert rows back to data format using final schema
-                materialized_data = LazyEvaluationEngine._convert_materialized_rows(
-                    rows, final_schema
-                )
-
-                # Post-process for cached string concatenation compatibility
-                # If DataFrame is cached, set string concatenation results to None
-                if getattr(df, "_is_cached", False):
-                    materialized_data = (
-                        LazyEvaluationEngine._handle_cached_string_concatenation(
-                            materialized_data, df._operations_queue, final_schema
-                        )
-                    )
-
-                # Update schema to match actual columns in materialized data
-                # This handles Polars deduplication/renaming of duplicate columns.
-                # Python dicts can only have unique keys, so materialized_data has deduplicated columns.
-                # The schema should match the actual data structure after materialization.
-                if materialized_data:
-                    actual_data_keys = set(materialized_data[0].keys())
-                    schema_column_names = {f.name for f in final_schema.fields}
-                    # Check if schema has duplicates (length of fields list > length of unique names set)
-                    # or if the unique column sets don't match
-                    schema_has_duplicates = len(final_schema.fields) > len(
-                        schema_column_names
-                    )
-                    if schema_has_duplicates or actual_data_keys != schema_column_names:
-                        # Schema has duplicates but data is deduplicated - update schema to match data
-                        from ..core.schema_inference import infer_schema_from_data
-
-                        try:
-                            final_schema = infer_schema_from_data(materialized_data)
-                        except ValueError:
-                            # If schema inference fails (e.g., empty data with complex types),
-                            # keep the projected schema but deduplicate it
-                            # Build deduplicated schema from projected schema
-                            seen_names = set()
-                            deduplicated_fields = []
-                            for field in final_schema.fields:
-                                if field.name not in seen_names:
-                                    deduplicated_fields.append(field)
-                                    seen_names.add(field.name)
-                            from ..spark_types import StructType
-
-                            final_schema = StructType(deduplicated_fields)
-
-                # Create new eager DataFrame with materialized data and final schema
-                # IMPORTANT: Clear operations queue since all operations have been materialized
-                # Also preserve cached state for PySpark compatibility
-                from ..dataframe import DataFrame
-
-                result_df = DataFrame(
-                    materialized_data,
-                    final_schema,
-                    df.storage,
-                    operations=[],  # Clear operations queue - all operations have been applied
-                )
-
-                # Preserve cached state
-                result_df._is_cached = getattr(df, "_is_cached", False)
-
-                return result_df
-            finally:
-                materializer.close()
-
-        except ImportError:
-            # Do not fall back for Robin: when Robin backend is selected, let it fail.
-            try:
-                from sparkless.backend.factory import BackendFactory
-
-                if BackendFactory.get_backend_type(df.storage) == "robin":
-                    raise
-            except ImportError:
-                pass
+            # Create new eager DataFrame with materialized data and final schema.
+            # IMPORTANT: Clear operations queue since all operations have been materialized
+            # and preserve cached state for PySpark compatibility.
+            result_df = DataFrame(
+                rows,
+                final_schema,
+                df.storage,
+                operations=[],  # Clear operations queue - all operations have been applied
+            )
+            result_df._is_cached = getattr(df, "_is_cached", False)
+            return result_df
+        except Exception:
+            logger.exception("Robin materialization failed, falling back to manual path")
+            # Fallback path for any unexpected errors
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod
