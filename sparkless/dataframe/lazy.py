@@ -472,40 +472,24 @@ class LazyEvaluationEngine:
 
             return DataFrame(df.data, df.schema, df.storage)
 
-        # Check if operations require manual materialization
-        if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
-            return LazyEvaluationEngine._materialize_manual(df)
+        # In v4, all lazy execution is via Robin; no Python fallback.
+        from ..dataframe.schema.schema_manager import SchemaManager
+        from sparkless.robin.execution import execute_via_robin
+        from ..dataframe import DataFrame
 
-        # In v4, all lazy execution is handled via the Robin engine.
-        # We no longer route through backend-specific materializers.
-        try:
-            from ..dataframe.schema.schema_manager import SchemaManager
-            from sparkless.robin.execution import execute_via_robin
-            from ..dataframe import DataFrame
+        final_schema = SchemaManager.project_schema_with_operations(
+            df.schema, df._operations_queue
+        )
+        rows = execute_via_robin(df.data, final_schema, df)
 
-            # Compute the final schema after all queued operations.
-            final_schema = SchemaManager.project_schema_with_operations(
-                df.schema, df._operations_queue
-            )
-
-            # Delegate execution to the Robin PyO3 bridge.
-            rows = execute_via_robin(df.data, final_schema, df)
-
-            # Create new eager DataFrame with materialized data and final schema.
-            # IMPORTANT: Clear operations queue since all operations have been materialized
-            # and preserve cached state for PySpark compatibility.
-            result_df = DataFrame(
-                rows,
-                final_schema,
-                df.storage,
-                operations=[],  # Clear operations queue - all operations have been applied
-            )
-            result_df._is_cached = getattr(df, "_is_cached", False)
-            return result_df
-        except Exception:
-            logger.exception("Robin materialization failed, falling back to manual path")
-            # Fallback path for any unexpected errors
-            return LazyEvaluationEngine._materialize_manual(df)
+        result_df = DataFrame(
+            rows,
+            final_schema,
+            df.storage,
+            operations=[],
+        )
+        result_df._is_cached = getattr(df, "_is_cached", False)
+        return result_df
 
     @staticmethod
     def _handle_cached_string_concatenation(

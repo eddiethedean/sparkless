@@ -492,7 +492,13 @@ class DataFrameWriter:
         elif resolved_format == "text":
             self._write_text(data_frame.data, data_frame.schema, target_path)
         elif resolved_format == "delta":
-            self._write_delta_via_robin(data_frame, str(target_path))
+            try:
+                self._write_delta_via_robin(data_frame, str(target_path))
+            except (AttributeError, RuntimeError) as e:
+                raise AnalysisException(
+                    "Delta write to path requires the robin-sparkless crate's delta feature. "
+                    "Ensure the extension was built with delta support, or use saveAsTable() for catalog Delta tables."
+                ) from e
         else:
             raise AnalysisException(
                 f"File format '{self.format_name}' is not supported."

@@ -349,21 +349,12 @@ class SparkSession:
         if args or kwargs:
             query = self._sql_parameter_binder.bind_parameters(query, args, kwargs)
 
-        # Robin-only path: try executing SQL via the Robin Rust crate first.
-        if getattr(self, "backend_type", None) == "robin":
-            try:
-                from sparkless.robin import native as robin_native
+        # Execute SQL via Robin only; no Python fallback.
+        from sparkless.robin import native as robin_native
 
-                rows = robin_native.execute_sql_via_robin(query)
-            except Exception:
-                # Fallback to existing Python SQL executor on any failure.
-                return self._sql_executor.execute(query)
-
-            # Re-wrap rows into a Sparkless DataFrame using the standard factory.
-            df = self._real_createDataFrame(rows)
-            return cast("IDataFrame", df)
-
-        return self._sql_executor.execute(query)
+        rows = robin_native.execute_sql_via_robin(query)
+        df = self._real_createDataFrame(rows)
+        return cast("IDataFrame", df)
 
     def _bind_parameters(
         self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]

@@ -166,17 +166,23 @@ class DataFrameReader:
                     "load() with format 'delta' requires a path. "
                     "Use read.format('delta').table('schema.table') for tables."
                 )
-            # Read Delta table via Robin Rust crate
+            # Phase 4: Delegate to Robin when the crate's delta feature is enabled.
             from ..robin import native as robin_native
 
-            version_as_of = combined_options.get("versionAsOf")
-            if version_as_of is not None:
-                rows = robin_native.read_delta_version_via_robin(
-                    str(Path(path).resolve()), int(version_as_of)
-                )
-            else:
-                rows = robin_native.read_delta_via_robin(str(Path(path).resolve()))
-            return self.session.createDataFrame(rows)
+            try:
+                version_as_of = combined_options.get("versionAsOf")
+                if version_as_of is not None:
+                    rows = robin_native.read_delta_version_via_robin(
+                        str(Path(path).resolve()), int(version_as_of)
+                    )
+                else:
+                    rows = robin_native.read_delta_via_robin(str(Path(path).resolve()))
+                return self.session.createDataFrame(rows)
+            except (AttributeError, RuntimeError) as e:
+                raise AnalysisException(
+                    "Delta read from path requires the robin-sparkless crate's delta feature. "
+                    "Ensure the extension was built with delta support, or use read.table() for catalog Delta tables."
+                ) from e
 
         if path is None:
             raise IllegalArgumentException(
