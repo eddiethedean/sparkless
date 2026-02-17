@@ -323,16 +323,20 @@ spark = SparkSession.builder \
 
 ## Performance Comparison
 
-Benchmarks: Sparkless v4 (Robin) vs PySpark. Run `python scripts/benchmark_sparkless_vs_pyspark.py` to reproduce (requires PySpark and Java 17+ for PySpark numbers).
+Benchmarks: Sparkless v4 (Robin) vs PySpark on **100k rows**. Run with the installed wheel: `.venv/bin/python scripts/benchmark_sparkless_vs_pyspark.py` (requires PySpark and Java 17+ for PySpark numbers).
 
 | Operation | PySpark | Sparkless (Robin) | Speedup |
 |-----------|---------|-------------------|---------|
-| Session creation | 30–45s | &lt;0.1s | **300x+** |
-| Simple query (10k rows) | 2–5s | ~0.02s | **100–200x** |
-| Count / aggregation (10k rows) | 2–4s | ~0.02s | **100x+** |
+| Session creation | 0.55s (warm), 30–45s (cold JVM) | &lt;0.01s | **45,000x+** (warm) |
+| Simple query (select+limit) | ~2.4s | ~0.44s | **~5x** |
+| Count | ~2.4s | ~0.33s | **~7x** |
+| Filter + select + limit | ~2.3s | see note | — |
+| WithColumn + select + limit | ~2.3s | see note | — |
+| GroupBy + sum/count agg | ~2.5s | ~0.37s | **~7x** |
+| OrderBy desc + limit | ~2.3s | ~0.45s | **~5x** |
 | Full test suite (850+ tests) | 5–10 min | ~1 min | **~10x** |
 
-*PySpark figures are typical (JVM startup, local mode). Sparkless numbers from `scripts/benchmark_sparkless_vs_pyspark.py` (session creation &lt;1 ms, count 0.02s mean; full suite with `-n 12`).*
+*Dataset: 100k rows (id, x, key, value). Filter and WithColumn may report ERROR on Robin due to expression plan format; other queries run on robin-sparkless 0.11.3+. Full suite: `pytest -n 12`.*
 
 ### Performance tooling
 

@@ -18,6 +18,7 @@ from sparkless.dataframe.logical_plan import (
 from sparkless.spark_types import Row, StructType
 
 from . import native as _native
+from .plan_adapter import adapt_plan_for_robin
 
 
 def execute_via_robin(
@@ -38,6 +39,7 @@ def execute_via_robin(
         List[Row]: Materialized rows returned from Robin.
     """
     logical_plan = to_logical_plan(operations_df)
+    logical_plan = adapt_plan_for_robin(logical_plan)
     robin_schema: List[Dict[str, str]] = serialize_schema(schema)
     robin_data: List[Dict[str, Any]] = _serialize_data(list(data), schema)
 
