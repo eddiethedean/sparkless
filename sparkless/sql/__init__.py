@@ -9,6 +9,8 @@ pure-Python implementation.
 from ._backend import (
     SparkSession,
     DataFrame,
+    DataFrameWriter,
+    GroupedData,
     Column,
     ColumnOperation,
     F,
@@ -17,9 +19,6 @@ from ._backend import (
 
 from ..spark_types import Row
 from ..core.exceptions import PySparkTypeError, PySparkValueError
-
-# DataFrameWriter, GroupedData from Python (Robin path uses same for now)
-from ..dataframe import DataFrameWriter, GroupedData
 
 # Import types submodule
 from . import types

@@ -8,7 +8,6 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyList, PyTuple};
 use robin_sparkless::delta;
-use robin_sparkless::plan;
 use robin_sparkless::schema::{DataType as RobinDataType, StructType as RobinStructType};
 use robin_sparkless::session::SparkSession as InnerSession;
 use robin_sparkless::{DataFrame as RobinDataFrame, SaveMode};
@@ -49,7 +48,7 @@ pub(crate) fn parse_schema_from_python(schema: &Bound<'_, PyAny>) -> PyResult<Ve
 }
 
 /// Convert Robin StructType to schema vec (name, type_str) for Python.
-fn robin_schema_to_vec(st: &RobinStructType) -> Vec<(String, String)> {
+pub(crate) fn robin_schema_to_vec(st: &RobinStructType) -> Vec<(String, String)> {
     st.fields()
         .iter()
         .map(|f| (f.name.clone(), robin_data_type_to_str(&f.data_type)))
@@ -118,40 +117,6 @@ pub(crate) fn py_rows_to_json(
     }
 
     Ok(out)
-}
-
-/// Execute a Robin logical plan via the Rust crate.
-///
-/// Args:
-///     data: list of row dicts or sequences.
-///     schema: list of {'name': str, 'type': str} dicts.
-///     plan_json: JSON string of the logical plan (LOGICAL_PLAN_FORMAT).
-///
-/// Returns:
-///     list of dict rows.
-#[pyfunction]
-fn _execute_plan(py: Python<'_>, data: &Bound<'_, PyAny>, schema: &Bound<'_, PyAny>, plan_json: &str) -> PyResult<PyObject> {
-    let schema_vec = parse_schema_from_python(schema)?;
-    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
-
-    // Parse plan JSON into Vec<Value>
-    let plan_value: JsonValue = serde_json::from_str(plan_json).map_err(|e| {
-        PyValueError::new_err(format!("failed to parse plan_json: {e}"))
-    })?;
-    let plan_array = plan_value.as_array().ok_or_else(|| {
-        PyTypeError::new_err("plan_json must decode to a JSON array of plan steps")
-    })?;
-
-    let session = get_or_create_session();
-    let df = plan::execute_plan(&session, data_rows, schema_vec, plan_array).map_err(|e| {
-        PyValueError::new_err(format!("Robin execute_plan failed: {e}"))
-    })?;
-
-    let json_rows = df
-        .collect_as_json_rows()
-        .map_err(|e| PyValueError::new_err(format!("collect_as_json_rows failed: {e}")))?;
-
-    rows_to_py(py, json_rows)
 }
 
 pub(crate) fn rows_to_py(py: Python<'_>, json_rows: Vec<HashMap<String, JsonValue>>) -> PyResult<PyObject> {
@@ -654,7 +619,6 @@ fn sparkless_robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(pyfunctions::count_distinct, m)?)?;
 
     m.add_function(wrap_pyfunction!(parse_ddl_schema, m)?)?;
-    m.add_function(wrap_pyfunction!(_execute_plan, m)?)?;
     m.add_function(wrap_pyfunction!(sql, m)?)?;
     m.add_function(wrap_pyfunction!(read_delta, m)?)?;
     m.add_function(wrap_pyfunction!(read_delta_version, m)?)?;

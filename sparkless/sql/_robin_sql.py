@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, List, Optional, Sequence, Union
 
 from ..spark_types import Row
-from ..robin.schema_ser import serialize_schema
+from ..robin.schema_ser import serialize_schema, schema_from_robin_list
 from ..core.schema_inference import SchemaInferenceEngine
 
 
@@ -142,6 +142,36 @@ class RobinDataFrame:
     def __init__(self, inner: Any) -> None:
         self._inner = inner
 
+    def __getattr__(self, name: str) -> Any:
+        """PySpark compat: df.column_name -> F.col('column_name')."""
+        if name.startswith("_"):
+            raise AttributeError(name)
+        # Reserved attributes that are not column references
+        if name in ("columns", "schema"):
+            raise AttributeError(name)
+        from ._robin_functions import get_robin_functions
+
+        return get_robin_functions().col(name)
+
+    @property
+    def columns(self) -> List[str]:
+        """Column names as a list."""
+        schema_list = self._inner.schema()
+        return [f["name"] for f in schema_list]
+
+    @property
+    def schema(self) -> Any:
+        """Schema as StructType."""
+        schema_list = self._inner.schema()
+        return schema_from_robin_list(schema_list)
+
+    def __getitem__(self, item: Union[str, Any]) -> Any:
+        """PySpark compat: df['col'] -> F.col('col')."""
+        if isinstance(item, str):
+            from ._robin_functions import get_robin_functions
+            return get_robin_functions().col(item)
+        raise TypeError(f"RobinDataFrame does not support __getitem__ for {type(item)}")
+
     def filter(self, condition: Any) -> "RobinDataFrame":
         return RobinDataFrame(self._inner.filter(condition))
 
@@ -166,10 +196,10 @@ class RobinDataFrame:
         asc = ascending if isinstance(ascending, bool) else (ascending[0] if ascending else True)
         return RobinDataFrame(self._inner.order_by(col_names, asc))
 
-    def groupBy(self, *cols: Any) -> Any:
-        """Group by columns. Returns PyGroupedData (agg() support may be limited)."""
+    def groupBy(self, *cols: Any) -> "RobinGroupedData":
+        """Group by columns."""
         col_names = [c if isinstance(c, str) else str(c) for c in cols]
-        return self._inner.group_by(col_names)
+        return RobinGroupedData(self._inner.group_by(col_names))
 
     def join(
         self,
@@ -194,6 +224,11 @@ class RobinDataFrame:
 
     def distinct(self) -> "RobinDataFrame":
         return RobinDataFrame(self._inner.distinct())
+
+    @property
+    def write(self) -> "RobinDataFrameWriter":
+        """Return DataFrameWriter for write operations."""
+        return RobinDataFrameWriter(self)
 
     def count(self) -> int:
         """Return number of rows."""
@@ -231,6 +266,50 @@ class RobinDataFrame:
     def _py(self) -> Any:
         """Access underlying PyDataFrame for advanced use."""
         return self._inner
+
+
+# -----------------------------------------------------------------------------
+# Stub DataFrameWriter and GroupedData (Robin path - Phase 5 will expand)
+# -----------------------------------------------------------------------------
+
+
+class RobinDataFrameWriter:
+    """Stub DataFrameWriter for RobinDataFrame. Raises for unsupported operations."""
+
+    def __init__(self, df: RobinDataFrame) -> None:
+        self._df = df
+
+    def mode(self, mode: str) -> "RobinDataFrameWriter":
+        return self
+
+    def format(self, source: str) -> "RobinDataFrameWriter":
+        return self
+
+    def option(self, key: str, value: Any) -> "RobinDataFrameWriter":
+        return self
+
+    def save(self, path: str) -> None:
+        raise NotImplementedError(
+            "df.write.save() not yet implemented for Robin backend. "
+            "Use sparkless_robin write_parquet/write_csv functions directly."
+        )
+
+    def saveAsTable(self, name: str) -> None:
+        raise NotImplementedError(
+            "df.write.saveAsTable() not yet implemented for Robin backend."
+        )
+
+
+class RobinGroupedData:
+    """Wrapper for PyGroupedData. agg() support is limited."""
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+
+    def agg(self, *exprs: Any) -> RobinDataFrame:
+        raise NotImplementedError(
+            "GroupedData.agg() not yet fully implemented for Robin backend."
+        )
 
 
 # -----------------------------------------------------------------------------

@@ -37,29 +37,6 @@ def _ensure_native_loaded() -> None:
         )
 
 
-def execute_plan_via_robin(
-    data: Sequence[Dict[str, Any]],
-    schema: Sequence[Dict[str, str]],
-    logical_plan: Sequence[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    """
-    Execute a logical plan using the Robin Rust crate via the PyO3 extension.
-
-    Args:
-        data: Eager input rows as sequence of dicts.
-        schema: Sequence of ``{\"name\": str, \"type\": str}`` entries.
-        logical_plan: Logical plan produced by ``sparkless.dataframe.logical_plan.to_logical_plan``.
-
-    Returns:
-        List of dict rows representing the result.
-    """
-    _ensure_native_loaded()
-    plan_json = json.dumps(list(logical_plan))
-    # The native function returns a list of dicts; we defensively cast to list.
-    result = _native._execute_plan(list(data), list(schema), plan_json)  # type: ignore[attr-defined]
-    return list(result)
-
-
 def execute_sql_via_robin(query: str) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
     """
     Execute a SQL query using the Robin Rust crate via the PyO3 extension.

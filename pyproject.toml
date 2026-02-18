@@ -191,7 +191,6 @@ module = [
     "tests.unit.backend.test_robin_optional",
     "tests.unit.backend.test_robin_materializer",
     "tests.unit.robin.test_robin_sql",
-    "tests.unit.robin.test_plan_adapter",
 ]
 # v4: skipped backend tests (dead code); robin tests (fixtures, _robin optional)
 ignore_errors = true

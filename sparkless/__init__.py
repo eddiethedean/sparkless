@@ -45,13 +45,17 @@ Author: Odos Matthews
 import sys
 from types import ModuleType
 
-from .session import SparkSession  # noqa: E402
-from .dataframe import (  # noqa: E402
+# Core PySpark API from sql (Robin backend - requires maturin develop)
+from .sql import (  # noqa: E402
+    SparkSession,
     DataFrame,
     DataFrameWriter,
     GroupedData,
+    Column,
+    ColumnOperation,
+    F,
+    Functions,
 )
-from .functions import Column, ColumnOperation, F, Functions  # noqa: E402
 from .spark_types import Row  # noqa: E402
 from .window import Window, WindowSpec  # noqa: E402
 from .session.context import SparkContext, JVMContext  # noqa: E402

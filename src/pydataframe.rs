@@ -141,6 +141,25 @@ impl PyDataFrame {
             .map_err(|e| PyValueError::new_err(format!("collect failed: {e}")))?;
         crate::rows_to_py(py, json_rows)
     }
+
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        use pyo3::types::PyDict;
+        use pyo3::types::PyList;
+
+        let st = self
+            .inner
+            .schema()
+            .map_err(|e| PyValueError::new_err(format!("schema failed: {e}")))?;
+        let schema_vec = crate::robin_schema_to_vec(&st);
+        let list = PyList::empty(py);
+        for (name_str, type_str) in schema_vec {
+            let d = PyDict::new(py);
+            d.set_item("name", name_str)?;
+            d.set_item("type", type_str)?;
+            list.append(d)?;
+        }
+        Ok(list.into_py(py))
+    }
 }
 
 /// Placeholder for GroupedData - minimal for Phase 1.

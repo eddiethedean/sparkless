@@ -1,15 +1,13 @@
 """
-Robin (robin-sparkless) execution integration.
+Robin (robin-sparkless) integration.
 
 Uses the robin-sparkless Rust crate via the PyO3 extension (sparkless._robin).
-No Python robin-sparkless package dependency.
+Python fallback removed: Sparkless requires sparkless_robin (maturin develop).
 """
 
 from __future__ import annotations
 
-from .execution import execute_via_robin
 from .native import (
-    execute_plan_via_robin,
     execute_sql_via_robin,
     get_table_via_robin,
     parse_ddl_schema_via_robin,
@@ -28,8 +26,6 @@ from .native import (
 )
 
 __all__ = [
-    "execute_plan_via_robin",
-    "execute_via_robin",
     "execute_sql_via_robin",
     "get_table_via_robin",
     "parse_ddl_schema_via_robin",
