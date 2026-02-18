@@ -34,6 +34,8 @@ def _get_robin() -> Any:
 class RobinSparkSession:
     """PySpark-compatible SparkSession backed by PySparkSession from sparkless_robin."""
 
+    backend_type: str = "robin"  # For tests that assert spark.backend_type == "robin"
+
     def __init__(self, app_name_or_inner: Any = "SparklessApp") -> None:
         """Support SparkSession('AppName') or SparkSession(inner) from builder().getOrCreate()."""
         if isinstance(app_name_or_inner, str):
@@ -43,12 +45,6 @@ class RobinSparkSession:
             self._inner = builder.get_or_create()
         else:
             self._inner = app_name_or_inner
-
-    @classmethod
-    def builder(cls) -> "RobinSparkSessionBuilder":
-        """SparkSession.builder()"""
-        _r = _get_robin()
-        return RobinSparkSessionBuilder(_r.PySparkSessionBuilder())
 
     def createDataFrame(
         self,
@@ -87,6 +83,7 @@ class RobinSparkSession:
     def table(self, name: str) -> "RobinDataFrame":
         return RobinDataFrame(self._inner.table(name))
 
+    @property
     def read(self) -> "RobinDataFrameReader":
         return RobinDataFrameReader(self._inner)
 
@@ -101,6 +98,18 @@ class RobinSparkSession:
     def read_csv(self) -> Any:
         def _read(path: str) -> "RobinDataFrame":
             return RobinDataFrame(self._inner.read_csv(path))
+        return _read
+
+    @property
+    def read_json(self) -> Any:
+        def _read(path: str) -> "RobinDataFrame":
+            return self.read().json(path)
+        return _read
+
+    @property
+    def read_delta(self) -> Any:
+        def _read(path: str) -> "RobinDataFrame":
+            return self.read().delta(path)
         return _read
 
 
@@ -118,6 +127,12 @@ class RobinSparkSessionBuilder:
         return RobinSparkSession(self._inner.get_or_create())
 
 
+# PySpark compatibility: SparkSession.builder.appName(...).getOrCreate()
+RobinSparkSession.builder = RobinSparkSessionBuilder(  # type: ignore[attr-defined]
+    _get_robin().PySparkSessionBuilder()
+)
+
+
 class RobinDataFrameReader:
     """Minimal DataFrameReader for spark.read.parquet(path) etc."""
 
@@ -129,6 +144,24 @@ class RobinDataFrameReader:
 
     def csv(self, path: str) -> "RobinDataFrame":
         return RobinDataFrame(self._session.read_csv(path))
+
+    def json(self, path: str) -> "RobinDataFrame":
+        from ..robin import native as _robin_native
+
+        rows, schema = _robin_native.read_json_via_robin(path)
+        inner = self._session.createDataFrame(rows, schema)
+        return RobinDataFrame(inner)
+
+    def delta(self, path: str) -> "RobinDataFrame":
+        from ..robin import native as _robin_native
+
+        rows = _robin_native.read_delta_via_robin(path)
+        if not rows:
+            raise ValueError("read_delta requires non-empty data to infer schema")
+        inferred_schema, normalized = SchemaInferenceEngine.infer_from_data(rows)
+        schema_list = serialize_schema(inferred_schema)
+        inner = self._session.createDataFrame(normalized, schema_list)
+        return RobinDataFrame(inner)
 
 
 # -----------------------------------------------------------------------------
@@ -230,6 +263,14 @@ class RobinDataFrame:
         """Return DataFrameWriter for write operations."""
         return RobinDataFrameWriter(self)
 
+    def createOrReplaceTempView(self, name: str) -> None:
+        """Register this DataFrame as a temp view (createOrReplaceTempView)."""
+        from ..robin import native as _robin_native
+
+        data = self._inner.collect()
+        schema = self._inner.schema()
+        _robin_native.register_temp_view_via_robin(name, data, schema)
+
     def count(self) -> int:
         """Return number of rows."""
         return len(self.collect())
@@ -269,35 +310,61 @@ class RobinDataFrame:
 
 
 # -----------------------------------------------------------------------------
-# Stub DataFrameWriter and GroupedData (Robin path - Phase 5 will expand)
+# DataFrameWriter: save/saveAsTable via Robin native write functions
 # -----------------------------------------------------------------------------
+
+from ..robin import native as _robin_native
 
 
 class RobinDataFrameWriter:
-    """Stub DataFrameWriter for RobinDataFrame. Raises for unsupported operations."""
+    """DataFrameWriter for RobinDataFrame. save() and saveAsTable() via Robin."""
 
     def __init__(self, df: RobinDataFrame) -> None:
         self._df = df
+        self._format: str = "parquet"
+        self._mode: str = "overwrite"
 
     def mode(self, mode: str) -> "RobinDataFrameWriter":
+        self._mode = str(mode).lower()
         return self
 
     def format(self, source: str) -> "RobinDataFrameWriter":
+        self._format = str(source).lower()
         return self
 
     def option(self, key: str, value: Any) -> "RobinDataFrameWriter":
+        # Options stored but not yet used by Robin write functions
         return self
 
     def save(self, path: str) -> None:
-        raise NotImplementedError(
-            "df.write.save() not yet implemented for Robin backend. "
-            "Use sparkless_robin write_parquet/write_csv functions directly."
-        )
+        data = self._df._inner.collect()
+        schema = self._df._inner.schema()
+        overwrite = self._mode in ("overwrite",)
+        fmt = self._format.lower()
+        if fmt == "parquet":
+            _robin_native.write_parquet_via_robin(data, schema, path, overwrite)
+        elif fmt == "csv":
+            _robin_native.write_csv_via_robin(data, schema, path, overwrite)
+        elif fmt in ("json", "jsonl"):
+            _robin_native.write_json_via_robin(data, schema, path, overwrite)
+        elif fmt == "delta":
+            _robin_native.write_delta_via_robin(data, schema, path, overwrite)
+        else:
+            raise NotImplementedError(
+                f"df.write.format('{self._format}').save() not supported. "
+                "Use parquet, csv, json, or delta."
+            )
 
     def saveAsTable(self, name: str) -> None:
-        raise NotImplementedError(
-            "df.write.saveAsTable() not yet implemented for Robin backend."
-        )
+        data = self._df._inner.collect()
+        schema = self._df._inner.schema()
+        mode = self._mode if self._mode in ("overwrite", "append", "ignore", "error") else "error"
+        _robin_native.save_as_table_via_robin(name, data, schema, mode)
+
+
+# -----------------------------------------------------------------------------
+# GroupedData: limited agg support
+# -----------------------------------------------------------------------------
 
 
 class RobinGroupedData:

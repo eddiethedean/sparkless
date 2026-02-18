@@ -4,6 +4,12 @@
 
 ---
 
+## Transition status (v4.0.0)
+
+**Completed:** Phases 0–5. Sparkless v4 is Robin-only via a thin Python layer (`sparkless/sql/_robin_sql.py`) over the PyO3 extension (`sparkless_robin`). Execution uses `PySparkSession` / `PyDataFrame` directly; no plan adapter or logical-plan path. Writer, reader, temp views, and `saveAsTable` implemented in Phase 5.
+
+---
+
 ## Principle: PyO3, not the Python package
 
 Sparkless v4 uses the **robin-sparkless Rust crate** ([crates.io](https://crates.io/crates/robin-sparkless), [GitHub](https://github.com/eddiethedean/robin-sparkless)) as its only execution engine. Integration is via **PyO3**: Sparkless builds a **native Python extension** that depends on the crate and exposes the Robin API to Python. We do **not** depend on or use the separate **robin-sparkless Python package** (the one published on PyPI and built with maturin from the same repo). The crate is compiled into Sparkless; there is no `pip install robin-sparkless` or `import robin_sparkless` in the runtime path.

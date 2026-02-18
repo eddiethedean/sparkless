@@ -19,10 +19,17 @@ Sparkless v4 is **Robin-only**: execution is entirely via the [robin-sparkless](
 - **Polars / memory / file backends** – Execution is Robin-only.
 - **db_path** – Session no longer accepts `db_path`; storage is in-memory via `MemoryStorageManager`.
 
+### Added (Phase 5)
+
+- **DataFrameWriter** – `df.write.format("parquet"|"csv"|"json"|"delta").save(path)`, `df.write.mode("overwrite"|"append").saveAsTable(name)` via Robin native write functions.
+- **createOrReplaceTempView** – `df.createOrReplaceTempView(name)` registers temp views in Robin's catalog for `spark.table(name)` and SQL.
+- **DataFrameReader** – `spark.read.json(path)` and `spark.read.delta(path)` in addition to parquet/csv.
+- **Session unification** – PySparkSession and native pyfunctions (register_temp_view, save_as_table) now share the same Robin session, so temp views registered via `createOrReplaceTempView` are visible in `spark.table()` and SQL.
+
 ### Changed
 
 - **Session** – Always creates `MemoryStorageManager`; no backend or storage type configuration.
-- **Lazy execution** – `dataframe/lazy.py` calls `execute_via_robin()` only; no materializer abstraction.
+- **Thin PyO3 layer** – Sparkless uses a thin Python compatibility layer over PySparkSession/PyDataFrame; execution is via robin-sparkless crate (no plan adapter or logical-plan path).
 - **SQL** – `spark.sql()` executes via Robin when the crate is built with the `sql` feature.
 - **Delta** – Delta read/write use Robin when the crate is built with the `delta` feature; clear errors when the feature is not enabled.
 - **Tests** – Many tests skipped or updated for v4 (backend removal, plan-interpreter removal); run with `SPARKLESS_TEST_BACKEND=robin pytest tests/ -n 12 --ignore=tests/archive`.

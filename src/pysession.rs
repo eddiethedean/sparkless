@@ -26,12 +26,12 @@ impl PySparkSessionBuilder {
     }
 
     fn get_or_create(self_: PyRef<'_, Self>) -> PyResult<PySparkSession> {
-        let session = InnerSession::builder()
-            .app_name(self_.app_name.as_deref().unwrap_or("sparkless"))
-            .get_or_create();
-        Ok(PySparkSession {
-            inner: session,
-        })
+        let app_name = self_
+            .app_name
+            .as_deref()
+            .unwrap_or("sparkless");
+        let session = crate::init_or_get_global_session(app_name);
+        Ok(PySparkSession { inner: session })
     }
 
     /// Alias for get_or_create (PySpark naming).

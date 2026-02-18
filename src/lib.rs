@@ -14,17 +14,35 @@ use robin_sparkless::{DataFrame as RobinDataFrame, SaveMode};
 use serde_json::Value as JsonValue;
 use spark_ddl_parser::{parse_ddl_schema as parse_ddl_rs, StructType as DDLStructType};
 use std::collections::HashMap;
+use std::sync::Mutex;
 
-static GLOBAL_SESSION: OnceCell<InnerSession> = OnceCell::new();
+static GLOBAL_SESSION: Mutex<Option<InnerSession>> = Mutex::new(None);
 
+/// Get or create the global Robin session. Used by pyfunctions (register_temp_view, etc.).
 fn get_or_create_session() -> InnerSession {
-    GLOBAL_SESSION
-        .get_or_init(|| {
+    let mut g = GLOBAL_SESSION.lock().unwrap();
+    if g.is_none() {
+        *g = Some(
             InnerSession::builder()
                 .app_name("sparkless-robin")
-                .get_or_create()
-        })
-        .clone()
+                .get_or_create(),
+        );
+    }
+    g.clone().unwrap()
+}
+
+/// Initialize or return the global session with the given app name. Used by PySparkSessionBuilder
+/// so that the same session is used for table(), register_temp_view, save_as_table, etc.
+pub(crate) fn init_or_get_global_session(app_name: &str) -> InnerSession {
+    let mut g = GLOBAL_SESSION.lock().unwrap();
+    if g.is_none() {
+        *g = Some(
+            InnerSession::builder()
+                .app_name(app_name)
+                .get_or_create(),
+        );
+    }
+    g.clone().unwrap()
 }
 
 /// Parse Python schema (list of {name, type}) into Vec<(String, String)>.
