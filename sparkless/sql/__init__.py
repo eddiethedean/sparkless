@@ -1,19 +1,25 @@
 """
 Sparkless SQL module - PySpark-compatible SQL interface.
+
+When sparkless_robin is available (maturin develop), SparkSession, DataFrame,
+Column, and functions use the Robin backend. Otherwise falls back to the
+pure-Python implementation.
 """
 
-from ..session import SparkSession
-from ..dataframe import (
+from ._backend import (
+    SparkSession,
     DataFrame,
-    DataFrameWriter,
-    GroupedData,
+    Column,
+    ColumnOperation,
+    F,
+    Functions,
 )
-from ..functions import Column, ColumnOperation, F, Functions
-from ..spark_types import Row
-from ..window import Window, WindowSpec
 
-# Import exceptions (PySpark 3.5+ compatibility)
+from ..spark_types import Row
 from ..core.exceptions import PySparkTypeError, PySparkValueError
+
+# DataFrameWriter, GroupedData from Python (Robin path uses same for now)
+from ..dataframe import DataFrameWriter, GroupedData
 
 # Import types submodule
 from . import types
@@ -23,6 +29,8 @@ from . import functions
 
 # Import utils submodule (PySpark-compatible exception exports)
 from . import utils
+
+from ..window import Window, WindowSpec
 
 __all__ = [
     "SparkSession",

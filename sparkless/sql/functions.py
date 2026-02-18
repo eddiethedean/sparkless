@@ -28,10 +28,10 @@ Example:
 import warnings
 from typing import Any, Dict
 
-# Import F and Functions from Sparkless functions
-from ..functions import F, Functions  # noqa: E402
+# Import F and Functions from backend (Robin or Python)
+from ._backend import F, Functions  # noqa: E402
 
-# Cache for dynamically accessed attributes
+# Cache for dynamically accessed attributess
 _cached_attrs: Dict[str, object] = {}
 
 # Build __all__ list with all public functions from F
@@ -56,7 +56,7 @@ def __getattr__(name: str) -> object:
 
     # PySpark compatibility: F.DataFrame for reduce(F.DataFrame.union, dfs)
     if name == "DataFrame":
-        from ..dataframe import DataFrame  # noqa: E402
+        from ._backend import DataFrame  # noqa: E402
 
         _cached_attrs[name] = DataFrame
         return DataFrame
