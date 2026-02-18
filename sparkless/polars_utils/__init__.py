@@ -1,10 +1,14 @@
-"""Polars utilities for schema/type mapping (used by reader/writer; no backend dependency)."""
+"""Polars utilities removed in v4 (Robin-only); reader/writer use stdlib and optional pyarrow."""
 
-from .schema_utils import align_frame_to_schema
-from .type_mapper import mock_type_to_polars_dtype, polars_dtype_to_mock_type
+from __future__ import annotations
 
-__all__ = [
-    "align_frame_to_schema",
-    "mock_type_to_polars_dtype",
-    "polars_dtype_to_mock_type",
-]
+
+def __getattr__(name: str):  # type: ignore[no-redef]
+    raise ImportError(
+        "sparkless.polars_utils was removed in v4. "
+        "Reader/writer use stdlib (csv, json) and optional pyarrow for Parquet. "
+        f"Cannot import '{name}'."
+    )
+
+
+__all__ = []

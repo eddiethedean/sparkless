@@ -36,8 +36,6 @@ classifiers = [
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "spark-ddl-parser>=0.1.0",
-    "polars>=0.20.0",
     "psutil>=5.8.0",
     "typing_extensions>=4.0.0; python_version<'3.9'",
 ]
@@ -51,7 +49,6 @@ analytics = [
     "pandas>=1.3.0,<3",
     "pandas-stubs>=2.0.0,<3",
     "numpy>=1.20.0",
-    "polars[pyarrow]>=0.20.0",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -195,7 +192,6 @@ module = [
     "sparkless.functions.datetime",
     "sparkless.functions.xml",
     "sparkless.dataframe.grouped.base",
-    "sparkless.backend.polars.export",
     "sparkless.functions.functions",
     "sparkless.dataframe.operations.set_operations",
     "sparkless.core.schema_inference",
@@ -231,11 +227,8 @@ addopts = [
     "-W", "ignore::_pytest.warning_types.PytestRemovedIn9Warning",
     "-W", "ignore:_pytest/fixtures.py::*",
     # Third-party library deprecation warnings
-    "-W", "ignore::DeprecationWarning:polars.*",
     "-W", "ignore::DeprecationWarning:pandas.*",
-    "-W", "ignore::FutureWarning:polars.*",
     "-W", "ignore::FutureWarning:pandas.*",
-    "-W", "ignore::PendingDeprecationWarning:polars.*",
     "-W", "ignore::PendingDeprecationWarning:pandas.*",
     # Pytest internal deprecation warnings
     "-W", "ignore::DeprecationWarning:_pytest.*",

@@ -1,7 +1,7 @@
 """
 Storage module for Sparkless.
 
-v4 Robin-only: session uses MemoryStorageManager as the single catalog backing.
+v4 Robin-only: session uses RobinCatalogStorage (Robin's built-in catalog).
 File storage and serialization utilities remain for reader/writer and tests.
 """
 
@@ -20,6 +20,7 @@ from .models import (
     QueryResult,
 )
 from .backends.file import FileStorageManager, FileTable, FileSchema
+from .backends.robin import RobinCatalogStorage
 
 # Import serialization
 from .serialization.json import JSONSerializer
@@ -43,6 +44,8 @@ __all__ = [
     "StorageMode",
     "StorageOperationResult",
     "QueryResult",
+    # Robin catalog backend (v4 default)
+    "RobinCatalogStorage",
     # File backend
     "FileStorageManager",
     "FileTable",

@@ -61,7 +61,7 @@ spark.stop()
 
 ## Environment
 
-- Sparkless v4 (Robin-only), robin-sparkless crate 0.11.1 (fixed in **0.11.3**)
+- Sparkless v4 (Robin-only), robin-sparkless crate 0.11.1 (fixed in **0.11.4**)
 - PySpark 3.5.8 (reference)
 - Python 3.11
 

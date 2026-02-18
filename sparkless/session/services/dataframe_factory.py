@@ -336,10 +336,10 @@ class DataFrameFactory:
                 data = normalize_data_for_schema(data, schema)  # type: ignore[arg-type]
 
         if schema is None:
-            # Infer schema from data using SchemaInferenceEngine
-            # Note: Empty data case is already handled above
+            # Infer schema from data using SchemaInferenceEngine.
+            # When data is empty and schema is StructType, we never reach here (schema is not None).
             if not data:
-                # This should not happen due to validation above, but keep as safety
+                # createDataFrame([], schema=None) already raised above; this is a safety net
                 raise ValueError("can not infer schema from empty dataset")
             else:
                 # Check if data is in expected format

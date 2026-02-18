@@ -6,7 +6,7 @@ This service provides display and collection operations using composition instea
 
 from typing import Any, List, TYPE_CHECKING, Union, cast
 
-from ...spark_types import Row, StringType, StructField, StructType, get_row_value
+from ...spark_types import Row, StringType, StructField, StructType, get_row_value, row_keys
 
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
@@ -61,7 +61,7 @@ class DisplayService:
 
         # Get column names
         columns = (
-            list(display_data[0].keys())
+            row_keys(display_data[0])
             if display_data
             else self._df.schema.fieldNames()
         )
@@ -125,7 +125,7 @@ class DisplayService:
 
         # Get column names
         columns = (
-            list(display_data[0].keys())
+            row_keys(display_data[0])
             if display_data
             else self._df.schema.fieldNames()
         )

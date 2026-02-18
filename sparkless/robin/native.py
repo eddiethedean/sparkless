@@ -103,3 +103,60 @@ def write_delta_via_robin(
         list(data), list(schema), path, overwrite
     )
 
+
+def register_temp_view_via_robin(name: str, data: Sequence[Dict[str, Any]], schema: Sequence[Dict[str, str]]) -> None:
+    """Register a temp view in Robin's session catalog (createOrReplaceTempView)."""
+    _ensure_native_loaded()
+    _native.register_temp_view(name, list(data), list(schema))  # type: ignore[attr-defined]
+
+
+def register_global_temp_view_via_robin(
+    name: str, data: Sequence[Dict[str, Any]], schema: Sequence[Dict[str, str]]
+) -> None:
+    """Register a global temp view in Robin's catalog (createOrReplaceGlobalTempView)."""
+    _ensure_native_loaded()
+    _native.register_global_temp_view(name, list(data), list(schema))  # type: ignore[attr-defined]
+
+
+def get_table_via_robin(name: str) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+    """
+    Get a table or view from Robin's catalog (spark.table(name)).
+
+    Returns:
+        (rows, schema) where schema is list of {"name": str, "type": str}.
+    """
+    _ensure_native_loaded()
+    result = _native.get_table(name)  # type: ignore[attr-defined]
+    rows = list(result[0])
+    schema = [dict(s) for s in result[1]]
+    return rows, schema
+
+
+def save_as_table_via_robin(
+    name: str,
+    data: Sequence[Dict[str, Any]],
+    schema: Sequence[Dict[str, str]],
+    mode: str = "error",
+) -> None:
+    """
+    Save data as a table in Robin's catalog (saveAsTable).
+
+    mode: "overwrite" | "append" | "ignore" | "error" (ErrorIfExists).
+    """
+    _ensure_native_loaded()
+    _native.save_as_table(name, list(data), list(schema), mode)  # type: ignore[attr-defined]
+
+
+def parse_ddl_schema_via_robin(ddl: str) -> List[Dict[str, Any]]:
+    """
+    Parse a DDL schema string using the Rust spark-ddl-parser (robin-sparkless).
+
+    Returns:
+        List of {"name": str, "data_type": dict}. data_type is a nested dict
+        with "type" one of "simple", "decimal", "array", "map", "struct", and
+        type-specific keys (e.g. type_name, precision, scale, element_type, fields).
+    """
+    _ensure_native_loaded()
+    result = _native.parse_ddl_schema(ddl)  # type: ignore[attr-defined]
+    return list(result)
+

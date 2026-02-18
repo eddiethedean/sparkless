@@ -26,6 +26,33 @@ def _json_safe_value(value: Any) -> Any:
         return str(value)
     if isinstance(value, bytes):
         return list(value)  # JSON has no bytes; list of ints is reversible
+    # Literal and Column can appear in payloads (e.g. create_map args, agg); must be serializable
+    try:
+        from sparkless.functions.core.literals import Literal
+        if isinstance(value, Literal):
+            return _json_safe_value(value.value)
+    except ImportError:
+        pass
+    try:
+        from sparkless.functions import Column
+        if isinstance(value, Column):
+            name = getattr(value, "name", None) or getattr(value, "_name", None)
+            return {"type": "column", "name": name if name is not None else str(value)}
+    except ImportError:
+        pass
+    # CaseWhen and WindowFunction can appear in payloads (e.g. struct/withColumn); must be JSON-serializable
+    try:
+        from sparkless.functions.conditional import CaseWhen
+        if isinstance(value, CaseWhen):
+            return serialize_expression(value)
+    except ImportError:
+        pass
+    try:
+        from sparkless.functions.window_execution import WindowFunction
+        if isinstance(value, WindowFunction):
+            return serialize_expression(value)
+    except ImportError:
+        pass
     if isinstance(value, (list, tuple)):
         return [_json_safe_value(v) for v in value]
     if isinstance(value, dict):

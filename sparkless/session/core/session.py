@@ -18,6 +18,7 @@ from ..config import Configuration, SparkConfig
 from ..sql.executor import SQLExecutor
 from sparkless.dataframe import DataFrame, DataFrameReader
 from sparkless.storage.backends.memory import MemoryStorageManager
+from sparkless.storage.backends.robin import RobinCatalogStorage
 from ...spark_types import (
     StructType,
 )
@@ -82,7 +83,7 @@ class SparkSession:
         self.app_name = app_name
         self.performance_mode = performance_mode
         self._jvm_overhead = 0.001 if performance_mode == "realistic" else 0.00001
-        self._storage = MemoryStorageManager()
+        self._storage = RobinCatalogStorage()
         self.backend_type = "robin"  # v4 Robin-only; kept for test/fixture compatibility
         self._catalog = Catalog(self._storage, spark=self)
         from typing import cast

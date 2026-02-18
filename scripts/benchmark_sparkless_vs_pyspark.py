@@ -2,15 +2,15 @@
 """
 Benchmark Sparkless (Robin) vs PySpark: session creation, simple/complex queries.
 
-Run from repo root with the venv that has the wheel built with robin-sparkless 0.11.3:
+Run from repo root with the venv that has the wheel built with robin-sparkless 0.11.5:
   .venv/bin/python scripts/benchmark_sparkless_vs_pyspark.py
 
-To ensure robin-sparkless 0.11.3: maturin build --release && .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall
+To ensure robin-sparkless 0.11.5: maturin build --release && .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall
 
 Prints mean times (seconds) and speedup. PySpark is skipped if not installed.
 Dataset: 10k rows (id, x, key, value). Filter/withColumn may show ERROR on some
 Robin versions due to expression plan format; other queries (select, count, groupBy+agg,
-orderBy+limit) run on Robin 0.11.3+.
+orderBy+limit) run on Robin 0.11.5+.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# Use installed wheel when present (ensures robin-sparkless 0.11.3). Only add repo to path if not installed.
+# Use installed wheel when present (ensures robin-sparkless 0.11.5). Only add repo to path if not installed.
 try:
     import sparkless  # noqa: F401
 except ImportError:
@@ -177,7 +177,7 @@ def run_pyspark_benchmarks() -> dict[str, float] | None:
 
 
 def _check_robin_select_compat() -> None:
-    """Fail fast if select-by-name fails (e.g. extension built with robin-sparkless < 0.11.3)."""
+    """Fail fast if select-by-name fails (e.g. extension built with robin-sparkless < 0.11.5)."""
     from sparkless import SparkSession
 
     spark = SparkSession.builder.appName("bench-check").getOrCreate()
@@ -189,7 +189,7 @@ def _check_robin_select_compat() -> None:
         if "select payload must be array" in err or "invalid plan" in err.lower():
             print(
                 "ERROR: Sparkless select-by-name failed. The extension may not be built with\n"
-                "robin-sparkless 0.11.3. Run: maturin build --release &&\n"
+                "robin-sparkless 0.11.5. Run: maturin build --release &&\n"
                 "  .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall\n"
                 "Then run this script with: .venv/bin/python scripts/benchmark_sparkless_vs_pyspark.py",
                 file=sys.stderr,
@@ -204,7 +204,7 @@ def main() -> int:
     print("Benchmark Sparkless (Robin) vs PySpark")
     print(f"  Rows: {ROWS}, warmup: {WARMUP}, runs: {RUNS}\n")
 
-    print("Checking Sparkless select (robin-sparkless 0.11.3 compat)...")
+    print("Checking Sparkless select (robin-sparkless 0.11.5 compat)...")
     _check_robin_select_compat()
     print("OK\n")
 

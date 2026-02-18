@@ -6,7 +6,7 @@ This module provides CSV serialization and deserialization for storage.
 
 import csv
 from typing import Any, Dict, List
-from sparkless.spark_types import StructType, StructField, get_row_value
+from sparkless.spark_types import StructType, StructField, get_row_value, row_keys
 
 
 class CSVSerializer:
@@ -24,7 +24,7 @@ class CSVSerializer:
             return
 
         with open(file_path, "w", newline="") as f:
-            fieldnames = data[0].keys()
+            fieldnames = row_keys(data[0])
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(data)

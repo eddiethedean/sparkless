@@ -247,7 +247,7 @@ def test_robin_filter_and_with_column_integration() -> None:
         pytest.skip("Robin extension not available")
     spark = SparkSession.builder.appName("PlanAdapterIntegration").getOrCreate()
     try:
-        # Probe select-by-name (robin-sparkless 0.11.3+)
+        # Probe select-by-name (robin-sparkless 0.11.5+)
         df = spark.createDataFrame([{"x": 1}])
         df.select("x").collect()
     except Exception as e:

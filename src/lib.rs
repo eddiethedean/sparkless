@@ -1,11 +1,14 @@
 use once_cell::sync::OnceCell;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyList};
+use pyo3::types::{PyAny, PyDict, PyList, PyTuple};
 use robin_sparkless::delta;
 use robin_sparkless::plan;
+use robin_sparkless::schema::{DataType as RobinDataType, StructType as RobinStructType};
 use robin_sparkless::session::SparkSession as InnerSession;
+use robin_sparkless::{DataFrame as RobinDataFrame, SaveMode};
 use serde_json::Value as JsonValue;
+use spark_ddl_parser::{parse_ddl_schema as parse_ddl_rs, StructType as DDLStructType};
 use std::collections::HashMap;
 
 static GLOBAL_SESSION: OnceCell<InnerSession> = OnceCell::new();
@@ -18,6 +21,51 @@ fn get_or_create_session() -> InnerSession {
                 .get_or_create()
         })
         .clone()
+}
+
+/// Parse Python schema (list of {name, type}) into Vec<(String, String)>.
+fn parse_schema_from_python(schema: &PyAny) -> PyResult<Vec<(String, String)>> {
+    let raw_schema: Vec<HashMap<String, String>> = schema.extract().map_err(|_| {
+        PyTypeError::new_err("schema must be a sequence of {'name': str, 'type': str} dicts")
+    })?;
+    let mut schema_vec = Vec::with_capacity(raw_schema.len());
+    for entry in raw_schema {
+        let name = entry
+            .get("name")
+            .cloned()
+            .ok_or_else(|| PyTypeError::new_err("schema dict missing 'name' key"))?;
+        let dtype = entry
+            .get("type")
+            .cloned()
+            .ok_or_else(|| PyTypeError::new_err("schema dict missing 'type' key"))?;
+        schema_vec.push((name, dtype));
+    }
+    Ok(schema_vec)
+}
+
+/// Convert Robin StructType to schema vec (name, type_str) for Python.
+fn robin_schema_to_vec(st: &RobinStructType) -> Vec<(String, String)> {
+    st.fields()
+        .iter()
+        .map(|f| (f.name.clone(), robin_data_type_to_str(&f.data_type)))
+        .collect()
+}
+
+fn robin_data_type_to_str(dt: &RobinDataType) -> String {
+    match dt {
+        RobinDataType::String => "string".to_string(),
+        RobinDataType::Integer => "int".to_string(),
+        RobinDataType::Long => "bigint".to_string(),
+        RobinDataType::Double => "double".to_string(),
+        RobinDataType::Boolean => "boolean".to_string(),
+        RobinDataType::Date => "date".to_string(),
+        RobinDataType::Timestamp => "timestamp".to_string(),
+        RobinDataType::Array(inner) => format!("array<{}>", robin_data_type_to_str(inner)),
+        RobinDataType::Map(k, v) => {
+            format!("map<{},{}>", robin_data_type_to_str(k), robin_data_type_to_str(v))
+        }
+        RobinDataType::Struct(_) => "struct".to_string(),
+    }
 }
 
 fn py_to_json_value(value: &PyAny) -> PyResult<JsonValue> {
@@ -78,24 +126,7 @@ fn py_rows_to_json(
 ///     list of dict rows.
 #[pyfunction]
 fn _execute_plan(py: Python<'_>, data: &PyAny, schema: &PyAny, plan_json: &str) -> PyResult<PyObject> {
-    // Parse schema from Python into Vec<(name, type)>
-    let raw_schema: Vec<HashMap<String, String>> = schema.extract().map_err(|_| {
-        PyTypeError::new_err("schema must be a sequence of {'name': str, 'type': str} dicts")
-    })?;
-    let mut schema_vec: Vec<(String, String)> = Vec::with_capacity(raw_schema.len());
-    for entry in raw_schema {
-        let name = entry
-            .get("name")
-            .cloned()
-            .ok_or_else(|| PyTypeError::new_err("schema dict missing 'name' key"))?;
-        let dtype = entry
-            .get("type")
-            .cloned()
-            .ok_or_else(|| PyTypeError::new_err("schema dict missing 'type' key"))?;
-        schema_vec.push((name, dtype));
-    }
-
-    // Convert data rows to Vec<Vec<JsonValue>>
+    let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
 
     // Parse plan JSON into Vec<Value>
@@ -380,6 +411,84 @@ fn json_rows_to_polars(
     Ok(DataFrame::new(columns)?)
 }
 
+/// Register a temp view in Robin's session catalog (PySpark: createOrReplaceTempView).
+#[pyfunction]
+fn register_temp_view(py: Python<'_>, name: &str, data: &PyAny, schema: &PyAny) -> PyResult<()> {
+    let schema_vec = parse_schema_from_python(schema)?;
+    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    session.create_or_replace_temp_view(name, df);
+    Ok(())
+}
+
+/// Register a global temp view in Robin's catalog (PySpark: createOrReplaceGlobalTempView).
+#[pyfunction]
+fn register_global_temp_view(py: Python<'_>, name: &str, data: &PyAny, schema: &PyAny) -> PyResult<()> {
+    let schema_vec = parse_schema_from_python(schema)?;
+    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    session.create_or_replace_global_temp_view(name, df);
+    Ok(())
+}
+
+/// Get a table or view from Robin's catalog (PySpark: spark.table(name)). Returns (rows, schema).
+#[pyfunction]
+fn get_table(py: Python<'_>, name: &str) -> PyResult<PyObject> {
+    let session = get_or_create_session();
+    let df: RobinDataFrame = session
+        .table(name)
+        .map_err(|e| PyValueError::new_err(format!("Robin table({name}): {e}")))?;
+    let json_rows = df
+        .collect_as_json_rows()
+        .map_err(|e| PyValueError::new_err(format!("collect_as_json_rows: {e}")))?;
+    let schema = df
+        .schema()
+        .map_err(|e| PyValueError::new_err(format!("Robin schema(): {e}")))?;
+    let schema_vec = robin_schema_to_vec(&schema);
+    let rows_obj = rows_to_py(py, json_rows)?;
+    let schema_list = PyList::empty(py);
+    for (name_str, type_str) in schema_vec {
+        let d = PyDict::new(py);
+        d.set_item("name", name_str)?;
+        d.set_item("type", type_str)?;
+        schema_list.append(d)?;
+    }
+    Ok(PyTuple::new(py, [rows_obj, schema_list.into_py(py)]).into_py(py))
+}
+
+/// Save data as a table in Robin's catalog (PySpark: saveAsTable). mode: "overwrite"|"append"|"ignore"|"error"
+#[pyfunction]
+fn save_as_table(
+    py: Python<'_>,
+    name: &str,
+    data: &PyAny,
+    schema: &PyAny,
+    mode: &str,
+) -> PyResult<()> {
+    let schema_vec = parse_schema_from_python(schema)?;
+    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    let save_mode = match mode.to_lowercase().as_str() {
+        "overwrite" => SaveMode::Overwrite,
+        "append" => SaveMode::Append,
+        "ignore" => SaveMode::Ignore,
+        _ => SaveMode::ErrorIfExists,
+    };
+    df.write()
+        .save_as_table(&session, name, save_mode)
+        .map_err(|e| PyValueError::new_err(format!("Robin save_as_table: {e}")))?;
+    Ok(())
+}
+
 /// Write rows to a Delta table at path. overwrite: true = replace table, false = append.
 #[pyfunction]
 fn write_delta(
@@ -416,14 +525,74 @@ fn write_delta(
     Ok(())
 }
 
+fn ddl_field_to_py(py: Python<'_>, name: &str, data_type: &spark_ddl_parser::DataType) -> PyResult<PyObject> {
+    let dict = PyDict::new(py);
+    dict.set_item("name", name)?;
+    dict.set_item("data_type", ddl_data_type_to_py(py, data_type)?)?;
+    Ok(dict.into_py(py))
+}
+
+fn ddl_data_type_to_py(py: Python<'_>, dt: &spark_ddl_parser::DataType) -> PyResult<PyObject> {
+    let dict = PyDict::new(py);
+    match dt {
+        spark_ddl_parser::DataType::Simple { type_name } => {
+            dict.set_item("type", "simple")?;
+            dict.set_item("type_name", type_name.as_str())?;
+        }
+        spark_ddl_parser::DataType::Decimal { precision, scale } => {
+            dict.set_item("type", "decimal")?;
+            dict.set_item("precision", *precision)?;
+            dict.set_item("scale", *scale)?;
+        }
+        spark_ddl_parser::DataType::Array { element_type } => {
+            dict.set_item("type", "array")?;
+            dict.set_item("element_type", ddl_data_type_to_py(py, element_type)?)?;
+        }
+        spark_ddl_parser::DataType::Map {
+            key_type,
+            value_type,
+        } => {
+            dict.set_item("type", "map")?;
+            dict.set_item("key_type", ddl_data_type_to_py(py, key_type)?)?;
+            dict.set_item("value_type", ddl_data_type_to_py(py, value_type)?)?;
+        }
+        spark_ddl_parser::DataType::Struct(s) => {
+            dict.set_item("type", "struct")?;
+            let fields_list = PyList::empty(py);
+            for f in &s.fields {
+                fields_list.append(ddl_field_to_py(py, &f.name, &f.data_type)?)?;
+            }
+            dict.set_item("fields", fields_list)?;
+        }
+    }
+    Ok(dict.into_py(py))
+}
+
+/// Parse a DDL schema string; returns list of {"name": str, "data_type": {...}} (nested for struct/array/map).
+#[pyfunction]
+fn parse_ddl_schema(py: Python<'_>, ddl: &str) -> PyResult<PyObject> {
+    let parsed: DDLStructType = parse_ddl_rs(ddl)
+        .map_err(|e| PyValueError::new_err(format!("DDL parse error: {e}")))?;
+    let list = PyList::empty(py);
+    for f in &parsed.fields {
+        list.append(ddl_field_to_py(py, &f.name, &f.data_type)?)?;
+    }
+    Ok(list.into_py(py))
+}
+
 /// Python module definition: exposes low-level Robin helpers for Sparkless.
 #[pymodule]
 fn _robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(parse_ddl_schema, m)?)?;
     m.add_function(wrap_pyfunction!(_execute_plan, m)?)?;
     m.add_function(wrap_pyfunction!(sql, m)?)?;
     m.add_function(wrap_pyfunction!(read_delta, m)?)?;
     m.add_function(wrap_pyfunction!(read_delta_version, m)?)?;
     m.add_function(wrap_pyfunction!(write_delta, m)?)?;
+    m.add_function(wrap_pyfunction!(register_temp_view, m)?)?;
+    m.add_function(wrap_pyfunction!(register_global_temp_view, m)?)?;
+    m.add_function(wrap_pyfunction!(get_table, m)?)?;
+    m.add_function(wrap_pyfunction!(save_as_table, m)?)?;
     m.add("__robin_version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

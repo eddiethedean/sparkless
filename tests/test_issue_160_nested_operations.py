@@ -1,17 +1,15 @@
 """
 Test to reproduce issue #160 by testing nested operations and lazy frame reuse.
 
-The bug might occur when:
-1. Operations create a lazy Polars DataFrame
-2. Columns are dropped via select
-3. The lazy DataFrame's execution plan still references the dropped columns
-4. When operations are chained, the lazy frame is reused and fails
+v4: Polars backend removed; these tests used Polars DataFrames directly.
 """
 
 import os
 import pytest
+
+pytest.skip("v4: Polars removed; tests used Polars DataFrames", allow_module_level=True)
+
 from sparkless import SparkSession, functions as F
-import polars as pl
 
 
 @pytest.fixture

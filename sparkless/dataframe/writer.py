@@ -31,22 +31,54 @@ import logging
 import os
 import shutil
 import uuid
+import csv
+import json
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
-import polars as pl
-
 from sparkless.dataframe.logical_plan import serialize_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
-from sparkless.polars_utils import align_frame_to_schema
 
 if TYPE_CHECKING:
     from sparkless.core.interfaces.storage import IStorageManager
     from .dataframe import DataFrame
 
-from ..spark_types import StructField, StructType, get_row_value
+from ..spark_types import (
+    BooleanType,
+    DateType,
+    DoubleType,
+    IntegerType,
+    LongType,
+    StructField,
+    StructType,
+    get_row_value,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _spark_type_to_arrow(dtype: Any) -> "Any":
+    """Map Sparkless DataType to pyarrow DataType for Parquet write."""
+    import pyarrow as pa
+
+    if isinstance(dtype, (str, type(None))):
+        return pa.string()
+    type_name = type(dtype).__name__
+    if type_name in ("StringType", "CharType", "VarcharType"):
+        return pa.string()
+    if type_name == "IntegerType":
+        return pa.int32()
+    if type_name in ("LongType",):
+        return pa.int64()
+    if type_name in ("DoubleType", "FloatType", "DecimalType"):
+        return pa.float64()
+    if type_name == "BooleanType":
+        return pa.bool_()
+    if type_name == "DateType":
+        return pa.date32()
+    if type_name in ("TimestampType", "TimestampNTZType"):
+        return pa.timestamp("us")
+    return pa.string()
 
 
 class DataFrameWriter:
@@ -481,14 +513,15 @@ class DataFrameWriter:
             return
 
         data_frame = self._materialize_dataframe()
-        polars_frame = self._to_polars_frame(data_frame.data, data_frame.schema)
+        data = self._data_to_dicts(data_frame.data)
+        schema = data_frame.schema
 
         if resolved_format == "parquet":
-            self._write_parquet(polars_frame, target_path)
+            self._write_parquet(data, schema, target_path)
         elif resolved_format == "json":
-            self._write_json(polars_frame, target_path)
+            self._write_json(data, target_path)
         elif resolved_format == "csv":
-            self._write_csv(polars_frame, target_path)
+            self._write_csv(data, schema, target_path)
         elif resolved_format == "text":
             self._write_text(data_frame.data, data_frame.schema, target_path)
         elif resolved_format == "delta":
@@ -620,20 +653,22 @@ class DataFrameWriter:
         else:
             path.unlink()
 
-    def _to_polars_frame(
-        self, data: List[Dict[str, Any]], schema: StructType
-    ) -> pl.DataFrame:
-        """Convert row dictionaries and schema into a Polars DataFrame."""
-        if not schema.fields:
-            return pl.DataFrame(data)
+    def _data_to_dicts(self, data: List[Any]) -> List[Dict[str, Any]]:
+        """Convert DataFrame data (Row/dict) to list of dicts."""
+        from sparkless.spark_types import get_row_value, row_keys
 
-        # Create DataFrame from dictionaries (handles empty data gracefully)
-        frame = (
-            pl.DataFrame(data)
-            if data
-            else pl.DataFrame({f.name: [] for f in schema.fields})
-        )
-        return align_frame_to_schema(frame, schema)
+        if not data:
+            return []
+        out = []
+        for row in data:
+            if hasattr(row, "asDict"):
+                out.append(dict(row.asDict()))
+            elif isinstance(row, dict):
+                out.append(dict(row))
+            else:
+                keys = row_keys(row)
+                out.append({k: get_row_value(row, k) for k in keys})
+        return out
 
     def _next_part_file(self, path: Path, extension: str) -> Path:
         """Generate a unique part file name within the target directory."""
@@ -644,40 +679,77 @@ class DataFrameWriter:
         filename = f"part-{index:05d}-{unique}{extension}"
         return path / filename
 
-    def _write_parquet(self, frame: pl.DataFrame, path: Path) -> None:
+    def _write_parquet(
+        self, data: List[Dict[str, Any]], schema: StructType, path: Path
+    ) -> None:
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+        except ImportError as e:
+            raise AnalysisException(
+                "Writing Parquet files requires pyarrow. Install with: pip install pyarrow. "
+                "Alternatively use format('delta').save(path) or saveAsTable()."
+            ) from e
         target = (
             path
             if path.suffix == ".parquet"
             else self._next_part_file(path, ".parquet")
         )
-        compression = self._options.get("compression", "snappy")
         target.parent.mkdir(parents=True, exist_ok=True)
-        frame.write_parquet(str(target), compression=compression)
+        if not data and schema.fields:
+            arrays = [pa.array([], type=_spark_type_to_arrow(f.dataType)) for f in schema.fields]
+            names = [f.name for f in schema.fields]
+        elif not data:
+            raise AnalysisException("Cannot write empty DataFrame with no schema to Parquet")
+        else:
+            names = [f.name for f in schema.fields] if schema.fields else list(data[0].keys())
+            if schema.fields and len(schema.fields) == len(names):
+                arrays = [
+                    pa.array([row.get(n) for row in data], type=_spark_type_to_arrow(schema.fields[i].dataType))
+                    for i, n in enumerate(names)
+                ]
+            else:
+                arrays = [pa.array([row.get(n) for row in data], type=pa.string()) for n in names]
+        table = pa.table(dict(zip(names, arrays)))
+        pq.write_table(table, str(target), compression=self._options.get("compression", "snappy"))
 
-    def _write_json(self, frame: pl.DataFrame, path: Path) -> None:
+    def _write_json(self, data: List[Dict[str, Any]], path: Path) -> None:
         target = path if path.suffix == ".json" else self._next_part_file(path, ".json")
         target.parent.mkdir(parents=True, exist_ok=True)
-        # Spark writes newline-delimited JSON; Polars handles this via write_ndjson
-        frame.write_ndjson(str(target))
+        with open(target, "w", encoding="utf-8") as f:
+            for row in data:
+                f.write(json.dumps(row, default=str) + "\n")
 
-    def _write_csv(self, frame: pl.DataFrame, path: Path) -> None:
+    def _write_csv(
+        self,
+        data: List[Dict[str, Any]],
+        schema: StructType,
+        path: Path,
+    ) -> None:
         target = path if path.suffix == ".csv" else self._next_part_file(path, ".csv")
         target.parent.mkdir(parents=True, exist_ok=True)
 
         include_header = self._get_bool_option("header", default=True)
         delimiter = self._options.get("sep", self._options.get("delimiter", ","))
-        null_value = self._options.get("nullValue")
-        compression = self._options.get("compression")
+        null_value = self._options.get("nullValue", "")
 
-        kwargs: Dict[str, Any] = {"include_header": include_header}
-        if delimiter:
-            kwargs["separator"] = delimiter
-        if null_value is not None:
-            kwargs["null_value"] = null_value
-        if compression is not None:
-            kwargs["compression"] = compression
+        if self._options.get("compression"):
+            raise AnalysisException("CSV compression is not supported without Polars")
 
-        frame.write_csv(str(target), **kwargs)
+        field_names = [f.name for f in schema.fields] if schema.fields else (list(data[0].keys()) if data else [])
+        with open(target, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=field_names,
+                delimiter=delimiter,
+                extrasaction="ignore",
+                lineterminator="\n",
+            )
+            if include_header:
+                writer.writeheader()
+            for row in data:
+                out = {k: (null_value if v is None else v) for k, v in row.items()}
+                writer.writerow(out)
 
     def _write_text(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path

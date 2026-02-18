@@ -3388,9 +3388,9 @@ dependencies = [
 
 [[package]]
 name = "robin-sparkless"
-version = "0.11.3"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c90edcdb5bc00d9651bd23b1c5d602d9b86ee73be470d008afb2d3f0809f0e9e"
+checksum = "b6ffc293d9a5eee70763d4f583e4dec9201f7bc97b05c0e54db3ab1b41831a6a"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3770,6 +3770,7 @@ dependencies = [
  "robin-sparkless",
  "serde",
  "serde_json",
+ "spark-ddl-parser",
 ]
 
 [[package]]

@@ -15,6 +15,7 @@ from ...spark_types import (
     LongType,
     DoubleType,
     get_row_value,
+    row_keys,
 )
 from ...core.column_resolver import ColumnResolver
 from ..protocols import SupportsDataFrameOps
@@ -316,7 +317,7 @@ class JoinService:
         # Add rows from other DataFrame (using materialized data)
         # Build a mapping from column names to actual column names in other DataFrame rows
         if other_materialized.data:
-            other_row_keys = list(other_materialized.data[0].keys())
+            other_row_keys = row_keys(other_materialized.data[0])
             other_row_map: Dict[str, Optional[str]] = {}
             for col in all_cols:
                 actual_col_in_row = ColumnResolver.resolve_column_name(

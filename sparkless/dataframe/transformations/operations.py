@@ -273,6 +273,11 @@ class TransformationOperations(Generic[SupportsDF]):
             from ...functions import F
 
             condition = F.expr(condition)  # type: ignore[assignment]
+        # Convert literal bool to Column so plan serialization and validation receive an expression
+        elif isinstance(condition, bool):
+            from ...functions import F
+
+            condition = F.lit(condition)  # type: ignore[assignment]
 
         # Pre-validation: validate filter expression
         self._validate_filter_expression(condition, "filter")

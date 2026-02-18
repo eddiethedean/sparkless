@@ -1,39 +1,32 @@
 """
-Adapter to convert spark-ddl-parser output to StructType.
+Adapter to convert DDL schema (from Robin's native parser) to StructType.
 
-This module provides an adapter layer between the standalone spark-ddl-parser
-package and sparkless's internal type system.
+This module parses DDL via the Rust spark-ddl-parser (robin-sparkless) and
+converts the result to Sparkless's internal type system.
 """
 
-from spark_ddl_parser import parse_ddl_schema as parse_ddl
-from spark_ddl_parser.types import (
-    StructType as DDLStructType,
-    StructField as DDLStructField,
-    SimpleType,
-    DecimalType,
-    ArrayType,
-    MapType,
-    DataType as DDLDataType,
-)
+from __future__ import annotations
+
+from typing import Any, Dict, List
 
 from ..spark_types import (
-    StructType,
-    StructField,
+    ArrayType,
+    BooleanType,
+    BinaryType,
+    ByteType,
     DataType,
-    StringType,
+    DateType,
+    DecimalType,
+    DoubleType,
+    FloatType,
     IntegerType,
     LongType,
-    DoubleType,
-    BooleanType,
-    DateType,
-    TimestampType,
-    BinaryType,
-    FloatType,
+    MapType,
     ShortType,
-    ByteType,
-    DecimalType as MockDecimalType,
-    ArrayType as MockArrayType,
-    MapType as MockMapType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
 )
 
 
@@ -48,86 +41,60 @@ def parse_ddl_schema(ddl_string: str) -> StructType:
 
     Raises:
         ValueError: If DDL string is invalid
+        RuntimeError: If the native extension is not available
     """
-    parsed = parse_ddl(ddl_string)
-    return _convert_struct_type(parsed)
+    from sparkless.robin.native import parse_ddl_schema_via_robin
 
-
-def _convert_struct_type(struct: DDLStructType) -> StructType:
-    """Convert StructType to StructType.
-
-    Args:
-        struct: Parsed StructType from spark-ddl-parser
-
-    Returns:
-        StructType
-    """
-    fields = [_convert_field(f) for f in struct.fields]
+    raw = parse_ddl_schema_via_robin(ddl_string)
+    fields = [_field_from_dict(f) for f in raw]
     return StructType(fields)
 
 
-def _convert_field(field: DDLStructField) -> StructField:
-    """Convert StructField to StructField.
-
-    Args:
-        field: Parsed StructField from spark-ddl-parser
-
-    Returns:
-        StructField
-    """
-    data_type = _convert_data_type(field.data_type)
-    return StructField(name=field.name, dataType=data_type, nullable=field.nullable)
+def _field_from_dict(field: Dict[str, Any]) -> StructField:
+    name = field["name"]
+    data_type = _data_type_from_dict(field["data_type"])
+    return StructField(name=name, dataType=data_type, nullable=True)
 
 
-def _convert_data_type(data_type: DDLDataType) -> DataType:
-    """Convert DataType to DataType.
-
-    Args:
-        data_type: Parsed DataType from spark-ddl-parser
-
-    Returns:
-        DataType
-    """
-    if isinstance(data_type, SimpleType):
-        return _convert_simple_type(data_type)
-    elif isinstance(data_type, DecimalType):
-        return MockDecimalType(precision=data_type.precision, scale=data_type.scale)
-    elif isinstance(data_type, ArrayType):
-        element_type = _convert_data_type(data_type.element_type)
-        return MockArrayType(element_type)
-    elif isinstance(data_type, MapType):
-        key_type = _convert_data_type(data_type.key_type)
-        value_type = _convert_data_type(data_type.value_type)
-        return MockMapType(key_type, value_type)
-    elif isinstance(data_type, DDLStructType):
-        return _convert_struct_type(data_type)
-    else:
-        # Default to string for unknown types
-        return StringType()
+def _data_type_from_dict(d: Dict[str, Any]) -> DataType:
+    kind = d.get("type")
+    if kind == "simple":
+        return _simple_type(d.get("type_name", "string"))
+    if kind == "decimal":
+        return DecimalType(
+            precision=int(d.get("precision", 10)),
+            scale=int(d.get("scale", 0)),
+        )
+    if kind == "array":
+        return ArrayType(_data_type_from_dict(d["element_type"]))
+    if kind == "map":
+        return MapType(
+            _data_type_from_dict(d["key_type"]),
+            _data_type_from_dict(d["value_type"]),
+        )
+    if kind == "struct":
+        fields_list: List[Dict[str, Any]] = d.get("fields", [])
+        struct_fields = [_field_from_dict(f) for f in fields_list]
+        return StructType(struct_fields)
+    return StringType()
 
 
-def _convert_simple_type(simple_type: SimpleType) -> DataType:
-    """Convert SimpleType to appropriate DataType.
-
-    Args:
-        simple_type: SimpleType from spark-ddl-parser
-
-    Returns:
-        DataType instance
-    """
+def _simple_type(type_name: str) -> DataType:
     type_mapping = {
         "string": StringType,
         "integer": IntegerType,
+        "int": IntegerType,
         "long": LongType,
+        "bigint": LongType,
         "double": DoubleType,
         "float": FloatType,
         "boolean": BooleanType,
+        "bool": BooleanType,
         "date": DateType,
         "timestamp": TimestampType,
         "binary": BinaryType,
         "short": ShortType,
         "byte": ByteType,
     }
-
-    type_class = type_mapping.get(simple_type.type_name, StringType)
+    type_class = type_mapping.get((type_name or "string").lower(), StringType)
     return type_class()

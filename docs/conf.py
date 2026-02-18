@@ -143,7 +143,6 @@ html_css_files = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "polars": ("https://pola-rs.github.io/polars/py-polars/", None),
 }
 
 # -- Options for autosummary -------------------------------------------------

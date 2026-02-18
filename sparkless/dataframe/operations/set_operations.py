@@ -13,6 +13,7 @@ from ...spark_types import (
     ShortType,
     ByteType,
     StructField,
+    row_keys,
 )
 
 if TYPE_CHECKING:
@@ -49,7 +50,7 @@ class SetOperations:
 
             # Get all column names from the row
             if row_dict:
-                for col in sorted(row_dict.keys()):  # Sort for consistent ordering
+                for col in sorted(row_keys(row_dict)):  # Sort for consistent ordering
                     value = row_dict[col]
                     # Convert unhashable types to hashable representations
                     try:

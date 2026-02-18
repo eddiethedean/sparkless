@@ -229,7 +229,7 @@ class ExpressionEvaluator:
 
             if isinstance(current, dict):
                 # Resolve field name case-insensitively within the struct
-                struct_keys = list(current.keys())
+                struct_keys = row_keys(current)
                 resolved_part = ColumnResolver.resolve_column_name(
                     part, struct_keys, case_sensitive
                 )
@@ -242,7 +242,7 @@ class ExpressionEvaluator:
                 try:
                     # Try case-insensitive lookup if it's a dict-like object
                     if hasattr(current, "keys") and hasattr(current.keys, "__call__"):
-                        struct_keys = list(current.keys())
+                        struct_keys = row_keys(current)
                         resolved_part = ColumnResolver.resolve_column_name(
                             part, struct_keys, case_sensitive
                         )
@@ -3078,23 +3078,18 @@ class ExpressionEvaluator:
 
         result = {}
         for entry in value:
-            if isinstance(entry, dict):
-                # PySpark structs in map_from_entries have "key" and "value" fields
-                # But our struct function creates "col1", "col2", etc.
-                # For map_from_entries, the first field is the key, second is the value
-                keys = list(entry.keys())
-                if len(keys) >= 2:
-                    # Use first two fields as key and value
-                    key = entry.get(keys[0])
-                    val = entry.get(keys[1])
-                    if key is not None:
-                        result[key] = val
-                elif "key" in entry and "value" in entry:
-                    # Standard key/value fields
-                    key = entry.get("key")
-                    val = entry.get("value")
-                    if key is not None:
-                        result[key] = val
+            keys = row_keys(entry)
+            if len(keys) >= 2:
+                # Use first two fields as key and value (dict or Row)
+                key = get_row_value(entry, keys[0], None)
+                val = get_row_value(entry, keys[1], None)
+                if key is not None:
+                    result[key] = val
+            elif keys and "key" in keys and "value" in keys:
+                key = get_row_value(entry, "key", None)
+                val = get_row_value(entry, "value", None)
+                if key is not None:
+                    result[key] = val
         return result
 
     def _func_map_zip_with(self, value: Any, operation: ColumnOperation) -> Any:
@@ -4345,7 +4340,7 @@ class ExpressionEvaluator:
                 for part in path_parts:
                     data = data.get(part, {})
             if isinstance(data, dict):
-                return list(data.keys())
+                return row_keys(data)
             return []
         except (json.JSONDecodeError, AttributeError, TypeError):
             return []

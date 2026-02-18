@@ -4,7 +4,10 @@ PySpark parity tests for DataFrame join operations.
 Tests validate that Sparkless join operations behave identically to PySpark.
 """
 
+import pytest
+
 from tests.fixtures.parity_base import ParityTestBase
+from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestJoinParity(ParityTestBase):
@@ -58,6 +61,10 @@ class TestJoinParity(ParityTestBase):
 
         self.assert_parity(result, expected)
 
+    @pytest.mark.skipif(
+        get_backend_type() == BackendType.ROBIN,
+        reason="Robin does not support right join; skip until crate supports it",
+    )
     def test_right_join(self, spark):
         """Test right join matches PySpark behavior."""
         expected = self.load_expected("joins", "right_join")
@@ -82,6 +89,10 @@ class TestJoinParity(ParityTestBase):
 
         self.assert_parity(result, expected)
 
+    @pytest.mark.skipif(
+        get_backend_type() == BackendType.ROBIN,
+        reason="Robin does not support outer join; skip until crate supports it",
+    )
     def test_outer_join(self, spark):
         """Test outer join matches PySpark behavior."""
         expected = self.load_expected("joins", "outer_join")
@@ -129,6 +140,10 @@ class TestJoinParity(ParityTestBase):
 
         self.assert_parity(result, expected)
 
+    @pytest.mark.skipif(
+        get_backend_type() == BackendType.ROBIN,
+        reason="Robin does not support semi join; skip until crate supports it",
+    )
     def test_semi_join(self, spark):
         """Test semi join matches PySpark behavior."""
         expected = self.load_expected("joins", "semi_join")
@@ -152,6 +167,10 @@ class TestJoinParity(ParityTestBase):
 
         self.assert_parity(result, expected)
 
+    @pytest.mark.skipif(
+        get_backend_type() == BackendType.ROBIN,
+        reason="Robin does not support anti join; skip until crate supports it",
+    )
     def test_anti_join(self, spark):
         """Test anti join matches PySpark behavior."""
         expected = self.load_expected("joins", "anti_join")

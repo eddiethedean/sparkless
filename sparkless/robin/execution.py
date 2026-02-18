@@ -18,7 +18,7 @@ from sparkless.dataframe.logical_plan import (
 from sparkless.spark_types import Row, StructType
 
 from . import native as _native
-from .plan_adapter import adapt_plan_for_robin
+from .plan_adapter import adapt_plan_for_robin, resolve_plan_columns
 
 
 def execute_via_robin(
@@ -39,6 +39,18 @@ def execute_via_robin(
         List[Row]: Materialized rows returned from Robin.
     """
     logical_plan = to_logical_plan(operations_df)
+    if data and isinstance(data[0], dict):
+        initial_schema_names = list(data[0].keys())
+    elif hasattr(schema, "fieldNames"):
+        initial_schema_names = list(schema.fieldNames())
+    else:
+        initial_schema_names = []
+    case_sensitive = (
+        getattr(operations_df, "_is_case_sensitive", lambda: False)()
+    )
+    logical_plan = resolve_plan_columns(
+        logical_plan, initial_schema_names, case_sensitive
+    )
     logical_plan = adapt_plan_for_robin(logical_plan)
     robin_schema: List[Dict[str, str]] = serialize_schema(schema)
     robin_data: List[Dict[str, Any]] = _serialize_data(list(data), schema)
