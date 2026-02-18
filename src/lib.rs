@@ -596,8 +596,62 @@ fn sparkless_robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<pydataframe::PyDataFrame>()?;
     m.add_class::<pydataframe::PyGroupedData>()?;
     m.add_class::<pycolumn::PyColumn>()?;
+    m.add_class::<pyfunctions::PyWhenBuilder>()?;
+    m.add_class::<pyfunctions::PyThenBuilder>()?;
     m.add_function(wrap_pyfunction!(pyfunctions::col, m)?)?;
     m.add_function(wrap_pyfunction!(pyfunctions::lit, m)?)?;
+    // String
+    m.add_function(wrap_pyfunction!(pyfunctions::concat, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::concat_ws, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::upper, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::lower, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::trim, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::substring, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::length, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::regexp_extract, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::regexp_replace, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::split, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::lpad, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::rpad, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::contains, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::like, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::format_string, m)?)?;
+    // Math
+    m.add_function(wrap_pyfunction!(pyfunctions::abs, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::ceil, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::floor, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::round, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::sqrt, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::pow, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::power, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::exp, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::log, m)?)?;
+    // Datetime
+    m.add_function(wrap_pyfunction!(pyfunctions::year, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::month, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::day, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::hour, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::minute, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::second, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::to_date, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::date_format, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::current_timestamp, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::date_add, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::date_sub, m)?)?;
+    // Conditional
+    m.add_function(wrap_pyfunction!(pyfunctions::when, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::when_otherwise, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::coalesce, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::greatest, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::least, m)?)?;
+    // Aggregation
+    m.add_function(wrap_pyfunction!(pyfunctions::sum, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::count, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::avg, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::mean, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::min, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::max, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::count_distinct, m)?)?;
 
     m.add_function(wrap_pyfunction!(parse_ddl_schema, m)?)?;
     m.add_function(wrap_pyfunction!(_execute_plan, m)?)?;
