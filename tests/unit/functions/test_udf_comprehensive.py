@@ -4,9 +4,16 @@ Comprehensive tests for UDF functionality in Sparkless.
 Tests cover various data types, operations, edge cases, and usage patterns.
 """
 
+import pytest
 import sparkless.sql.functions as F
 import sparkless.sql.types as T
 from sparkless.sql import SparkSession
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin does not support UDF expression",
+)
 
 
 class TestUDFBasicOperations:

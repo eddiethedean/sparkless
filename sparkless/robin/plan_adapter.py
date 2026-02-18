@@ -47,16 +47,20 @@ def _robin_arg_from_value(item: Any) -> Any:
 
 def _expand_right_to_args(right: Any, left: Any = None) -> List[Any]:
     """Build args list from right (list or literal-with-list) and optional left. Each arg in Robin format."""
+    args: List[Any] = []
+    if left is not None:
+        args.append(expr_to_robin_format(left))
     if isinstance(right, list):
-        return [_robin_arg_from_value(a) for a in right if a is not None]
+        args.extend(_robin_arg_from_value(a) for a in right if a is not None)
+        return args
     if isinstance(right, dict) and right.get("type") == "literal":
         v = right.get("value")
         if isinstance(v, list):
-            return [_robin_arg_from_value(a) for a in v if a is not None]
-        return [{"lit": v}] if v is not None else []
-    args = []
-    if left is not None:
-        args.append(expr_to_robin_format(left))
+            args.extend(_robin_arg_from_value(a) for a in v if a is not None)
+            return args
+        if v is not None:
+            args.append({"lit": v})
+        return args
     if right is not None:
         args.append(expr_to_robin_format(right))
     return args
@@ -223,7 +227,7 @@ def expr_to_robin_format(expr: Any) -> Any:
             args = [expr_to_robin_format(left)] if left is not None else []
             return {"fn": op, "args": args}
 
-        _BINARY_TO_FN = ("split", "startswith")
+        _BINARY_TO_FN = ("split", "startswith", "contains")
         if op in _BINARY_TO_FN:
             args = []
             if left is not None:
@@ -232,6 +236,12 @@ def expr_to_robin_format(expr: Any) -> Any:
                 args.append(expr_to_robin_format(right))
             return {"fn": op, "args": args}
 
+        # concat: Robin expects fn "concat" with args (one or more column/lit).
+        # Sparkless sends op with left/right (binary); for multiple cols it may nest.
+        if op == "concat":
+            args = _expand_right_to_args(right, left)
+            return {"fn": "concat", "args": args}
+
         # getItem: (column, key) -> fn "get_item" (Robin uses snake_case)
         if op == "getItem":
             args = [expr_to_robin_format(left)] if left is not None else []
@@ -239,17 +249,28 @@ def expr_to_robin_format(expr: Any) -> Any:
                 args.append(expr_to_robin_format(right))
             return {"fn": "get_item", "args": args}
 
-        # regexp_extract: Robin requires exactly 3 args [column, pattern, idx]. Default idx=0.
+        # regexp_extract: Robin requires exactly 3 args [column, pattern, idx] with
+        # pattern and idx as literals (issue #523). Sparkless serializes (pattern, idx)
+        # as {"type":"literal","value":[pattern, idx]}.
         if op == "regexp_extract":
             args = [expr_to_robin_format(left)] if left is not None else []
             if right is not None:
-                r = expr_to_robin_format(right)
-                if isinstance(r, dict) and "lit" in r and isinstance(r["lit"], list) and len(r["lit"]) >= 2:
-                    pattern, idx = r["lit"][0], r["lit"][1]
-                    args.append({"lit": pattern})
-                    args.append({"lit": idx})
+                # Unpack (pattern, idx) from literal value list
+                if isinstance(right, dict) and right.get("type") == "literal":
+                    v = right.get("value")
+                    if isinstance(v, (list, tuple)) and len(v) >= 2:
+                        args.append({"lit": v[0]})
+                        args.append({"lit": v[1]})
+                    else:
+                        args.append(expr_to_robin_format(right))
                 else:
-                    args.append(r)
+                    r = expr_to_robin_format(right)
+                    if isinstance(r, dict) and "lit" in r and isinstance(r["lit"], list) and len(r["lit"]) >= 2:
+                        pattern, idx = r["lit"][0], r["lit"][1]
+                        args.append({"lit": pattern})
+                        args.append({"lit": idx})
+                    else:
+                        args.append(r)
             if len(args) == 2:
                 args.append({"lit": 0})
             elif len(args) == 1:

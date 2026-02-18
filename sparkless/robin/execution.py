@@ -52,8 +52,21 @@ def execute_via_robin(
         logical_plan, initial_schema_names, case_sensitive
     )
     logical_plan = adapt_plan_for_robin(logical_plan)
-    robin_schema: List[Dict[str, str]] = serialize_schema(schema)
-    robin_data: List[Dict[str, Any]] = _serialize_data(list(data), schema)
+    # Robin needs the INPUT schema (describes data), not the output schema.
+    # When schema is projected (e.g. select creates [first] from [s]), schema
+    # no longer matches data keys. Infer base schema from data when mismatch.
+    data_list = list(data)
+    schema_names = list(schema.fieldNames()) if hasattr(schema, "fieldNames") else []
+    data_keys = list(data_list[0].keys()) if data_list and isinstance(data_list[0], dict) else []
+    if set(schema_names) != set(data_keys) and data_keys:
+        from sparkless.core.schema_inference import SchemaInferenceEngine
+
+        input_schema, _ = SchemaInferenceEngine.infer_from_data(data_list)
+        robin_schema = serialize_schema(input_schema)
+    else:
+        input_schema = schema
+        robin_schema = serialize_schema(schema)
+    robin_data: List[Dict[str, Any]] = _serialize_data(data_list, input_schema)
 
     result_rows: List[Dict[str, Any]] = _native.execute_plan_via_robin(
         robin_data,

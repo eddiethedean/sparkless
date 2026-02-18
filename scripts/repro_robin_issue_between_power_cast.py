@@ -55,13 +55,17 @@ def run_pyspark() -> None:
     assert len(rows) == 1
     r = rows[0]
     assert r["a"] == 5 and r["squared"] == 25 and r["a_str"] == "5"
-    print("PySpark: filter(between) + withColumn(**2) + withColumn(cast) -> SUCCESS (expected)")
+    print(
+        "PySpark: filter(between) + withColumn(**2) + withColumn(cast) -> SUCCESS (expected)"
+    )
     print(f"  Row: {dict(r)}")
 
 
 def main() -> int:
     if len(sys.argv) < 2 or sys.argv[1] not in ("robin", "pyspark"):
-        print("Usage: python scripts/repro_robin_issue_between_power_cast.py robin|pyspark")
+        print(
+            "Usage: python scripts/repro_robin_issue_between_power_cast.py robin|pyspark"
+        )
         return 1
     mode = sys.argv[1]
     try:

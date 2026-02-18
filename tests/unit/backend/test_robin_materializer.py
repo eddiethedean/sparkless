@@ -2,6 +2,8 @@
 
 v4: Backend package removed; execution is via sparkless.robin.execution only.
 """
+# mypy: ignore-errors
+
 from __future__ import annotations
 
 import pytest

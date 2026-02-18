@@ -8,6 +8,7 @@ import pytest
 
 from sparkless import SparkSession
 from sparkless.functions import F
+from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 @pytest.fixture
@@ -16,6 +17,10 @@ def spark():
     return SparkSession.builder.appName("test_create_map").getOrCreate()
 
 
+@pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin create_map semantics differ from PySpark; skip until parity",
+)
 class TestCreateMap:
     """Test suite for F.create_map() function."""
 

@@ -3,6 +3,8 @@
 In v4, Robin is the core engine; backend package was removed. Session always
 uses MemoryStorageManager and Robin execution (no BackendFactory).
 """
+# mypy: ignore-errors
+
 import pytest
 
 pytest.skip(

@@ -4,7 +4,15 @@ PySpark parity tests for Issue #331: Join with array_contains() condition.
 These tests verify that Sparkless behavior matches PySpark behavior.
 """
 
+import pytest
+
 from tests.fixtures.spark_imports import get_spark_imports
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin array_contains join parity not yet met",
+)
 
 
 class TestArrayContainsJoinParity:

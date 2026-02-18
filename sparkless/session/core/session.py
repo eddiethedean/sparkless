@@ -17,7 +17,6 @@ from ..catalog import Catalog
 from ..config import Configuration, SparkConfig
 from ..sql.executor import SQLExecutor
 from sparkless.dataframe import DataFrame, DataFrameReader
-from sparkless.storage.backends.memory import MemoryStorageManager
 from sparkless.storage.backends.robin import RobinCatalogStorage
 from ...spark_types import (
     StructType,
@@ -84,9 +83,12 @@ class SparkSession:
         self.performance_mode = performance_mode
         self._jvm_overhead = 0.001 if performance_mode == "realistic" else 0.00001
         self._storage = RobinCatalogStorage()
-        self.backend_type = "robin"  # v4 Robin-only; kept for test/fixture compatibility
+        self.backend_type = (
+            "robin"  # v4 Robin-only; kept for test/fixture compatibility
+        )
         self._catalog = Catalog(self._storage, spark=self)
         from typing import cast
+
         self.sparkContext = SparkContext(app_name)
         self._conf = Configuration()
         from ..._version import __version__
@@ -314,10 +316,18 @@ class SparkSession:
             query = self._sql_parameter_binder.bind_parameters(query, args, kwargs)
 
         # Execute SQL via Robin only; no Python fallback.
-        from sparkless.robin import native as robin_native
+        from sparkless.robin import execute_sql_via_robin
+        from sparkless.robin.schema_ser import schema_from_robin_list
 
-        rows = robin_native.execute_sql_via_robin(query)
-        df = self._real_createDataFrame(rows)
+        rows, robin_schema = execute_sql_via_robin(query)
+        # Use schema so empty results (CREATE SCHEMA, SHOW DATABASES, etc.) can create DataFrame
+        if not rows and not robin_schema:
+            from sparkless.spark_types import StructType
+
+            schema = StructType([])  # DDL returns no rows, no columns
+        else:
+            schema = schema_from_robin_list(robin_schema) if robin_schema else None
+        df = self._real_createDataFrame(rows, schema)
         return cast("IDataFrame", df)
 
     def _bind_parameters(

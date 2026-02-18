@@ -24,8 +24,6 @@ Example:
 
 from __future__ import annotations
 
-import csv
-import json
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
@@ -165,16 +163,16 @@ class DataFrameReader:
                     "Use read.format('delta').table('schema.table') for tables."
                 )
             # Phase 4: Delegate to Robin when the crate's delta feature is enabled.
-            from ..robin import native as robin_native
+            from ..robin import read_delta_via_robin, read_delta_version_via_robin
 
             try:
                 version_as_of = combined_options.get("versionAsOf")
                 if version_as_of is not None:
-                    rows = robin_native.read_delta_version_via_robin(
+                    rows = read_delta_version_via_robin(
                         str(Path(path).resolve()), int(version_as_of)
                     )
                 else:
-                    rows = robin_native.read_delta_via_robin(str(Path(path).resolve()))
+                    rows = read_delta_via_robin(str(Path(path).resolve()))
                 return self.session.createDataFrame(rows)
             except (AttributeError, RuntimeError) as e:
                 raise AnalysisException(
@@ -325,73 +323,46 @@ class DataFrameReader:
     def _read_parquet(
         self, paths: List[str], options: Dict[str, Any]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Read Parquet files; requires pyarrow."""
-        try:
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-        except ImportError as e:
-            raise AnalysisException(
-                "Reading Parquet files requires pyarrow. Install with: pip install pyarrow. "
-                "For Delta tables use read.format('delta').load(path) or spark.table()."
-            ) from e
-        tables = [pq.read_table(p) for p in paths]
-        if not tables:
-            return StructType([]), []
-        combined = pa.concat_tables(tables)
-        names = combined.column_names
-        fields = [StructField(n, StringType()) for n in names]
-        schema = StructType(fields)
-        rows = combined.to_pylist()
-        return schema, rows
+        """Read Parquet files via Robin crate."""
+        from ..robin import read_parquet_via_robin
+        from ..robin.schema_ser import schema_from_robin_list
+
+        all_rows: List[Dict[str, Any]] = []
+        schema: StructType = StructType([])
+        for p in paths:
+            rows, schema_list = read_parquet_via_robin(str(Path(p).resolve()))
+            schema = schema_from_robin_list(schema_list)
+            all_rows.extend(rows)
+        return schema, all_rows
 
     def _read_csv(
         self, paths: List[str], options: Dict[str, Any]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Read CSV files using stdlib csv."""
-        has_header = self._to_bool(options.get("header", options.get("hasHeader", "true")))
-        delimiter = options.get("sep", options.get("delimiter", ",")) or ","
-        rows: List[Dict[str, Any]] = []
-        field_names: List[str] = []
-        for file_path in paths:
-            with open(file_path, encoding="utf-8", newline="") as f:
-                reader = csv.DictReader(f, delimiter=delimiter)
-                if reader.fieldnames:
-                    if not field_names:
-                        field_names = list(reader.fieldnames)
-                    for r in reader:
-                        rows.append(dict(r))
-        if not field_names and rows:
-            field_names = list(rows[0].keys())
-        schema = StructType([StructField(n, StringType()) for n in field_names]) if field_names else StructType([])
-        return schema, rows
+        """Read CSV files via Robin crate."""
+        from ..robin import read_csv_via_robin
+        from ..robin.schema_ser import schema_from_robin_list
+
+        all_rows = []
+        schema = StructType([])
+        for p in paths:
+            rows, schema_list = read_csv_via_robin(str(Path(p).resolve()))
+            schema = schema_from_robin_list(schema_list)
+            all_rows.extend(rows)
+        return schema, all_rows
 
     def _read_json(
         self, paths: List[str], options: Dict[str, Any]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Read JSON or NDJSON files using stdlib json."""
-        all_rows: List[Dict[str, Any]] = []
-        for file_path in paths:
-            with open(file_path, encoding="utf-8") as f:
-                content = f.read().strip()
-                if not content:
-                    continue
-                try:
-                    parsed = json.loads(content)
-                except json.JSONDecodeError:
-                    parsed = []
-                    for line in content.splitlines():
-                        line = line.strip()
-                        if not line:
-                            continue
-                        parsed.append(json.loads(line))
-                if isinstance(parsed, list):
-                    all_rows.extend(parsed)
-                else:
-                    all_rows.append(parsed)
-        if not all_rows:
-            return StructType([]), []
-        field_names = list(all_rows[0].keys())
-        schema = StructType([StructField(n, StringType()) for n in field_names])
+        """Read JSON or NDJSON via Robin crate."""
+        from ..robin import read_json_via_robin
+        from ..robin.schema_ser import schema_from_robin_list
+
+        all_rows = []
+        schema = StructType([])
+        for p in paths:
+            rows, schema_list = read_json_via_robin(str(Path(p).resolve()))
+            schema = schema_from_robin_list(schema_list)
+            all_rows.extend(rows)
         return schema, all_rows
 
     def _read_text(self, paths: List[str]) -> Tuple[StructType, List[Dict[str, Any]]]:

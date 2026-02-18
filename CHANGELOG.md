@@ -4,12 +4,12 @@
 
 ### Summary
 
-Sparkless v4 is **Robin-only**: execution is entirely via the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate (0.11.5+), integrated with PyO3. The Polars backend, backend selection, and the `sparkless.backend` package have been removed.
+Sparkless v4 is **Robin-only**: execution is entirely via the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate (0.11.7+), integrated with PyO3. The Polars backend, backend selection, and the `sparkless.backend` package have been removed.
 
 ### Added
 
 - **Robin engine** – Single execution path; logical plans are executed by the robin-sparkless crate (built into the native extension). No separate `pip install robin-sparkless`.
-- **robin-sparkless 0.11.5** – Fixes all reported Sparkless parity issues (e.g. [#492](https://github.com/eddiethedean/robin-sparkless/issues/492), [#176](https://github.com/eddiethedean/robin-sparkless/issues/176), [#503](https://github.com/eddiethedean/robin-sparkless/issues/503), [#512](https://github.com/eddiethedean/robin-sparkless/issues/512), [#513](https://github.com/eddiethedean/robin-sparkless/issues/513)).
+- **robin-sparkless 0.11.7** – Fixes reported Sparkless parity issues (e.g. [#492](https://github.com/eddiethedean/robin-sparkless/issues/492), [#176](https://github.com/eddiethedean/robin-sparkless/issues/176), [#503](https://github.com/eddiethedean/robin-sparkless/issues/503), [#512](https://github.com/eddiethedean/robin-sparkless/issues/512), [#513](https://github.com/eddiethedean/robin-sparkless/issues/513)).
 - **Documentation** – [docs/robin_parity_from_skipped_tests.md](docs/robin_parity_from_skipped_tests.md), [docs/upstream.md](docs/upstream.md) (Robin version and parity policy), updated README and backend/configuration docs for v4.
 
 ### Removed

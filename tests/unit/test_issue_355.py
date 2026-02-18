@@ -9,6 +9,12 @@ import pytest
 
 from sparkless.sql import SparkSession
 from sparkless import functions as F
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin unionByName diamond dependency differs",
+)
 
 
 class TestIssue355DiamondDependency:

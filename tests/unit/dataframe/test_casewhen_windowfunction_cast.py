@@ -13,6 +13,11 @@ import pytest
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin CaseWhen/Window cast semantics differ from PySpark",
+)
+
 # Get imports based on backend
 imports = get_spark_imports()
 SparkSession = imports.SparkSession

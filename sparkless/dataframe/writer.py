@@ -31,12 +31,10 @@ import logging
 import os
 import shutil
 import uuid
-import csv
-import json
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
-from sparkless.dataframe.logical_plan import serialize_schema
+from sparkless.robin.schema_ser import serialize_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
 
 if TYPE_CHECKING:
@@ -44,41 +42,12 @@ if TYPE_CHECKING:
     from .dataframe import DataFrame
 
 from ..spark_types import (
-    BooleanType,
-    DateType,
-    DoubleType,
-    IntegerType,
-    LongType,
     StructField,
     StructType,
     get_row_value,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _spark_type_to_arrow(dtype: Any) -> "Any":
-    """Map Sparkless DataType to pyarrow DataType for Parquet write."""
-    import pyarrow as pa
-
-    if isinstance(dtype, (str, type(None))):
-        return pa.string()
-    type_name = type(dtype).__name__
-    if type_name in ("StringType", "CharType", "VarcharType"):
-        return pa.string()
-    if type_name == "IntegerType":
-        return pa.int32()
-    if type_name in ("LongType",):
-        return pa.int64()
-    if type_name in ("DoubleType", "FloatType", "DecimalType"):
-        return pa.float64()
-    if type_name == "BooleanType":
-        return pa.bool_()
-    if type_name == "DateType":
-        return pa.date32()
-    if type_name in ("TimestampType", "TimestampNTZType"):
-        return pa.timestamp("us")
-    return pa.string()
 
 
 class DataFrameWriter:
@@ -98,7 +67,7 @@ class DataFrameWriter:
         >>> df.write.format("parquet").mode("overwrite").saveAsTable("my_table")
     """
 
-    def __init__(self, df: DataFrame, storage: "IStorageManager"):
+    def __init__(self, df: DataFrame, storage: IStorageManager):
         """Initialize DataFrameWriter.
 
         Args:
@@ -519,7 +488,7 @@ class DataFrameWriter:
         if resolved_format == "parquet":
             self._write_parquet(data, schema, target_path)
         elif resolved_format == "json":
-            self._write_json(data, target_path)
+            self._write_json(data, schema, target_path)
         elif resolved_format == "csv":
             self._write_csv(data, schema, target_path)
         elif resolved_format == "text":
@@ -682,43 +651,28 @@ class DataFrameWriter:
     def _write_parquet(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path
     ) -> None:
-        try:
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-        except ImportError as e:
-            raise AnalysisException(
-                "Writing Parquet files requires pyarrow. Install with: pip install pyarrow. "
-                "Alternatively use format('delta').save(path) or saveAsTable()."
-            ) from e
+        from sparkless.robin import write_parquet_via_robin
+
         target = (
             path
             if path.suffix == ".parquet"
             else self._next_part_file(path, ".parquet")
         )
         target.parent.mkdir(parents=True, exist_ok=True)
-        if not data and schema.fields:
-            arrays = [pa.array([], type=_spark_type_to_arrow(f.dataType)) for f in schema.fields]
-            names = [f.name for f in schema.fields]
-        elif not data:
-            raise AnalysisException("Cannot write empty DataFrame with no schema to Parquet")
-        else:
-            names = [f.name for f in schema.fields] if schema.fields else list(data[0].keys())
-            if schema.fields and len(schema.fields) == len(names):
-                arrays = [
-                    pa.array([row.get(n) for row in data], type=_spark_type_to_arrow(schema.fields[i].dataType))
-                    for i, n in enumerate(names)
-                ]
-            else:
-                arrays = [pa.array([row.get(n) for row in data], type=pa.string()) for n in names]
-        table = pa.table(dict(zip(names, arrays)))
-        pq.write_table(table, str(target), compression=self._options.get("compression", "snappy"))
+        schema_list = serialize_schema(schema)
+        overwrite = self.save_mode == "overwrite"
+        write_parquet_via_robin(data, schema_list, str(target.resolve()), overwrite)
 
-    def _write_json(self, data: List[Dict[str, Any]], path: Path) -> None:
+    def _write_json(
+        self, data: List[Dict[str, Any]], schema: StructType, path: Path
+    ) -> None:
+        from sparkless.robin import write_json_via_robin
+
         target = path if path.suffix == ".json" else self._next_part_file(path, ".json")
         target.parent.mkdir(parents=True, exist_ok=True)
-        with open(target, "w", encoding="utf-8") as f:
-            for row in data:
-                f.write(json.dumps(row, default=str) + "\n")
+        schema_list = serialize_schema(schema)
+        overwrite = self.save_mode == "overwrite"
+        write_json_via_robin(data, schema_list, str(target.resolve()), overwrite)
 
     def _write_csv(
         self,
@@ -726,30 +680,13 @@ class DataFrameWriter:
         schema: StructType,
         path: Path,
     ) -> None:
+        from sparkless.robin import write_csv_via_robin
+
         target = path if path.suffix == ".csv" else self._next_part_file(path, ".csv")
         target.parent.mkdir(parents=True, exist_ok=True)
-
-        include_header = self._get_bool_option("header", default=True)
-        delimiter = self._options.get("sep", self._options.get("delimiter", ","))
-        null_value = self._options.get("nullValue", "")
-
-        if self._options.get("compression"):
-            raise AnalysisException("CSV compression is not supported without Polars")
-
-        field_names = [f.name for f in schema.fields] if schema.fields else (list(data[0].keys()) if data else [])
-        with open(target, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(
-                f,
-                fieldnames=field_names,
-                delimiter=delimiter,
-                extrasaction="ignore",
-                lineterminator="\n",
-            )
-            if include_header:
-                writer.writeheader()
-            for row in data:
-                out = {k: (null_value if v is None else v) for k, v in row.items()}
-                writer.writerow(out)
+        schema_list = serialize_schema(schema)
+        overwrite = self.save_mode == "overwrite"
+        write_csv_via_robin(data, schema_list, str(target.resolve()), overwrite)
 
     def _write_text(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path
@@ -771,16 +708,16 @@ class DataFrameWriter:
                 handle.write("" if value is None else str(value))
                 handle.write(os.linesep)
 
-    def _write_delta_via_robin(self, data_frame: "DataFrame", path: str) -> None:
+    def _write_delta_via_robin(self, data_frame: DataFrame, path: str) -> None:
         """Write DataFrame to Delta table at path using the Robin Rust crate."""
-        from sparkless.robin import native as robin_native
+        from sparkless.robin import write_delta_via_robin
 
         dict_data = [
             row.asDict() if hasattr(row, "asDict") else row for row in data_frame.data
         ]
         schema_list = serialize_schema(data_frame.schema)
         overwrite = self.save_mode == "overwrite"
-        robin_native.write_delta_via_robin(dict_data, schema_list, path, overwrite)
+        write_delta_via_robin(dict_data, schema_list, path, overwrite)
 
     def _get_bool_option(self, key: str, default: bool = False) -> bool:
         """Resolve boolean option values with Spark-compatible parsing."""

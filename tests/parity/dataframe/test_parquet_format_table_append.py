@@ -36,7 +36,11 @@ class TestParquetFormatTableAppend(ParityTestBase):
         self.spark.sql(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE")
 
         # v4: session uses MemoryStorageManager (no db_path); skip file cleanup
-        if hasattr(self.spark._storage, "db_path") and self.spark._storage.db_path and self.spark._storage.db_path != ":memory:":
+        if (
+            hasattr(self.spark._storage, "db_path")
+            and self.spark._storage.db_path
+            and self.spark._storage.db_path != ":memory:"
+        ):
             table_path = os.path.join(
                 self.spark._storage.db_path,
                 self.schema_name,

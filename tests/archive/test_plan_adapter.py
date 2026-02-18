@@ -1,4 +1,5 @@
 """Unit tests for the Robin plan adapter (Sparkless -> LOGICAL_PLAN_FORMAT)."""
+# mypy: ignore-errors
 
 from __future__ import annotations
 
@@ -33,12 +34,16 @@ def test_expr_comparison_to_robin() -> None:
         "left": {"col": "x"},
         "right": {"lit": 50},
     }
-    assert expr_to_robin_format({"type": "op", "op": "==", "left": col_node, "right": lit_node}) == {
+    assert expr_to_robin_format(
+        {"type": "op", "op": "==", "left": col_node, "right": lit_node}
+    ) == {
         "op": "eq",
         "left": {"col": "x"},
         "right": {"lit": 50},
     }
-    assert expr_to_robin_format({"type": "op", "op": "<=", "left": col_node, "right": lit_node}) == {
+    assert expr_to_robin_format(
+        {"type": "op", "op": "<=", "left": col_node, "right": lit_node}
+    ) == {
         "op": "le",
         "left": {"col": "x"},
         "right": {"lit": 50},
@@ -54,11 +59,15 @@ def test_expr_arithmetic_to_robin() -> None:
         "fn": "multiply",
         "args": [{"col": "x"}, {"lit": 2}],
     }
-    assert expr_to_robin_format({"type": "op", "op": "+", "left": col_node, "right": lit_node}) == {
+    assert expr_to_robin_format(
+        {"type": "op", "op": "+", "left": col_node, "right": lit_node}
+    ) == {
         "fn": "add",
         "args": [{"col": "x"}, {"lit": 2}],
     }
-    assert expr_to_robin_format({"type": "op", "op": "-", "left": col_node, "right": lit_node}) == {
+    assert expr_to_robin_format(
+        {"type": "op", "op": "-", "left": col_node, "right": lit_node}
+    ) == {
         "fn": "subtract",
         "args": [{"col": "x"}, {"lit": 2}],
     }
@@ -67,8 +76,18 @@ def test_expr_arithmetic_to_robin() -> None:
 @pytest.mark.unit
 def test_expr_nested_filter_condition() -> None:
     # (x > 50) and (x < 100)
-    left_gt = {"type": "op", "op": ">", "left": {"type": "column", "name": "x"}, "right": {"type": "literal", "value": 50}}
-    right_lt = {"type": "op", "op": "<", "left": {"type": "column", "name": "x"}, "right": {"type": "literal", "value": 100}}
+    left_gt = {
+        "type": "op",
+        "op": ">",
+        "left": {"type": "column", "name": "x"},
+        "right": {"type": "literal", "value": 50},
+    }
+    right_lt = {
+        "type": "op",
+        "op": "<",
+        "left": {"type": "column", "name": "x"},
+        "right": {"type": "literal", "value": 100},
+    }
     and_expr = {"type": "op", "op": "and", "left": left_gt, "right": right_lt}
     got = expr_to_robin_format(and_expr)
     assert got == {
@@ -81,7 +100,12 @@ def test_expr_nested_filter_condition() -> None:
 @pytest.mark.unit
 def test_expr_not_to_robin() -> None:
     # Sparkless puts unary operand in "left"
-    inner = {"type": "op", "op": "==", "left": {"type": "column", "name": "a"}, "right": {"type": "literal", "value": 0}}
+    inner = {
+        "type": "op",
+        "op": "==",
+        "left": {"type": "column", "name": "a"},
+        "right": {"type": "literal", "value": 0},
+    }
     expr = {"type": "op", "op": "not", "left": inner, "right": None}
     assert expr_to_robin_format(expr) == {
         "op": "not",
@@ -110,7 +134,11 @@ def test_expr_between_to_robin() -> None:
         "type": "op",
         "op": "between",
         "left": {"type": "column", "name": "a"},
-        "right": {"type": "between_bounds", "lower": {"type": "literal", "value": 3}, "upper": {"type": "literal", "value": 7}},
+        "right": {
+            "type": "between_bounds",
+            "lower": {"type": "literal", "value": 3},
+            "upper": {"type": "literal", "value": 7},
+        },
     }
     got = expr_to_robin_format(expr)
     assert got == {
@@ -171,7 +199,12 @@ def test_adapt_plan_filter_unwraps_condition() -> None:
         {
             "op": "filter",
             "payload": {
-                "condition": {"type": "op", "op": ">", "left": {"type": "column", "name": "x"}, "right": {"type": "literal", "value": 50}},
+                "condition": {
+                    "type": "op",
+                    "op": ">",
+                    "left": {"type": "column", "name": "x"},
+                    "right": {"type": "literal", "value": 50},
+                },
             },
         },
     ]
@@ -189,7 +222,12 @@ def test_adapt_plan_with_column_renames_expression_to_expr() -> None:
             "op": "withColumn",
             "payload": {
                 "name": "double_x",
-                "expression": {"type": "op", "op": "*", "left": {"type": "column", "name": "x"}, "right": {"type": "literal", "value": 2}},
+                "expression": {
+                    "type": "op",
+                    "op": "*",
+                    "left": {"type": "column", "name": "x"},
+                    "right": {"type": "literal", "value": 2},
+                },
             },
         },
     ]
@@ -198,7 +236,10 @@ def test_adapt_plan_with_column_renames_expression_to_expr() -> None:
     assert got[0]["op"] == "withColumn"
     assert "expression" not in got[0]["payload"]
     assert got[0]["payload"]["name"] == "double_x"
-    assert got[0]["payload"]["expr"] == {"fn": "multiply", "args": [{"col": "x"}, {"lit": 2}]}
+    assert got[0]["payload"]["expr"] == {
+        "fn": "multiply",
+        "args": [{"col": "x"}, {"lit": 2}],
+    }
 
 
 @pytest.mark.unit
@@ -222,14 +263,39 @@ def test_adapt_plan_empty() -> None:
 @pytest.mark.unit
 def test_adapt_plan_mixed_filter_with_column_limit() -> None:
     plan = [
-        {"op": "filter", "payload": {"condition": {"type": "op", "op": ">=", "left": {"type": "column", "name": "v"}, "right": {"type": "literal", "value": 1}}}},
-        {"op": "withColumn", "payload": {"name": "twice", "expression": {"type": "op", "op": "*", "left": {"type": "column", "name": "v"}, "right": {"type": "literal", "value": 2}}}},
+        {
+            "op": "filter",
+            "payload": {
+                "condition": {
+                    "type": "op",
+                    "op": ">=",
+                    "left": {"type": "column", "name": "v"},
+                    "right": {"type": "literal", "value": 1},
+                }
+            },
+        },
+        {
+            "op": "withColumn",
+            "payload": {
+                "name": "twice",
+                "expression": {
+                    "type": "op",
+                    "op": "*",
+                    "left": {"type": "column", "name": "v"},
+                    "right": {"type": "literal", "value": 2},
+                },
+            },
+        },
         {"op": "limit", "payload": {"n": 5}},
     ]
     got = adapt_plan_for_robin(plan)
     assert len(got) == 3
     assert got[0]["op"] == "filter" and got[0]["payload"]["op"] == "ge"
-    assert got[1]["op"] == "withColumn" and "expr" in got[1]["payload"] and got[1]["payload"]["expr"]["fn"] == "multiply"
+    assert (
+        got[1]["op"] == "withColumn"
+        and "expr" in got[1]["payload"]
+        and got[1]["payload"]["expr"]["fn"] == "multiply"
+    )
     assert got[2]["op"] == "limit" and got[2]["payload"] == {"n": 5}
 
 
@@ -247,7 +313,7 @@ def test_robin_filter_and_with_column_integration() -> None:
         pytest.skip("Robin extension not available")
     spark = SparkSession.builder.appName("PlanAdapterIntegration").getOrCreate()
     try:
-        # Probe select-by-name (robin-sparkless 0.11.5+)
+        # Probe select-by-name (robin-sparkless 0.11.7+)
         df = spark.createDataFrame([{"x": 1}])
         df.select("x").collect()
     except Exception as e:

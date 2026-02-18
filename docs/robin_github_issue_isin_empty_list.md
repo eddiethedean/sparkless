@@ -39,7 +39,7 @@ assert len(result) == 0, "col.isin([]) must be false for all rows; expected 0 ro
 
 ## Environment
 
-- Sparkless v4 (Robin-only), robin-sparkless crate 0.11.5 via PyO3 extension.
+- Sparkless v4 (Robin-only), robin-sparkless crate 0.11.7 via PyO3 extension.
 - PySpark 3.x.
 
 ## References

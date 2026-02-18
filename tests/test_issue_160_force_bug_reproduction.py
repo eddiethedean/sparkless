@@ -5,7 +5,11 @@ v4: Uses BackendFactory; backend removed. Skipped.
 """
 
 import pytest
-pytest.skip("v4: backend package removed; tests use Polars materializer", allow_module_level=True)
+
+pytest.skip(
+    "v4: backend package removed; tests use Polars materializer",
+    allow_module_level=True,
+)
 from sparkless import SparkSession, functions as F
 from sparkless.core.exceptions.operation import SparkColumnNotFoundError
 

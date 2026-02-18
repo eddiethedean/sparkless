@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from functools import lru_cache
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 ENV_FEATURE_FLAGS_KEY = "SPARKLESS_FEATURE_FLAGS"
 ENV_PROFILE_TOGGLE = "SPARKLESS_PROFILE"

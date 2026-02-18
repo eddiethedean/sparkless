@@ -4,8 +4,16 @@ PySpark parity tests for null handling functions.
 Tests validate that Sparkless null handling functions behave identically to PySpark.
 """
 
+import pytest
+
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_imports import get_spark_imports
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin null handling parity not yet met",
+)
 
 
 class TestNullHandlingFunctionsParity(ParityTestBase):

@@ -12,6 +12,11 @@ import pytest
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 from tests.fixtures.spark_imports import get_spark_imports
 
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin does not support translate/substring_index/levenshtein/soundex/crc32/xxhash64/get_json_object/json_tuple/regexp_extract_all",
+)
+
 imports = get_spark_imports()
 F = imports.F
 

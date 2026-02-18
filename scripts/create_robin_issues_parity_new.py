@@ -58,10 +58,15 @@ def create_issue(issue: dict, dry_run: bool) -> bool:
         print(f"  Body: {body_file}")
         return True
     cmd = [
-        "gh", "issue", "create",
-        "-R", REPO,
-        "--title", title,
-        "--body-file", str(body_file),
+        "gh",
+        "issue",
+        "create",
+        "-R",
+        REPO,
+        "--title",
+        title,
+        "--body-file",
+        str(body_file),
     ]
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -76,7 +81,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Create new robin-sparkless GitHub issues for PySpark parity (with reproductions)"
     )
-    parser.add_argument("--dry-run", action="store_true", help="Print only, do not create")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print only, do not create"
+    )
     parser.add_argument(
         "--issue",
         choices=["1", "2", "3", "4", "5", "all"],

@@ -44,4 +44,4 @@ assert [r["row_num"] for r in result] in ([1, 2, 1], [1, 1, 2])
 
 ## Environment
 
-- Sparkless v4, robin-sparkless 0.11.5. PySpark 3.x.
+- Sparkless v4, robin-sparkless 0.11.7. PySpark 3.x.

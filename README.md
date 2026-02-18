@@ -47,7 +47,7 @@ from sparkless.sql import SparkSession
 | 🧪 **PySpark Parity** | Full PySpark 3.2–3.5 API surface; execution via robin-sparkless crate |
 | 🔄 **Lazy Evaluation** | Logical plans executed by Robin engine |
 | 🏭 **Production Ready** | 850+ passing tests (Robin), 100% mypy typed |
-| 🦀 **Robin Engine** | Single execution path: [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) crate (0.11.5+) |
+| 🦀 **Robin Engine** | [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) (0.11.7+) directly wired to Python via PyO3; single extension, no extra engine layer |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with mypy, comprehensive type annotations |
 
@@ -272,7 +272,7 @@ result = (
 
 Sparkless v4 runs on a **single execution engine**: the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate, integrated via a PyO3-built native extension. There is no backend selection; the crate is compiled into Sparkless (no separate `pip install robin-sparkless`).
 
-- 🦀 **Robin 0.11.5+** – Logical plans are translated and executed by the crate
+- 🦀 **Robin 0.11.7+** – Logical plans are translated and executed by the crate
 - ⚡ **No JVM** – Pure Python API with Rust execution
 - 📊 **Catalog & SQL** – Optional `sql` and `delta` features in the crate
 - 🔄 **Lazy Evaluation** – Plans built in Python, executed in Robin
@@ -336,7 +336,7 @@ Benchmarks: Sparkless v4 (Robin) vs PySpark on **10k rows**. Run with the instal
 | OrderBy desc + limit | ~1.6s | ~0.05s | **~32x** |
 | Full test suite (850+ tests) | 5–10 min | ~1 min | **~10x** |
 
-*Dataset: 10k rows (id, x, key, value). All queries run on robin-sparkless 0.11.5+. Full suite: `pytest -n 12`.*
+*Dataset: 10k rows (id, x, key, value). All queries run on robin-sparkless 0.11.7+. Full suite: `pytest -n 12`.*
 
 ### Performance tooling
 
@@ -354,7 +354,7 @@ Benchmarks: Sparkless v4 (Robin) vs PySpark on **10k rows**. Run with the instal
 - 🦀 **Single engine** – Execution is entirely via the [robin-sparkless](https://github.com/eddiethedean/robin-sparkless) Rust crate (0.11.3+), integrated with PyO3. No backend selection; no Polars or other Python execution backends.
 - 📦 **No robin-sparkless Python package** – The crate is compiled into Sparkless; you do not need `pip install robin-sparkless`.
 - 🗑️ **Removed** – `BackendFactory`, backend config (`spark.sparkless.backend`), `db_path`, and the legacy `sparkless.backend` package.
-- ✅ **Robin 0.11.5** – Fixes all reported Sparkless parity issues: [#492](https://github.com/eddiethedean/robin-sparkless/issues/492), [#176](https://github.com/eddiethedean/robin-sparkless/issues/176), [#503](https://github.com/eddiethedean/robin-sparkless/issues/503), [#512](https://github.com/eddiethedean/robin-sparkless/issues/512) (empty create_map), [#513](https://github.com/eddiethedean/robin-sparkless/issues/513) (inner join), and others.
+- ✅ **Robin 0.11.7** – Fixes reported Sparkless parity issues: [#492](https://github.com/eddiethedean/robin-sparkless/issues/492), [#176](https://github.com/eddiethedean/robin-sparkless/issues/176), [#503](https://github.com/eddiethedean/robin-sparkless/issues/503), [#512](https://github.com/eddiethedean/robin-sparkless/issues/512) (empty create_map), [#513](https://github.com/eddiethedean/robin-sparkless/issues/513) (inner join), and others.
 - 📚 **Docs** – See [robin_v4_overhaul_plan.md](docs/robin_v4_overhaul_plan.md), [upstream.md](docs/upstream.md), and [robin_parity_from_skipped_tests.md](docs/robin_parity_from_skipped_tests.md) for parity notes.
 
 ### Version 3.26.0 - Missing String & JSON Functions (Issue #189)
@@ -533,7 +533,7 @@ See [Migration Guide](https://sparkless.readthedocs.io/en/latest/migration_from_
 
 ## Development Setup
 
-Sparkless v4 includes a Rust extension (robin-sparkless crate). You need Rust and maturin to build from source.
+Sparkless v4 includes a Rust extension (robin-sparkless crate). You need Rust and maturin to build from source. The extension must be built via `pip install -e .` or `maturin develop` (not raw `cargo build`) so it links against Python. If you see Cargo errors (e.g. "no targets specified" or missing `_Py*` linker symbols), set `CARGO_HOME` to your real Cargo home (e.g. `export CARGO_HOME=~/.cargo`). The Makefile does this for `install` and `check-full`.
 
 ```bash
 # Install for development (builds the Robin extension)

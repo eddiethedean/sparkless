@@ -43,7 +43,7 @@ def parse_ddl_schema(ddl_string: str) -> StructType:
         ValueError: If DDL string is invalid
         RuntimeError: If the native extension is not available
     """
-    from sparkless.robin.native import parse_ddl_schema_via_robin
+    from sparkless.robin import parse_ddl_schema_via_robin
 
     raw = parse_ddl_schema_via_robin(ddl_string)
     fields = [_field_from_dict(f) for f in raw]

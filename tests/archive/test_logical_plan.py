@@ -353,7 +353,9 @@ class TestLogicalPlanPhase4:
                 session.stop()
             CoreSession._singleton_session = old_singleton
 
-    @pytest.mark.skip(reason="v4: backend.polars.plan_interpreter removed; execution via Robin")
+    @pytest.mark.skip(
+        reason="v4: backend.polars.plan_interpreter removed; execution via Robin"
+    )
     def test_groupBy_via_plan_interpreter(self):
         """groupBy().agg() executed via plan path produces correct result."""
         from sparkless.backend.polars.plan_interpreter import execute_plan
@@ -388,7 +390,9 @@ class TestLogicalPlanPhase4:
         assert rows_sorted[1]["sum(v)"] == 30
         assert rows_sorted[1]["count(v)"] == 1
 
-    @pytest.mark.skip(reason="v4: backend.polars.plan_interpreter removed; execution via Robin")
+    @pytest.mark.skip(
+        reason="v4: backend.polars.plan_interpreter removed; execution via Robin"
+    )
     def test_plan_interpreter_cast_between_power(self):
         """Plan interpreter handles cast, between, and ** expressions."""
         from sparkless.backend.polars.plan_interpreter import execute_plan
@@ -449,7 +453,9 @@ class TestLogicalPlanPhase4:
         assert rows[0]["squared"] == 25
         assert rows[0]["a_str"] == "5"
 
-    @pytest.mark.skip(reason="v4: backend.polars.plan_interpreter removed; execution via Robin")
+    @pytest.mark.skip(
+        reason="v4: backend.polars.plan_interpreter removed; execution via Robin"
+    )
     def test_plan_interpreter_window_row_number(self):
         """Plan interpreter handles row_number() over (partition by col)."""
         from sparkless.backend.polars.plan_interpreter import execute_plan

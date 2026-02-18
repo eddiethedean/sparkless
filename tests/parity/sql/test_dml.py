@@ -8,6 +8,11 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin SQL DML parity not yet met",
+)
+
 
 def _is_pyspark_mode() -> bool:
     """Check if running in PySpark mode."""

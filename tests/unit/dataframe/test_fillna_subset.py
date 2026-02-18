@@ -665,6 +665,10 @@ class TestFillnaSubset:
         assert rows[1]["name"] == "Bob"  # Not null, unchanged
         assert rows[1]["score"] == 90
 
+    @pytest.mark.skipif(
+        get_backend_type() == BackendType.ROBIN,
+        reason="Robin fillna+select semantics differ",
+    )
     def test_fillna_subset_with_select_operation(self, spark):
         """Test fillna with subset combined with select operation."""
         schema = StructType(

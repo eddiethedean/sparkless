@@ -5,6 +5,7 @@ ensuring that unsupported operations are detected upfront and raise clear errors
 
 v4: Backend and PolarsMaterializer removed; execution is Robin-only.
 """
+
 import pytest
 
 pytest.skip(

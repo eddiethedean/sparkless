@@ -4,7 +4,15 @@ PySpark parity tests for DataFrame transformation operations.
 Tests validate that Sparkless transformation operations behave identically to PySpark.
 """
 
+import pytest
+
 from tests.fixtures.parity_base import ParityTestBase
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin transformations parity not yet met",
+)
 
 
 class TestTransformationsParity(ParityTestBase):

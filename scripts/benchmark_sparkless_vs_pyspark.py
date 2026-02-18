@@ -2,15 +2,15 @@
 """
 Benchmark Sparkless (Robin) vs PySpark: session creation, simple/complex queries.
 
-Run from repo root with the venv that has the wheel built with robin-sparkless 0.11.5:
+Run from repo root with the venv that has the wheel built with robin-sparkless 0.11.7:
   .venv/bin/python scripts/benchmark_sparkless_vs_pyspark.py
 
-To ensure robin-sparkless 0.11.5: maturin build --release && .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall
+To ensure robin-sparkless 0.11.7: maturin build --release && .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall
 
 Prints mean times (seconds) and speedup. PySpark is skipped if not installed.
 Dataset: 10k rows (id, x, key, value). Filter/withColumn may show ERROR on some
 Robin versions due to expression plan format; other queries (select, count, groupBy+agg,
-orderBy+limit) run on Robin 0.11.5+.
+orderBy+limit) run on Robin 0.11.7+.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# Use installed wheel when present (ensures robin-sparkless 0.11.5). Only add repo to path if not installed.
+# Use installed wheel when present (ensures robin-sparkless 0.11.7). Only add repo to path if not installed.
 try:
     import sparkless  # noqa: F401
 except ImportError:
@@ -50,10 +50,7 @@ def _time_operation(operation, name: str) -> float | None:
 
 def _bench_data():
     """Build 10k-row dataset: id, x, key (for groupBy), value."""
-    return [
-        {"id": j, "x": j * 2, "key": j % 100, "value": j * 2}
-        for j in range(ROWS)
-    ]
+    return [{"id": j, "x": j * 2, "key": j % 100, "value": j * 2} for j in range(ROWS)]
 
 
 def run_sparkless_benchmarks() -> dict[str, float]:
@@ -85,7 +82,9 @@ def run_sparkless_benchmarks() -> dict[str, float]:
     def with_column():
         spark = SparkSession.builder.appName("bench").getOrCreate()
         df = spark.createDataFrame(_bench_data())
-        df.withColumn("double_x", F.col("x") * 2).select("id", "x", "double_x").limit(1000).collect()
+        df.withColumn("double_x", F.col("x") * 2).select("id", "x", "double_x").limit(
+            1000
+        ).collect()
         spark.stop()
 
     def group_by_agg():
@@ -147,7 +146,9 @@ def run_pyspark_benchmarks() -> dict[str, float] | None:
     def with_column():
         spark = PySparkSession.builder.appName("bench").getOrCreate()
         df = spark.createDataFrame(_bench_data())
-        df.withColumn("double_x", F.col("x") * 2).select("id", "x", "double_x").limit(1000).collect()
+        df.withColumn("double_x", F.col("x") * 2).select("id", "x", "double_x").limit(
+            1000
+        ).collect()
         spark.stop()
 
     def group_by_agg():
@@ -177,7 +178,7 @@ def run_pyspark_benchmarks() -> dict[str, float] | None:
 
 
 def _check_robin_select_compat() -> None:
-    """Fail fast if select-by-name fails (e.g. extension built with robin-sparkless < 0.11.5)."""
+    """Fail fast if select-by-name fails (e.g. extension built with robin-sparkless < 0.11.7)."""
     from sparkless import SparkSession
 
     spark = SparkSession.builder.appName("bench-check").getOrCreate()
@@ -189,7 +190,7 @@ def _check_robin_select_compat() -> None:
         if "select payload must be array" in err or "invalid plan" in err.lower():
             print(
                 "ERROR: Sparkless select-by-name failed. The extension may not be built with\n"
-                "robin-sparkless 0.11.5. Run: maturin build --release &&\n"
+                "robin-sparkless 0.11.7. Run: maturin build --release &&\n"
                 "  .venv/bin/pip install target/wheels/sparkless-*.whl --force-reinstall\n"
                 "Then run this script with: .venv/bin/python scripts/benchmark_sparkless_vs_pyspark.py",
                 file=sys.stderr,
@@ -204,7 +205,7 @@ def main() -> int:
     print("Benchmark Sparkless (Robin) vs PySpark")
     print(f"  Rows: {ROWS}, warmup: {WARMUP}, runs: {RUNS}\n")
 
-    print("Checking Sparkless select (robin-sparkless 0.11.5 compat)...")
+    print("Checking Sparkless select (robin-sparkless 0.11.7 compat)...")
     _check_robin_select_compat()
     print("OK\n")
 
@@ -232,7 +233,9 @@ def main() -> int:
         s = sparkless.get(key)
         p = pyspark.get(key) if pyspark else None
         if s is None:
-            print(f"{label:<{col_w}} {'ERROR':<14} {str(p) if p is not None else 'N/A':<14}")
+            print(
+                f"{label:<{col_w}} {'ERROR':<14} {str(p) if p is not None else 'N/A':<14}"
+            )
             continue
         s_str = f"{s:.3f}"
         p_str = f"{p:.3f}" if p is not None else "N/A"
@@ -251,7 +254,9 @@ def main() -> int:
         if sk is None:
             continue
         if pk is not None and pk > 0:
-            print(f"{name}: Sparkless={sk:.3f}s, PySpark={pk:.3f}s, Speedup={pk/sk:.0f}x")
+            print(
+                f"{name}: Sparkless={sk:.3f}s, PySpark={pk:.3f}s, Speedup={pk / sk:.0f}x"
+            )
         else:
             print(f"{name}: Sparkless={sk:.3f}s")
 

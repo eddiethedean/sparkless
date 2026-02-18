@@ -12,11 +12,17 @@ import json
 from typing import Any, Dict, List, Sequence
 
 try:
-    # The native extension is built as ``sparkless._robin`` via maturin.
+    # Prefer sparkless._robin (set by sparkless __init__ from sparkless_robin)
     from sparkless import _robin as _native  # type: ignore[attr-defined]
-except Exception as exc:  # pragma: no cover - import error path
-    _native = None  # type: ignore[assignment]
-    _import_error = exc
+except Exception:
+    try:
+        # Fallback: extension may be installed as top-level sparkless_robin
+        import sparkless_robin as _native  # type: ignore[attr-defined]
+    except Exception as exc:  # pragma: no cover - import error path
+        _native = None  # type: ignore[assignment]
+        _import_error = exc
+    else:
+        _import_error = None
 else:
     _import_error = None
 
@@ -54,15 +60,18 @@ def execute_plan_via_robin(
     return list(result)
 
 
-def execute_sql_via_robin(query: str) -> List[Dict[str, Any]]:
+def execute_sql_via_robin(query: str) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
     """
     Execute a SQL query using the Robin Rust crate via the PyO3 extension.
 
-    Returns list[dict] rows.
+    Returns (rows, schema) where schema is list of {"name": str, "type": str}.
+    Schema allows creating empty DataFrames when Robin returns no rows.
     """
     _ensure_native_loaded()
     result = _native.sql(query)  # type: ignore[attr-defined]
-    return list(result)
+    rows = list(result[0])
+    schema = [dict(s) for s in result[1]]
+    return rows, schema
 
 
 def read_delta_via_robin(path: str) -> List[Dict[str, Any]]:
@@ -145,6 +154,81 @@ def save_as_table_via_robin(
     """
     _ensure_native_loaded()
     _native.save_as_table(name, list(data), list(schema), mode)  # type: ignore[attr-defined]
+
+
+def read_parquet_via_robin(path: str) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+    """
+    Read a Parquet file at path using the Robin Rust crate.
+
+    Returns:
+        (rows, schema) where schema is list of {"name": str, "type": str}.
+    """
+    _ensure_native_loaded()
+    result = _native.read_parquet(path)  # type: ignore[attr-defined]
+    rows = list(result[0])
+    schema = [dict(s) for s in result[1]]
+    return rows, schema
+
+
+def read_csv_via_robin(path: str) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+    """
+    Read a CSV file at path using the Robin Rust crate.
+
+    Returns:
+        (rows, schema) where schema is list of {"name": str, "type": str}.
+    """
+    _ensure_native_loaded()
+    result = _native.read_csv(path)  # type: ignore[attr-defined]
+    rows = list(result[0])
+    schema = [dict(s) for s in result[1]]
+    return rows, schema
+
+
+def read_json_via_robin(path: str) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+    """
+    Read a JSON/JSONL file at path using the Robin Rust crate.
+
+    Returns:
+        (rows, schema) where schema is list of {"name": str, "type": str}.
+    """
+    _ensure_native_loaded()
+    result = _native.read_json(path)  # type: ignore[attr-defined]
+    rows = list(result[0])
+    schema = [dict(s) for s in result[1]]
+    return rows, schema
+
+
+def write_parquet_via_robin(
+    data: Sequence[Dict[str, Any]],
+    schema: Sequence[Dict[str, str]],
+    path: str,
+    overwrite: bool = True,
+) -> None:
+    """Write rows to Parquet file at path using the Robin Rust crate."""
+    _ensure_native_loaded()
+    _native.write_parquet(list(data), list(schema), path, overwrite)  # type: ignore[attr-defined]
+
+
+def write_csv_via_robin(
+    data: Sequence[Dict[str, Any]],
+    schema: Sequence[Dict[str, str]],
+    path: str,
+    overwrite: bool = True,
+) -> None:
+    """Write rows to CSV file at path using the Robin Rust crate."""
+    _ensure_native_loaded()
+    _native.write_csv(list(data), list(schema), path, overwrite)  # type: ignore[attr-defined]
+
+
+def write_json_via_robin(
+    data: Sequence[Dict[str, Any]],
+    schema: Sequence[Dict[str, str]],
+    path: str,
+    overwrite: bool = True,
+) -> None:
+    """Write rows to JSON/JSONL file at path using the Robin Rust crate."""
+    _ensure_native_loaded()
+    _native.write_json(list(data), list(schema), path, overwrite)  # type: ignore[attr-defined]
 
 
 def parse_ddl_schema_via_robin(ddl: str) -> List[Dict[str, Any]]:

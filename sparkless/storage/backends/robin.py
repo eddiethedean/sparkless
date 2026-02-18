@@ -63,7 +63,9 @@ class RobinCatalogStorage(IStorageManager):
     """
 
     def __init__(self) -> None:
-        self._pending_table: Optional[tuple[str, str, Any]] = None  # (schema, table, fields)
+        self._pending_table: Optional[tuple[str, str, Any]] = (
+            None  # (schema, table, fields)
+        )
 
     def create_schema(self, schema_name: str) -> None:
         # Robin does not expose create_schema; no-op (catalog is session-scoped).
@@ -85,10 +87,7 @@ class RobinCatalogStorage(IStorageManager):
         fields: Union[List[Any], StructType],
     ) -> Optional[Any]:
         # Store for insert_data (saveAsTable path)
-        if isinstance(fields, StructType):
-            fields_list = fields.fields
-        else:
-            fields_list = fields
+        fields_list = fields.fields if isinstance(fields, StructType) else fields
         self._pending_table = (schema_name, table_name, fields_list)
         return None
 
@@ -98,7 +97,8 @@ class RobinCatalogStorage(IStorageManager):
 
     def table_exists(self, schema_name: str, table_name: str) -> bool:
         try:
-            from sparkless.robin.native import get_table_via_robin
+            from sparkless.robin import get_table_via_robin
+
             get_table_via_robin(_qualified_name(schema_name, table_name))
             return True
         except Exception:
@@ -111,7 +111,8 @@ class RobinCatalogStorage(IStorageManager):
     def get_table_schema(
         self, schema_name: str, table_name: str
     ) -> Union[Any, StructType]:
-        from sparkless.robin.native import get_table_via_robin
+        from sparkless.robin import get_table_via_robin
+
         _, schema_list = get_table_via_robin(_qualified_name(schema_name, table_name))
         return _schema_list_to_struct_type(schema_list)
 
@@ -119,20 +120,28 @@ class RobinCatalogStorage(IStorageManager):
         schema_list: List[Dict[str, str]] = []
         for f in fields:
             if hasattr(f, "name") and hasattr(f, "dataType"):
-                schema_list.append({
-                    "name": getattr(f, "name", ""),
-                    "type": getattr(f.dataType, "simpleString", lambda: "string")(),
-                })
+                schema_list.append(
+                    {
+                        "name": getattr(f, "name", ""),
+                        "type": getattr(f.dataType, "simpleString", lambda: "string")(),
+                    }
+                )
             elif isinstance(f, (list, tuple)) and len(f) >= 2:
                 schema_list.append({"name": str(f[0]), "type": "string"})
             elif isinstance(f, dict):
-                schema_list.append({"name": str(f.get("name", "")), "type": str(f.get("type", "string"))})
+                schema_list.append(
+                    {
+                        "name": str(f.get("name", "")),
+                        "type": str(f.get("type", "string")),
+                    }
+                )
             else:
                 schema_list.append({"name": "", "type": "string"})
         return schema_list
 
     def _data_to_dicts(self, data: List[Any]) -> List[Dict[str, Any]]:
         from sparkless.spark_types import get_row_value, row_keys
+
         if not data:
             return []
         out = []
@@ -149,7 +158,10 @@ class RobinCatalogStorage(IStorageManager):
     def insert_data(
         self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
-        from sparkless.robin.native import register_global_temp_view_via_robin, save_as_table_via_robin
+        from sparkless.robin import (
+            register_global_temp_view_via_robin,
+            save_as_table_via_robin,
+        )
 
         data_dicts = self._data_to_dicts(data)
         if self._pending_table:
@@ -158,18 +170,25 @@ class RobinCatalogStorage(IStorageManager):
             if pend_schema == schema_name and pend_table == table_name and fields:
                 schema_list = self._fields_to_schema_list(fields)
                 if schema_name == "global_temp":
-                    register_global_temp_view_via_robin(table_name, data_dicts, schema_list)
+                    register_global_temp_view_via_robin(
+                        table_name, data_dicts, schema_list
+                    )
                 else:
                     qualified = _qualified_name(schema_name, table_name)
-                    save_as_table_via_robin(qualified, data_dicts, schema_list, "overwrite")
+                    save_as_table_via_robin(
+                        qualified, data_dicts, schema_list, "overwrite"
+                    )
                 return
         qualified = _qualified_name(schema_name, table_name)
         if schema_name == "global_temp":
-            schema_list = [{"name": k, "type": "string"} for k in (data_dicts[0].keys() if data_dicts else [])]
+            schema_list = [
+                {"name": k, "type": "string"}
+                for k in (data_dicts[0] if data_dicts else [])
+            ]
             register_global_temp_view_via_robin(table_name, data_dicts, schema_list)
             return
         if data_dicts:
-            schema_list = [{"name": k, "type": "string"} for k in data_dicts[0].keys()]
+            schema_list = [{"name": k, "type": "string"} for k in data_dicts[0]]
         else:
             schema_list = []
         save_as_table_via_robin(qualified, data_dicts, schema_list, "overwrite")
@@ -185,18 +204,19 @@ class RobinCatalogStorage(IStorageManager):
         return {"name": table_name, "schema": schema_name}
 
     def get_data(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
-        from sparkless.robin.native import get_table_via_robin
+        from sparkless.robin import get_table_via_robin
+
         rows, _ = get_table_via_robin(_qualified_name(schema_name, table_name))
         return rows
 
     def create_temp_view(self, name: str, dataframe: Any) -> None:
-        from sparkless.dataframe.logical_plan import _serialize_data, serialize_schema
-        from sparkless.robin.native import register_temp_view_via_robin
+        from sparkless.robin.schema_ser import serialize_data, serialize_schema
+        from sparkless.robin import register_temp_view_via_robin
 
         if hasattr(dataframe, "_materialize_if_lazy"):
             dataframe = dataframe._materialize_if_lazy()
         data = list(dataframe.data)
         schema_obj = dataframe.schema
         schema_list = serialize_schema(schema_obj)
-        data_serialized = _serialize_data(data, schema_obj)
+        data_serialized = serialize_data(data, schema_obj)
         register_temp_view_via_robin(name, data_serialized, schema_list)

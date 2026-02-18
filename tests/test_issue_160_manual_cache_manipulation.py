@@ -6,7 +6,11 @@ v4: Uses BackendFactory; backend removed. Skipped.
 
 import os
 import pytest
-pytest.skip("v4: backend package removed; tests used Polars materializer", allow_module_level=True)
+
+pytest.skip(
+    "v4: backend package removed; tests used Polars materializer",
+    allow_module_level=True,
+)
 from sparkless import SparkSession, functions as F
 from sparkless.backend.factory import BackendFactory
 

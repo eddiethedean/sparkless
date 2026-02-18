@@ -475,7 +475,7 @@ class LazyEvaluationEngine:
 
         # In v4, all lazy execution is via Robin; no Python fallback.
         from ..dataframe.schema.schema_manager import SchemaManager
-        from sparkless.robin.execution import execute_via_robin
+        from sparkless.robin import execute_via_robin
         from ..dataframe import DataFrame
 
         final_schema = SchemaManager.project_schema_with_operations(
@@ -484,7 +484,7 @@ class LazyEvaluationEngine:
         rows = execute_via_robin(df.data, final_schema, df)
 
         result_df = DataFrame(
-            rows,
+            cast("List[Dict[str, Any]]", rows),
             final_schema,
             df.storage,
             operations=[],

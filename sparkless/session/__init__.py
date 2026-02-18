@@ -13,8 +13,8 @@ Components:
     - SQL processing pipeline
 """
 
+from .core import SparkSession
 from .core import (
-    SparkSession,
     SparkSessionBuilder,
     SparkContext,
     JVMContext,

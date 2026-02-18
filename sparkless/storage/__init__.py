@@ -5,7 +5,6 @@ v4 Robin-only: session uses RobinCatalogStorage (Robin's built-in catalog).
 File storage and serialization utilities remain for reader/writer and tests.
 """
 
-
 # Import interfaces from canonical location
 from ..core.interfaces.storage import IStorageManager, ITable
 from ..core.types.schema import ISchema

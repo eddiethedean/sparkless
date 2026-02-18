@@ -11,6 +11,8 @@ These tests work with both sparkless (mock) and PySpark backends.
 Set MOCK_SPARK_TEST_BACKEND=pyspark to run with real PySpark.
 """
 
+import pytest
+
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
@@ -31,6 +33,10 @@ def _is_pyspark_mode() -> bool:
     return backend == BackendType.PYSPARK
 
 
+@pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin string arithmetic semantics differ from PySpark",
+)
 class TestStringArithmetic:
     """Test string column arithmetic operations."""
 

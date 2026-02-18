@@ -461,7 +461,7 @@ class TransformationService:
 
     def filter(
         self,
-        condition: Union[ColumnOperation, Column, "Literal", str],
+        condition: Union[ColumnOperation, Column, "Literal", str, bool],
     ) -> "SupportsDataFrameOps":
         """Filter rows based on condition.
 

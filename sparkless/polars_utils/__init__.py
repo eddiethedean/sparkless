@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any
 
-def __getattr__(name: str):  # type: ignore[no-redef]
+
+def __getattr__(name: str) -> Any:
     raise ImportError(
         "sparkless.polars_utils was removed in v4. "
         "Reader/writer use stdlib (csv, json) and optional pyarrow for Parquet. "

@@ -1,3 +1,8 @@
+mod pycolumn;
+mod pydataframe;
+mod pyfunctions;
+mod pysession;
+
 use once_cell::sync::OnceCell;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
@@ -24,7 +29,7 @@ fn get_or_create_session() -> InnerSession {
 }
 
 /// Parse Python schema (list of {name, type}) into Vec<(String, String)>.
-fn parse_schema_from_python(schema: &PyAny) -> PyResult<Vec<(String, String)>> {
+pub(crate) fn parse_schema_from_python(schema: &Bound<'_, PyAny>) -> PyResult<Vec<(String, String)>> {
     let raw_schema: Vec<HashMap<String, String>> = schema.extract().map_err(|_| {
         PyTypeError::new_err("schema must be a sequence of {'name': str, 'type': str} dicts")
     })?;
@@ -91,9 +96,9 @@ fn py_to_json_value(value: &PyAny) -> PyResult<JsonValue> {
     Ok(JsonValue::String(s))
 }
 
-fn py_rows_to_json(
+pub(crate) fn py_rows_to_json(
     py: Python<'_>,
-    data: &PyAny,
+    data: &Bound<'_, PyAny>,
     schema: &[(String, String)],
 ) -> PyResult<Vec<Vec<JsonValue>>> {
     // Expect a sequence of mapping-like rows; rely on PyO3's extract to handle lists/tuples.
@@ -125,7 +130,7 @@ fn py_rows_to_json(
 /// Returns:
 ///     list of dict rows.
 #[pyfunction]
-fn _execute_plan(py: Python<'_>, data: &PyAny, schema: &PyAny, plan_json: &str) -> PyResult<PyObject> {
+fn _execute_plan(py: Python<'_>, data: &Bound<'_, PyAny>, schema: &Bound<'_, PyAny>, plan_json: &str) -> PyResult<PyObject> {
     let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
 
@@ -149,7 +154,7 @@ fn _execute_plan(py: Python<'_>, data: &PyAny, schema: &PyAny, plan_json: &str) 
     rows_to_py(py, json_rows)
 }
 
-fn rows_to_py(py: Python<'_>, json_rows: Vec<HashMap<String, JsonValue>>) -> PyResult<PyObject> {
+pub(crate) fn rows_to_py(py: Python<'_>, json_rows: Vec<HashMap<String, JsonValue>>) -> PyResult<PyObject> {
     let out = PyList::empty(py);
     for row in json_rows {
         let dict = PyDict::new(py);
@@ -218,7 +223,8 @@ fn rows_to_py(py: Python<'_>, json_rows: Vec<HashMap<String, JsonValue>>) -> PyR
     Ok(out.into_py(py))
 }
 
-/// Execute a SQL query using the Robin SparkSession and return rows as list[dict].
+/// Execute a SQL query using the Robin SparkSession.
+/// Returns (rows, schema) so empty result sets can create DataFrames with schema.
 #[pyfunction]
 fn sql(py: Python<'_>, query: &str) -> PyResult<PyObject> {
     let session = get_or_create_session();
@@ -228,7 +234,19 @@ fn sql(py: Python<'_>, query: &str) -> PyResult<PyObject> {
     let json_rows = df
         .collect_as_json_rows()
         .map_err(|e| PyValueError::new_err(format!("collect_as_json_rows failed: {e}")))?;
-    rows_to_py(py, json_rows)
+    let schema = df
+        .schema()
+        .map_err(|e| PyValueError::new_err(format!("Robin schema(): {e}")))?;
+    let schema_vec = robin_schema_to_vec(&schema);
+    let rows_obj = rows_to_py(py, json_rows)?;
+    let schema_list = PyList::empty(py);
+    for (name_str, type_str) in schema_vec {
+        let d = PyDict::new(py);
+        d.set_item("name", name_str)?;
+        d.set_item("type", type_str)?;
+        schema_list.append(d)?;
+    }
+    Ok(PyTuple::new(py, [rows_obj, schema_list.into_py(py)]).into_py(py))
 }
 
 /// Read a Delta table at path; returns list[dict] rows.
@@ -255,165 +273,9 @@ fn read_delta_version(py: Python<'_>, path: &str, version: i64) -> PyResult<PyOb
     rows_to_py(py, json_rows)
 }
 
-/// Build a Polars DataFrame from JSON rows and schema for write_delta.
-fn json_rows_to_polars(
-    data_rows: &[Vec<JsonValue>],
-    schema: &[(String, String)],
-) -> Result<polars::prelude::DataFrame, polars::prelude::PolarsError> {
-    use polars::prelude::*;
-
-    if schema.is_empty() {
-        return Ok(DataFrame::default());
-    }
-
-    let mut series_vec: Vec<Series> = Vec::with_capacity(schema.len());
-    for (col_idx, (name, type_name)) in schema.iter().enumerate() {
-        let dtype = match type_name.to_lowercase().as_str() {
-            "string" => DataType::String,
-            "int" | "integer" => DataType::Int32,
-            "long" | "bigint" => DataType::Int64,
-            "double" | "float" => DataType::Float64,
-            "boolean" | "bool" => DataType::Boolean,
-            "date" => DataType::Date,
-            "timestamp" => DataType::Datetime(TimeUnit::Microseconds, None),
-            _ => DataType::String,
-        };
-
-        let series = match dtype {
-            DataType::String => {
-                let vals: Vec<Option<String>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                Some(v.as_str().unwrap_or(&v.to_string()).to_string())
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals)
-            }
-            DataType::Int32 => {
-                let vals: Vec<Option<i32>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                v.as_i64().map(|n| n as i32)
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals)
-            }
-            DataType::Int64 => {
-                let vals: Vec<Option<i64>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                v.as_i64()
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals)
-            }
-            DataType::Float64 => {
-                let vals: Vec<Option<f64>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                v.as_f64()
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals)
-            }
-            DataType::Boolean => {
-                let vals: Vec<Option<bool>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                v.as_bool()
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals)
-            }
-            DataType::Date => {
-                let vals: Vec<Option<i32>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                v.as_i64().map(|n| n as i32)
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals).cast(&DataType::Date)?
-            }
-            DataType::Datetime(_, _) => {
-                let vals: Vec<Option<i64>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                v.as_i64()
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals).cast(&DataType::Datetime(TimeUnit::Microseconds, None))?
-            }
-            _ => {
-                let vals: Vec<Option<String>> = data_rows
-                    .iter()
-                    .map(|row| {
-                        row.get(col_idx).and_then(|v| {
-                            if v.is_null() {
-                                None
-                            } else {
-                                Some(v.to_string())
-                            }
-                        })
-                    })
-                    .collect();
-                Series::new(name.as_str().into(), vals)
-            }
-        };
-        series_vec.push(series);
-    }
-
-    let columns: Vec<polars::prelude::Column> = series_vec
-        .into_iter()
-        .map(polars::prelude::Column::from)
-        .collect();
-    Ok(DataFrame::new(columns)?)
-}
-
 /// Register a temp view in Robin's session catalog (PySpark: createOrReplaceTempView).
 #[pyfunction]
-fn register_temp_view(py: Python<'_>, name: &str, data: &PyAny, schema: &PyAny) -> PyResult<()> {
+fn register_temp_view(py: Python<'_>, name: &str, data: &Bound<'_, PyAny>, schema: &Bound<'_, PyAny>) -> PyResult<()> {
     let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
     let session = get_or_create_session();
@@ -426,7 +288,7 @@ fn register_temp_view(py: Python<'_>, name: &str, data: &PyAny, schema: &PyAny) 
 
 /// Register a global temp view in Robin's catalog (PySpark: createOrReplaceGlobalTempView).
 #[pyfunction]
-fn register_global_temp_view(py: Python<'_>, name: &str, data: &PyAny, schema: &PyAny) -> PyResult<()> {
+fn register_global_temp_view(py: Python<'_>, name: &str, data: &Bound<'_, PyAny>, schema: &Bound<'_, PyAny>) -> PyResult<()> {
     let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
     let session = get_or_create_session();
@@ -467,8 +329,8 @@ fn get_table(py: Python<'_>, name: &str) -> PyResult<PyObject> {
 fn save_as_table(
     py: Python<'_>,
     name: &str,
-    data: &PyAny,
-    schema: &PyAny,
+    data: &Bound<'_, PyAny>,
+    schema: &Bound<'_, PyAny>,
     mode: &str,
 ) -> PyResult<()> {
     let schema_vec = parse_schema_from_python(schema)?;
@@ -489,37 +351,181 @@ fn save_as_table(
     Ok(())
 }
 
+/// Read a Parquet file at path. Returns (rows, schema) like get_table.
+#[pyfunction]
+fn read_parquet(py: Python<'_>, path: &str) -> PyResult<PyObject> {
+    let session = get_or_create_session();
+    let df = session
+        .read_parquet(path)
+        .map_err(|e| PyValueError::new_err(format!("Robin read_parquet failed: {e}")))?;
+    let json_rows = df
+        .collect_as_json_rows()
+        .map_err(|e| PyValueError::new_err(format!("collect_as_json_rows failed: {e}")))?;
+    let schema = df
+        .schema()
+        .map_err(|e| PyValueError::new_err(format!("Robin schema(): {e}")))?;
+    let schema_vec = robin_schema_to_vec(&schema);
+    let rows_obj = rows_to_py(py, json_rows)?;
+    let schema_list = PyList::empty(py);
+    for (name_str, type_str) in schema_vec {
+        let d = PyDict::new(py);
+        d.set_item("name", name_str)?;
+        d.set_item("type", type_str)?;
+        schema_list.append(d)?;
+    }
+    Ok(PyTuple::new(py, [rows_obj, schema_list.into_py(py)]).into_py(py))
+}
+
+/// Read a CSV file at path. Returns (rows, schema) like get_table.
+#[pyfunction]
+fn read_csv(py: Python<'_>, path: &str) -> PyResult<PyObject> {
+    let session = get_or_create_session();
+    let df = session
+        .read_csv(path)
+        .map_err(|e| PyValueError::new_err(format!("Robin read_csv failed: {e}")))?;
+    let json_rows = df
+        .collect_as_json_rows()
+        .map_err(|e| PyValueError::new_err(format!("collect_as_json_rows failed: {e}")))?;
+    let schema = df
+        .schema()
+        .map_err(|e| PyValueError::new_err(format!("Robin schema(): {e}")))?;
+    let schema_vec = robin_schema_to_vec(&schema);
+    let rows_obj = rows_to_py(py, json_rows)?;
+    let schema_list = PyList::empty(py);
+    for (name_str, type_str) in schema_vec {
+        let d = PyDict::new(py);
+        d.set_item("name", name_str)?;
+        d.set_item("type", type_str)?;
+        schema_list.append(d)?;
+    }
+    Ok(PyTuple::new(py, [rows_obj, schema_list.into_py(py)]).into_py(py))
+}
+
+/// Read a JSON file at path (JSONL format). Returns (rows, schema) like get_table.
+#[pyfunction]
+fn read_json(py: Python<'_>, path: &str) -> PyResult<PyObject> {
+    let session = get_or_create_session();
+    let df = session
+        .read_json(path)
+        .map_err(|e| PyValueError::new_err(format!("Robin read_json failed: {e}")))?;
+    let json_rows = df
+        .collect_as_json_rows()
+        .map_err(|e| PyValueError::new_err(format!("collect_as_json_rows failed: {e}")))?;
+    let schema = df
+        .schema()
+        .map_err(|e| PyValueError::new_err(format!("Robin schema(): {e}")))?;
+    let schema_vec = robin_schema_to_vec(&schema);
+    let rows_obj = rows_to_py(py, json_rows)?;
+    let schema_list = PyList::empty(py);
+    for (name_str, type_str) in schema_vec {
+        let d = PyDict::new(py);
+        d.set_item("name", name_str)?;
+        d.set_item("type", type_str)?;
+        schema_list.append(d)?;
+    }
+    Ok(PyTuple::new(py, [rows_obj, schema_list.into_py(py)]).into_py(py))
+}
+
+/// Write rows to Parquet file at path. overwrite: true = replace, false = append.
+#[pyfunction]
+fn write_parquet(
+    py: Python<'_>,
+    data: &Bound<'_, PyAny>,
+    schema: &Bound<'_, PyAny>,
+    path: &str,
+    overwrite: bool,
+) -> PyResult<()> {
+    use robin_sparkless::dataframe::WriteMode;
+    let schema_vec = parse_schema_from_python(schema)?;
+    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    let mode = if overwrite {
+        WriteMode::Overwrite
+    } else {
+        WriteMode::Append
+    };
+    df.write()
+        .mode(mode)
+        .parquet(path)
+        .map_err(|e| PyValueError::new_err(format!("Robin write_parquet failed: {e}")))?;
+    Ok(())
+}
+
+/// Write rows to CSV file at path. overwrite: true = replace, false = append.
+#[pyfunction]
+fn write_csv(
+    py: Python<'_>,
+    data: &Bound<'_, PyAny>,
+    schema: &Bound<'_, PyAny>,
+    path: &str,
+    overwrite: bool,
+) -> PyResult<()> {
+    use robin_sparkless::dataframe::WriteMode;
+    let schema_vec = parse_schema_from_python(schema)?;
+    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    let mode = if overwrite {
+        WriteMode::Overwrite
+    } else {
+        WriteMode::Append
+    };
+    df.write()
+        .mode(mode)
+        .csv(path)
+        .map_err(|e| PyValueError::new_err(format!("Robin write_csv failed: {e}")))?;
+    Ok(())
+}
+
+/// Write rows to JSON file at path (JSONL format). overwrite: true = replace, false = append.
+#[pyfunction]
+fn write_json(
+    py: Python<'_>,
+    data: &Bound<'_, PyAny>,
+    schema: &Bound<'_, PyAny>,
+    path: &str,
+    overwrite: bool,
+) -> PyResult<()> {
+    use robin_sparkless::dataframe::WriteMode;
+    let schema_vec = parse_schema_from_python(schema)?;
+    let data_rows = py_rows_to_json(py, data, &schema_vec)?;
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    let mode = if overwrite {
+        WriteMode::Overwrite
+    } else {
+        WriteMode::Append
+    };
+    df.write()
+        .mode(mode)
+        .json(path)
+        .map_err(|e| PyValueError::new_err(format!("Robin write_json failed: {e}")))?;
+    Ok(())
+}
+
 /// Write rows to a Delta table at path. overwrite: true = replace table, false = append.
 #[pyfunction]
 fn write_delta(
     py: Python<'_>,
-    data: &PyAny,
-    schema: &PyAny,
+    data: &Bound<'_, PyAny>,
+    schema: &Bound<'_, PyAny>,
     path: &str,
     overwrite: bool,
 ) -> PyResult<()> {
-    let raw_schema: Vec<HashMap<String, String>> = schema.extract().map_err(|_| {
-        PyTypeError::new_err("schema must be a sequence of {'name': str, 'type': str} dicts")
-    })?;
-    let mut schema_vec: Vec<(String, String)> = Vec::with_capacity(raw_schema.len());
-    for entry in raw_schema {
-        let name = entry
-            .get("name")
-            .cloned()
-            .ok_or_else(|| PyTypeError::new_err("schema dict missing 'name' key"))?;
-        let dtype = entry
-            .get("type")
-            .cloned()
-            .ok_or_else(|| PyTypeError::new_err("schema dict missing 'type' key"))?;
-        schema_vec.push((name, dtype));
-    }
-
+    let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
-    let pl_df = json_rows_to_polars(&data_rows, &schema_vec).map_err(|e| {
-        PyValueError::new_err(format!("build Polars DataFrame for write_delta: {e}"))
-    })?;
-
-    delta::write_delta(&pl_df, path, overwrite).map_err(|e| {
+    let session = get_or_create_session();
+    let df = session
+        .create_dataframe_from_rows(data_rows, schema_vec)
+        .map_err(|e| PyValueError::new_err(format!("Robin create_dataframe_from_rows: {e}")))?;
+    df.write_delta(path, overwrite).map_err(|e| {
         PyValueError::new_err(format!("Robin write_delta failed: {e}"))
     })?;
     Ok(())
@@ -581,14 +587,30 @@ fn parse_ddl_schema(py: Python<'_>, ddl: &str) -> PyResult<PyObject> {
 }
 
 /// Python module definition: exposes low-level Robin helpers for Sparkless.
-#[pymodule]
-fn _robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+/// Module name must match Cargo [lib] name (sparkless_robin) so PyInit_sparkless_robin is emitted.
+#[pymodule(name = "sparkless_robin")]
+fn sparkless_robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    // PyO3 thin wrapper types
+    m.add_class::<pysession::PySparkSession>()?;
+    m.add_class::<pysession::PySparkSessionBuilder>()?;
+    m.add_class::<pydataframe::PyDataFrame>()?;
+    m.add_class::<pydataframe::PyGroupedData>()?;
+    m.add_class::<pycolumn::PyColumn>()?;
+    m.add_function(wrap_pyfunction!(pyfunctions::col, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::lit, m)?)?;
+
     m.add_function(wrap_pyfunction!(parse_ddl_schema, m)?)?;
     m.add_function(wrap_pyfunction!(_execute_plan, m)?)?;
     m.add_function(wrap_pyfunction!(sql, m)?)?;
     m.add_function(wrap_pyfunction!(read_delta, m)?)?;
     m.add_function(wrap_pyfunction!(read_delta_version, m)?)?;
+    m.add_function(wrap_pyfunction!(read_parquet, m)?)?;
+    m.add_function(wrap_pyfunction!(read_csv, m)?)?;
+    m.add_function(wrap_pyfunction!(read_json, m)?)?;
     m.add_function(wrap_pyfunction!(write_delta, m)?)?;
+    m.add_function(wrap_pyfunction!(write_parquet, m)?)?;
+    m.add_function(wrap_pyfunction!(write_csv, m)?)?;
+    m.add_function(wrap_pyfunction!(write_json, m)?)?;
     m.add_function(wrap_pyfunction!(register_temp_view, m)?)?;
     m.add_function(wrap_pyfunction!(register_global_temp_view, m)?)?;
     m.add_function(wrap_pyfunction!(get_table, m)?)?;

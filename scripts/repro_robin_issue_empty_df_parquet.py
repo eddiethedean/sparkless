@@ -26,10 +26,12 @@ def run_robin() -> None:
     from sparkless.spark_types import StructType, StructField, IntegerType, StringType
 
     spark = SparkSession.builder.appName("repro-empty-df-parquet").getOrCreate()
-    schema = StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-    ])
+    schema = StructType(
+        [
+            StructField("id", IntegerType(), True),
+            StructField("name", StringType(), True),
+        ]
+    )
 
     # 1) Empty DataFrame with explicit schema (PySpark allows this)
     empty_df = spark.createDataFrame([], schema)
@@ -61,10 +63,12 @@ def run_pyspark() -> None:
     from pyspark.sql.types import StructType, StructField, IntegerType, StringType
 
     spark = PySparkSession.builder.appName("repro-empty-df-parquet").getOrCreate()
-    schema = StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-    ])
+    schema = StructType(
+        [
+            StructField("id", IntegerType(), True),
+            StructField("name", StringType(), True),
+        ]
+    )
 
     empty_df = spark.createDataFrame([], schema)
     print("PySpark: createDataFrame([], schema) -> OK")
@@ -90,7 +94,9 @@ def run_pyspark() -> None:
 
 def main() -> int:
     if len(sys.argv) < 2 or sys.argv[1] not in ("robin", "pyspark"):
-        print("Usage: python scripts/repro_robin_issue_empty_df_parquet.py robin|pyspark")
+        print(
+            "Usage: python scripts/repro_robin_issue_empty_df_parquet.py robin|pyspark"
+        )
         return 1
     mode = sys.argv[1]
     try:

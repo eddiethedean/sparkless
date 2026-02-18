@@ -30,7 +30,9 @@ def run_robin() -> None:
     ]
     df = spark.createDataFrame(data)
     win = Window.partitionBy("dept")
-    result = df.withColumn("rn", F.row_number().over(win)).select("dept", "salary", "rn")
+    result = df.withColumn("rn", F.row_number().over(win)).select(
+        "dept", "salary", "rn"
+    )
     rows = result.collect()
     spark.stop()
     by_dept = {}
@@ -57,7 +59,9 @@ def run_pyspark() -> None:
     ]
     df = spark.createDataFrame(data)
     win = Window.partitionBy("dept")
-    result = df.withColumn("rn", F.row_number().over(win)).select("dept", "salary", "rn")
+    result = df.withColumn("rn", F.row_number().over(win)).select(
+        "dept", "salary", "rn"
+    )
     rows = result.collect()
     spark.stop()
     by_dept = {}
@@ -73,7 +77,9 @@ def run_pyspark() -> None:
 
 def main() -> int:
     if len(sys.argv) < 2 or sys.argv[1] not in ("robin", "pyspark"):
-        print("Usage: python scripts/repro_robin_issue_window_row_number.py robin|pyspark")
+        print(
+            "Usage: python scripts/repro_robin_issue_window_row_number.py robin|pyspark"
+        )
         return 1
     mode = sys.argv[1]
     try:

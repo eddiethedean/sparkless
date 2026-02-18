@@ -46,11 +46,16 @@ import sys
 from types import ModuleType
 
 from .session import SparkSession  # noqa: E402
-from .session.context import SparkContext, JVMContext  # noqa: E402
-from .dataframe import DataFrame, DataFrameWriter, GroupedData  # noqa: E402
-from .functions import Functions, Column, ColumnOperation, F  # noqa: E402
-from . import compat  # noqa: E402
+from .dataframe import (  # noqa: E402
+    DataFrame,
+    DataFrameWriter,
+    GroupedData,
+)
+from .functions import Column, ColumnOperation, F, Functions  # noqa: E402
+from .spark_types import Row  # noqa: E402
 from .window import Window, WindowSpec  # noqa: E402
+from .session.context import SparkContext, JVMContext  # noqa: E402
+from . import compat  # noqa: E402
 from .delta import DeltaTable, DeltaMergeBuilder  # noqa: E402
 from .spark_types import (  # noqa: E402
     DataType,
@@ -216,3 +221,14 @@ from . import sql  # noqa: E402
 
 # Register sql module in sys.modules
 sys.modules["sparkless.sql"] = sql
+
+# ==============================================================================
+# ROBIN NATIVE EXTENSION - Expose sparkless_robin as sparkless._robin
+# ==============================================================================
+# The PyO3 extension is built as sparkless_robin (top-level). Expose it as
+# sparkless._robin for native.py and any code doing "from sparkless import _robin".
+try:
+    import sparkless_robin as _robin  # noqa: F401
+    sys.modules["sparkless._robin"] = _robin
+except ImportError:
+    _robin = None  # type: ignore[assignment]

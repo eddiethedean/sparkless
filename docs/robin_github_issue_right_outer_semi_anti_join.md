@@ -57,4 +57,4 @@ assert emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "left_anti").coun
 
 ## Environment
 
-- Sparkless v4, robin-sparkless 0.11.5. PySpark 3.x.
+- Sparkless v4, robin-sparkless 0.11.7. PySpark 3.x.

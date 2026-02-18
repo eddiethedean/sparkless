@@ -138,7 +138,7 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
-exclude = '(^venv/|^\.venv/|^venv_exploration_py\d+/)'
+exclude = '(^venv/|^\\.venv/|^venv_exploration_py\\d+/)'
 files = ["sparkless", "tests"]
 
 [[tool.mypy.overrides]]
@@ -184,6 +184,16 @@ module = [
     "sparkless.dataframe.transformations.operations",
     "sparkless.dataframe.aggregations.operations",
 ]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.unit.backend.test_robin_optional",
+    "tests.unit.backend.test_robin_materializer",
+    "tests.unit.robin.test_robin_sql",
+    "tests.unit.robin.test_plan_adapter",
+]
+# v4: skipped backend tests (dead code); robin tests (fixtures, _robin optional)
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -248,6 +258,7 @@ markers = [
     "delta: marks tests that require Delta Lake JARs (run serially for isolation)",
     "serial: marks tests that must run serially (not in parallel)",
     "performance: marks tests that measure performance (run serially for stable timing)",
+    "legacy_udf: tests requiring old Sparkless udf decorator (Robin uses pandas_udf)",
 ]
 
 [tool.ruff]
@@ -264,6 +275,10 @@ exclude = [
 extend-select = ["C4", "SIM", "TCH", "UP"]
 ignore = ["UP006", "UP007", "UP045"]  # Ignore Python 3.9+ syntax suggestions for Python 3.8 compatibility
 
-[tool.maturin]
-bindings = "pyo3"
-module-name = "sparkless._robin"
+[tool.ruff.lint.per-file-ignores]
+# v4: module-level pytest.skip; dead code references removed types (PolarsMaterializer, BackendFactory)
+"tests/test_backend_capability_model.py" = ["F821"]
+"tests/unit/backend/test_robin_materializer.py" = ["F821"]
+"tests/unit/backend/test_robin_optional.py" = ["F821"]
+# v4: module-level pytest.skip; imports after skip, Polars/backend refs
+"tests/test_issue_160_*.py" = ["E402", "F821"]

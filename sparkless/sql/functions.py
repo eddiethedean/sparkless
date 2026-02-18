@@ -28,7 +28,7 @@ Example:
 import warnings
 from typing import Any, Dict
 
-# Import F and Functions for backward compatibility
+# Import F and Functions from Sparkless functions
 from ..functions import F, Functions  # noqa: E402
 
 # Cache for dynamically accessed attributes
@@ -50,11 +50,7 @@ for attr_name in dir(F):
 
 
 def __getattr__(name: str) -> object:
-    """Dynamically provide access to functions from F instance.
-
-    This makes the module behave like PySpark's functions module,
-    where all functions are available at module level.
-    """
+    """Dynamically provide access to functions from F instance."""
     if name in _cached_attrs:
         return _cached_attrs[name]
 
@@ -64,6 +60,13 @@ def __getattr__(name: str) -> object:
 
         _cached_attrs[name] = DataFrame
         return DataFrame
+
+    # udf: Robin uses UDFRegistration; provide pandas_udf as udf for compat
+    if name == "udf":
+        attr_value = getattr(F, "pandas_udf", None) or getattr(F, "UDFRegistration", None)
+        if attr_value is not None:
+            _cached_attrs[name] = attr_value
+            return attr_value
 
     # Try to get from F instance
     if hasattr(F, name):

@@ -258,7 +258,7 @@ class TransformationOperations(Generic[SupportsDF]):
 
     def filter(
         self: SupportsDF,
-        condition: Union[ColumnOperation, Column, "Literal", str],
+        condition: Union[ColumnOperation, Column, "Literal", str, bool],
     ) -> SupportsDF:
         """Filter rows based on condition.
 

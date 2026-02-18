@@ -8,6 +8,12 @@ import pytest
 from sparkless import SparkSession
 from sparkless.spark_types import StructType, StructField, StringType
 from sparkless import functions as F
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin to_date expression not supported",
+)
 
 
 class TestToDateIssue126:

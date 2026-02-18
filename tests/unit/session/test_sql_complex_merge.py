@@ -11,6 +11,12 @@ with MOCK_SPARK_TEST_BACKEND=pyspark.
 """
 
 import pytest
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin SQL MERGE / empty schema differs",
+)
 
 
 @pytest.mark.backend("mock")

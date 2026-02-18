@@ -3,6 +3,7 @@
 v4: Backend package removed; session is always Robin. These tests targeted
 legacy BackendFactory and optional backend selection.
 """
+
 from __future__ import annotations
 
 import pytest

@@ -1,7 +1,15 @@
 """PySpark parity test for approx_count_distinct with rsd parameter (Issue #266)."""
 
+import pytest
+
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_imports import get_spark_imports
+from tests.fixtures.spark_backend import BackendType, get_backend_type
+
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin approx_count_distinct window not supported",
+)
 
 
 class TestApproxCountDistinctRsdParity(ParityTestBase):

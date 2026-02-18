@@ -281,7 +281,11 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
             }
 
         # Generic fallback for other ops (alias, etc.)
-        return {"type": "op", "op": op, "left": left, "right": right}
+        out: Dict[str, Any] = {"type": "op", "op": op, "left": left, "right": right}
+        name = getattr(expr, "name", None) or getattr(expr, "_name", None)
+        if name is not None:
+            out["alias"] = name
+        return out
 
     if isinstance(expr, Column):
         # Column (simple reference) - not ColumnOperation
@@ -293,45 +297,16 @@ def serialize_expression(expr: Any) -> Dict[str, Any]:
 
 def serialize_schema(schema: Any) -> List[Dict[str, Any]]:
     """Serialize a StructType to a JSON-serializable list of field descriptors."""
-    if not hasattr(schema, "fields"):
-        return []
-    return [{"name": f.name, "type": f.dataType.simpleString()} for f in schema.fields]
+    from sparkless.robin.schema_ser import serialize_schema as _ss
+
+    return _ss(schema)
 
 
 def _serialize_data(data: List[Any], schema: Any) -> List[Dict[str, Any]]:
-    """Serialize DataFrame data (list of dict/Row) to JSON-serializable list of dicts.
-    Always returns list of dicts so Robin and any code using row.keys() see dicts only.
-    """
-    if not data:
-        return []
-    from sparkless.spark_types import get_row_value, row_keys
+    """Serialize DataFrame data (list of dict/Row) to JSON-serializable list of dicts."""
+    from sparkless.robin.schema_ser import serialize_data as _sd
 
-    field_names = (
-        list(schema.fieldNames()) if schema and hasattr(schema, "fieldNames") else []
-    )
-    out: List[Dict[str, Any]] = []
-    for row in data:
-        if isinstance(row, dict):
-            out.append({k: _json_safe_value(v) for k, v in row.items()})
-            continue
-        # Convert Row or other row-like to dict so we never append non-dict
-        if hasattr(row, "asDict"):
-            d = row.asDict()
-            out.append({k: _json_safe_value(v) for k, v in d.items()})
-            continue
-        if field_names:
-            out.append(
-                {n: _json_safe_value(get_row_value(row, n)) for n in field_names}
-            )
-            continue
-        # No schema: try to get keys from row (Row may have _fields or support iteration)
-        keys = row_keys(row)
-        if keys:
-            out.append({k: _json_safe_value(get_row_value(row, k)) for k in keys})
-        else:
-            # Fallback: single value or opaque
-            out.append({"_value": _json_safe_value(row)})
-    return out
+    return _sd(data, schema)
 
 
 def _serialize_select_column(col: Any) -> Any:

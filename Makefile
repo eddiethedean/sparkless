@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-cov lint format type-check clean build publish robin-parity-sql-internal
+.PHONY: help install install-dev test test-cov lint format format-check type-check check-full clean build publish robin-parity-sql-internal
 
 help: ## Show this help message
 	@echo "Sparkless Package Management"
@@ -11,8 +11,8 @@ install: ## Install the package in development mode
 install-dev: ## Install with development dependencies
 	pip install -e ".[dev]"
 
-test: ## Run tests
-	bash tests/run_all_tests.sh
+test: ## Run tests (with Robin backend so skipifs for Robin limitations apply)
+	SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
 
 test-cov: ## Run tests with coverage
 	PYTEST_ADDOPTS="--cov=sparkless --cov-report=term-missing --cov-report=html --cov-report=xml" bash tests/run_all_tests.sh
@@ -24,8 +24,14 @@ format: ## Format code
 	ruff format .
 	ruff check . --fix
 
+format-check: ## Check formatting without modifying
+	ruff format --check .
+	ruff check .
+
 type-check: ## Run mypy type checking
 	mypy sparkless tests
+
+check-full: format-check type-check install test ## Run full check suite (format, lint, types, compile+install, tests)
 
 clean: ## Clean build artifacts
 	rm -rf build/

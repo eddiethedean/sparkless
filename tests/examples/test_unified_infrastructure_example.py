@@ -8,7 +8,6 @@ import pytest
 from tests.fixtures.comparison import assert_dataframes_equal
 
 try:
-    import pyspark  # type: ignore[unused-import]
     _HAS_PYSPARK = True
 except Exception:
     _HAS_PYSPARK = False

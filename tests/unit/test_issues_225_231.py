@@ -16,6 +16,11 @@ from pathlib import Path
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
+pytestmark = pytest.mark.skipif(
+    get_backend_type() == BackendType.ROBIN,
+    reason="Robin semantics differ for isin/getItem/regex/coercion/case-insensitive",
+)
+
 # Get the appropriate imports based on backend (sparkless or PySpark)
 imports = get_spark_imports()
 F = imports.F

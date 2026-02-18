@@ -7,7 +7,14 @@ the DataFrame class to add display capabilities.
 
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union, cast
 
-from ...spark_types import Row, StringType, StructField, StructType, get_row_value, row_keys
+from ...spark_types import (
+    Row,
+    StringType,
+    StructField,
+    StructType,
+    get_row_value,
+    row_keys,
+)
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
