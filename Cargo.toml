@@ -11,10 +11,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38", "gil-refs"] }
-polars = { version = "0.45", features = ["lazy"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-robin-sparkless = { version = "0.11.12", features = ["sql", "delta"] }
+robin-sparkless = { version = "0.12.0", features = ["sql", "delta"] }
 spark-ddl-parser = "0.1"
 once_cell = "1.19"
 

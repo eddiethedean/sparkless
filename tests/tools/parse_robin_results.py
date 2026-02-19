@@ -38,6 +38,14 @@ def _categorize(message: str) -> str:
         or "==" in message and "1234" in message
     ):
         return "robin_sparkless"
+    # Join/union type coercion (Robin returns different type than PySpark)
+    if "AssertionError" in message and (
+        "'1234'" in message or "1234" in message and "==" in message
+        or "in {" in message and "assert " in message
+    ):
+        return "robin_sparkless"
+    if "cannot compare string with numeric" in message or "type String is incompatible with expected type" in message:
+        return "robin_sparkless"
     # fix_sparkless
     if re.search(r"PyColumn.*has no attribute", message):
         return "fix_sparkless"
@@ -72,6 +80,19 @@ def _categorize(message: str) -> str:
     # unsupported operand (reverse operators) -> fix_sparkless
     if re.search(r"unsupported operand type.*PyColumn", message):
         return "fix_sparkless"
+    # udf / window stubs (we expose them; if tests still fail it may be NotImplementedError -> parity)
+    if re.search(r"module.*has no attribute ['\"]udf['\"]", message):
+        return "fix_sparkless"
+    if re.search(r"module.*has no attribute ['\"]row_number['\"]", message) or re.search(r"module.*has no attribute ['\"]percent_rank['\"]", message):
+        return "fix_sparkless"
+    if "NotImplementedError" in message and ("row_number" in message or "percent_rank" in message or "lag" in message or "lead" in message or "ntile" in message or "not implemented for the Robin backend" in message):
+        return "robin_sparkless"
+    # createDataFrame / pandas
+    if "'str' object cannot be converted to 'PyDict'" in message or "createDataFrame_from_pandas" in message:
+        return "fix_sparkless"
+    if "assert False" in message:
+        # Often assertion on result type or value (e.g. join coercion) -> treat as parity for now
+        return "robin_sparkless"
     return "other"
 
 

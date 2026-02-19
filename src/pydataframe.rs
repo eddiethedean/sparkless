@@ -143,8 +143,14 @@ impl PyDataFrame {
     }
 
     fn distinct(&self) -> PyResult<Self> {
+        self.distinct_subset(None)
+    }
+
+    /// distinct(Some(col_names)) for dropDuplicates(subset=...); None = all columns.
+    fn distinct_subset(&self, subset: Option<Vec<String>>) -> PyResult<Self> {
+        let opt_ref: Option<Vec<&str>> = subset.as_ref().map(|v| v.iter().map(String::as_str).collect());
         self.inner
-            .distinct(None)
+            .distinct(opt_ref)
             .map(Self::from_robin)
             .map_err(|e| PyValueError::new_err(format!("distinct failed: {e}")))
     }
@@ -187,13 +193,13 @@ pub struct PyGroupedData {
 impl PyGroupedData {
     /// Apply aggregations (e.g. F.sum("a"), F.count("*")). Takes list of Column expressions.
     fn agg(&self, exprs: &Bound<'_, PyList>) -> PyResult<PyDataFrame> {
-        let mut polars_exprs = Vec::with_capacity(exprs.len());
+        let mut cols = Vec::with_capacity(exprs.len());
         for item in exprs.iter() {
             let py_col = item.downcast::<PyColumn>()?;
-            polars_exprs.push(py_col.borrow().to_expr());
+            cols.push(py_col.borrow().as_robin().clone());
         }
         self.inner
-            .agg(polars_exprs)
+            .agg_columns(cols)
             .map(Self::from_robin_df)
             .map_err(|e| PyValueError::new_err(format!("agg failed: {e}")))
     }

@@ -7,6 +7,7 @@ This wrapper delegates to F.* where possible and implements reverse operators.
 
 from __future__ import annotations
 
+import math
 from typing import Any, List, Union
 
 
@@ -24,6 +25,30 @@ def _wrap(col: Any) -> "RobinColumn":
     return RobinColumn(col)
 
 
+def _is_pycolumn_like(obj: Any) -> bool:
+    """True if obj is a crate PyColumn (so we should wrap it as RobinColumn)."""
+    if obj is None or isinstance(obj, RobinColumn):
+        return False
+    # Crate exposes PyColumn; avoid wrapping SortOrder or other non-Column types
+    t = type(obj)
+    return getattr(t, "__name__", "") == "PyColumn" or (
+        hasattr(obj, "alias") and hasattr(obj, "__add__") and callable(getattr(obj, "cast", None))
+    )
+
+
+def _data_type_to_cast_string(data_type: Any) -> str:
+    """Convert PySpark/Sparkless DataType to crate type name (e.g. IntegerType() -> 'int')."""
+    if isinstance(data_type, str):
+        return data_type
+    type_name = getattr(data_type, "typeName", None)
+    if type_name is not None and callable(type_name):
+        return type_name()
+    simple = getattr(data_type, "simpleString", None)
+    if simple is not None and callable(simple):
+        return simple()
+    return str(data_type)
+
+
 class RobinColumn:
     """Wrapper around PyColumn that adds missing PySpark Column methods."""
 
@@ -36,7 +61,8 @@ class RobinColumn:
 
     # ---- Forward to inner ----
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._inner, name)
+        val = getattr(self._inner, name)
+        return _wrap(val) if _is_pycolumn_like(val) else val
 
     def __str__(self) -> str:
         return str(self._inner)
@@ -87,8 +113,36 @@ class RobinColumn:
     def __mod__(self, other: Any) -> RobinColumn:
         return _wrap(self._inner.__mod__(self._other_inner(other)))
 
+    def __pow__(self, other: Any) -> RobinColumn:
+        """Power: col ** other. PySpark: col ** 2. Crate pow(col, exp) expects int exponent."""
+        if isinstance(other, (int, float)):
+            return self._f().pow(self, int(other))
+        # Column ** Column: exp(log(self) * other)
+        return self._f().exp(self._f().log(self) * other)
+
+    def __rpow__(self, other: Any) -> RobinColumn:
+        """Reverse power: other ** col. PySpark: 2 ** col. Implement as exp(log(other) * col)."""
+        if isinstance(other, (int, float)) and other <= 0:
+            raise ValueError("math domain error: base must be positive for __rpow__")
+        return self._f().exp(self._f().lit(math.log(other)) * self)
+
+    def __neg__(self) -> RobinColumn:
+        """Unary minus. PySpark: -col."""
+        return _wrap(self._lit_inner(0).__sub__(self._inner))
+
     def __eq__(self, other: Any) -> RobinColumn:
         return _wrap(self._inner.__eq__(self._other_inner(other)))
+
+    def eqNullSafe(self, other: Any) -> RobinColumn:
+        """Null-safe equality: True if both null, or both non-null and equal."""
+        other_inner = self._other_inner(other)
+        if hasattr(self._inner, "eq_null_safe"):
+            return _wrap(self._inner.eq_null_safe(other_inner))
+        # Fallback: (self.isNull() & other.isNull()) | (self.isNotNull() & (self == other))
+        other_col = _wrap(other_inner)
+        both_null = self.isNull() & other_col.isNull()
+        both_eq = self.isNotNull() & (self == other_col)
+        return both_null | both_eq
 
     def __ne__(self, other: Any) -> RobinColumn:
         return _wrap(self._inner.__ne__(self._other_inner(other)))
@@ -109,18 +163,32 @@ class RobinColumn:
         """Boolean NOT. PySpark: ~col."""
         return _wrap(self._inner.__invert__())
 
+    def __and__(self, other: Any) -> RobinColumn:
+        """Boolean AND. PySpark: col & other. Use _other_inner so literals become columns."""
+        return _wrap(self._inner.and_(self._other_inner(other)))
+
+    def __or__(self, other: Any) -> RobinColumn:
+        """Boolean OR. PySpark: col | other."""
+        return _wrap(self._inner.or_(self._other_inner(other)))
+
     # ---- PySpark Column methods (use inner when present, else F) ----
+    def alias(self, name: str) -> RobinColumn:
+        """Column alias. Wrap result so chained .cast(DataType) uses RobinColumn.cast."""
+        return _wrap(self._inner.alias(name))
+
     def astype(self, data_type: Union[str, Any]) -> RobinColumn:
         """Cast column to type. PySpark: col.astype('string'). Crate has .cast()."""
+        type_str = _data_type_to_cast_string(data_type)
         if hasattr(self._inner, "cast"):
-            return _wrap(self._inner.cast(str(data_type)))
-        return _wrap(self._f().cast(self._inner, data_type))
+            return _wrap(self._inner.cast(type_str))
+        return _wrap(self._f().cast(self._inner, type_str))
 
     def cast(self, data_type: Union[str, Any]) -> RobinColumn:
-        """Cast column to type."""
+        """Cast column to type. Accepts DataType (uses typeName()) or string."""
+        type_str = _data_type_to_cast_string(data_type)
         if hasattr(self._inner, "cast"):
-            return _wrap(self._inner.cast(str(data_type)))
-        return _wrap(self._f().cast(self._inner, data_type))
+            return _wrap(self._inner.cast(type_str))
+        return _wrap(self._f().cast(self._inner, type_str))
 
     def substr(self, start: int, length: int) -> RobinColumn:
         """Substring (1-based start). PySpark: col.substr(start, length)."""
@@ -163,6 +231,10 @@ class RobinColumn:
         """Get item (array index or map key)."""
         return _wrap(self._f().get_item(self._inner, key))
 
+    def __getitem__(self, key: Any) -> RobinColumn:
+        """PySpark: col[key] for array index or map key."""
+        return self.getItem(key)
+
     def startswith(self, prefix: str) -> RobinColumn:
         """String starts with prefix. Use like(col, 'prefix%')."""
         return _wrap(self._f().like(self._inner, prefix + "%"))
@@ -187,6 +259,20 @@ class RobinColumn:
     def withField(self, fieldName: str, col: Any) -> RobinColumn:
         """Add or replace struct field. PySpark 3.1+."""
         return _wrap(self._f().with_field(self._inner, fieldName, col))
+
+    def replace(self, to_replace: Any, replacement: Any, **kwargs: Any) -> RobinColumn:
+        """Replace to_replace with replacement. PySpark: col.replace(to_replace, replacement). subset= is ignored for Column-level replace."""
+        if hasattr(self._inner, "replace"):
+            return _wrap(
+                self._inner.replace(
+                    self._other_inner(to_replace),
+                    self._other_inner(replacement),
+                )
+            )
+        raise NotImplementedError(
+            "Column.replace is not implemented for the Robin backend. "
+            "See docs/robin_parity_matrix.md and tests/robin_skip_list.json."
+        )
 
     def like(self, pattern: str) -> RobinColumn:
         """SQL LIKE."""

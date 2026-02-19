@@ -36,6 +36,14 @@ def _robin_functions_module() -> Any:
     _fill = getattr(_r, "fill", None)
     _over = getattr(_r, "over", None)
     _isin = getattr(_r, "isin", None)
+    # Window functions (expose from crate or stub)
+    _row_number = getattr(_r, "row_number", None)
+    _percent_rank = getattr(_r, "percent_rank", None)
+    _lag = getattr(_r, "lag", None)
+    _lead = getattr(_r, "lead", None)
+    _ntile = getattr(_r, "ntile", None)
+    _cume_dist = getattr(_r, "cume_dist", None)
+    _dense_rank = getattr(_r, "dense_rank", None)
 
     from ._robin_column import RobinColumn, _unwrap
 
@@ -71,6 +79,10 @@ def _robin_functions_module() -> Any:
 
     def _least_w(*cols: Any) -> Any:
         return _wrap_col(_r.least([_unwrap(c) for c in cols]))
+
+    def _sum_w(col: Any, *args: Any) -> Any:
+        """Sum: use first column only so Rust sum(col) is not given extra args."""
+        return _wrap_col(_r.sum(_unwrap(col)))
 
     # Build a namespace with all Robin functions
     class RobinFunctions:
@@ -147,11 +159,18 @@ def _robin_functions_module() -> Any:
         coalesce = staticmethod(_coalesce_w)
         greatest = staticmethod(_greatest_w)
         least = staticmethod(_least_w)
-        when = staticmethod(lambda cond: _r.when(_unwrap(cond)))
+
+        def _when_w(cond: Any, value: Any = None) -> Any:
+            """F.when(cond) or F.when(cond, value). If value given, when(cond).otherwise(value) with else=null."""
+            if value is None:
+                return _wrap_col(_r.when(_unwrap(cond)))
+            return _wrap_col(_r.when_otherwise(_unwrap(cond), _unwrap(value), _r.lit(None)))
+
+        when = staticmethod(_when_w)
         when_otherwise = staticmethod(_r.when_otherwise)
 
-        # Aggregation
-        sum_ = staticmethod(_wrap1(_r.sum))
+        # Aggregation (sum: single-arg only so Rust sum(col) is not given 2 args)
+        sum_ = staticmethod(_sum_w)
         count = staticmethod(_wrap1(_r.count))
         avg = staticmethod(_wrap1(_r.avg))
         mean = staticmethod(_wrap1(_r.mean))
@@ -163,19 +182,52 @@ def _robin_functions_module() -> Any:
     RobinFunctions.sum = RobinFunctions.sum_  # type: ignore[attr-defined]
     RobinFunctions.min = RobinFunctions.min_  # type: ignore[attr-defined]
     RobinFunctions.max = RobinFunctions.max_  # type: ignore[attr-defined]
+    # PySpark uses countDistinct (camelCase) as well as count_distinct
+    RobinFunctions.countDistinct = RobinFunctions.count_distinct  # type: ignore[attr-defined]
 
     # Optional: first, rank (if crate exposes them)
     if _first is not None:
         RobinFunctions.first = staticmethod(_first)  # type: ignore[attr-defined]
     if _rank is not None:
         RobinFunctions.rank = staticmethod(_rank)  # type: ignore[attr-defined]
-    if _cast is not None:
-        RobinFunctions.cast = staticmethod(_cast)  # type: ignore[attr-defined]
-    # Sort order (col.desc(), col.asc(), etc.) - from Rust module
+    def _data_type_to_str(dt: Any) -> str:
+        """Convert DataType to crate type string (e.g. IntegerType() -> 'int')."""
+        if isinstance(dt, str):
+            return dt
+        if getattr(dt, "typeName", None) and callable(dt.typeName):
+            return dt.typeName()
+        if getattr(dt, "simpleString", None) and callable(dt.simpleString):
+            return dt.simpleString()
+        return str(dt)
+
+    def _cast_w(col: Any, data_type: Any) -> Any:
+        """F.cast(col, type): convert DataType to string and call crate cast or col.cast()."""
+        type_str = _data_type_to_str(data_type)
+        if _cast is not None:
+            return _wrap_col(_cast(_unwrap(col), type_str))
+        # No top-level cast in crate; use column's cast method
+        return _wrap_col(_unwrap(col).cast(type_str))
+
+    RobinFunctions.cast = staticmethod(_cast_w)  # type: ignore[attr-defined]
+    # Sort order (col.desc(), col.asc(), etc.) - from Rust module or Column method fallback
+    def _sort_order_fallback(method_name: str) -> Any:
+        """F.desc_nulls_last(col) via col.desc_nulls_last() when crate has no top-level fn."""
+
+        def _f(col: Any) -> Any:
+            if isinstance(col, str):
+                c = _col(col)
+            else:
+                c = col if isinstance(col, RobinColumn) else _wrap_col(col)
+            return getattr(c, method_name)()
+
+        return _f
+
     for _name in ("desc", "asc", "desc_nulls_last", "asc_nulls_last", "desc_nulls_first", "asc_nulls_first"):
         _fn = getattr(_r, _name, None)
         if _fn is not None:
             setattr(RobinFunctions, _name, staticmethod(_fn))  # type: ignore[attr-defined]
+        else:
+            setattr(RobinFunctions, _name, staticmethod(_sort_order_fallback(_name)))  # type: ignore[attr-defined]
     if _get_item is not None:
         RobinFunctions.get_item = staticmethod(_get_item)  # type: ignore[attr-defined]
     if _is_null is not None:
@@ -190,6 +242,53 @@ def _robin_functions_module() -> Any:
         RobinFunctions.over = staticmethod(_over)  # type: ignore[attr-defined]
     if _isin is not None:
         RobinFunctions.isin = staticmethod(_isin)  # type: ignore[attr-defined]
+
+    # Stubs for F.* not yet in crate (expr, struct, explode, etc.) so F.expr etc. exist
+    def _not_impl_stub(name: str) -> Any:
+        def _stub(*args: Any, **kwargs: Any) -> Any:
+            raise NotImplementedError(
+                f"{name} is not implemented for the Robin backend. "
+                "See docs/robin_parity_matrix.md and tests/robin_skip_list.json."
+            )
+        return _stub
+
+    for _fn_name in ("expr", "struct", "explode", "posexplode", "isnan", "array_distinct"):
+        if not hasattr(RobinFunctions, _fn_name):
+            setattr(RobinFunctions, _fn_name, staticmethod(_not_impl_stub(_fn_name)))  # type: ignore[attr-defined]
+
+    # Window functions: expose from crate if present, else stub (so F.row_number etc. exist)
+    def _window_stub(name: str) -> Any:
+        raise NotImplementedError(
+            f"{name} is not implemented for the Robin backend. "
+            "See docs/robin_parity_matrix.md and tests/robin_skip_list.json."
+        )
+
+    def _window_wrap(fn: Any) -> Any:
+        """Wrap crate window fn so result is RobinColumn; pass through args for lag/lead/ntile."""
+
+        def _w(*args: Any, **kwargs: Any) -> Any:
+            unwrapped = [_unwrap(a) for a in args]
+            return _wrap_col(fn(*unwrapped, **kwargs))
+
+        return _w
+
+    for _wname, _wfn in (
+        ("row_number", _row_number),
+        ("percent_rank", _percent_rank),
+        ("lag", _lag),
+        ("lead", _lead),
+        ("ntile", _ntile),
+        ("cume_dist", _cume_dist),
+        ("dense_rank", _dense_rank),
+    ):
+        if _wfn is not None:
+            setattr(RobinFunctions, _wname, staticmethod(_window_wrap(_wfn)))  # type: ignore[attr-defined]
+        else:
+            setattr(
+                RobinFunctions,
+                _wname,
+                staticmethod(lambda n=_wname: _window_stub(n)),  # type: ignore[attr-defined]
+            )
 
     return RobinFunctions()
 

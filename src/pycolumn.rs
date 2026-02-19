@@ -3,7 +3,6 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use polars::prelude::Expr;
 use robin_sparkless::column::Column as RobinColumn;
 use robin_sparkless::functions;
 
@@ -26,10 +25,6 @@ impl PyColumn {
         &self.inner
     }
 
-    /// Get Polars Expr for use in GroupedData.agg (clone of inner expression).
-    pub fn to_expr(&self) -> Expr {
-        self.inner.expr().clone()
-    }
 }
 
 #[pymethods]
@@ -216,8 +211,7 @@ pub fn py_any_to_column(obj: &Bound<'_, PyAny>) -> PyResult<RobinColumn> {
         return Ok(py_col.as_robin().clone());
     }
     if obj.is_none() {
-        use polars::prelude::{Expr, LiteralValue};
-        return Ok(RobinColumn::from_expr(Expr::Literal(LiteralValue::Null), None));
+        return Ok(RobinColumn::null_boolean());
     }
     if let Ok(i) = obj.extract::<i64>() {
         return Ok(functions::lit_i64(i));
@@ -230,6 +224,37 @@ pub fn py_any_to_column(obj: &Bound<'_, PyAny>) -> PyResult<RobinColumn> {
     }
     if let Ok(s) = obj.extract::<String>() {
         return Ok(functions::lit_str(&s));
+    }
+    // Python datetime.date or datetime.datetime: use isoformat() then lit_str
+    if obj.hasattr("isoformat").unwrap_or(false) {
+        if let Ok(iso) = obj.call_method0("isoformat") {
+            if let Ok(s) = iso.extract::<String>() {
+                return Ok(functions::lit_str(&s));
+            }
+        }
+    }
+    // Python tuple: convert to string representation for literal (e.g. "(1, 'a')")
+    if let Ok(tup) = obj.downcast::<pyo3::types::PyTuple>() {
+        let parts: Vec<String> = tup
+            .iter()
+            .map(|v| {
+                if v.is_none() {
+                    "None".to_string()
+                } else if let Ok(s) = v.extract::<String>() {
+                    format!("'{s}'")
+                } else if let Ok(i) = v.extract::<i64>() {
+                    i.to_string()
+                } else if let Ok(f) = v.extract::<f64>() {
+                    f.to_string()
+                } else if let Ok(b) = v.extract::<bool>() {
+                    b.to_string()
+                } else {
+                    "?".to_string()
+                }
+            })
+            .collect();
+        let repr = format!("({})", parts.join(", "));
+        return Ok(functions::lit_str(&repr));
     }
     Err(PyValueError::new_err("cannot convert to Column".to_string()))
 }

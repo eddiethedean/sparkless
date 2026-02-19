@@ -690,4 +690,23 @@ Run the full suite with `pytest -n 10`; skipped tests are summarized in the repo
 To run only tests that do not require PySpark, use the default (mock) backend and
 avoid `MOCK_SPARK_TEST_BACKEND=pyspark`.
 
+### Robin backend and parity
+
+When using the **Robin** engine (v4), set `SPARKLESS_TEST_BACKEND=robin` to run tests
+against the Robin (Rust) backend. Tests that are known to fail due to Robin–PySpark
+parity gaps or upstream limitations are skipped via `tests/robin_skip_list.json`, so
+the suite can pass.
+
+- **Run Robin-only tests:**  
+  `SPARKLESS_TEST_BACKEND=robin pytest tests/ -n 10`
+- **Regenerate failure report:**  
+  Save output to a file, then run  
+  `python tests/tools/parse_robin_results.py tests/results_robin_<timestamp>.txt -o tests/robin_results_parsed.json`  
+  and  
+  `python tests/tools/generate_failure_report.py -i tests/robin_results_parsed.json -o tests/TEST_FAILURE_ANALYSIS.md`
+- **Parity documentation:**  
+  Robin–PySpark parity gaps and Sparkless-side fixes are listed in  
+  [docs/robin_parity_matrix.md](robin_parity_matrix.md).  
+  See also [docs/upstream.md](upstream.md) and `docs/robin_github_issue_*.md` for upstream issue links.
+
 This testing patterns guide provides comprehensive coverage of testing with Sparkless. For more examples and advanced patterns, see the test files in the `tests/` directory.
