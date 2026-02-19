@@ -7,6 +7,7 @@ use robin_sparkless::column::Column as RobinColumn;
 use robin_sparkless::functions;
 
 use crate::pycolumn::{py_any_to_column, py_any_to_select_expr, PyColumn};
+use crate::pysortorder::PySortOrder;
 
 fn cols_from_list(list: &Bound<'_, PyList>) -> PyResult<Vec<RobinColumn>> {
     let mut cols = Vec::with_capacity(list.len());
@@ -155,6 +156,31 @@ pub fn format_string(format: &str, cols: &Bound<'_, PyList>) -> PyResult<PyColum
     }
     let refs: Vec<&RobinColumn> = col_refs(&robin_cols);
     Ok(PyColumn::from_robin(functions::format_string(format, &refs)))
+}
+
+/// F.array(*cols) - create array column from columns. Empty list = column of empty arrays.
+#[pyfunction]
+pub fn array(cols: &Bound<'_, PyList>) -> PyResult<PyColumn> {
+    let robin_cols: Vec<RobinColumn> = cols_from_list(cols)?;
+    let refs: Vec<&RobinColumn> = col_refs(&robin_cols);
+    functions::array(&refs)
+        .map(PyColumn::from_robin)
+        .map_err(|e| PyValueError::new_err(format!("array failed: {e}")))
+}
+
+/// F.create_map(*key_value_cols) - alternating key, value columns. Empty = column of empty maps.
+#[pyfunction]
+pub fn create_map(key_values: &Bound<'_, PyList>) -> PyResult<PyColumn> {
+    let robin_cols: Vec<RobinColumn> = cols_from_list(key_values)?;
+    if !robin_cols.is_empty() && robin_cols.len() % 2 != 0 {
+        return Err(PyValueError::new_err(
+            "create_map requires an even number of columns (key, value pairs)",
+        ));
+    }
+    let refs: Vec<&RobinColumn> = col_refs(&robin_cols);
+    functions::create_map(&refs)
+        .map(PyColumn::from_robin)
+        .map_err(|e| PyValueError::new_err(format!("create_map failed: {e}")))
 }
 
 // --- Math ---
@@ -447,4 +473,66 @@ pub fn mean(col: &Bound<'_, PyAny>) -> PyResult<PyColumn> {
 #[pyfunction]
 pub fn power(col: &Bound<'_, PyAny>, exp: i64) -> PyResult<PyColumn> {
     pow(col, exp)
+}
+
+/// F.first(col) - first value (aggregate). ignorenulls optional.
+#[pyfunction]
+#[pyo3(signature = (col, ignorenulls=true))]
+pub fn first(col: &Bound<'_, PyAny>, ignorenulls: bool) -> PyResult<PyColumn> {
+    let c = py_any_to_select_expr(col)?;
+    Ok(PyColumn::from_robin(functions::first(&c, ignorenulls)))
+}
+
+/// F.rank(col, descending=false) - window rank function.
+#[pyfunction]
+#[pyo3(signature = (column, descending=false))]
+pub fn rank(column: &Bound<'_, PyAny>, descending: bool) -> PyResult<PyColumn> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PyColumn::from_robin(functions::rank(&c, descending)))
+}
+
+// -----------------------------------------------------------------------------
+// Sort order (col.desc(), col.asc(), etc.) for order_by_exprs
+// -----------------------------------------------------------------------------
+
+/// F.desc(col) - sort descending, nulls last (Spark default for DESC).
+#[pyfunction]
+pub fn desc(column: &Bound<'_, PyAny>) -> PyResult<PySortOrder> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PySortOrder::from_robin(functions::desc(&c)))
+}
+
+/// F.asc(col) - sort ascending, nulls first (Spark default for ASC).
+#[pyfunction]
+pub fn asc(column: &Bound<'_, PyAny>) -> PyResult<PySortOrder> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PySortOrder::from_robin(functions::asc(&c)))
+}
+
+/// F.desc_nulls_last(col) - sort descending, nulls last.
+#[pyfunction]
+pub fn desc_nulls_last(column: &Bound<'_, PyAny>) -> PyResult<PySortOrder> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PySortOrder::from_robin(functions::desc_nulls_last(&c)))
+}
+
+/// F.asc_nulls_last(col) - sort ascending, nulls last.
+#[pyfunction]
+pub fn asc_nulls_last(column: &Bound<'_, PyAny>) -> PyResult<PySortOrder> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PySortOrder::from_robin(functions::asc_nulls_last(&c)))
+}
+
+/// F.desc_nulls_first(col) - sort descending, nulls first.
+#[pyfunction]
+pub fn desc_nulls_first(column: &Bound<'_, PyAny>) -> PyResult<PySortOrder> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PySortOrder::from_robin(functions::desc_nulls_first(&c)))
+}
+
+/// F.asc_nulls_first(col) - sort ascending, nulls first.
+#[pyfunction]
+pub fn asc_nulls_first(column: &Bound<'_, PyAny>) -> PyResult<PySortOrder> {
+    let c = py_any_to_select_expr(column)?;
+    Ok(PySortOrder::from_robin(functions::asc_nulls_first(&c)))
 }

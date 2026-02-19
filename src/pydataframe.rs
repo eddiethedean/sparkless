@@ -3,10 +3,12 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
+use robin_sparkless::dataframe::GroupedData as RobinGroupedData;
 use robin_sparkless::dataframe::JoinType as RobinJoinType;
 use robin_sparkless::DataFrame as RobinDataFrame;
 
-use crate::pycolumn::{py_any_to_column, py_any_to_select_expr};
+use crate::pycolumn::{py_any_to_column, py_any_to_select_expr, PyColumn};
+use crate::pysortorder::PySortOrder;
 
 /// Python wrapper for Robin's DataFrame.
 #[pyclass]
@@ -93,6 +95,19 @@ impl PyDataFrame {
             .map_err(|e| PyValueError::new_err(format!("order_by failed: {e}")))
     }
 
+    /// Order by sort expressions (e.g. from F.desc(col), F.asc(col)). PySpark: orderBy(col("a").desc(), col("b").asc()).
+    fn order_by_exprs(&self, sort_orders: &Bound<'_, PyList>) -> PyResult<Self> {
+        let mut orders = Vec::with_capacity(sort_orders.len());
+        for item in sort_orders.iter() {
+            let py_so = item.downcast::<PySortOrder>()?;
+            orders.push(py_so.borrow().as_robin().clone());
+        }
+        self.inner
+            .order_by_exprs(orders)
+            .map(Self::from_robin)
+            .map_err(|e| PyValueError::new_err(format!("order_by_exprs failed: {e}")))
+    }
+
     fn group_by(&self, cols: Vec<&str>) -> PyResult<PyGroupedData> {
         let gd = self.inner
             .group_by(cols)
@@ -162,8 +177,80 @@ impl PyDataFrame {
     }
 }
 
-/// Placeholder for GroupedData - minimal for Phase 1.
+/// GroupedData: group_by result; supports agg and pivot.
 #[pyclass]
 pub struct PyGroupedData {
-    pub(crate) inner: robin_sparkless::dataframe::GroupedData,
+    pub(crate) inner: RobinGroupedData,
+}
+
+#[pymethods]
+impl PyGroupedData {
+    /// Apply aggregations (e.g. F.sum("a"), F.count("*")). Takes list of Column expressions.
+    fn agg(&self, exprs: &Bound<'_, PyList>) -> PyResult<PyDataFrame> {
+        let mut polars_exprs = Vec::with_capacity(exprs.len());
+        for item in exprs.iter() {
+            let py_col = item.downcast::<PyColumn>()?;
+            polars_exprs.push(py_col.borrow().to_expr());
+        }
+        self.inner
+            .agg(polars_exprs)
+            .map(Self::from_robin_df)
+            .map_err(|e| PyValueError::new_err(format!("agg failed: {e}")))
+    }
+
+    /// Pivot a column; returns PivotedGroupedData (call .sum(column) etc. on result).
+    fn pivot(&self, pivot_col: &str, values: Option<Vec<String>>) -> PyPivotedGroupedData {
+        let pivoted = self.inner.pivot(pivot_col, values);
+        PyPivotedGroupedData { inner: pivoted }
+    }
+}
+
+impl PyGroupedData {
+    fn from_robin_df(df: RobinDataFrame) -> PyDataFrame {
+        PyDataFrame::from_robin(df)
+    }
+}
+
+/// PivotedGroupedData: result of groupBy(...).pivot(col); has .sum(), .avg(), etc.
+#[pyclass]
+pub struct PyPivotedGroupedData {
+    pub(crate) inner: robin_sparkless::dataframe::PivotedGroupedData,
+}
+
+#[pymethods]
+impl PyPivotedGroupedData {
+    fn sum(&self, column: &str) -> PyResult<PyDataFrame> {
+        self.inner
+            .sum(column)
+            .map(PyDataFrame::from_robin)
+            .map_err(|e| PyValueError::new_err(format!("pivot sum failed: {e}")))
+    }
+
+    fn avg(&self, column: &str) -> PyResult<PyDataFrame> {
+        self.inner
+            .avg(column)
+            .map(PyDataFrame::from_robin)
+            .map_err(|e| PyValueError::new_err(format!("pivot avg failed: {e}")))
+    }
+
+    fn min(&self, column: &str) -> PyResult<PyDataFrame> {
+        self.inner
+            .min(column)
+            .map(PyDataFrame::from_robin)
+            .map_err(|e| PyValueError::new_err(format!("pivot min failed: {e}")))
+    }
+
+    fn max(&self, column: &str) -> PyResult<PyDataFrame> {
+        self.inner
+            .max(column)
+            .map(PyDataFrame::from_robin)
+            .map_err(|e| PyValueError::new_err(format!("pivot max failed: {e}")))
+    }
+
+    fn count(&self) -> PyResult<PyDataFrame> {
+        self.inner
+            .count()
+            .map(PyDataFrame::from_robin)
+            .map_err(|e| PyValueError::new_err(format!("pivot count failed: {e}")))
+    }
 }

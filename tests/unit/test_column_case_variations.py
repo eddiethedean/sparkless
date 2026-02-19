@@ -10,11 +10,6 @@ from sparkless.sql import SparkSession, functions as F
 from sparkless.spark_types import StructType, StructField, StringType, IntegerType
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin column case resolution differs",
-)
-
 
 class TestColumnCaseVariations:
     """Test all different ways to refer to columns with wrong case."""

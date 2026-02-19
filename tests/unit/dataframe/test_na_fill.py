@@ -120,10 +120,6 @@ class TestNaFill:
         assert rows[1]["value"] == "FILLED"  # Was null, now filled
         assert rows[1]["other"] is None  # Not in subset, unchanged
 
-    @pytest.mark.skipif(
-        get_backend_type() == BackendType.ROBIN,
-        reason="Robin na.fill after join Row.copy differs",
-    )
     def test_na_fill_after_join(self, spark):
         """Test .na.fill() after join operation (exact scenario from issue #245)."""
         # Use integers for the exact scenario from issue #245

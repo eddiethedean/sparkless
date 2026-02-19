@@ -9,11 +9,6 @@ import pytest
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin window orderBy list parity not yet met",
-)
-
 
 class TestWindowOrderByListParity:
     """PySpark parity tests for Window().orderBy() with list arguments."""

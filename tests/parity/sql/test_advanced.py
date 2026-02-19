@@ -9,11 +9,6 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin SQL advanced parity not yet met",
-)
-
 
 class TestSQLAdvancedParity(ParityTestBase):
     """Test advanced SQL operations parity with PySpark."""

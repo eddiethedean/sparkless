@@ -18,10 +18,6 @@ from sparkless.spark_types import StringType, LongType, DoubleType, BooleanType
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
-@pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin CSV/inferSchema behavior differs from PySpark",
-)
 class TestInferSchemaParity:
     """Test inferSchema parity with PySpark."""
 

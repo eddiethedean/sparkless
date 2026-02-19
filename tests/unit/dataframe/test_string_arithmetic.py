@@ -33,10 +33,6 @@ def _is_pyspark_mode() -> bool:
     return backend == BackendType.PYSPARK
 
 
-@pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin string arithmetic semantics differ from PySpark",
-)
 class TestStringArithmetic:
     """Test string column arithmetic operations."""
 

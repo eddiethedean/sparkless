@@ -35,10 +35,6 @@ def _is_pyspark_mode() -> bool:
     return backend == BackendType.PYSPARK
 
 
-@pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin does not support withField struct update",
-)
 class TestWithField:
     """Test Column.withField() method."""
 

@@ -9,11 +9,6 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin select parity not yet met",
-)
-
 
 class TestSelectParity(ParityTestBase):
     """Test DataFrame select operations parity with PySpark."""

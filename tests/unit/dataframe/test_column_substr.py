@@ -32,10 +32,6 @@ def _is_pyspark_mode() -> bool:
     return backend == BackendType.PYSPARK
 
 
-@pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin substr/substring semantics differ from PySpark",
-)
 class TestColumnSubstr:
     """Test Column.substr() method."""
 

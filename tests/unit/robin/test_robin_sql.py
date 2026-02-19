@@ -31,10 +31,6 @@ def test_robin_sql_simple_select() -> None:
 
 
 @pytest.mark.unit
-@pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin SQL does not support alias in aggregation SELECT (COUNT(v) AS cnt)",
-)
 def test_robin_sql_group_by_agg() -> None:
     spark = SparkSession.builder.appName("RobinSQLAgg").getOrCreate()  # type: ignore[union-attr]
     df = spark.createDataFrame(

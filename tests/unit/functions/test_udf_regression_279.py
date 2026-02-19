@@ -4,11 +4,6 @@ import sparkless.sql.types as T
 from sparkless.sql import SparkSession
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin does not support UDF expression",
-)
-
 
 def test_udf_with_withColumn_regression_279():
     spark = SparkSession.builder.appName("Example").getOrCreate()

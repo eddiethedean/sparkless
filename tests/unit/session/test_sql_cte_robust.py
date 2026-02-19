@@ -7,11 +7,6 @@ the join result schema (prefixed column names like d_dept_name).
 import pytest
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin SQL CTE / empty schema differs",
-)
-
 
 def test_cte_with_join(spark) -> None:
     """CTE with JOIN: table-prefixed columns in SELECT resolve correctly.

@@ -2,6 +2,7 @@ mod pycolumn;
 mod pydataframe;
 mod pyfunctions;
 mod pysession;
+mod pysortorder;
 
 use once_cell::sync::OnceCell;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -578,7 +579,9 @@ fn sparkless_robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<pysession::PySparkSessionBuilder>()?;
     m.add_class::<pydataframe::PyDataFrame>()?;
     m.add_class::<pydataframe::PyGroupedData>()?;
+    m.add_class::<pydataframe::PyPivotedGroupedData>()?;
     m.add_class::<pycolumn::PyColumn>()?;
+    m.add_class::<pysortorder::PySortOrder>()?;
     m.add_class::<pyfunctions::PyWhenBuilder>()?;
     m.add_class::<pyfunctions::PyThenBuilder>()?;
     m.add_function(wrap_pyfunction!(pyfunctions::col, m)?)?;
@@ -599,6 +602,8 @@ fn sparkless_robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(pyfunctions::contains, m)?)?;
     m.add_function(wrap_pyfunction!(pyfunctions::like, m)?)?;
     m.add_function(wrap_pyfunction!(pyfunctions::format_string, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::array, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::create_map, m)?)?;
     // Math
     m.add_function(wrap_pyfunction!(pyfunctions::abs, m)?)?;
     m.add_function(wrap_pyfunction!(pyfunctions::ceil, m)?)?;
@@ -635,6 +640,14 @@ fn sparkless_robin(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(pyfunctions::min, m)?)?;
     m.add_function(wrap_pyfunction!(pyfunctions::max, m)?)?;
     m.add_function(wrap_pyfunction!(pyfunctions::count_distinct, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::first, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::rank, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::desc, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::asc, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::desc_nulls_last, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::asc_nulls_last, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::desc_nulls_first, m)?)?;
+    m.add_function(wrap_pyfunction!(pyfunctions::asc_nulls_first, m)?)?;
 
     m.add_function(wrap_pyfunction!(parse_ddl_schema, m)?)?;
     m.add_function(wrap_pyfunction!(sql, m)?)?;

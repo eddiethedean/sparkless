@@ -2,6 +2,15 @@
 requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
+[tool.maturin]
+# Match linker deployment target to SDK so object files (e.g. ring) link successfully.
+# If you see "built for newer macOS version than being linked", set MACOSX_DEPLOYMENT_TARGET
+# to your OS version (e.g. 26.0) or raise these to match.
+[tool.maturin.target.aarch64-apple-darwin]
+macos-deployment-target = "26.0"
+[tool.maturin.target.x86_64-apple-darwin]
+macos-deployment-target = "26.0"
+
 [project]
 name = "sparkless"
 version = "4.0.0"

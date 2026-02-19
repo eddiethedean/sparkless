@@ -19,12 +19,13 @@ except ImportError as e:
 
 from ._robin_sql import RobinSparkSession, RobinDataFrame, RobinDataFrameWriter, RobinGroupedData
 from ._robin_functions import get_robin_functions
+from ._robin_column import RobinColumn
 
 SparkSession = RobinSparkSession
 DataFrame = RobinDataFrame
 DataFrameWriter = RobinDataFrameWriter
 GroupedData = RobinGroupedData
-Column = _robin.PyColumn
+Column = RobinColumn
 F = get_robin_functions()
 Functions = type(F)
 ColumnOperation = None

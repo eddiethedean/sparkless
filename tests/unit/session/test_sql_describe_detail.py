@@ -7,11 +7,6 @@ import pytest
 from sparkless.delta import DeltaTable
 from tests.fixtures.spark_backend import SparkBackend, BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin DESCRIBE DETAIL / empty schema differs",
-)
-
 
 @pytest.fixture
 def spark_with_delta(request):

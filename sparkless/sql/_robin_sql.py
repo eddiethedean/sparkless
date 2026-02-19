@@ -13,6 +13,58 @@ from ..spark_types import Row
 from ..robin.schema_ser import serialize_schema, schema_from_robin_list
 from ..core.schema_inference import SchemaInferenceEngine
 
+try:
+    from ._robin_column import _unwrap
+except ImportError:
+    _unwrap = lambda x: x  # noqa: E731
+
+
+def _value_to_dict_for_crate(val: Any) -> Any:
+    """Convert tuple (struct-like) to dict so crate receives dict not tuple. Leaves list as-is (array)."""
+    if isinstance(val, dict):
+        return {k: _value_to_dict_for_crate(v) for k, v in val.items()}
+    if isinstance(val, tuple):
+        return {str(i): _value_to_dict_for_crate(v) for i, v in enumerate(val)}
+    return val
+
+
+def _rows_to_dicts(
+    data: List[Any], schema: Optional[Any]
+) -> List[dict]:
+    """Convert list of tuple/Row to list of dicts using schema names. Leaves dict rows unchanged."""
+    if not data:
+        return []
+    if schema is None:
+        out = []
+        for row in data:
+            if isinstance(row, dict):
+                out.append(row)
+            elif hasattr(row, "asDict"):
+                out.append(dict(row.asDict()))
+            else:
+                out.append(row)
+        return out
+    names = []
+    if schema is not None and hasattr(schema, "fields") and getattr(schema, "fields", None):
+        names = [f.name for f in schema.fields]
+    elif schema is not None and hasattr(schema, "fieldNames"):
+        names = list(schema.fieldNames())
+    elif isinstance(schema, (list, tuple)):
+        names = [str(s) for s in schema]
+    if not names:
+        return list(data) if all(isinstance(r, dict) for r in data) else []
+    out = []
+    for row in data:
+        if isinstance(row, dict):
+            out.append(row)
+        elif hasattr(row, "asDict"):
+            out.append(dict(row.asDict()))
+        elif isinstance(row, (list, tuple)):
+            out.append(dict(zip(names, row)))
+        else:
+            out.append(row)
+    return out
+
 
 def _get_robin() -> Any:
     """Import sparkless_robin; raise if unavailable."""
@@ -35,6 +87,16 @@ class RobinSparkSession:
     """PySpark-compatible SparkSession backed by PySparkSession from sparkless_robin."""
 
     backend_type: str = "robin"  # For tests that assert spark.backend_type == "robin"
+
+    @classmethod
+    def _has_active_session(cls) -> bool:
+        """Return True if there is an active session (for compatibility)."""
+        return True
+
+    def stop(self) -> None:
+        """Stop the session. No-op if the crate does not support it."""
+        if hasattr(self._inner, "stop"):
+            self._inner.stop()
 
     def __init__(self, app_name_or_inner: Any = "SparklessApp") -> None:
         """Support SparkSession('AppName') or SparkSession(inner) from builder().getOrCreate()."""
@@ -65,7 +127,10 @@ class RobinSparkSession:
         if schema is None:
             if not data_list:
                 raise ValueError("createDataFrame requires schema when data is empty")
-            # Infer schema
+            # Ensure dict rows for inference (tuples need schema to convert)
+            data_list = _rows_to_dicts(data_list, None)
+            if data_list and not isinstance(data_list[0], dict):
+                raise ValueError("createDataFrame requires schema when data is list of tuples")
             inferred_schema, normalized_data = SchemaInferenceEngine.infer_from_data(
                 data_list
             )
@@ -73,6 +138,10 @@ class RobinSparkSession:
             data_list = normalized_data
         else:
             schema_list = serialize_schema(schema)
+            data_list = _rows_to_dicts(data_list, schema)
+
+        # Crate expects dicts; convert any nested tuple (struct) to dict
+        data_list = [_value_to_dict_for_crate(r) for r in data_list]
 
         df = self._inner.createDataFrame(data_list, schema_list)
         return RobinDataFrame(df)
@@ -86,6 +155,11 @@ class RobinSparkSession:
     @property
     def read(self) -> "RobinDataFrameReader":
         return RobinDataFrameReader(self._inner)
+
+    @property
+    def _storage(self) -> Any:
+        """PySpark-compatible _storage; Robin has no storage API, return None to avoid AttributeError."""
+        return None
 
     @property
     def read_parquet(self) -> Any:
@@ -138,6 +212,12 @@ class RobinDataFrameReader:
 
     def __init__(self, session: Any) -> None:
         self._session = session
+        self._options: dict = {}
+
+    def option(self, key: str, value: Any) -> "RobinDataFrameReader":
+        """Store option for use in read (e.g. header, inferSchema)."""
+        self._options[key] = value
+        return self
 
     def parquet(self, path: str) -> "RobinDataFrame":
         return RobinDataFrame(self._session.read_parquet(path))
@@ -194,8 +274,11 @@ class RobinDataFrame:
 
     @property
     def schema(self) -> Any:
-        """Schema as StructType."""
+        """Schema as StructType. Never None for Robin DataFrames."""
         schema_list = self._inner.schema()
+        if not schema_list:
+            from ..spark_types import StructType
+            return StructType([])
         return schema_from_robin_list(schema_list)
 
     def __getitem__(self, item: Union[str, Any]) -> Any:
@@ -206,16 +289,22 @@ class RobinDataFrame:
         raise TypeError(f"RobinDataFrame does not support __getitem__ for {type(item)}")
 
     def filter(self, condition: Any) -> "RobinDataFrame":
-        return RobinDataFrame(self._inner.filter(condition))
+        return RobinDataFrame(self._inner.filter(_unwrap(condition)))
 
     def select(self, *cols: Any) -> "RobinDataFrame":
-        return RobinDataFrame(self._inner.select(list(cols)))
+        return RobinDataFrame(self._inner.select([_unwrap(c) for c in cols]))
 
     def withColumn(self, name: str, col: Any) -> "RobinDataFrame":
-        return RobinDataFrame(self._inner.with_column(name, col))
+        return RobinDataFrame(self._inner.with_column(name, _unwrap(col)))
 
     def drop(self, *cols: Union[str, Any]) -> "RobinDataFrame":
-        col_names = [c if isinstance(c, str) else str(c) for c in cols]
+        col_names = []
+        for c in cols:
+            if isinstance(c, str):
+                col_names.append(c)
+            else:
+                c_unwrapped = _unwrap(c)
+                col_names.append(getattr(c_unwrapped, "name", str(c_unwrapped)) if hasattr(c_unwrapped, "name") else str(c_unwrapped))
         return RobinDataFrame(self._inner.drop(col_names))
 
     def limit(self, n: int) -> "RobinDataFrame":
@@ -224,14 +313,41 @@ class RobinDataFrame:
     def orderBy(self, *cols: Any, ascending: Optional[Union[bool, List[bool]]] = None) -> "RobinDataFrame":
         if not cols:
             return self
-        # Simplified: assume col names as strings
-        col_names = [c if isinstance(c, str) else str(c) for c in cols]
+        try:
+            import sparkless_robin as _r
+            PySortOrder = getattr(_r, "PySortOrder", None)
+        except ImportError:
+            PySortOrder = None
+        if PySortOrder and any(isinstance(c, PySortOrder) for c in cols):
+            # Build list of SortOrder: use as-is or F.asc(col) for Column/str
+            sort_orders = []
+            for c in cols:
+                if isinstance(c, PySortOrder):
+                    sort_orders.append(c)
+                elif isinstance(c, str):
+                    sort_orders.append(_r.asc(_r.col(c)))
+                else:
+                    sort_orders.append(_r.asc(_unwrap(c)))
+            return RobinDataFrame(self._inner.order_by_exprs(sort_orders))
+        col_names = []
+        for c in cols:
+            if isinstance(c, str):
+                col_names.append(c)
+            else:
+                c_unwrapped = _unwrap(c)
+                col_names.append(getattr(c_unwrapped, "name", str(c_unwrapped)) if hasattr(c_unwrapped, "name") else str(c_unwrapped))
         asc = ascending if isinstance(ascending, bool) else (ascending[0] if ascending else True)
         return RobinDataFrame(self._inner.order_by(col_names, asc))
 
     def groupBy(self, *cols: Any) -> "RobinGroupedData":
         """Group by columns."""
-        col_names = [c if isinstance(c, str) else str(c) for c in cols]
+        col_names = []
+        for c in cols:
+            if isinstance(c, str):
+                col_names.append(c)
+            else:
+                c_unwrapped = _unwrap(c)
+                col_names.append(getattr(c_unwrapped, "name", str(c_unwrapped)) if hasattr(c_unwrapped, "name") else str(c_unwrapped))
         return RobinGroupedData(self._inner.group_by(col_names))
 
     def join(
@@ -240,8 +356,22 @@ class RobinDataFrame:
         on: Union[str, List[str], Any],
         how: str = "inner",
     ) -> "RobinDataFrame":
-        on_list = [on] if isinstance(on, str) else list(on)
-        return RobinDataFrame(self._inner.join(other._inner, on_list, how))
+        # Normalize so single Column is not iterated (PyColumn is not iterable)
+        if isinstance(on, str):
+            on_list = [on]
+        elif isinstance(on, (list, tuple)):
+            on_list = list(on)
+        else:
+            on_list = [on]
+        # If on_list contains Column-like (e.g. RobinColumn), extract names
+        names = []
+        for o in on_list:
+            if isinstance(o, str):
+                names.append(o)
+            else:
+                u = _unwrap(o)
+                names.append(getattr(u, "name", str(u)) if hasattr(u, "name") else str(u))
+        return RobinDataFrame(self._inner.join(other._inner, names, how))
 
     def union(self, other: "RobinDataFrame") -> "RobinDataFrame":
         return RobinDataFrame(self._inner.union(other._inner))
@@ -258,10 +388,45 @@ class RobinDataFrame:
     def distinct(self) -> "RobinDataFrame":
         return RobinDataFrame(self._inner.distinct())
 
-    @property
-    def write(self) -> "RobinDataFrameWriter":
-        """Return DataFrameWriter for write operations."""
-        return RobinDataFrameWriter(self)
+    def fillna(
+        self,
+        value: Any,
+        subset: Optional[Union[str, List[str], tuple]] = None,
+    ) -> "RobinDataFrame":
+        """Fill null values. When value is a dict, fill by column name (PySpark: ignore subset)."""
+        rows = self._inner.collect()
+        schema_list = self._inner.schema()
+        if not rows:
+            return self
+        cols = self.columns
+        filled = []
+        if isinstance(value, dict):
+            # PySpark: value=dict uses column name -> fill value; subset is ignored
+            for row in rows:
+                r = dict(row)
+                for k, fill_val in value.items():
+                    if k in r and r[k] is None:
+                        r[k] = fill_val
+                filled.append(r)
+        else:
+            if subset is not None:
+                raw = [subset] if isinstance(subset, str) else list(subset)
+                # Resolve Column to column name so subset is always list of str
+                subset_cols = [
+                    c if isinstance(c, str) else getattr(c, "name", str(c))
+                    for c in raw
+                ]
+            else:
+                subset_cols = cols
+            for row in rows:
+                r = dict(row)
+                for k in subset_cols:
+                    if k in r and r[k] is None:
+                        r[k] = value
+                filled.append(r)
+        session = get_or_create_robin_session()
+        schema_struct = schema_from_robin_list(schema_list)
+        return session.createDataFrame(filled, schema_struct)
 
     def createOrReplaceTempView(self, name: str) -> None:
         """Register this DataFrame as a temp view (createOrReplaceTempView)."""
@@ -368,15 +533,52 @@ class RobinDataFrameWriter:
 
 
 class RobinGroupedData:
-    """Wrapper for PyGroupedData. agg() support is limited."""
+    """Wrapper for PyGroupedData. agg() and pivot() delegate to crate when available."""
 
     def __init__(self, inner: Any) -> None:
         self._inner = inner
 
     def agg(self, *exprs: Any) -> RobinDataFrame:
-        raise NotImplementedError(
-            "GroupedData.agg() not yet fully implemented for Robin backend."
-        )
+        agg_fn = getattr(self._inner, "agg", None)
+        if agg_fn is None:
+            raise NotImplementedError(
+                "GroupedData.agg() not yet fully implemented for Robin backend."
+            )
+        unwrapped = [_unwrap(e) for e in exprs]
+        return RobinDataFrame(agg_fn(unwrapped))
+
+    def pivot(self, pivot_col: str, values: Optional[Sequence[str]] = None) -> "RobinPivotedGroupedData":
+        """Pivot (PySpark: groupBy(...).pivot(col, values)). Returns object with .sum(), .avg(), etc."""
+        pivot_fn = getattr(self._inner, "pivot", None)
+        if pivot_fn is None:
+            raise NotImplementedError(
+                "'RobinGroupedData' object has no attribute 'pivot'. "
+                "Implement pivot on Robin backend."
+            )
+        result = pivot_fn(pivot_col, list(values) if values is not None else None)
+        return RobinPivotedGroupedData(result)
+
+
+class RobinPivotedGroupedData:
+    """Result of groupBy(...).pivot(col). Has .sum(column), .avg(column), etc."""
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+
+    def sum(self, column: str) -> RobinDataFrame:
+        return RobinDataFrame(self._inner.sum(column))
+
+    def avg(self, column: str) -> RobinDataFrame:
+        return RobinDataFrame(self._inner.avg(column))
+
+    def min(self, column: str) -> RobinDataFrame:
+        return RobinDataFrame(self._inner.min(column))
+
+    def max(self, column: str) -> RobinDataFrame:
+        return RobinDataFrame(self._inner.max(column))
+
+    def count(self) -> RobinDataFrame:
+        return RobinDataFrame(self._inner.count())
 
 
 # -----------------------------------------------------------------------------

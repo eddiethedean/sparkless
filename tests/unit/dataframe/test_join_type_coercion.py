@@ -23,11 +23,6 @@ StructType = imports.StructType
 StructField = imports.StructField
 F = imports.F  # Functions module for backend-appropriate F.col() etc.
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin join type coercion semantics differ from PySpark",
-)
-
 
 class TestJoinTypeCoercion:
     """Test join operations with different column types."""

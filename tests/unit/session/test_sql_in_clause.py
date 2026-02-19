@@ -1,11 +1,6 @@
 import pytest
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin SQL IN clause / empty schema differs",
-)
-
 
 def test_sql_in_clause_basic(spark) -> None:
     """BUG-010 regression: basic IN (25, 35) should filter correctly."""

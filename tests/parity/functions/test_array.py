@@ -10,11 +10,6 @@ from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin array parity not yet met",
-)
-
 
 class TestArrayFunctionsParity(ParityTestBase):
     """Test array function parity with PySpark."""

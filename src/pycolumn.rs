@@ -3,6 +3,7 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use polars::prelude::Expr;
 use robin_sparkless::column::Column as RobinColumn;
 use robin_sparkless::functions;
 
@@ -23,6 +24,11 @@ impl PyColumn {
 
     pub fn as_robin(&self) -> &RobinColumn {
         &self.inner
+    }
+
+    /// Get Polars Expr for use in GroupedData.agg (clone of inner expression).
+    pub fn to_expr(&self) -> Expr {
+        self.inner.expr().clone()
     }
 }
 

@@ -37,10 +37,6 @@ def _is_pyspark_mode() -> bool:
     return backend == BackendType.PYSPARK
 
 
-@pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin cast/astype semantics differ from PySpark",
-)
 class TestColumnAstype:
     """Test Column.astype() method."""
 

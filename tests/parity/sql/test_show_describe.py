@@ -9,11 +9,6 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_backend import BackendType, get_backend_type
 
-pytestmark = pytest.mark.skipif(
-    get_backend_type() == BackendType.ROBIN,
-    reason="Robin SQL SHOW/DESCRIBE parity not yet met",
-)
-
 
 class TestSQLShowDescribeParity(ParityTestBase):
     """Test SQL SHOW and DESCRIBE operations parity with PySpark."""
