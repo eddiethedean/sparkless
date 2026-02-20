@@ -41,13 +41,16 @@ def _json_safe_value(value: Any) -> Any:
 
 
 def serialize_schema(schema: Any) -> List[Dict[str, str]]:
-    """Serialize a StructType to a list of {name, type} dicts."""
-    if not hasattr(schema, "fields"):
-        return []
-    return [
-        {"name": f.name, "type": f.dataType.simpleString()}
-        for f in schema.fields
-    ]
+    """Serialize a StructType (or list of column names) to a list of {name, type} dicts."""
+    if hasattr(schema, "fields") and schema.fields:
+        return [
+            {"name": f.name, "type": f.dataType.simpleString()}
+            for f in schema.fields
+        ]
+    # List/tuple of column names (e.g. ["a", "b"]) -> string type for each
+    if isinstance(schema, (list, tuple)) and schema:
+        return [{"name": str(s), "type": "string"} for s in schema]
+    return []
 
 
 def schema_from_robin_list(entries: List[Dict[str, str]]) -> StructType:

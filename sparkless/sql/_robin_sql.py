@@ -227,8 +227,14 @@ class RobinSparkSession:
         else:
             if isinstance(schema, str):
                 schema_list = _parse_schema_string(schema)
-                # _rows_to_dicts needs something with field names for tuple rows
-                _schema_for_rows = type("_Schema", (), {"fieldNames": lambda: [e["name"] for e in schema_list], "fields": []})()
+                names = [e["name"] for e in schema_list]
+                _schema_for_rows = type("_Schema", (), {"fieldNames": lambda self=None, *a: names, "fields": []})()
+                data_list = _rows_to_dicts(data_list, _schema_for_rows)
+            elif isinstance(schema, (list, tuple)) and schema and all(isinstance(s, str) for s in schema):
+                # List of column names -> non-empty schema_list for crate
+                schema_list = [{"name": str(s), "type": "string"} for s in schema]
+                names = list(schema)
+                _schema_for_rows = type("_Schema", (), {"fieldNames": lambda self=None, *a: names, "fields": []})()
                 data_list = _rows_to_dicts(data_list, _schema_for_rows)
             else:
                 schema_list = serialize_schema(schema)
@@ -241,6 +247,17 @@ class RobinSparkSession:
             {k: _native_value(v) for k, v in r.items()} if isinstance(r, dict) else r
             for r in data_list
         ]
+
+        # Crate rejects empty schema when rows are non-empty; infer from first row if needed
+        if data_list and not schema_list:
+            first = data_list[0]
+            if isinstance(first, dict) and first:
+                schema_list = [{"name": k, "type": "string"} for k in sorted(first.keys())]
+            else:
+                raise ValueError(
+                    "createDataFrame: schema is required and must be non-empty when data is non-empty "
+                    "(e.g. provide a StructType or list of column names)."
+                )
 
         df = self._inner.createDataFrame(data_list, schema_list)
         return RobinDataFrame(df)
@@ -264,6 +281,15 @@ class RobinSparkSession:
     def _storage(self) -> Any:
         """PySpark-compatible _storage; Robin has no storage API, return None to avoid AttributeError."""
         return None
+
+    @property
+    def catalog(self) -> Any:
+        """PySpark-compatible catalog (listDatabases, listTables, etc.) via RobinCatalogStorage + Catalog."""
+        if not hasattr(self, "_robin_catalog"):
+            from ..storage.backends.robin import RobinCatalogStorage
+            from ..session.catalog import Catalog
+            self._robin_catalog = Catalog(RobinCatalogStorage(), spark=self)
+        return self._robin_catalog
 
     @property
     def read_parquet(self) -> Any:
@@ -509,6 +535,8 @@ class RobinDataFrame:
                     else str(c_unwrapped)
                 )
         return RobinGroupedData(self._inner.group_by(col_names))
+
+    groupby = groupBy  # PySpark alias
 
     def join(
         self,
@@ -792,6 +820,22 @@ class RobinGroupedData:
     def count(self) -> RobinDataFrame:
         """Return aggregated count per group. Delegates to Rust PyGroupedData.count()."""
         return RobinDataFrame(self._inner.count())
+
+    def mean(self, *cols: Any) -> RobinDataFrame:
+        """Mean (avg) per group. PySpark: groupBy(...).mean('a', 'b') or .mean()."""
+        mean_fn = getattr(self._inner, "mean", None)
+        if mean_fn is not None:
+            return RobinDataFrame(mean_fn(*cols))
+        # Fallback: agg(F.avg(col) for each col)
+        from ._robin_functions import get_robin_functions
+        F = get_robin_functions()
+        if cols:
+            exprs = [F.avg(F.col(c) if isinstance(c, str) else c) for c in cols]
+            return self.agg(*exprs)
+        raise NotImplementedError(
+            "GroupedData.mean() with no columns is not implemented for the Robin backend. "
+            "Use .mean('col1', 'col2') or .agg(F.mean('col'))."
+        )
 
 
 class RobinPivotedGroupedData:

@@ -61,7 +61,7 @@ print(rows)
 
 ## Environment
 
-- Sparkless v4 (Robin-only), robin-sparkless crate **0.12.0** via PyO3 extension.
+- Sparkless v4 (Robin-only), robin-sparkless crate **0.12.2** via PyO3 extension.
 - PySpark 3.x.
 
 ## Request

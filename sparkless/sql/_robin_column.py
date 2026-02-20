@@ -49,6 +49,32 @@ def _data_type_to_cast_string(data_type: Any) -> str:
     return str(data_type)
 
 
+class RobinCaseWhenBuilder:
+    """Builder for F.when(cond).when(cond2, value2).otherwise(else_value). Crate has when_otherwise(cond, then_val, else_val)."""
+
+    def __init__(self, first_cond: Any, first_value: Any = None) -> None:
+        self._pairs: List[tuple] = [(first_cond, first_value)]
+
+    def when(self, cond: Any, value: Any = None) -> "RobinCaseWhenBuilder":
+        self._pairs.append((cond, value))
+        return self
+
+    def otherwise(self, value: Any) -> RobinColumn:
+        from ._robin_functions import _get_robin
+        _r = _get_robin()
+        else_inner = _unwrap(value) if isinstance(value, RobinColumn) else _r.lit(value)
+        result = else_inner
+        for cond, then_val in reversed(self._pairs):
+            cond_inner = _unwrap(cond) if isinstance(cond, RobinColumn) else cond
+            if then_val is None:
+                # .when(cond) with no value: then-branch is null, else-branch is current result
+                result = _r.when_otherwise(cond_inner, _r.lit(None), result)
+            else:
+                then_inner = _unwrap(then_val) if isinstance(then_val, RobinColumn) else _r.lit(then_val)
+                result = _r.when_otherwise(cond_inner, then_inner, result)
+        return _wrap(result)
+
+
 class RobinColumn:
     """Wrapper around PyColumn that adds missing PySpark Column methods."""
 
@@ -62,6 +88,11 @@ class RobinColumn:
     # ---- Forward to inner ----
     def __getattr__(self, name: str) -> Any:
         val = getattr(self._inner, name)
+        if callable(val) and name in ("when", "otherwise"):
+            def _wrap_result(*args: Any, **kwargs: Any) -> Any:
+                result = val(*args, **kwargs)
+                return _wrap(result) if _is_pycolumn_like(result) else result
+            return _wrap_result
         return _wrap(val) if _is_pycolumn_like(val) else val
 
     def __str__(self) -> str:
@@ -260,14 +291,26 @@ class RobinColumn:
         """Add or replace struct field. PySpark 3.1+."""
         return _wrap(self._f().with_field(self._inner, fieldName, col))
 
-    def replace(self, to_replace: Any, replacement: Any, **kwargs: Any) -> RobinColumn:
-        """Replace to_replace with replacement. PySpark: col.replace(to_replace, replacement). subset= is ignored for Column-level replace."""
+    def replace(self, to_replace: Any, replacement: Any = None, **kwargs: Any) -> RobinColumn:
+        """Replace to_replace with replacement. PySpark: col.replace(to_replace, replacement) or replace(to_replace, subset=...). subset= is ignored for Column-level replace."""
+        subset = kwargs.pop("subset", None)  # accept but ignore at Column level
         if hasattr(self._inner, "replace"):
-            return _wrap(
-                self._inner.replace(
-                    self._other_inner(to_replace),
-                    self._other_inner(replacement),
+            if replacement is None and not isinstance(to_replace, dict):
+                raise TypeError(
+                    "RobinColumn.replace() missing 1 required positional argument: 'replacement'. "
+                    "Use col.replace(to_replace, replacement)."
                 )
+            repl_inner = self._other_inner(replacement) if replacement is not None else None
+            if isinstance(to_replace, dict) and replacement is None:
+                # PySpark: replace({k: v, ...}) - crate may not support; use first pair or raise
+                if not to_replace:
+                    return _wrap(self._inner)
+                first_k, first_v = next(iter(to_replace.items()))
+                repl_inner = self._other_inner(first_v)
+                to_replace = first_k
+            to_inner = self._other_inner(to_replace)
+            return _wrap(
+                self._inner.replace(to_inner, repl_inner)
             )
         raise NotImplementedError(
             "Column.replace is not implemented for the Robin backend. "

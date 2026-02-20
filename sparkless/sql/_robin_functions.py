@@ -84,6 +84,14 @@ def _robin_functions_module() -> Any:
         """Sum: use first column only so Rust sum(col) is not given extra args."""
         return _wrap_col(_r.sum(_unwrap(col)))
 
+    def _math_stub(name: str) -> Any:
+        def _stub(*args: Any, **kwargs: Any) -> Any:
+            raise NotImplementedError(
+                f"{name} is not implemented for the Robin backend. "
+                "See docs/robin_parity_matrix.md and tests/robin_skip_list.json."
+            )
+        return _stub
+
     # Build a namespace with all Robin functions
     class RobinFunctions:
         # Column (wrap so F.col/F.lit return RobinColumn)
@@ -130,6 +138,13 @@ def _robin_functions_module() -> Any:
         power = staticmethod(_wrap1(_r.power))
         exp = staticmethod(_wrap1(_r.exp))
         log = staticmethod(_wrap1(_r.log))
+        # Trig (expose from crate or stub)
+        _sin = getattr(_r, "sin", None)
+        _cos = getattr(_r, "cos", None)
+        _tan = getattr(_r, "tan", None)
+        sin = staticmethod(_wrap1(_sin)) if _sin is not None else staticmethod(_math_stub("sin"))
+        cos = staticmethod(_wrap1(_cos)) if _cos is not None else staticmethod(_math_stub("cos"))
+        tan = staticmethod(_wrap1(_tan)) if _tan is not None else staticmethod(_math_stub("tan"))
 
         # Datetime
         year = staticmethod(_wrap1(_r.year))
@@ -161,9 +176,10 @@ def _robin_functions_module() -> Any:
         least = staticmethod(_least_w)
 
         def _when_w(cond: Any, value: Any = None) -> Any:
-            """F.when(cond) or F.when(cond, value). If value given, when(cond).otherwise(value) with else=null."""
+            """F.when(cond) or F.when(cond, value). Returns builder for .when()/.otherwise() chain or single column."""
+            from ._robin_column import RobinCaseWhenBuilder
             if value is None:
-                return _wrap_col(_r.when(_unwrap(cond)))
+                return RobinCaseWhenBuilder(cond)
             return _wrap_col(_r.when_otherwise(_unwrap(cond), _unwrap(value), _r.lit(None)))
 
         when = staticmethod(_when_w)

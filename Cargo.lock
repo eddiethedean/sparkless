@@ -3593,9 +3593,9 @@ dependencies = [
 
 [[package]]
 name = "robin-sparkless"
-version = "0.12.0"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "571a1d79570eaba6bf8aa34d40a86caf9a84b48febd28ea161f5217dde286a60"
+checksum = "d6e1b12d7d3b15b7a9f645ee37600566aa637a885b77cd32d81126d7d922183a"
 dependencies = [
  "aes-gcm",
  "anyhow",
