@@ -40,7 +40,7 @@ tbl.collect()  # OK
 
 ## Environment
 
-- Sparkless v4 (Robin-only), robin-sparkless crate **0.12.2** (with `sql` feature) via PyO3 extension.
+- Sparkless v4 (Robin-only), robin-sparkless crate **0.15.0** (with `sql` feature) via PyO3 extension.
 - PySpark 3.x.
 
 ## Request

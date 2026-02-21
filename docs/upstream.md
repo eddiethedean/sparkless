@@ -2,7 +2,7 @@
 
 ## Robin-sparkless crate version
 
-Sparkless v4 depends on **robin-sparkless 0.12.2** (see `Cargo.toml`). **0.12.2 fixes all Sparkless-reported parity issues**, including:
+Sparkless v4 depends on **robin-sparkless 0.15.0** (see `Cargo.toml`). **0.15.0** (and 0.12.2) fix Sparkless-reported parity issues, including:
 
 - **[#492](https://github.com/eddiethedean/robin-sparkless/issues/492)** — Case-insensitive `orderBy` on mixed-case column names (PySpark parity).
 - **[#176](https://github.com/eddiethedean/robin-sparkless/issues/176)** — `select()` with column expressions and `regexp_extract_all` for PySpark compatibility.

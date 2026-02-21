@@ -3593,12 +3593,33 @@ dependencies = [
 
 [[package]]
 name = "robin-sparkless"
-version = "0.12.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e1b12d7d3b15b7a9f645ee37600566aa637a885b77cd32d81126d7d922183a"
+checksum = "6831ee035723487dcf4e722b420ea95a33ec114eaddb4a03fd96b17049f120fa"
+dependencies = [
+ "robin-sparkless-core",
+ "robin-sparkless-polars",
+ "serde_json",
+]
+
+[[package]]
+name = "robin-sparkless-core"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f9b5bfab9f392c3423ec3081104e87a8248883926680d8e31defa3f06d299e5"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "robin-sparkless-polars"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92f7464a4481753fd82135d97fcb7ed30f7038f6f8722213361f8b51ee7346a9"
 dependencies = [
  "aes-gcm",
- "anyhow",
  "base64",
  "bytes",
  "chrono",
@@ -3615,15 +3636,15 @@ dependencies = [
  "rand 0.8.5",
  "rand_distr 0.4.3",
  "regex",
+ "robin-sparkless-core",
  "serde",
  "serde_json",
  "sha1",
  "sha2",
  "soundex",
- "spark-ddl-parser",
+ "spark-sql-parser",
  "sqlparser 0.61.0",
  "strsim",
- "thiserror",
  "tokio",
  "twox-hash 1.6.3",
  "url",
@@ -3984,6 +4005,16 @@ name = "spark-ddl-parser"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d6f9626159c0e181f8c2449788ff754d54a93bdec0c09027d5098845565aee1"
+
+[[package]]
+name = "spark-sql-parser"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15d95ede8b19aa97bf4e382e65263ef22a0e581d5b57fd599311415216e7ea50"
+dependencies = [
+ "sqlparser 0.61.0",
+ "thiserror",
+]
 
 [[package]]
 name = "sparkless-robin"

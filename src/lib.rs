@@ -419,7 +419,7 @@ fn write_parquet(
     path: &str,
     overwrite: bool,
 ) -> PyResult<()> {
-    use robin_sparkless::dataframe::WriteMode;
+    use robin_sparkless::dataframe::{WriteFormat, WriteMode};
     let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
     let session = get_or_create_session();
@@ -433,7 +433,8 @@ fn write_parquet(
     };
     df.write()
         .mode(mode)
-        .parquet(path)
+        .format(WriteFormat::Parquet)
+        .save(path)
         .map_err(|e| PyValueError::new_err(format!("Robin write_parquet failed: {e}")))?;
     Ok(())
 }
@@ -447,7 +448,7 @@ fn write_csv(
     path: &str,
     overwrite: bool,
 ) -> PyResult<()> {
-    use robin_sparkless::dataframe::WriteMode;
+    use robin_sparkless::dataframe::{WriteFormat, WriteMode};
     let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
     let session = get_or_create_session();
@@ -461,7 +462,8 @@ fn write_csv(
     };
     df.write()
         .mode(mode)
-        .csv(path)
+        .format(WriteFormat::Csv)
+        .save(path)
         .map_err(|e| PyValueError::new_err(format!("Robin write_csv failed: {e}")))?;
     Ok(())
 }
@@ -475,7 +477,7 @@ fn write_json(
     path: &str,
     overwrite: bool,
 ) -> PyResult<()> {
-    use robin_sparkless::dataframe::WriteMode;
+    use robin_sparkless::dataframe::{WriteFormat, WriteMode};
     let schema_vec = parse_schema_from_python(schema)?;
     let data_rows = py_rows_to_json(py, data, &schema_vec)?;
     let session = get_or_create_session();
@@ -489,7 +491,8 @@ fn write_json(
     };
     df.write()
         .mode(mode)
-        .json(path)
+        .format(WriteFormat::Json)
+        .save(path)
         .map_err(|e| PyValueError::new_err(format!("Robin write_json failed: {e}")))?;
     Ok(())
 }

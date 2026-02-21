@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Run minimal repros for documented robin-sparkless/PySpark parity issues.
-Reports which still fail with current Sparkless + robin-sparkless (0.12.2).
+Reports which still fail with current Sparkless + robin-sparkless (0.15.0).
 Set SPARKLESS_TEST_BACKEND=robin (or rely on default for Robin-only install).
 """
 from __future__ import annotations
