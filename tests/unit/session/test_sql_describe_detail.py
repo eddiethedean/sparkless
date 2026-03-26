@@ -11,7 +11,6 @@ from tests.fixtures.spark_backend import SparkBackend, BackendType, get_backend_
 @pytest.fixture
 def spark_with_delta(request):
     """Create a SparkSession with Delta Lake enabled for PySpark mode."""
-    from tests.fixtures.spark_backend import get_backend_type
 
     backend = get_backend_type(request)
     test_name = "test_describe_detail"
@@ -129,7 +128,6 @@ class TestDescribeDetail:
         self, spark_with_delta, request
     ):
         """Test DESCRIBE DETAIL returns same data as DeltaTable.detail()."""
-        from tests.fixtures.spark_backend import get_backend_type
         from tests.fixtures.spark_backend import BackendType
 
         backend = get_backend_type(request)
@@ -226,7 +224,6 @@ class TestDescribeDetail:
 
     def test_describe_detail_empty_table(self, spark_with_delta, request):
         """Test DESCRIBE DETAIL works with empty Delta tables."""
-        from tests.fixtures.spark_backend import get_backend_type
         from tests.fixtures.spark_backend import BackendType
 
         backend = get_backend_type(request)
@@ -319,7 +316,6 @@ class TestDescribeDetail:
 
     def test_describe_detail_complex_schema(self, spark_with_delta, request):
         """Test DESCRIBE DETAIL works with complex schemas."""
-        from tests.fixtures.spark_backend import get_backend_type
         from tests.fixtures.spark_backend import BackendType
 
         backend = get_backend_type(request)
@@ -523,7 +519,6 @@ class TestDescribeDetail:
 
     def test_describe_detail_different_data_types(self, spark_with_delta, request):
         """Test DESCRIBE DETAIL with various data types."""
-        from tests.fixtures.spark_backend import get_backend_type
         from tests.fixtures.spark_backend import BackendType
 
         backend = get_backend_type(request)

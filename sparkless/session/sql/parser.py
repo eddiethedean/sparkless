@@ -20,7 +20,7 @@ Example:
     'SELECT'
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 import re
 from ...core.exceptions.analysis import ParseException
 
@@ -282,6 +282,10 @@ class SQLParser:
         """
         query_upper = query.upper().strip()
 
+        # Check for WITH (CTE) before other query types
+        # WITH queries start with WITH and contain SELECT/INSERT/UPDATE/DELETE
+        if query_upper.startswith("WITH"):
+            return "WITH"
         # Check for UNION before SELECT (since UNION queries start with SELECT)
         if " UNION " in query_upper or re.search(r"\bUNION\b", query_upper):
             return "UNION"
@@ -311,6 +315,8 @@ class SQLParser:
             return "EXPLAIN"
         elif query_upper.startswith("REFRESH"):
             return "REFRESH"
+        elif query_upper.startswith("USE"):
+            return "USE"
         else:
             return "UNKNOWN"
 
@@ -340,6 +346,8 @@ class SQLParser:
 
         if query_type == "SELECT":
             components.update(self._parse_select_query(query))
+        elif query_type == "WITH":
+            components.update(self._parse_with_query(query))
         elif query_type == "UNION":
             components.update(self._parse_union_query(query))
         elif query_type == "CREATE":
@@ -356,6 +364,10 @@ class SQLParser:
             components.update(self._parse_merge_query(query))
         elif query_type == "REFRESH":
             components.update(self._parse_refresh_query(query))
+        elif query_type == "USE":
+            components.update(self._parse_use_query(query))
+        elif query_type == "ALTER":
+            components.update(self._parse_alter_query(query))
 
         return components
 
@@ -392,10 +404,75 @@ class SQLParser:
             "having_conditions": [],
             "order_by_columns": [],
             "limit_value": None,
+            "time_travel": None,  # For Delta Lake time travel syntax
         }
 
         # Simple regex-based parsing for demonstration
         import re
+
+        # Pre-process: Extract time travel syntax from the query
+        # This needs to happen before FROM clause parsing
+        # Patterns:
+        #   FROM table VERSION AS OF 5 [alias]
+        #   FROM table TIMESTAMP AS OF '2024-01-01' [alias]
+        #   FROM table@v5 [alias]
+        #   FROM table@20240101 [alias]
+        time_travel_patterns = [
+            # VERSION AS OF <number>
+            (
+                r"(FROM\s+)([`\w.]+)\s+VERSION\s+AS\s+OF\s+(\d+)",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "version", "value": int(m.group(3))},
+                ),
+            ),
+            # TIMESTAMP AS OF '<timestamp>'
+            (
+                r"(FROM\s+)([`\w.]+)\s+TIMESTAMP\s+AS\s+OF\s+['\"]([^'\"]+)['\"]",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "timestamp", "value": m.group(3)},
+                ),
+            ),
+            # table@v<version>
+            (
+                r"(FROM\s+)([`\w.]+)@v(\d+)",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "version", "value": int(m.group(3))},
+                ),
+            ),
+            # table@<yyyyMMdd> or table@<yyyyMMddHHmmss>
+            (
+                r"(FROM\s+)([`\w.]+)@(\d{8,14})",
+                lambda m: (
+                    m.group(2).strip("`"),
+                    {"type": "timestamp_compact", "value": m.group(3)},
+                ),
+            ),
+        ]
+
+        processed_query = query
+        for pattern, extractor in time_travel_patterns:
+            match = re.search(pattern, processed_query, re.IGNORECASE)
+            if match:
+                table_name, time_travel_info = extractor(match)
+                components["time_travel"] = {
+                    "table": table_name,
+                    **time_travel_info,
+                }
+                # Replace the time travel syntax with just "FROM table_name"
+                # Keep the FROM prefix and table name, remove the time travel part
+                processed_query = re.sub(
+                    pattern,
+                    r"\1" + table_name,
+                    processed_query,
+                    flags=re.IGNORECASE,
+                )
+                break  # Only handle first time travel match
+
+        # Use processed_query for all subsequent parsing
+        query = processed_query
 
         # Extract SELECT columns (handle multiline queries)
         select_match = re.search(
@@ -1143,6 +1220,77 @@ class SQLParser:
             "schema_name": schema,
         }
 
+    def _parse_use_query(self, query: str) -> Dict[str, Any]:
+        """Parse USE query components.
+
+        Supports:
+        - USE CATALOG catalog_name
+        - USE DATABASE database_name
+        - USE SCHEMA schema_name
+        - USE database_name (shorthand for USE DATABASE)
+
+        Args:
+            query: USE query string.
+
+        Returns:
+            Dictionary of USE components.
+        """
+        import re
+
+        # Parse USE CATALOG catalog_name
+        use_catalog_match = re.match(
+            r"USE\s+CATALOG\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if use_catalog_match:
+            catalog_name = use_catalog_match.group(1).strip("`")
+            return {
+                "use_type": "CATALOG",
+                "catalog_name": catalog_name,
+            }
+
+        # Parse USE DATABASE database_name
+        use_database_match = re.match(
+            r"USE\s+DATABASE\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if use_database_match:
+            database_name = use_database_match.group(1).strip("`")
+            return {
+                "use_type": "DATABASE",
+                "database_name": database_name,
+            }
+
+        # Parse USE SCHEMA schema_name
+        use_schema_match = re.match(
+            r"USE\s+SCHEMA\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if use_schema_match:
+            schema_name = use_schema_match.group(1).strip("`")
+            return {
+                "use_type": "SCHEMA",
+                "schema_name": schema_name,
+            }
+
+        # Parse USE database_name (shorthand for USE DATABASE)
+        use_shorthand_match = re.match(
+            r"USE\s+([`\w]+)$",
+            query.strip(),
+            re.IGNORECASE,
+        )
+        if use_shorthand_match:
+            database_name = use_shorthand_match.group(1).strip("`")
+            return {
+                "use_type": "DATABASE",
+                "database_name": database_name,
+            }
+
+        return {"use_type": "UNKNOWN"}
+
     def _parse_merge_query(self, query: str) -> Dict[str, Any]:
         """Parse MERGE INTO query components.
 
@@ -1337,6 +1485,156 @@ class SQLParser:
             return {"target": parts[0].strip(), "value": parts[1].strip()}
         return {"target": assignment, "value": ""}
 
+    def _parse_alter_query(self, query: str) -> Dict[str, Any]:
+        """Parse ALTER TABLE query components.
+
+        Supports:
+        - ALTER TABLE table CLUSTER BY (col1, col2)
+        - ALTER TABLE table CLUSTER BY NONE
+        - ALTER TABLE table ADD COLUMN col_def
+        - ALTER TABLE table ALTER COLUMN col TYPE new_type
+        - ALTER TABLE table ALTER COLUMN col SET NOT NULL
+        - ALTER TABLE table ALTER COLUMN col DROP NOT NULL
+        - ALTER TABLE table DROP COLUMN col
+        - ALTER TABLE table SET TBLPROPERTIES (...)
+
+        Args:
+            query: ALTER query string.
+
+        Returns:
+            Dictionary of ALTER components.
+        """
+        import re
+
+        components: Dict[str, Any] = {
+            "alter_type": "UNKNOWN",
+            "table_name": None,
+            "schema_name": None,
+        }
+
+        # Extract table name: ALTER TABLE [schema.]table_name
+        table_match = re.match(
+            r"ALTER\s+TABLE\s+([`\w.]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if not table_match:
+            return components
+
+        full_table_name = table_match.group(1).strip("`")
+
+        # Parse schema.table or just table
+        if "." in full_table_name:
+            parts = full_table_name.split(".")
+            # Handle catalog.schema.table or schema.table
+            if len(parts) == 3:
+                components["catalog_name"] = parts[0]
+                components["schema_name"] = parts[1]
+                components["table_name"] = parts[2]
+            elif len(parts) == 2:
+                components["schema_name"] = parts[0]
+                components["table_name"] = parts[1]
+            else:
+                components["table_name"] = full_table_name
+        else:
+            components["table_name"] = full_table_name
+
+        # Check for CLUSTER BY
+        cluster_by_match = re.search(
+            r"CLUSTER\s+BY\s+(?:NONE|\(([^)]+)\)|(\w+))",
+            query,
+            re.IGNORECASE,
+        )
+        if cluster_by_match:
+            components["alter_type"] = "CLUSTER_BY"
+            if "CLUSTER BY NONE" in query.upper():
+                components["cluster_columns"] = None  # Disable clustering
+            else:
+                cols = cluster_by_match.group(1) or cluster_by_match.group(2)
+                if cols:
+                    components["cluster_columns"] = [
+                        c.strip().strip("`") for c in cols.split(",")
+                    ]
+            return components
+
+        # Check for ADD COLUMN
+        add_column_match = re.search(
+            r"ADD\s+COLUMN\s+(.+?)(?:;|$)",
+            query,
+            re.IGNORECASE,
+        )
+        if add_column_match:
+            components["alter_type"] = "ADD_COLUMN"
+            components["column_definition"] = add_column_match.group(1).strip()
+            return components
+
+        # Check for DROP COLUMN
+        drop_column_match = re.search(
+            r"DROP\s+COLUMN\s+([`\w]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if drop_column_match:
+            components["alter_type"] = "DROP_COLUMN"
+            components["column_name"] = drop_column_match.group(1).strip("`")
+            return components
+
+        # Check for ALTER COLUMN ... TYPE
+        alter_type_match = re.search(
+            r"ALTER\s+COLUMN\s+([`\w]+)\s+TYPE\s+(\w+)",
+            query,
+            re.IGNORECASE,
+        )
+        if alter_type_match:
+            components["alter_type"] = "ALTER_COLUMN_TYPE"
+            components["column_name"] = alter_type_match.group(1).strip("`")
+            components["new_type"] = alter_type_match.group(2)
+            return components
+
+        # Check for ALTER COLUMN ... SET NOT NULL
+        set_not_null_match = re.search(
+            r"ALTER\s+COLUMN\s+([`\w]+)\s+SET\s+NOT\s+NULL",
+            query,
+            re.IGNORECASE,
+        )
+        if set_not_null_match:
+            components["alter_type"] = "SET_NOT_NULL"
+            components["column_name"] = set_not_null_match.group(1).strip("`")
+            return components
+
+        # Check for ALTER COLUMN ... DROP NOT NULL
+        drop_not_null_match = re.search(
+            r"ALTER\s+COLUMN\s+([`\w]+)\s+DROP\s+NOT\s+NULL",
+            query,
+            re.IGNORECASE,
+        )
+        if drop_not_null_match:
+            components["alter_type"] = "DROP_NOT_NULL"
+            components["column_name"] = drop_not_null_match.group(1).strip("`")
+            return components
+
+        # Check for SET TBLPROPERTIES
+        set_props_match = re.search(
+            r"SET\s+TBLPROPERTIES\s*\(([^)]+)\)",
+            query,
+            re.IGNORECASE,
+        )
+        if set_props_match:
+            components["alter_type"] = "SET_TBLPROPERTIES"
+            props_str = set_props_match.group(1)
+            # Parse properties: 'key1' = 'value1', 'key2' = 'value2'
+            properties = {}
+            for prop in props_str.split(","):
+                if "=" in prop:
+                    key, value = prop.split("=", 1)
+                    key = key.strip().strip("'\"")
+                    value = value.strip().strip("'\"")
+                    properties[key] = value
+            components["properties"] = properties
+            return components
+
+        return components
+
     def _parse_union_query(self, query: str) -> Dict[str, Any]:
         """Parse UNION query.
 
@@ -1370,5 +1668,187 @@ class SQLParser:
             ).strip()  # Join any additional parts (shouldn't happen with single UNION)
             components["left_query"] = left_query
             components["right_query"] = right_query
+
+        return components
+
+    def _extract_time_travel(
+        self, table_ref: str
+    ) -> Tuple[str, Optional[Dict[str, Any]]]:
+        """Extract time travel syntax from a table reference.
+
+        Delta Lake Time Travel allows querying historical versions of a table:
+        - VERSION AS OF <version_number>
+        - TIMESTAMP AS OF '<timestamp>'
+        - table@v<version> (Databricks shorthand)
+        - table@<yyyyMMdd> (Databricks shorthand)
+
+        Args:
+            table_ref: Table reference that may contain time travel syntax.
+
+        Returns:
+            Tuple of (base_table_name, time_travel_info).
+            time_travel_info is None if no time travel syntax found,
+            otherwise a dict with keys:
+                - type: "version" or "timestamp"
+                - value: The version number or timestamp string
+        """
+        # Pattern 1: VERSION AS OF <number>
+        version_match = re.match(
+            r"([`\w.]+)\s+VERSION\s+AS\s+OF\s+(\d+)",
+            table_ref,
+            re.IGNORECASE,
+        )
+        if version_match:
+            return (
+                version_match.group(1).strip("`"),
+                {"type": "version", "value": int(version_match.group(2))},
+            )
+
+        # Pattern 2: TIMESTAMP AS OF '<timestamp>' or TIMESTAMP AS OF "<timestamp>"
+        timestamp_match = re.match(
+            r"([`\w.]+)\s+TIMESTAMP\s+AS\s+OF\s+['\"]([^'\"]+)['\"]",
+            table_ref,
+            re.IGNORECASE,
+        )
+        if timestamp_match:
+            return (
+                timestamp_match.group(1).strip("`"),
+                {"type": "timestamp", "value": timestamp_match.group(2)},
+            )
+
+        # Pattern 3: table@v<version> (Databricks shorthand)
+        at_version_match = re.match(
+            r"([`\w.]+)@v(\d+)",
+            table_ref,
+            re.IGNORECASE,
+        )
+        if at_version_match:
+            return (
+                at_version_match.group(1).strip("`"),
+                {"type": "version", "value": int(at_version_match.group(2))},
+            )
+
+        # Pattern 4: table@<yyyyMMdd> or table@<yyyyMMddHHmmss> (Databricks timestamp shorthand)
+        at_timestamp_match = re.match(
+            r"([`\w.]+)@(\d{8,14})",
+            table_ref,
+        )
+        if at_timestamp_match:
+            return (
+                at_timestamp_match.group(1).strip("`"),
+                {"type": "timestamp_compact", "value": at_timestamp_match.group(2)},
+            )
+
+        # No time travel syntax found
+        return (table_ref.strip("`"), None)
+
+    def _parse_with_query(self, query: str) -> Dict[str, Any]:
+        """Parse WITH (CTE) query into components.
+
+        Extracts CTE definitions and the main query.
+
+        Example:
+            WITH sales_data AS (
+                SELECT * FROM sales WHERE amount > 100
+            ),
+            high_value AS (
+                SELECT * FROM sales_data WHERE customer_id IN (...)
+            )
+            SELECT * FROM high_value
+
+        Args:
+            query: WITH query string.
+
+        Returns:
+            Dictionary containing:
+                - ctes: List of CTE definitions with name and query
+                - main_query: The main query after CTE definitions
+        """
+        import re
+
+        components: Dict[str, Any] = {
+            "ctes": [],
+            "main_query": "",
+        }
+
+        # Find where the main query starts (SELECT, INSERT, UPDATE, DELETE, MERGE)
+        # This is the first of these keywords that is NOT inside parentheses
+        query_upper = query.upper()
+        main_query_start = -1
+        paren_depth = 0
+
+        # Track position character by character to find main query start
+        i = 0
+        # Skip past "WITH" keyword
+        with_match = re.match(r"\s*WITH\s+", query, re.IGNORECASE)
+        if with_match:
+            i = with_match.end()
+
+        while i < len(query):
+            char = query[i]
+            if char == "(":
+                paren_depth += 1
+            elif char == ")":
+                paren_depth -= 1
+
+            # Only check for main query keywords when not inside parentheses
+            if paren_depth == 0:
+                remaining = query_upper[i:]
+                for keyword in ["SELECT", "INSERT", "UPDATE", "DELETE", "MERGE"]:
+                    if remaining.startswith(keyword):
+                        # Make sure it's a complete word (followed by space or end)
+                        next_pos = i + len(keyword)
+                        if next_pos >= len(query) or not query[next_pos].isalnum():
+                            main_query_start = i
+                            break
+                if main_query_start != -1:
+                    break
+            i += 1
+
+        if main_query_start == -1:
+            raise ParseException("Invalid WITH clause: could not find main query")
+
+        # Extract CTE definitions (everything between WITH and main query)
+        cte_section = query[
+            with_match.end() if with_match else 4 : main_query_start
+        ].strip()
+        if cte_section.endswith(","):
+            cte_section = cte_section[:-1].strip()
+
+        # Extract main query
+        components["main_query"] = query[main_query_start:].strip()
+
+        # Parse individual CTEs
+        # Pattern: name AS (subquery)
+        cte_pattern = re.compile(r"(\w+)\s+AS\s*\(", re.IGNORECASE)
+
+        for match in cte_pattern.finditer(cte_section):
+            cte_name = match.group(1)
+            paren_start = match.end() - 1  # Position of opening (
+
+            # Find matching closing parenthesis (handle nested parens)
+            paren_depth = 0
+            subquery_end = None
+            for j in range(paren_start, len(cte_section)):
+                if cte_section[j] == "(":
+                    paren_depth += 1
+                elif cte_section[j] == ")":
+                    paren_depth -= 1
+                    if paren_depth == 0:
+                        subquery_end = j
+                        break
+
+            if subquery_end is None:
+                raise ParseException(f"Unmatched parentheses in CTE '{cte_name}'")
+
+            # Extract CTE subquery (between parens)
+            cte_query = cte_section[paren_start + 1 : subquery_end].strip()
+
+            components["ctes"].append(
+                {
+                    "name": cte_name,
+                    "query": cte_query,
+                }
+            )
 
         return components

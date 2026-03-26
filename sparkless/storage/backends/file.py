@@ -289,6 +289,8 @@ class FileStorageManager(IStorageManager):
         self.schemas: Dict[str, FileSchema] = {}
         # Create default schema
         self.schemas["default"] = FileSchema("default", base_path)
+        # Track temporary views separately
+        self._temp_views: set[str] = set()
 
     def create_schema(self, schema: str) -> None:
         """Create a new schema.
@@ -474,11 +476,59 @@ class FileStorageManager(IStorageManager):
         data = dataframe.data
         schema_obj = dataframe.schema
 
+        # If view already exists (createOrReplace), drop it first
+        if name in self._temp_views:
+            self.drop_table(schema, name)
+
         # Create the table
         self.create_table(schema, name, schema_obj)
 
         # Insert the data
         self.insert_data(schema, name, data)
+
+        # Track as a temporary view
+        self._temp_views.add(name)
+
+    def drop_temp_view(self, name: str) -> bool:
+        """Drop a temporary view.
+
+        Args:
+            name: Name of the temporary view to drop.
+
+        Returns:
+            True if the view existed and was dropped, False otherwise.
+        """
+        if name not in self._temp_views:
+            return False
+
+        # Remove from tracking
+        self._temp_views.discard(name)
+
+        # Drop the underlying table
+        schema = "default"
+        if self.table_exists(schema, name):
+            self.drop_table(schema, name)
+
+        return True
+
+    def temp_view_exists(self, name: str) -> bool:
+        """Check if a temporary view exists.
+
+        Args:
+            name: Name of the temporary view.
+
+        Returns:
+            True if the view exists, False otherwise.
+        """
+        return name in self._temp_views
+
+    def list_temp_views(self) -> List[str]:
+        """List all temporary views.
+
+        Returns:
+            List of temporary view names.
+        """
+        return list(self._temp_views)
 
     def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
