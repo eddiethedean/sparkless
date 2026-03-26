@@ -1,7 +1,0 @@
-# macOS: extension modules don't link libpython; resolve Python symbols at load time.
-# See https://pyo3.rs/latest/building-and-distribution.html#macos
-[target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
-
-[target.x86_64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]

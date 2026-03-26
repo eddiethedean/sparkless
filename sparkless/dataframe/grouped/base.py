@@ -2369,6 +2369,105 @@ class GroupedData:
         storage: Any = getattr(self.df, "storage", None)
         return MDF(result_data, result_schema, storage)
 
+    def applyInArrow(self, func: Any, schema: Any) -> "DataFrame":
+        """Apply a Python native function to each group using Arrow tables.
+
+        The function should take a PyArrow Table and return a PyArrow Table.
+        For each group, the group data is passed as a PyArrow Table to the function
+        and the returned PyArrow Table is used to construct the output rows.
+
+        Args:
+            func: A function that takes a PyArrow Table and returns a PyArrow Table.
+            schema: The schema of the output DataFrame (StructType or DDL string).
+
+        Returns:
+            DataFrame: Result of applying the function to each group.
+
+        Example:
+            >>> def normalize(table):
+            ...     import pyarrow.compute as pc
+            ...     col = table.column("value")
+            ...     mean = pc.mean(col).as_py()
+            ...     return table
+            >>> df.groupBy("category").applyInArrow(normalize, schema="category string, value double")
+        """
+        try:
+            import pyarrow as pa
+        except ImportError:
+            raise ImportError(
+                "pyarrow is required for applyInArrow. "
+                "Install it with: pip install pyarrow"
+            )
+
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for applyInArrow. "
+                "Install it with: pip install pandas"
+            )
+
+        # Materialize DataFrame if lazy
+        df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
+
+        # Group data by group columns
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        for row in df.data:
+            group_key = tuple(get_row_value(row, col) for col in self.group_columns)
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(row)
+
+        # Apply function to each group
+        result_tables = []
+        for group_rows in groups.values():
+            # Convert group to pandas DataFrame then to Arrow table
+            group_pdf = pd.DataFrame(group_rows)
+            group_table = pa.Table.from_pandas(group_pdf)
+
+            # Apply function
+            result_table = func(group_table)
+
+            if isinstance(result_table, pa.Table):
+                result_tables.append(result_table.to_pandas())
+            elif isinstance(result_table, pd.DataFrame):
+                result_tables.append(result_table)
+            else:
+                raise TypeError(
+                    f"Function must return a PyArrow Table or pandas DataFrame, "
+                    f"got {type(result_table).__name__}"
+                )
+
+        # Concatenate all results
+        result_data: List[Dict[str, Any]] = []
+        if result_tables:
+            combined_pdf = pd.concat(result_tables, ignore_index=True)
+            result_data = [
+                {str(k): v for k, v in row.items()}
+                for row in combined_pdf.to_dict("records")
+            ]
+
+        # Parse schema
+        from ...spark_types import StructType
+        from ...core.schema_inference import infer_schema_from_data
+
+        result_schema: StructType
+        if isinstance(schema, str):
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self.df.schema
+            )
+        elif isinstance(schema, StructType):
+            result_schema = schema
+        else:
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self.df.schema
+            )
+
+        from ..dataframe import DataFrame as MDF
+
+        storage: Any = getattr(self.df, "storage", None)
+        return MDF(result_data, result_schema, storage)
+
     def transform(self, func: Any) -> "DataFrame":
         """Apply a function to each group and return a DataFrame with the same schema.
 

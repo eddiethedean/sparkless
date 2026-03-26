@@ -53,13 +53,12 @@ class BackendType(Enum):
     MOCK = "mock"
     PYSPARK = "pyspark"
     BOTH = "both"
-    ROBIN = "robin"
 
 
 def get_backend_from_env() -> Optional[BackendType]:
     """Get backend type from environment variable.
 
-    Reads MOCK_SPARK_TEST_BACKEND or SPARKLESS_TEST_BACKEND (e.g. mock, pyspark, robin).
+    Reads MOCK_SPARK_TEST_BACKEND or SPARKLESS_TEST_BACKEND (e.g. mock, pyspark).
 
     Returns:
         BackendType if set, None otherwise.
@@ -648,9 +647,6 @@ class SparkBackend:
             return SparkBackend.create_pyspark_session(
                 app_name, enable_delta=enable_delta, **kwargs
             )
-        elif backend == BackendType.ROBIN:
-            # v4: SparkSession is always Robin; no backend_type kwarg
-            return SparkBackend.create_mock_spark_session(app_name, **kwargs)
         else:
             return SparkBackend.create_mock_spark_session(app_name, **kwargs)
 

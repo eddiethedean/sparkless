@@ -109,8 +109,12 @@ class JoinService:
         # PySpark raises exceptions immediately, not lazily
         self_schema = self._df.schema
         other_schema = other.schema
-        self_fields = getattr(self_schema, "fields", None) if self_schema is not None else None
-        other_fields = getattr(other_schema, "fields", None) if other_schema is not None else None
+        self_fields = (
+            getattr(self_schema, "fields", None) if self_schema is not None else None
+        )
+        other_fields = (
+            getattr(other_schema, "fields", None) if other_schema is not None else None
+        )
         if self_fields is None:
             self_fields = []
         if other_fields is None:
@@ -126,9 +130,7 @@ class JoinService:
 
         # PySpark union() matches by position, not by name (Issue #413).
         # Only check type compatibility at each position; column names may differ.
-        for i, (field1, field2) in enumerate(
-            zip(self_fields, other_fields)
-        ):
+        for i, (field1, field2) in enumerate(zip(self_fields, other_fields)):
             # Type compatibility check
             if not SetOperations._are_types_compatible(
                 field1.dataType, field2.dataType
@@ -179,8 +181,12 @@ class JoinService:
         case_sensitive = self._df._is_case_sensitive()
         self_schema = self._df.schema
         other_schema = other.schema
-        self_fields = getattr(self_schema, "fields", None) if self_schema is not None else []
-        other_fields = getattr(other_schema, "fields", None) if other_schema is not None else []
+        self_fields = (
+            getattr(self_schema, "fields", None) if self_schema is not None else []
+        )
+        other_fields = (
+            getattr(other_schema, "fields", None) if other_schema is not None else []
+        )
         if self_fields is None:
             self_fields = []
         if other_fields is None:
@@ -231,9 +237,7 @@ class JoinService:
 
         for col_name in common_cols:
             # Find the field in both schemas
-            self_field: StructField = next(
-                f for f in self_fields if f.name == col_name
-            )
+            self_field: StructField = next(f for f in self_fields if f.name == col_name)
             # Find corresponding field in other schema using mapping
             other_col_name = self_to_other_map.get(col_name)
             if other_col_name is None:

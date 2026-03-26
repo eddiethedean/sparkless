@@ -2123,7 +2123,12 @@ class SQLExecutor:
                     storage = self.session.catalog.get_storage_backend()
                 meta = storage.get_table_metadata(schema_name, table_only)
 
-                if not meta or meta.get("format") != "delta":
+                if not meta:
+                    from ...errors import AnalysisException
+
+                    raise AnalysisException(f"Table or view '{table_name}' not found.")
+
+                if meta.get("format") != "delta":
                     from ...errors import AnalysisException
 
                     raise AnalysisException(

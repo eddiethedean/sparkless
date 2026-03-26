@@ -16,10 +16,8 @@ from __future__ import annotations
 
 import datetime as _dt
 
-import pytest
 
 from tests.fixtures.spark_imports import get_spark_imports
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 imports = get_spark_imports()
 F = imports.F

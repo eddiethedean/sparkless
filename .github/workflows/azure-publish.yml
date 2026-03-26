@@ -1,0 +1,65 @@
+name: Publish to Azure Artifacts
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  AZURE_DEVOPS_ORG: solya-azure-devops
+  AZURE_DEVOPS_PROJECT: sparkless
+  AZURE_DEVOPS_FEED: sparkless
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]" build twine
+
+      - name: Run tests
+        env:
+          TZ: "America/New_York"
+        run: python -m pytest tests/unit/ tests/parity/ -q --tb=short -o "addopts="
+
+      - name: Build package
+        run: python -m build
+
+      - name: Verify build artifacts
+        run: |
+          if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+            echo "Error: dist/ directory is empty or does not exist"
+            exit 1
+          fi
+          echo "Build artifacts:"
+          ls -la dist/
+
+      - name: Publish to Azure Artifacts
+        env:
+          AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+        run: |
+          twine upload \
+            --non-interactive \
+            --skip-existing \
+            --repository-url "https://pkgs.dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_packaging/${AZURE_DEVOPS_FEED}/pypi/upload/" \
+            --username _ \
+            --password "${AZURE_DEVOPS_PAT}" \
+            dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/

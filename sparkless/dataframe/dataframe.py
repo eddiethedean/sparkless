@@ -75,10 +75,38 @@ from ..spark_types import (
 from ..functions import Column, ColumnOperation
 from ..functions.core.literals import Literal
 from ..storage import MemoryStorageManager
+from ..errors import AnalysisException
 from .rdd import MockRDD
 from .writer import DataFrameWriter
 from .evaluation.expression_evaluator import ExpressionEvaluator
 from .attribute_handler import DataFrameAttributeHandler
+
+
+class DataFrameStatFunctions:
+    """Proxy for DataFrame statistical functions (PySpark compatibility).
+
+    Provides access to statistical functions via ``df.stat``.
+    """
+
+    def __init__(self, df: "DataFrame"):
+        self._df = df
+
+    def approxQuantile(
+        self,
+        col: Union[str, List[str]],
+        probabilities: List[float],
+        relativeError: float,
+    ) -> Union[List[float], List[List[float]]]:
+        """Calculate approximate quantiles."""
+        return self._df.approxQuantile(col, probabilities, relativeError)
+
+    def corr(self, col1: str, col2: str, method: Optional[str] = None) -> float:
+        """Calculate correlation between two columns (stub)."""
+        return 0.0
+
+    def cov(self, col1: str, col2: str) -> float:
+        """Calculate covariance between two columns (stub)."""
+        return 0.0
 
 
 class DataFrame:
@@ -324,9 +352,42 @@ class DataFrame:
         """Rename multiple columns."""
         return self._transformations.withColumnsRenamed(colsMap)
 
-    def drop(self, *cols: str) -> "SupportsDataFrameOps":
-        """Drop columns."""
-        return self._transformations.drop(*cols)
+    def withMetadata(
+        self, columnName: str, metadata: Dict[str, Any]
+    ) -> "SupportsDataFrameOps":
+        """Return a new DataFrame with updated metadata for the specified column.
+
+        In PySpark this attaches metadata to a column's schema entry.
+        In sparkless this is a no-op that returns a copy of the DataFrame.
+
+        Args:
+            columnName: Name of the column to update metadata for.
+            metadata: New metadata dict for the column.
+
+        Returns:
+            DataFrame (unchanged copy).
+        """
+        # Validate column exists
+        if columnName not in self.columns:
+            raise AnalysisException(
+                f"Column '{columnName}' does not exist in {self.columns}"
+            )
+        return cast("SupportsDataFrameOps", self)
+
+    def drop(self, *cols: Any) -> "SupportsDataFrameOps":
+        """Drop columns. Accepts strings or Column objects."""
+        resolved = []
+        for c in cols:
+            if isinstance(c, str):
+                resolved.append(c)
+            elif hasattr(c, "name"):
+                name = c.name
+                if "." in name:
+                    name = name.split(".")[-1]
+                resolved.append(name)
+            else:
+                resolved.append(str(c))
+        return self._transformations.drop(*resolved)
 
     def distinct(self) -> "SupportsDataFrameOps":
         """Return distinct rows."""
@@ -620,6 +681,18 @@ class DataFrame:
         # Same behavior as cache for mock implementation
         return self.cache()
 
+    def unpersist(self, blocking: bool = False) -> "SupportsDataFrameOps":
+        """Remove DataFrame from cache.
+
+        Args:
+            blocking: Whether to block until unpersisting is complete (ignored in mock).
+
+        Returns:
+            Self (uncached DataFrame).
+        """
+        self._is_cached = False
+        return cast("SupportsDataFrameOps", self)
+
     def isEmpty(self) -> bool:
         """Check if DataFrame is empty."""
         return self._display.isEmpty()
@@ -690,6 +763,15 @@ class DataFrame:
 
         return NAHandler(self)
 
+    @property
+    def stat(self) -> "DataFrameStatFunctions":
+        """Access statistical functions via .stat namespace.
+
+        Returns:
+            DataFrameStatFunctions proxy instance.
+        """
+        return DataFrameStatFunctions(self)
+
     def sample(
         self,
         fraction: float,
@@ -758,6 +840,21 @@ class DataFrame:
     def mapInPandas(self, func: Any, schema: Any) -> "SupportsDataFrameOps":
         """Map an iterator of pandas DataFrames to another iterator of pandas DataFrames."""
         return self._misc.mapInPandas(func, schema)
+
+    def applyInArrow(self, func: Any, schema: Any) -> "SupportsDataFrameOps":
+        """Apply a function to each partition as an Arrow table.
+
+        The function receives a PyArrow Table and should return a PyArrow Table.
+        For sparkless, the entire DataFrame is treated as a single partition.
+
+        Args:
+            func: A function that takes a PyArrow Table and returns a PyArrow Table.
+            schema: The schema of the output DataFrame (StructType or DDL string).
+
+        Returns:
+            DataFrame: Result of applying the function.
+        """
+        return self._misc.applyInArrow(func, schema)
 
     def unpivot(
         self,
@@ -909,14 +1006,19 @@ class DataFrame:
             New DataFrame with the operation queued.
         """
         new_ops: List[Tuple[str, Any]] = self._operations_queue + [(op_name, payload)]
+        new_df = DataFrame(
+            data=self.data,
+            schema=self.schema,
+            storage=self.storage,
+            operations=new_ops,
+        )
+        # Preserve alias through queued operations (needed for join resolution)
+        alias = getattr(self, "_alias", None)
+        if alias is not None:
+            setattr(new_df, "_alias", alias)
         return cast(
             "SupportsDataFrameOps",
-            DataFrame(
-                data=self.data,
-                schema=self.schema,
-                storage=self.storage,
-                operations=new_ops,
-            ),
+            new_df,
         )
 
     def _materialize_if_lazy(self) -> SupportsDataFrameOps:
