@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from .spark_types import StructType
 
 from .functions import Column
+from .functions.base import ColumnOperation
+from .core.condition_evaluator import ConditionEvaluator
 from .core.safe_evaluator import SafeExpressionEvaluator
 from .spark_types import get_row_value
 
@@ -132,14 +134,20 @@ class DeltaTable:
         return self
 
     # Mock operations - don't actually execute
-    def delete(self, condition: Union[str, None] = None) -> None:
+    def delete(self, condition: Union[str, Column, None] = None) -> None:
         """Delete rows matching the given condition."""
         rows = self._load_table_rows()
         schema = self._current_schema()
         alias = getattr(self, "_alias", "target")
 
-        if not condition:
+        if not condition and condition is not False:  # type: ignore[comparison-overlap]
             remaining_rows: List[Dict[str, Any]] = []
+        elif isinstance(condition, (Column, ColumnOperation)):
+            remaining_rows = [
+                row
+                for row in rows
+                if not ConditionEvaluator.evaluate_condition(row, condition)
+            ]
         else:
             normalized = _normalize_boolean_expression(condition)
             remaining_rows = [
@@ -151,7 +159,11 @@ class DeltaTable:
         new_df = self._spark.createDataFrame(remaining_rows, schema)
         self._overwrite_table(new_df)
 
-    def update(self, condition: str, set_values: Dict[str, Any]) -> None:
+    def update(
+        self,
+        condition: Union[str, Column, None] = None,
+        set_values: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Update rows that satisfy condition with provided assignments."""
         if not set_values:
             return
@@ -159,26 +171,42 @@ class DeltaTable:
         rows = self._load_table_rows()
         schema = self._current_schema()
         alias = getattr(self, "_alias", "target")
+        use_column_condition = isinstance(condition, (Column, ColumnOperation))
         normalized_condition = (
-            _normalize_boolean_expression(condition) if condition else None
+            _normalize_boolean_expression(str(condition))
+            if condition and not use_column_condition
+            else None
         )
 
         updated_rows: List[Dict[str, Any]] = []
         for row in rows:
-            should_update = (
-                True
-                if normalized_condition is None
-                else self._evaluate_row_condition(normalized_condition, row, alias)
-            )
+            if use_column_condition:
+                should_update = bool(
+                    ConditionEvaluator.evaluate_condition(row, condition)
+                )
+            elif normalized_condition is None:
+                should_update = True
+            else:
+                should_update = self._evaluate_row_condition(
+                    normalized_condition, row, alias
+                )
+
             if not should_update:
                 updated_rows.append(row)
                 continue
 
             new_row = dict(row)
             for column_name, expression in set_values.items():
-                new_row[column_name] = self._evaluate_update_expression(
-                    expression, new_row, alias
-                )
+                if isinstance(expression, (Column, ColumnOperation)) or (
+                    hasattr(expression, "value") and not isinstance(expression, str)
+                ):
+                    new_row[column_name] = ConditionEvaluator._get_column_value(
+                        new_row, expression
+                    )
+                else:
+                    new_row[column_name] = self._evaluate_update_expression(
+                        expression, new_row, alias
+                    )
             updated_rows.append(new_row)
 
         new_df = self._spark.createDataFrame(updated_rows, schema)
@@ -197,17 +225,17 @@ class DeltaTable:
         """Mock vacuum (no-op)."""
         pass
 
-    def optimize(self) -> DeltaTable:
+    def optimize(self) -> DeltaOptimizeBuilder:
         """
         Mock OPTIMIZE operation.
 
         In real Delta Lake, this compacts small files.
-        For testing, this is a no-op that returns self.
+        For testing, returns a builder that supports executeCompaction() and zOrderBy().
 
         Returns:
-            self for method chaining
+            DeltaOptimizeBuilder for method chaining
         """
-        return self
+        return DeltaOptimizeBuilder(self)
 
     def detail(self) -> DataFrame:
         """
@@ -381,10 +409,8 @@ class DeltaTable:
     def _evaluate_update_expression(
         self, expression: Any, row: Dict[str, Any], alias: str
     ) -> Any:
-        if hasattr(expression, "operation") or isinstance(expression, Column):
-            raise NotImplementedError(
-                "Column expressions are not supported for DeltaTable.update in mock implementation"
-            )
+        if isinstance(expression, (Column, ColumnOperation)):
+            return ConditionEvaluator._get_column_value(row, expression)
 
         if isinstance(expression, str):
             expr = expression.strip()
@@ -408,6 +434,106 @@ class DeltaTable:
         return expression
 
 
+class DeltaOptimizeBuilder:
+    """Builder returned by DeltaTable.optimize() for compaction and z-ordering."""
+
+    def __init__(self, delta_table: DeltaTable):
+        self._table = delta_table
+
+    def executeCompaction(self) -> DataFrame:
+        """Execute compaction (no-op). Returns an empty DataFrame."""
+        from .dataframe import DataFrame
+        from .spark_types import StructType
+
+        return DataFrame([], StructType([]), self._table._spark._storage)
+
+    def zOrderBy(self, *cols: str) -> DataFrame:
+        """Z-order by columns (no-op). Returns an empty DataFrame."""
+        from .dataframe import DataFrame
+        from .spark_types import StructType
+
+        return DataFrame([], StructType([]), self._table._spark._storage)
+
+
+class DeltaMergeMatchedActionBuilder:
+    """Builder for actions on matched rows (PySpark chained API)."""
+
+    def __init__(
+        self, merge_builder: DeltaMergeBuilder, condition: Union[str, None] = None
+    ):
+        self._merge_builder = merge_builder
+        self._condition = condition
+
+    def update(self, set: Optional[Dict[str, Any]] = None) -> DeltaMergeBuilder:
+        """Update matched rows with the given assignments."""
+        self._merge_builder._when_matched_actions.append(
+            {"type": "update", "set": set or {}, "condition": self._condition}
+        )
+        return self._merge_builder
+
+    def updateAll(self) -> DeltaMergeBuilder:
+        """Update all columns of matched rows from source."""
+        self._merge_builder._when_matched_actions.append(
+            {"type": "update_all", "condition": self._condition}
+        )
+        return self._merge_builder
+
+    def delete(self) -> DeltaMergeBuilder:
+        """Delete matched rows."""
+        self._merge_builder._when_matched_actions.append(
+            {"type": "delete", "condition": self._condition}
+        )
+        return self._merge_builder
+
+
+class DeltaMergeNotMatchedActionBuilder:
+    """Builder for actions on not-matched rows (PySpark chained API)."""
+
+    def __init__(
+        self, merge_builder: DeltaMergeBuilder, condition: Union[str, None] = None
+    ):
+        self._merge_builder = merge_builder
+        self._condition = condition
+
+    def insert(self, values: Optional[Dict[str, Any]] = None) -> DeltaMergeBuilder:
+        """Insert not-matched rows with the given values."""
+        self._merge_builder._when_not_matched_actions.append(
+            {"type": "insert", "values": values or {}, "condition": self._condition}
+        )
+        return self._merge_builder
+
+    def insertAll(self) -> DeltaMergeBuilder:
+        """Insert all columns of not-matched rows from source."""
+        self._merge_builder._when_not_matched_actions.append(
+            {"type": "insert_all", "condition": self._condition}
+        )
+        return self._merge_builder
+
+
+class DeltaMergeNotMatchedBySourceActionBuilder:
+    """Builder for actions on target rows not matched by any source row."""
+
+    def __init__(
+        self, merge_builder: DeltaMergeBuilder, condition: Union[str, None] = None
+    ):
+        self._merge_builder = merge_builder
+        self._condition = condition
+
+    def update(self, set: Optional[Dict[str, Any]] = None) -> DeltaMergeBuilder:
+        """Update not-matched-by-source rows with the given assignments."""
+        self._merge_builder._when_not_matched_by_source_actions.append(
+            {"type": "update", "set": set or {}, "condition": self._condition}
+        )
+        return self._merge_builder
+
+    def delete(self) -> DeltaMergeBuilder:
+        """Delete target rows not matched by any source row."""
+        self._merge_builder._when_not_matched_by_source_actions.append(
+            {"type": "delete", "condition": self._condition}
+        )
+        return self._merge_builder
+
+
 class DeltaMergeBuilder:
     """Mock merge builder for method chaining."""
 
@@ -428,6 +554,10 @@ class DeltaMergeBuilder:
         self._matched_delete_condition: Union[str, None] = None
         self._not_matched_insert_assignments: Optional[Dict[str, Any]] = None
         self._not_matched_insert_all: bool = False
+        # New chained API action lists
+        self._when_matched_actions: List[Dict[str, Any]] = []
+        self._when_not_matched_actions: List[Dict[str, Any]] = []
+        self._when_not_matched_by_source_actions: List[Dict[str, Any]] = []
 
     @property
     def _target_aliases(self) -> Set[str]:
@@ -465,6 +595,28 @@ class DeltaMergeBuilder:
         self._not_matched_insert_all = True
         return self
 
+    # ------------------------------------------------------------------
+    # Chained API (PySpark standard)
+    # ------------------------------------------------------------------
+
+    def whenMatched(
+        self, condition: Union[str, None] = None
+    ) -> DeltaMergeMatchedActionBuilder:
+        """Return a builder for matched-row actions (chained API)."""
+        return DeltaMergeMatchedActionBuilder(self, condition)
+
+    def whenNotMatched(
+        self, condition: Union[str, None] = None
+    ) -> DeltaMergeNotMatchedActionBuilder:
+        """Return a builder for not-matched-row actions (chained API)."""
+        return DeltaMergeNotMatchedActionBuilder(self, condition)
+
+    def whenNotMatchedBySource(
+        self, condition: Union[str, None] = None
+    ) -> DeltaMergeNotMatchedBySourceActionBuilder:
+        """Return a builder for target rows not matched by source (chained API)."""
+        return DeltaMergeNotMatchedBySourceActionBuilder(self, condition)
+
     def execute(self) -> None:
         """Execute merge operation by reconciling target table with source data."""
         source_df = self._ensure_dataframe(self._source)
@@ -478,24 +630,66 @@ class DeltaMergeBuilder:
             source_groups[get_row_value(row, source_key)].append(row)
 
         matched_keys: Set[Any] = set()
+        unmatched_target_indices: List[int] = []
         result_rows: List[Dict[str, Any]] = []
 
-        for target_row in target_rows:
+        for idx, target_row in enumerate(target_rows):
             key = get_row_value(target_row, target_key)
             source_candidates = source_groups.get(key)
             source_row = source_candidates[0] if source_candidates else None
             if source_row is not None:
                 matched_keys.add(key)
-                if self._should_delete(target_row, source_row):
-                    continue
-                updated_row = self._apply_matched_updates(
-                    target_row, source_row, target_schema
-                )
-                result_rows.append(updated_row)
+
+                # --- Process matched actions (chained API) ---
+                if self._when_matched_actions:
+                    row_result = self._process_matched_actions(
+                        target_row, source_row, target_schema
+                    )
+                    if row_result is not None:
+                        result_rows.append(row_result)
+                    # row_result is None means the row was deleted
+                else:
+                    # --- Legacy flat API ---
+                    if self._should_delete(target_row, source_row):
+                        continue
+                    updated_row = self._apply_matched_updates(
+                        target_row, source_row, target_schema
+                    )
+                    result_rows.append(updated_row)
             else:
+                unmatched_target_indices.append(len(result_rows))
                 result_rows.append(dict(target_row))
 
-        if self._not_matched_insert_all or self._not_matched_insert_assignments:
+        # --- Process not-matched-by-source actions (chained API) ---
+        if self._when_not_matched_by_source_actions and unmatched_target_indices:
+            indices_to_remove: List[int] = []
+            for ri in unmatched_target_indices:
+                row = result_rows[ri]
+                action_result = self._process_not_matched_by_source_actions(
+                    row, target_schema
+                )
+                if action_result is None:
+                    # Row should be deleted
+                    indices_to_remove.append(ri)
+                else:
+                    result_rows[ri] = action_result
+            # Remove deleted rows (iterate in reverse to keep indices stable)
+            for ri in reversed(indices_to_remove):
+                result_rows.pop(ri)
+
+        # --- Process not-matched (source rows not in target) ---
+        if self._when_not_matched_actions:
+            # Chained API for not-matched inserts
+            existing_keys = {get_row_value(row, target_key) for row in result_rows}
+            for key, rows in source_groups.items():
+                if key in matched_keys or key in existing_keys:
+                    continue
+                for src_row in rows:
+                    inserted = self._process_not_matched_actions(src_row, target_schema)
+                    if inserted is not None:
+                        result_rows.append(inserted)
+        elif self._not_matched_insert_all or self._not_matched_insert_assignments:
+            # Legacy flat API
             existing_keys = {get_row_value(row, target_key) for row in result_rows}
             for key, rows in source_groups.items():
                 if key in matched_keys or key in existing_keys:
@@ -655,3 +849,124 @@ class DeltaMergeBuilder:
             return SafeExpressionEvaluator.evaluate_boolean(normalized, context)
         except Exception:
             return False
+
+    def _evaluate_target_only_condition(
+        self,
+        expression: str,
+        target_row: Dict[str, Any],
+    ) -> bool:
+        """Evaluate a condition against a target row only (no source context)."""
+        context: Dict[str, Any] = {}
+        target_ns = SimpleNamespace(**target_row)
+        for alias in self._target_aliases:
+            context[alias] = target_ns
+        context.update(target_row)
+        try:
+            normalized = _normalize_boolean_expression(expression)
+            return SafeExpressionEvaluator.evaluate_boolean(normalized, context)
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Chained-API action processors
+    # ------------------------------------------------------------------
+
+    def _process_matched_actions(
+        self,
+        target_row: Dict[str, Any],
+        source_row: Dict[str, Any],
+        schema: StructType,
+    ) -> Optional[Dict[str, Any]]:
+        """Process chained whenMatched actions. Returns updated row or None (delete)."""
+        for action in self._when_matched_actions:
+            cond = action.get("condition")
+            if cond and not self._evaluate_condition(cond, target_row, source_row):
+                continue
+            action_type = action["type"]
+            if action_type == "delete":
+                return None
+            if action_type == "update_all":
+                updated = dict(target_row)
+                for field in schema.fields:
+                    if field.name in source_row:
+                        updated[field.name] = get_row_value(source_row, field.name)
+                return updated
+            if action_type == "update":
+                updated = dict(target_row)
+                for column, expression in action["set"].items():
+                    updated[column] = self._evaluate_assignment(
+                        expression, target_row, source_row
+                    )
+                return updated
+        # No action matched; keep the row unchanged
+        return dict(target_row)
+
+    def _process_not_matched_actions(
+        self,
+        source_row: Dict[str, Any],
+        schema: StructType,
+    ) -> Optional[Dict[str, Any]]:
+        """Process chained whenNotMatched actions. Returns inserted row or None."""
+        for action in self._when_not_matched_actions:
+            cond = action.get("condition")
+            if cond:
+                # Evaluate condition against source row only
+                context: Dict[str, Any] = {}
+                source_ns = SimpleNamespace(**source_row)
+                for alias in self._source_aliases:
+                    context[alias] = source_ns
+                context.update(source_row)
+                try:
+                    normalized = _normalize_boolean_expression(cond)
+                    if not SafeExpressionEvaluator.evaluate_boolean(
+                        normalized, context
+                    ):
+                        continue
+                except Exception:
+                    continue
+            action_type = action["type"]
+            if action_type == "insert_all":
+                return self._project_source_row(source_row, schema)
+            if action_type == "insert":
+                row: Dict[str, Any] = {field.name: None for field in schema.fields}
+                for column, expression in action["values"].items():
+                    row[column] = self._evaluate_assignment(expression, row, source_row)
+                return row
+        return None
+
+    def _process_not_matched_by_source_actions(
+        self,
+        target_row: Dict[str, Any],
+        schema: StructType,
+    ) -> Optional[Dict[str, Any]]:
+        """Process whenNotMatchedBySource actions. Returns updated row or None (delete)."""
+        for action in self._when_not_matched_by_source_actions:
+            cond = action.get("condition")
+            if cond and not self._evaluate_target_only_condition(cond, target_row):
+                continue
+            action_type = action["type"]
+            if action_type == "delete":
+                return None
+            if action_type == "update":
+                updated = dict(target_row)
+                for column, expression in action["set"].items():
+                    # For not-matched-by-source, evaluate against target only
+                    if isinstance(expression, str):
+                        expr = expression.strip()
+                        if expr.startswith("'") and expr.endswith("'"):
+                            updated[column] = expr[1:-1]
+                        elif expr in target_row:
+                            updated[column] = get_row_value(target_row, expr)
+                        else:
+                            try:
+                                updated[column] = int(expr)
+                            except ValueError:
+                                try:
+                                    updated[column] = float(expr)
+                                except ValueError:
+                                    updated[column] = expr
+                    else:
+                        updated[column] = expression
+                return updated
+        # No action matched; keep row unchanged
+        return dict(target_row)
