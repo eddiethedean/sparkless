@@ -1230,7 +1230,11 @@ class WindowFunction:
         return results
 
     def _evaluate_avg(self, data: List[Dict[str, Any]]) -> List[Any]:
-        """Evaluate avg() window function."""
+        """Evaluate avg() window function with proper partitioning.
+
+        Without orderBy, computes the average of ALL rows in each partition.
+        With orderBy, computes a running average up to the current row.
+        """
         if not data:
             return []
 
@@ -1239,25 +1243,63 @@ class WindowFunction:
         if not col_name:
             return [None] * len(data)
 
-        # Calculate average for each position
-        result: List[Optional[float]] = []
-        running_sum = 0.0
-        count = 0
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+        has_order_by = bool(order_by_cols)
 
-        for row in data:
-            if col_name in row and row[col_name] is not None:
-                try:
-                    running_sum += float(row[col_name])
-                    count += 1
-                except (ValueError, TypeError):
-                    pass
+        if has_order_by:
+            # Running average (frame-based): compute running avg up to current row
+            result: List[Optional[float]] = []
+            running_sum = 0.0
+            count = 0
 
-            if count > 0:
-                result.append(running_sum / count)
-            else:
-                result.append(None)
+            for row in data:
+                if col_name in row and row[col_name] is not None:
+                    try:
+                        running_sum += float(row[col_name])
+                        count += 1
+                    except (ValueError, TypeError):
+                        pass
 
-        return result
+                if count > 0:
+                    result.append(running_sum / count)
+                else:
+                    result.append(None)
+
+            return result
+        else:
+            # No orderBy: compute full partition average
+            partition_groups: Dict[Any, List[int]] = {}
+            for i, row in enumerate(data):
+                if partition_by_cols:
+                    partition_key = tuple(
+                        get_row_value(
+                            row, col.name if hasattr(col, "name") else str(col)
+                        )
+                        for col in partition_by_cols
+                    )
+                else:
+                    partition_key = None
+                if partition_key not in partition_groups:
+                    partition_groups[partition_key] = []
+                partition_groups[partition_key].append(i)
+
+            results: List[Optional[float]] = [None] * len(data)
+            for partition_indices in partition_groups.values():
+                total = 0.0
+                count = 0
+                for idx in partition_indices:
+                    val = data[idx].get(col_name)
+                    if val is not None:
+                        try:
+                            total += float(val)
+                            count += 1
+                        except (ValueError, TypeError):
+                            pass
+                avg_val = total / count if count > 0 else None
+                for idx in partition_indices:
+                    results[idx] = avg_val
+            return results
 
     def _evaluate_count(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate count() window function with proper partitioning.

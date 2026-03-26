@@ -33,14 +33,6 @@ def validate_rule(
     if isinstance(column, str):
         column = Column(column)
 
-    # Robin backend: PyColumn has is_not_null/isnotnull but not isNotNull; wrap so .isNotNull() works
-    try:
-        from sparkless.sql._robin_column import RobinColumn
-        if getattr(type(column), "__name__", "") == "PyColumn":
-            column = RobinColumn(column)
-    except ImportError:
-        pass
-
     if isinstance(rule, str):
         # String rules
         if rule == "not_null":
@@ -458,6 +450,9 @@ class CaseWhen:
                 return left_value / right_value if right_value != 0 else None
             elif operation.operation == "%":
                 return left_value % right_value if right_value != 0 else None
+        elif operation.operation == "create_map":
+            # Handle create_map - delegate to ConditionEvaluator
+            return ConditionEvaluator.evaluate_expression(row, operation)
         else:
             # For other operations, try to get the column value
             return ConditionEvaluator._get_column_value(row, operation.column)

@@ -87,11 +87,11 @@ class WindowSpec:
 
         for col in cols_list:
             # Check if it's a string, Column-like (has name), or SortOrder (e.g. PySortOrder from Robin)
-            if isinstance(col, str):
-                pass
-            elif hasattr(col, "name"):
-                pass
-            elif type(col).__name__ == "PySortOrder":
+            if (
+                isinstance(col, str)
+                or hasattr(col, "name")
+                or type(col).__name__ == "PySortOrder"
+            ):
                 pass
             else:
                 raise ValueError(
@@ -129,11 +129,11 @@ class WindowSpec:
 
         for col in cols_list:
             # Check if it's a string, Column-like (has name), or SortOrder (e.g. PySortOrder from Robin)
-            if isinstance(col, str):
-                pass
-            elif hasattr(col, "name"):
-                pass
-            elif type(col).__name__ == "PySortOrder":
+            if (
+                isinstance(col, str)
+                or hasattr(col, "name")
+                or type(col).__name__ == "PySortOrder"
+            ):
                 pass
             else:
                 raise ValueError(

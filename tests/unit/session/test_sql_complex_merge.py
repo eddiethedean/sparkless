@@ -11,7 +11,6 @@ with MOCK_SPARK_TEST_BACKEND=pyspark.
 """
 
 import pytest
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 @pytest.mark.backend("mock")

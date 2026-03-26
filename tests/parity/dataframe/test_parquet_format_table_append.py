@@ -6,7 +6,6 @@ Tests fix for issue #114: Table data not visible after append write via parquet 
 import os
 import pytest
 from tests.fixtures.parity_base import ParityTestBase
-from tests.fixtures.spark_backend import get_backend_type, BackendType
 from sparkless.spark_types import StructType, StructField, IntegerType, StringType
 from sparkless.sql import SparkSession
 

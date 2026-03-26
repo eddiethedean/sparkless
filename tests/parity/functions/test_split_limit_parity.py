@@ -4,11 +4,8 @@ PySpark parity tests for split() function with limit parameter.
 Tests validate that Sparkless split() function with limit behaves identically to PySpark.
 """
 
-import pytest
-
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_imports import get_spark_imports
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestSplitLimitParity(ParityTestBase):

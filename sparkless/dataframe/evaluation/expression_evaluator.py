@@ -292,6 +292,26 @@ class ExpressionEvaluator:
         elif op == "-" and operation.value is None:
             return self._evaluate_arithmetic_operation(row, operation)
 
+        # Handle UDF operations
+        elif op == "udf":
+            udf_func = getattr(operation, "_udf_func", None)
+            udf_cols = getattr(operation, "_udf_cols", None)
+            if udf_func is None:
+                return None
+            args = []
+            if udf_cols:
+                for col_ref in udf_cols:
+                    val = self.evaluate_expression(row, col_ref, row_index=row_index)
+                    args.append(val)
+            else:
+                args.append(
+                    self.evaluate_expression(row, operation.column, row_index=row_index)
+                )
+            try:
+                return udf_func(*args)
+            except Exception:
+                return None
+
         # For unknown operations, try to evaluate as function call
         else:
             try:
@@ -1536,13 +1556,27 @@ class ExpressionEvaluator:
 
     def _evaluate_to_date_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate to_date function."""
-        # Extract column name from function call
-        match = re.search(r"to_date\(([^)]+)\)", col_name)
+        # Extract column name and optional format from function call
+        # Handles both to_date(col) and to_date(col, 'format')
+        match = re.search(r"to_date\(([^,)]+)(?:,\s*'([^']*)')?\)", col_name)
         if match:
-            column_name = match.group(1)
+            column_name = match.group(1).strip()
+            fmt = match.group(2)  # None if no format provided
             value = get_row_value(row, column_name)
             if value is not None:
                 try:
+                    if fmt and isinstance(value, str):
+                        # Convert Java/Spark date format to Python strftime format
+                        python_fmt = (
+                            fmt.replace("yyyy", "%Y")
+                            .replace("yy", "%y")
+                            .replace("MM", "%m")
+                            .replace("dd", "%d")
+                            .replace("HH", "%H")
+                            .replace("mm", "%M")
+                            .replace("ss", "%S")
+                        )
+                        return dt_module.datetime.strptime(value, python_fmt).date()
                     # Try to parse as datetime first, then extract date
                     if isinstance(value, str):
                         dt = dt_module.datetime.fromisoformat(
@@ -1908,6 +1942,7 @@ class ExpressionEvaluator:
             "datediff": self._func_datediff,
             "date_diff": self._func_datediff,  # Alias for datediff
             "date_format": self._func_date_format,
+            "date_trunc": self._func_date_trunc,
             "months_between": self._func_months_between,
             # Array functions
             "array_join": self._func_array_join,
@@ -1916,6 +1951,7 @@ class ExpressionEvaluator:
             "arrays_zip": self._func_arrays_zip,
             "flatten": self._func_flatten,
             "sequence": self._func_sequence,
+            "size": self._func_size,
             # Map functions
             "create_map": self._func_create_map,
             "map_filter": self._func_map_filter,
@@ -2354,8 +2390,24 @@ class ExpressionEvaluator:
         """Split function."""
         if value is None:
             return []
-        delimiter = operation.value
-        return str(value).split(delimiter)
+        import re as re_split_mod
+
+        # operation.value is (pattern, limit) tuple or just a string delimiter
+        if isinstance(operation.value, tuple) and len(operation.value) >= 1:
+            pattern = operation.value[0]
+            limit = operation.value[1] if len(operation.value) > 1 else None
+            if limit is not None and limit > 0:
+                # PySpark limit=N means N parts (split at most N-1 times)
+                if limit == 1:
+                    # limit=1 means no split at all, return original as single-element list
+                    return [str(value)]
+                return re_split_mod.split(pattern, str(value), maxsplit=limit - 1)
+            else:
+                # limit is None, 0, or negative: split all
+                return re_split_mod.split(pattern, str(value))
+        elif isinstance(operation.value, str):
+            return re_split_mod.split(operation.value, str(value))
+        return str(value).split()
 
     def _func_regexp_replace(self, value: Any, operation: ColumnOperation) -> str:
         """Regex replace function."""
@@ -3029,6 +3081,16 @@ class ExpressionEvaluator:
         # But kept for registry completeness
         return None
 
+    def _func_size(self, value: Any, operation: ColumnOperation) -> Any:
+        """Return the size (length) of an array or map."""
+        if value is None:
+            return -1  # PySpark returns -1 for null arrays/maps
+        if isinstance(value, (list, tuple)):
+            return len(value)
+        if isinstance(value, dict):
+            return len(value)
+        return -1
+
     def _func_flatten(self, value: Any, operation: ColumnOperation) -> Any:
         """Flatten nested arrays."""
         if value is None:
@@ -3543,6 +3605,20 @@ class ExpressionEvaluator:
         if value is None:
             return None
         try:
+            # Check if a format string was provided via operation.value
+            fmt = getattr(operation, "value", None)
+            if fmt and isinstance(fmt, str):
+                # Convert Java/Spark date format to Python strftime format
+                python_fmt = (
+                    fmt.replace("yyyy", "%Y")
+                    .replace("yy", "%y")
+                    .replace("MM", "%m")
+                    .replace("dd", "%d")
+                    .replace("HH", "%H")
+                    .replace("mm", "%M")
+                    .replace("ss", "%S")
+                )
+                return dt_module.datetime.strptime(str(value), python_fmt).date()
             if isinstance(value, str):
                 # Accept 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS[.fff]'
                 date_part = value.strip().split(" ")[0]
@@ -3687,6 +3763,41 @@ class ExpressionEvaluator:
             ):
                 return dt.isoformat()  # type: ignore[unreachable]
             return dt.strftime("%Y-%m-%d")
+
+    def _func_date_trunc(self, value: Any, operation: ColumnOperation) -> Any:
+        """Truncate date/timestamp to specified unit."""
+        if value is None:
+            return None
+        unit = str(operation.value).lower() if operation.value else "day"
+        is_date_only = isinstance(value, dt_module.date) and not isinstance(
+            value, dt_module.datetime
+        )
+        dt = self._parse_datetime(value)
+        if dt is None:
+            return None
+        # Ensure we have a datetime (not date) for replace with time fields
+        if isinstance(dt, dt_module.date) and not isinstance(dt, dt_module.datetime):
+            dt = dt_module.datetime(dt.year, dt.month, dt.day)  # type: ignore[unreachable]
+        if unit in ("year", "yyyy", "yy"):
+            result = dt.replace(
+                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+        elif unit in ("month", "mon", "mm"):
+            result = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif unit in ("day", "dd"):
+            result = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif unit in ("hour",):
+            result = dt.replace(minute=0, second=0, microsecond=0)
+        elif unit in ("minute",):
+            result = dt.replace(second=0, microsecond=0)
+        elif unit in ("second",):
+            result = dt.replace(microsecond=0)
+        else:
+            result = dt
+        # Return date if input was date
+        if is_date_only:
+            return result.date() if isinstance(result, dt_module.datetime) else result
+        return result
 
     def _func_months_between(self, value: Any, operation: ColumnOperation) -> Any:
         """Months between function."""

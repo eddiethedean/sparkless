@@ -14,7 +14,6 @@ Set MOCK_SPARK_TEST_BACKEND=pyspark to run with real PySpark.
 
 from datetime import date
 
-import pytest
 
 from tests.fixtures.spark_imports import get_spark_imports
 from tests.fixtures.spark_backend import get_backend_type, BackendType
