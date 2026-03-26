@@ -8,7 +8,6 @@ import pytest
 
 from sparkless import SparkSession
 from sparkless.functions import F
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 @pytest.fixture

@@ -94,9 +94,10 @@ class SchemaInferenceEngine:
                 if isinstance(row, dict) and key in row and row[key] is not None:
                     values_for_key.append(row[key])
 
-            # Check if all values are null (PySpark raises ValueError)
+            # If all values are null, default to StringType (matches PySpark behavior)
             if not values_for_key:
-                raise ValueError("Some of types cannot be determined after inferring")
+                fields.append(StructField(key, StringType(), nullable=True))
+                continue
 
             # Infer type from first non-null value
             field_type = SchemaInferenceEngine._infer_type(values_for_key[0])

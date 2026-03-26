@@ -3,10 +3,7 @@
 Tests fix for issue #112: Table data not visible after append write.
 """
 
-import pytest
-
 from tests.fixtures.parity_base import ParityTestBase
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestTableAppendPersistence(ParityTestBase):

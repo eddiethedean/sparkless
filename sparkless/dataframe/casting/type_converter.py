@@ -20,12 +20,39 @@ from ...spark_types import (
 )
 
 
+_STRING_TO_TYPE: Dict[str, "DataType"] = {}
+
+
+def _get_string_type_map() -> Dict[str, "DataType"]:
+    """Lazy-init mapping from type name strings to DataType instances."""
+    if not _STRING_TO_TYPE:
+        _STRING_TO_TYPE.update(
+            {
+                "string": StringType(),
+                "str": StringType(),
+                "int": IntegerType(),
+                "integer": IntegerType(),
+                "long": LongType(),
+                "bigint": LongType(),
+                "float": FloatType(),
+                "double": DoubleType(),
+                "boolean": BooleanType(),
+                "bool": BooleanType(),
+                "date": DateType(),
+                "timestamp": TimestampType(),
+                "decimal": DecimalType(),
+                "binary": StringType(),  # fallback
+            }
+        )
+    return _STRING_TO_TYPE
+
+
 class TypeConverter:
     """Handles type conversion operations for DataFrame."""
 
     @staticmethod
     def cast_to_type(
-        value: Any, target_type: DataType
+        value: Any, target_type: Any
     ) -> Union[
         str,
         int,
@@ -39,7 +66,12 @@ class TypeConverter:
         Dict[Any, Any],
         Any,
     ]:
-        """Cast a value to the specified target type."""
+        """Cast a value to the specified target type (DataType or string name)."""
+        # Convert string type names to DataType objects
+        if isinstance(target_type, str):
+            type_map = _get_string_type_map()
+            target_type = type_map.get(target_type.lower(), StringType())
+
         if value is None:
             return None
 
