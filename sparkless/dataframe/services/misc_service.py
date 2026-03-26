@@ -1018,6 +1018,90 @@ class MiscService:
             DataFrame(result_data, result_schema, self._df.storage),
         )
 
+    def applyInArrow(self, func: Any, schema: Any) -> SupportsDataFrameOps:
+        """Apply a function to each partition as an Arrow table.
+
+        For sparkless, the entire DataFrame is treated as a single partition.
+        The function receives a PyArrow Table and should return a PyArrow Table.
+
+        Args:
+            func: A function that takes a PyArrow Table and returns a PyArrow Table.
+            schema: The schema of the output DataFrame (StructType or DDL string).
+
+        Returns:
+            DataFrame: Result of applying the function.
+
+        Example:
+            >>> def double_values(table):
+            ...     import pyarrow.compute as pc
+            ...     return table.append_column("doubled", pc.multiply(table["value"], 2))
+            >>> df.applyInArrow(double_values, schema="value long, doubled long")
+        """
+        try:
+            import pyarrow as pa
+        except ImportError:
+            raise ImportError(
+                "pyarrow is required for applyInArrow. "
+                "Install it with: pip install pyarrow"
+            )
+
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for applyInArrow. "
+                "Install it with: pip install pandas"
+            )
+
+        # Materialize if lazy
+        materialized = self._df._materialize_if_lazy()
+
+        # Convert to pandas then to Arrow table
+        input_pdf = pd.DataFrame(materialized.data)
+        input_table = pa.Table.from_pandas(input_pdf)
+
+        # Apply the function
+        result_table = func(input_table)
+
+        # Convert result back to list of dicts
+        if isinstance(result_table, pa.Table):
+            result_pdf = result_table.to_pandas()
+        else:
+            result_pdf = result_table
+
+        result_data: List[Dict[str, Any]] = []
+        if (
+            isinstance(result_pdf, pd.DataFrame)
+            and not result_pdf.empty
+            or hasattr(result_pdf, "to_dict")
+        ):
+            result_data = [
+                {str(k): v for k, v in row.items()}
+                for row in result_pdf.to_dict("records")
+            ]
+
+        # Parse schema
+        from ...core.schema_inference import infer_schema_from_data
+
+        result_schema: StructType
+        if isinstance(schema, str):
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self._df.schema
+            )
+        elif isinstance(schema, StructType):
+            result_schema = schema
+        else:
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self._df.schema
+            )
+
+        from ..dataframe import DataFrame
+
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, result_schema, self._df.storage),
+        )
+
     def unpivot(
         self,
         ids: Union[str, List[str]],

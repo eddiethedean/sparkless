@@ -17,7 +17,7 @@ from ..catalog import Catalog
 from ..config import Configuration, SparkConfig
 from ..sql.executor import SQLExecutor
 from sparkless.dataframe import DataFrame, DataFrameReader
-from sparkless.storage.backends.robin import RobinCatalogStorage
+from sparkless.storage.backends.memory import MemoryStorageManager
 from ...spark_types import (
     StructType,
 )
@@ -82,10 +82,8 @@ class SparkSession:
         self.app_name = app_name
         self.performance_mode = performance_mode
         self._jvm_overhead = 0.001 if performance_mode == "realistic" else 0.00001
-        self._storage = RobinCatalogStorage()
-        self.backend_type = (
-            "robin"  # v4 Robin-only; kept for test/fixture compatibility
-        )
+        self._storage = MemoryStorageManager()
+        self.backend_type = "mock"
         self._catalog = Catalog(self._storage, spark=self)
         from typing import cast
 
@@ -315,20 +313,9 @@ class SparkSession:
         if args or kwargs:
             query = self._sql_parameter_binder.bind_parameters(query, args, kwargs)
 
-        # Execute SQL via Robin only; no Python fallback.
-        from sparkless.robin import execute_sql_via_robin
-        from sparkless.robin.schema_ser import schema_from_robin_list
-
-        rows, robin_schema = execute_sql_via_robin(query)
-        # Use schema so empty results (CREATE SCHEMA, SHOW DATABASES, etc.) can create DataFrame
-        if not rows and not robin_schema:
-            from sparkless.spark_types import StructType
-
-            schema = StructType([])  # DDL returns no rows, no columns
-        else:
-            schema = schema_from_robin_list(robin_schema) if robin_schema else None
-        df = self._real_createDataFrame(rows, schema)
-        return cast("IDataFrame", df)
+        # Execute SQL via the Python SQL executor
+        result = self._sql_executor.execute(query)
+        return result
 
     def _bind_parameters(
         self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]

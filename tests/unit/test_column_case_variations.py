@@ -8,7 +8,6 @@ to ensure case-insensitive resolution works correctly across all operations.
 import pytest
 from sparkless.sql import SparkSession, functions as F
 from sparkless.spark_types import StructType, StructField, StringType, IntegerType
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestColumnCaseVariations:

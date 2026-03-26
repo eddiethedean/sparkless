@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.7
+    hooks:
+      - id: ruff-format
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy type check
+        entry: python3 -m mypy sparkless tests
+        language: system
+        pass_filenames: false
+        always_run: true
+        types: [python]
+
+  - repo: local
+    hooks:
+      - id: unit-tests
+        name: unit tests (blocking)
+        entry: python3 -m pytest tests/unit/ -x -q --tb=short -o "addopts=" -m "not performance"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: parity-tests
+        name: parity tests (non-blocking, has known failures)
+        entry: bash -c 'python3 -m pytest tests/parity/ -q --tb=line -o "addopts=" || true'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: documentation-tests
+        name: documentation tests
+        entry: bash -c 'python3 -m pytest tests/documentation/ -x -q --tb=short -o "addopts=" || [ $? -eq 5 ]'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

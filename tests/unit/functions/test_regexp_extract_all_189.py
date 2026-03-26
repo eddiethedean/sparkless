@@ -1,7 +1,5 @@
-import pytest
 import sparkless.sql.functions as F
 from sparkless.sql import SparkSession
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 def test_regexp_extract_all_basic_groups():

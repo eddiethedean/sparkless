@@ -142,7 +142,12 @@ class SetOperations:
 
         # PySpark allows numeric/string combinations (normalizes to string)
         # Issue #242: LongType + StringType -> StringType
-        # For other types, require exact match
+        # MapType and ArrayType are compatible if they share the same base type
+        from ...spark_types import MapType, ArrayType
+
+        if isinstance(type1, (MapType, ArrayType)) and type(type1) is type(type2):
+            return True
+
         return (is_numeric1 and is_string2) or (is_string1 and is_numeric2)
 
     @staticmethod
@@ -270,9 +275,9 @@ class SetOperations:
         # Convert back to dict format
         result_data: List[Dict[str, Any]] = []
         for row in unioned_rows:  # type: ignore[assignment]
-            if isinstance(row, Row):
+            if isinstance(row, Row):  # type: ignore[unreachable]
                 # Use Row.asDict() method for proper conversion
-                row_dict: Dict[str, Any] = row.asDict()
+                row_dict: Dict[str, Any] = row.asDict()  # type: ignore[unreachable]
                 result_data.append(row_dict)
             elif hasattr(row, "data"):
                 # Row object - convert data to dict

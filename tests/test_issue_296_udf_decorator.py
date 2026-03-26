@@ -7,8 +7,6 @@ that Sparkless supports the same decorator interface.
 Skipped when using Robin native API: Robin uses pandas_udf with different API.
 """
 
-import pytest
-
 from sparkless.sql import SparkSession
 import sparkless.sql.types as T
 import sparkless.sql.functions as F

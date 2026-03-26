@@ -34,7 +34,6 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, TYPE_CHECKING, Tuple, Union, cast
 
-from sparkless.robin.schema_ser import serialize_schema
 from sparkless.errors import AnalysisException, IllegalArgumentException
 
 if TYPE_CHECKING:
@@ -162,6 +161,31 @@ class DataFrameWriter:
         self._options.update(kwargs)
         return self
 
+    def bucketBy(self, numBuckets: int, col: str, *cols: str) -> DataFrameWriter:
+        """Bucket by columns (no-op in sparkless).
+
+        Args:
+            numBuckets: Number of buckets.
+            col: First column to bucket by.
+            *cols: Additional columns to bucket by.
+
+        Returns:
+            Self for method chaining.
+        """
+        return self
+
+    def sortBy(self, col: str, *cols: str) -> DataFrameWriter:
+        """Sort within buckets (no-op in sparkless).
+
+        Args:
+            col: First column to sort by.
+            *cols: Additional columns to sort by.
+
+        Returns:
+            Self for method chaining.
+        """
+        return self
+
     def partitionBy(self, *cols: str) -> DataFrameWriter:
         """Partition output by given columns.
 
@@ -176,6 +200,26 @@ class DataFrameWriter:
         """
         self._options["partitionBy"] = list(cols)
         return self
+
+    def insertInto(self, tableName: str, overwrite: bool = False) -> None:
+        """Insert DataFrame data into an existing table.
+
+        Args:
+            tableName: Name of the target table (can include schema, e.g., 'schema.table').
+            overwrite: If True, overwrite existing data. Default is False (append).
+
+        Raises:
+            AnalysisException: If the table does not exist.
+
+        Example:
+            >>> df.write.insertInto("my_table")
+            >>> df.write.insertInto("my_table", overwrite=True)
+        """
+        if overwrite:
+            self.mode("overwrite")
+        else:
+            self.mode("append")
+        self.saveAsTable(tableName)
 
     def saveAsTable(self, table_name: str) -> None:
         """Save DataFrame as a table in storage.
@@ -241,6 +285,12 @@ class DataFrameWriter:
                 return  # Do nothing if table exists
 
         elif self.save_mode == "overwrite":
+            # Handle replaceWhere option: only overwrite rows matching the condition
+            replace_where = self._options.get("replaceWhere")
+            if replace_where and table_exists:
+                self._handle_replace_where(schema, table, replace_where, df_schema)
+                return
+
             # Track version and history before dropping for Delta tables
             next_version = 0
             preserved_history = []
@@ -494,13 +544,10 @@ class DataFrameWriter:
         elif resolved_format == "text":
             self._write_text(data_frame.data, data_frame.schema, target_path)
         elif resolved_format == "delta":
-            try:
-                self._write_delta_via_robin(data_frame, str(target_path))
-            except (AttributeError, RuntimeError) as e:
-                raise AnalysisException(
-                    "Delta write to path requires the robin-sparkless crate's delta feature. "
-                    "Ensure the extension was built with delta support, or use saveAsTable() for catalog Delta tables."
-                ) from e
+            raise NotImplementedError(
+                "Delta write is not supported in the pure Python engine. "
+                "Use pyspark or install delta-rs for Delta Lake support."
+            )
         else:
             raise AnalysisException(
                 f"File format '{self.format_name}' is not supported."
@@ -585,6 +632,69 @@ class DataFrameWriter:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def _handle_replace_where(
+        self,
+        schema: str,
+        table: str,
+        replace_where: str,
+        df_schema: StructType,
+    ) -> None:
+        """Handle replaceWhere option for overwrite mode.
+
+        Keeps existing rows that do NOT match the replaceWhere condition and
+        concatenates them with the new data being written.
+
+        Args:
+            schema: Schema/database name.
+            table: Table name.
+            replace_where: SQL-like condition string (e.g., "date >= '2024-01-01'").
+            df_schema: Schema of the DataFrame being written.
+        """
+        from sparkless.core.safe_evaluator import SafeExpressionEvaluator
+
+        # Load existing data from the table
+        existing_data = self.storage.get_data(schema, table)
+
+        # Keep rows that do NOT match the condition
+        kept_rows: List[Dict[str, Any]] = []
+        for row in existing_data:
+            # Build context from row for evaluator
+            context: Dict[str, Any] = {}
+            if isinstance(row, dict):
+                context = dict(row)
+            elif hasattr(row, "asDict"):  # type: ignore[unreachable]
+                context = dict(row.asDict())  # type: ignore[unreachable]
+            else:
+                from ..spark_types import row_keys, get_row_value
+
+                for k in row_keys(row):
+                    context[k] = get_row_value(row, k)
+
+            matches = SafeExpressionEvaluator.evaluate_boolean(replace_where, context)
+            if not matches:
+                kept_rows.append(context)
+
+        # Get new data
+        new_data = self.df.collect()
+        new_dict_data = [row.asDict() for row in new_data]
+
+        # Drop and recreate table, then insert merged data
+        self.storage.drop_table(schema, table)
+        self.storage.create_table(schema, table, df_schema.fields)
+
+        merged_data = kept_rows + new_dict_data
+        if merged_data:
+            self.storage.insert_data(schema, table, merged_data)
+
+        # Sync active sessions
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            self._sync_active_sessions(schema, table, df_schema.fields, merged_data)
+
+        with contextlib.suppress(Exception):
+            self._ensure_table_immediately_accessible(schema, table)
+
     def _materialize_dataframe(self) -> DataFrame:
         """Materialize the underlying DataFrame (handling lazy evaluation)."""
         from .dataframe import DataFrame
@@ -651,7 +761,13 @@ class DataFrameWriter:
     def _write_parquet(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path
     ) -> None:
-        from sparkless.robin import write_parquet_via_robin
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for writing Parquet files. "
+                "Install it with: pip install pandas pyarrow"
+            ) from e
 
         target = (
             path
@@ -659,20 +775,19 @@ class DataFrameWriter:
             else self._next_part_file(path, ".parquet")
         )
         target.parent.mkdir(parents=True, exist_ok=True)
-        schema_list = serialize_schema(schema)
-        overwrite = self.save_mode == "overwrite"
-        write_parquet_via_robin(data, schema_list, str(target.resolve()), overwrite)
+        pdf = pd.DataFrame(data)
+        pdf.to_parquet(str(target.resolve()), index=False)
 
     def _write_json(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path
     ) -> None:
-        from sparkless.robin import write_json_via_robin
+        import json as json_lib
 
         target = path if path.suffix == ".json" else self._next_part_file(path, ".json")
         target.parent.mkdir(parents=True, exist_ok=True)
-        schema_list = serialize_schema(schema)
-        overwrite = self.save_mode == "overwrite"
-        write_json_via_robin(data, schema_list, str(target.resolve()), overwrite)
+        with open(str(target.resolve()), "w", encoding="utf-8") as f:
+            for row in data:
+                f.write(json_lib.dumps(row, default=str) + "\n")
 
     def _write_csv(
         self,
@@ -680,13 +795,18 @@ class DataFrameWriter:
         schema: StructType,
         path: Path,
     ) -> None:
-        from sparkless.robin import write_csv_via_robin
+        import csv
 
         target = path if path.suffix == ".csv" else self._next_part_file(path, ".csv")
         target.parent.mkdir(parents=True, exist_ok=True)
-        schema_list = serialize_schema(schema)
-        overwrite = self.save_mode == "overwrite"
-        write_csv_via_robin(data, schema_list, str(target.resolve()), overwrite)
+        if not data:
+            fieldnames = [f.name for f in schema.fields]
+        else:
+            fieldnames = list(data[0].keys())
+        with open(str(target.resolve()), "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(data)
 
     def _write_text(
         self, data: List[Dict[str, Any]], schema: StructType, path: Path
@@ -707,17 +827,6 @@ class DataFrameWriter:
                 value = get_row_value(row, column_name)
                 handle.write("" if value is None else str(value))
                 handle.write(os.linesep)
-
-    def _write_delta_via_robin(self, data_frame: DataFrame, path: str) -> None:
-        """Write DataFrame to Delta table at path using the Robin Rust crate."""
-        from sparkless.robin import write_delta_via_robin
-
-        dict_data = [
-            row.asDict() if hasattr(row, "asDict") else row for row in data_frame.data
-        ]
-        schema_list = serialize_schema(data_frame.schema)
-        overwrite = self.save_mode == "overwrite"
-        write_delta_via_robin(dict_data, schema_list, path, overwrite)
 
     def _get_bool_option(self, key: str, default: bool = False) -> bool:
         """Resolve boolean option values with Spark-compatible parsing."""

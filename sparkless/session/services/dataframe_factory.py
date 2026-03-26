@@ -381,8 +381,10 @@ class DataFrameFactory:
 
             # Check if any rows are positional (tuple/list)
             if any(_is_positional_row(row) for row in data):
-                schema_fields = getattr(schema, "fields", None) if schema is not None else None
-                if not schema_fields:
+                schema_fields = (
+                    getattr(schema, "fields", None) if schema is not None else None
+                )
+                if schema_fields is None:
                     raise IllegalArgumentException(
                         "Schema is required and must have fields when data contains tuple/list rows."
                     )
@@ -535,6 +537,7 @@ class DataFrameFactory:
             MapType,
             StructType,
         )
+
         if pyspark_schema is None:
             return StructType([])
 
