@@ -1,3 +1,64 @@
+# [3.29.0](https://github.com/Solya-app/sparkless/compare/v3.28.0...v3.29.0) (2026-03-26)
+
+
+### Features
+
+* **sql:** add ALTER TABLE support ([#7](https://github.com/Solya-app/sparkless/issues/7)) ([a1741c5](https://github.com/Solya-app/sparkless/commit/a1741c5c92d3b8306dd50a5d42944ba2257ab85a))
+
+# [3.28.0](https://github.com/Solya-app/sparkless/compare/v3.27.0...v3.28.0) (2026-03-26)
+
+
+### Features
+
+* add CTE (WITH clause) support to SQL executor ([#10](https://github.com/Solya-app/sparkless/issues/10)) ([774ff31](https://github.com/Solya-app/sparkless/commit/774ff318cf2b4f6f769dc15b21cea2330703be05))
+* **catalog:** add dropTempView and listLocalTempViews support ([#9](https://github.com/Solya-app/sparkless/issues/9)) ([04ced3c](https://github.com/Solya-app/sparkless/commit/04ced3c2e58b215c9a6fad0cc937670ea1b59e5e))
+
+# [3.27.0](https://github.com/Solya-app/sparkless/compare/v3.26.1...v3.27.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* add xxhash as core dependency for PySpark-compatible hashing ([86e38d2](https://github.com/Solya-app/sparkless/commit/86e38d249e1e9ac6a4b94ff2e2232c0db7f97e1e))
+* additional test fixes from parallel agents ([3bfcbdf](https://github.com/Solya-app/sparkless/commit/3bfcbdf86bcc326058617760f4c892a6a24886da))
+* agents fix window arithmetic, isin, UDF filter, explode, etc (10 remaining) ([47a0ea4](https://github.com/Solya-app/sparkless/commit/47a0ea41f9eacc73254da25336bec181ea2cb871))
+* apply ruff format to fix CI lint-and-type job ([9bc82be](https://github.com/Solya-app/sparkless/commit/9bc82be9a0c9b06ab1116b0a493d84737ac78cda))
+* background agents fix withField, create_map union, array ops (17 remaining) ([59c594e](https://github.com/Solya-app/sparkless/commit/59c594ea6113215c58048297d0459d981b739419))
+* date_trunc for date objects, down to 24 remaining failures ([0d72ab6](https://github.com/Solya-app/sparkless/commit/0d72ab6db863eded8a5fe735a4d92a09e2311a06))
+* F.mean() on string columns - coerce to numeric (fixes [#437](https://github.com/Solya-app/sparkless/issues/437)) ([#455](https://github.com/Solya-app/sparkless/issues/455)) ([30721c6](https://github.com/Solya-app/sparkless/commit/30721c64fbd33040d48adab60ee15546df58e52c)), closes [#442](https://github.com/Solya-app/sparkless/issues/442) [#429](https://github.com/Solya-app/sparkless/issues/429)
+* leftsemi join incorrectly returns right-side columns (fixes [#438](https://github.com/Solya-app/sparkless/issues/438)) ([42f17ff](https://github.com/Solya-app/sparkless/commit/42f17ffe29d09d067749279eb458dc4cd2a42fd0))
+* **readme:** mark repo deprecated and point to robin-sparkless ([f52ebf7](https://github.com/Solya-app/sparkless/commit/f52ebf70598bb2a9176e0eb3666fb58a1b0302c0))
+* resolve 155 of 186 failing unit tests ([55ee6d2](https://github.com/Solya-app/sparkless/commit/55ee6d29fccdedd314d92d22c49d8f2a0eb43eb9))
+* resolve 32 of 39 parity test failures (7 remaining) ([dc550c4](https://github.com/Solya-app/sparkless/commit/dc550c44caacb9a535469d589952315f107e966c))
+* resolve additional test failures (down to 26 remaining) ([b95447b](https://github.com/Solya-app/sparkless/commit/b95447be7a1d7f7508b77a39d5d3f0d8263aedde))
+* resolve all 28 mypy type errors, align pre-commit with CI ([89ae797](https://github.com/Solya-app/sparkless/commit/89ae79748f9c6480e540f565277cd3f645bfb707))
+* resolve all remaining test failures — 917/917 tests pass ([677d677](https://github.com/Solya-app/sparkless/commit/677d677ee377df3a29d5770645153512a8501640))
+* resolve comparison bug with nested ColumnOperations in filter ([262b357](https://github.com/Solya-app/sparkless/commit/262b357e4b5189a72d52cf95c7fa3df609fedcfc))
+* resolve Rust CI failures (cargo fmt + clippy) ([e3538f1](https://github.com/Solya-app/sparkless/commit/e3538f15e673ae9998dc28e8b28d83f01136ef47))
+* revert lazy.py agent changes that caused regressions, keep other fixes ([cff2393](https://github.com/Solya-app/sparkless/commit/cff2393b5ac3a557babddbb2849cdb467afdf539))
+* **robin:** set Row schema in collect(); unskip 3 case-variation tests ([786d578](https://github.com/Solya-app/sparkless/commit/786d578515f009e8a9aa7ff1afe31d4414381420))
+* **sparkless:** active session, F.* wrapping, categorization; add robin-sparkless issue scripts ([afbbd9c](https://github.com/Solya-app/sparkless/commit/afbbd9cb9c4450cccc16249b6a3c017b0711fb91))
+* **types:** resolve mypy errors in MERGE executor ([8b56d17](https://github.com/Solya-app/sparkless/commit/8b56d17347b8b7bc2142d4ba2d2e6b0595298c4d))
+* **types:** resolve mypy type errors in executor.py ([87b198d](https://github.com/Solya-app/sparkless/commit/87b198de2834f6267d889f649ed621dfd29fd3a7))
+* Use environment variable for version in changelog extraction ([a8c9dd2](https://github.com/Solya-app/sparkless/commit/a8c9dd2ae79dd8b9a483b590d0f97bdfd3918a48))
+* use float() for string coercion (PySpark parity), add robust tests ([027c222](https://github.com/Solya-app/sparkless/commit/027c222839c4b5eaa222564ae76f9f3e4514b82e))
+* Use github.ref_name for tag reference in release creation ([890ce37](https://github.com/Solya-app/sparkless/commit/890ce37735eb0ebd5e5aa43093f2a834c02ff4aa))
+
+
+### Features
+
+* add Delta Lake Time Travel support to SQL parser ([#11](https://github.com/Solya-app/sparkless/issues/11)) ([c515e63](https://github.com/Solya-app/sparkless/commit/c515e63d05bbfee0b59410773c511625cfb84f85))
+* add semantic-release with Azure Artifacts publishing ([4bd853f](https://github.com/Solya-app/sparkless/commit/4bd853fce1e3ad369a967dfa9c58a362387b8738))
+* implement all P0 and P1 items from TODO-2.md ([de83907](https://github.com/Solya-app/sparkless/commit/de83907ea0328d05d71f5f043e98b65e19267fb2)), closes [#1](https://github.com/Solya-app/sparkless/issues/1) [#2](https://github.com/Solya-app/sparkless/issues/2) [#3](https://github.com/Solya-app/sparkless/issues/3) [#4](https://github.com/Solya-app/sparkless/issues/4) [#5](https://github.com/Solya-app/sparkless/issues/5) [#6](https://github.com/Solya-app/sparkless/issues/6) [#7](https://github.com/Solya-app/sparkless/issues/7) [#8](https://github.com/Solya-app/sparkless/issues/8) [#9](https://github.com/Solya-app/sparkless/issues/9) [#13](https://github.com/Solya-app/sparkless/issues/13) [#14](https://github.com/Solya-app/sparkless/issues/14)
+* implement all P2 items from TODO-2.md ([cf069dc](https://github.com/Solya-app/sparkless/commit/cf069dca6a261bca694de872ca87ab79b1d41fe1)), closes [#15](https://github.com/Solya-app/sparkless/issues/15) [#16](https://github.com/Solya-app/sparkless/issues/16) [#19](https://github.com/Solya-app/sparkless/issues/19) [#20](https://github.com/Solya-app/sparkless/issues/20)
+* resolve TODO.md limitation [#1](https://github.com/Solya-app/sparkless/issues/1) — alias-based column references in joins ([333bb54](https://github.com/Solya-app/sparkless/commit/333bb544a897b45525ca42cd3a2f0c594049946f))
+* resolve TODO.md limitation [#3](https://github.com/Solya-app/sparkless/issues/3) — aggregations in select ([f423ca6](https://github.com/Solya-app/sparkless/commit/f423ca67cde42834cad2bde23bc3be6249d9c0c0))
+* resolve TODO.md limitations [#2](https://github.com/Solya-app/sparkless/issues/2), [#5](https://github.com/Solya-app/sparkless/issues/5), and partial [#3](https://github.com/Solya-app/sparkless/issues/3) ([c4e8193](https://github.com/Solya-app/sparkless/commit/c4e81930497f9cca43ae0bb20e7c8e3b619b9672))
+* **robin:** Column conversion, F.* stubs, agg aliases; remove test skips; analysis ([1fb8887](https://github.com/Solya-app/sparkless/commit/1fb88872a88be5e4a1749e5bdf223b0c00c5421c))
+* **robin:** Sparkless changes for robin-sparkless integration ([21134a6](https://github.com/Solya-app/sparkless/commit/21134a6364572776a16bb7546c204ae0dde4591a))
+* **sql:** add complex MERGE patterns support ([5cf575f](https://github.com/Solya-app/sparkless/commit/5cf575f112308542c58362ad064d00a06863cfb4))
+* **sql:** add complex MERGE patterns support ([#322](https://github.com/Solya-app/sparkless/issues/322)) ([cc44e33](https://github.com/Solya-app/sparkless/commit/cc44e33ca85ece7780932f84c4346bf185a6fcf9))
+* **sql:** add DESCRIBE DETAIL support for Delta tables ([cddb660](https://github.com/Solya-app/sparkless/commit/cddb6601fc167b1c7aab0c7154ea8b04aacfb154))
+
 # Changelog
 
 ## 4.0.0 — 2026-02-17
@@ -1551,4 +1612,3 @@ All changes since 3.27.1 are included in this release.
   distribution. When a different version is installed in `site-packages`, the
   example scripts exit early with `ImportError`. Align the executable path or
   install the local wheel before running documentation fixtures.
-

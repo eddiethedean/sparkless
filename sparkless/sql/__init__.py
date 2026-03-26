@@ -1,9 +1,7 @@
 """
 Sparkless SQL module - PySpark-compatible SQL interface.
 
-When sparkless_robin is available (maturin develop), SparkSession, DataFrame,
-Column, and functions use the Robin backend. Otherwise falls back to the
-pure-Python implementation.
+Exports SparkSession, DataFrame, Column, and functions from the pure Python engine.
 """
 
 from ._backend import (

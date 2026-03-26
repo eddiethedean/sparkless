@@ -5,11 +5,8 @@ is used in two join branches (diamond dependency).
 https://github.com/eddiethedean/sparkless/issues/355
 """
 
-import pytest
-
 from sparkless.sql import SparkSession
 from sparkless import functions as F
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestIssue355DiamondDependency:

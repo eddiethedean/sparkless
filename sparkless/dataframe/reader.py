@@ -157,28 +157,10 @@ class DataFrameReader:
         combined_options: Dict[str, Any] = {**self._options, **options}
 
         if resolved_format == "delta":
-            if path is None:
-                raise IllegalArgumentException(
-                    "load() with format 'delta' requires a path. "
-                    "Use read.format('delta').table('schema.table') for tables."
-                )
-            # Phase 4: Delegate to Robin when the crate's delta feature is enabled.
-            from ..robin import read_delta_via_robin, read_delta_version_via_robin
-
-            try:
-                version_as_of = combined_options.get("versionAsOf")
-                if version_as_of is not None:
-                    rows = read_delta_version_via_robin(
-                        str(Path(path).resolve()), int(version_as_of)
-                    )
-                else:
-                    rows = read_delta_via_robin(str(Path(path).resolve()))
-                return self.session.createDataFrame(rows)
-            except (AttributeError, RuntimeError) as e:
-                raise AnalysisException(
-                    "Delta read from path requires the robin-sparkless crate's delta feature. "
-                    "Ensure the extension was built with delta support, or use read.table() for catalog Delta tables."
-                ) from e
+            raise NotImplementedError(
+                "Delta read is not supported in the pure Python engine. "
+                "Use pyspark or install delta-rs for Delta Lake support."
+            )
 
         if path is None:
             raise IllegalArgumentException(
@@ -323,46 +305,105 @@ class DataFrameReader:
     def _read_parquet(
         self, paths: List[str], options: Dict[str, Any]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Read Parquet files via Robin crate."""
-        from ..robin import read_parquet_via_robin
-        from ..robin.schema_ser import schema_from_robin_list
+        """Read Parquet files using pandas/pyarrow."""
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for reading Parquet files. "
+                "Install it with: pip install pandas pyarrow"
+            ) from e
+
+        from ..core.schema_inference import SchemaInferenceEngine
 
         all_rows: List[Dict[str, Any]] = []
-        schema: StructType = StructType([])
         for p in paths:
-            rows, schema_list = read_parquet_via_robin(str(Path(p).resolve()))
-            schema = schema_from_robin_list(schema_list)
-            all_rows.extend(rows)
+            pdf = pd.read_parquet(str(Path(p).resolve()))
+            all_rows.extend(pdf.to_dict(orient="records"))
+
+        if all_rows:
+            schema, all_rows = SchemaInferenceEngine.infer_from_data(all_rows)
+        else:
+            schema = StructType([])
         return schema, all_rows
 
     def _read_csv(
         self, paths: List[str], options: Dict[str, Any]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Read CSV files via Robin crate."""
-        from ..robin import read_csv_via_robin
-        from ..robin.schema_ser import schema_from_robin_list
+        """Read CSV files using pandas."""
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for reading CSV files. "
+                "Install it with: pip install pandas"
+            ) from e
 
-        all_rows = []
-        schema = StructType([])
+        from ..core.schema_inference import SchemaInferenceEngine
+
+        header = options.get("header", "true").lower() == "true"
+        sep = options.get("sep", options.get("delimiter", ","))
+        encoding = options.get("encoding", "utf-8")
+
+        all_rows: List[Dict[str, Any]] = []
         for p in paths:
-            rows, schema_list = read_csv_via_robin(str(Path(p).resolve()))
-            schema = schema_from_robin_list(schema_list)
-            all_rows.extend(rows)
+            pdf = pd.read_csv(
+                str(Path(p).resolve()),
+                header=0 if header else None,
+                sep=sep,
+                encoding=encoding,
+            )
+            all_rows.extend(pdf.to_dict(orient="records"))
+
+        if all_rows:
+            schema, all_rows = SchemaInferenceEngine.infer_from_data(all_rows)
+        else:
+            schema = StructType([])
         return schema, all_rows
 
     def _read_json(
         self, paths: List[str], options: Dict[str, Any]
     ) -> Tuple[StructType, List[Dict[str, Any]]]:
-        """Read JSON or NDJSON via Robin crate."""
-        from ..robin import read_json_via_robin
-        from ..robin.schema_ser import schema_from_robin_list
+        """Read JSON or NDJSON files using stdlib json."""
+        import json as json_lib
 
-        all_rows = []
-        schema = StructType([])
+        from ..core.schema_inference import SchemaInferenceEngine
+
+        encoding = options.get("encoding", "utf-8")
+        multi_line = str(options.get("multiLine", "false")).lower() == "true"
+
+        all_rows: List[Dict[str, Any]] = []
         for p in paths:
-            rows, schema_list = read_json_via_robin(str(Path(p).resolve()))
-            schema = schema_from_robin_list(schema_list)
-            all_rows.extend(rows)
+            with open(str(Path(p).resolve()), encoding=encoding) as f:
+                content = f.read().strip()
+                if not content:
+                    continue
+                if multi_line:
+                    # Read as single JSON object/array
+                    data = json_lib.loads(content)
+                    if isinstance(data, list):
+                        all_rows.extend(data)
+                    else:
+                        all_rows.append(data)
+                else:
+                    # Try NDJSON first (one JSON object per line)
+                    try:
+                        for line in content.splitlines():
+                            line = line.strip()
+                            if line:
+                                all_rows.append(json_lib.loads(line))
+                    except json_lib.JSONDecodeError:
+                        # Fallback to standard JSON array
+                        data = json_lib.loads(content)
+                        if isinstance(data, list):
+                            all_rows.extend(data)
+                        else:
+                            all_rows.append(data)
+
+        if all_rows:
+            schema, all_rows = SchemaInferenceEngine.infer_from_data(all_rows)
+        else:
+            schema = StructType([])
         return schema, all_rows
 
     def _read_text(self, paths: List[str]) -> Tuple[StructType, List[Dict[str, Any]]]:

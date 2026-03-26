@@ -119,6 +119,8 @@ class SQLExecutor:
             # Execute based on query type
             if ast.query_type == "SELECT":
                 return self._execute_select(ast)
+            elif ast.query_type == "WITH":
+                return self._execute_with(ast)
             elif ast.query_type == "UNION":
                 return self._execute_union(ast)
             elif ast.query_type == "CREATE":
@@ -139,6 +141,12 @@ class SQLExecutor:
                 return self._execute_describe(ast)
             elif ast.query_type == "REFRESH":
                 return self._execute_refresh(ast)
+            elif ast.query_type == "USE":
+                return self._execute_use(ast)
+            elif ast.query_type == "ALTER":
+                return self._execute_alter(ast)
+            elif ast.query_type == "VACUUM":
+                return self._execute_vacuum(ast)
             else:
                 raise QueryExecutionException(
                     f"Unsupported query type: {ast.query_type}"
@@ -199,7 +207,11 @@ class SQLExecutor:
 
                 table_name = from_tables[0]
                 try:
-                    df_any = self.session.table(table_name)
+                    # Check if first table is a CTE
+                    if hasattr(self, "_temp_views") and table_name in self._temp_views:
+                        df_any = self._temp_views[table_name]
+                    else:
+                        df_any = self.session.table(table_name)
                     if not isinstance(df_any, DataFrame):  # type: ignore[unreachable]
                         from ...spark_types import StructType
 
@@ -226,7 +238,14 @@ class SQLExecutor:
                         table2_alias = join_info.get(
                             "alias", table_aliases.get(table2_name, table2_name)
                         )
-                        df2_any = self.session.table(table2_name)
+                        # Check if table is a CTE
+                        if (
+                            hasattr(self, "_temp_views")
+                            and table2_name in self._temp_views
+                        ):
+                            df2_any = self._temp_views[table2_name]
+                        else:
+                            df2_any = self.session.table(table2_name)
                         df2: DataFrame
                         if not isinstance(df2_any, DataFrame):  # type: ignore[unreachable]
                             from ...spark_types import StructType
@@ -354,31 +373,46 @@ class SQLExecutor:
                 # Single table (no JOIN)
                 table_name = from_tables[0]
                 # Try to get table as DataFrame
-                try:
-                    df_any = self.session.table(table_name)
+                # First check if this is a CTE (temporary view from WITH clause)
+                if hasattr(self, "_temp_views") and table_name in self._temp_views:
+                    df_any = self._temp_views[table_name]
                     # Convert IDataFrame to DataFrame if needed
-                    # DataFrame is already imported at module level
-
                     if isinstance(df_any, DataFrame):  # type: ignore[unreachable]
                         df = df_any  # type: ignore[unreachable]
                     else:
-                        # df_any may be an IDataFrame; construct DataFrame from its public API
                         from ...spark_types import StructType
 
-                        # Convert ISchema to StructType if needed
                         if hasattr(df_any.schema, "fields"):
                             schema = StructType(df_any.schema.fields)  # type: ignore[arg-type]
                         else:
                             schema = StructType([])
                         df = DataFrame(df_any.collect(), schema)
-                except Exception:
-                    # If table doesn't exist, return empty DataFrame
-                    # DataFrame is already imported at module level
-                    from ...spark_types import StructType
+                else:
+                    try:
+                        df_any = self.session.table(table_name)
+                        # Convert IDataFrame to DataFrame if needed
+                        # DataFrame is already imported at module level
 
-                    # Log the error for debugging (can be removed in production)
-                    # This helps identify why table lookup fails
-                    return DataFrame([], StructType([]))  # type: ignore[return-value]
+                        if isinstance(df_any, DataFrame):  # type: ignore[unreachable]
+                            df = df_any  # type: ignore[unreachable]
+                        else:
+                            # df_any may be an IDataFrame; construct DataFrame from its public API
+                            from ...spark_types import StructType
+
+                            # Convert ISchema to StructType if needed
+                            if hasattr(df_any.schema, "fields"):
+                                schema = StructType(df_any.schema.fields)  # type: ignore[arg-type]
+                            else:
+                                schema = StructType([])
+                            df = DataFrame(df_any.collect(), schema)
+                    except Exception:
+                        # If table doesn't exist, return empty DataFrame
+                        # DataFrame is already imported at module level
+                        from ...spark_types import StructType
+
+                        # Log the error for debugging (can be removed in production)
+                        # This helps identify why table lookup fails
+                        return DataFrame([], StructType([]))  # type: ignore[return-value]
 
         df_ops = cast("SupportsDataFrameOps", df)
 
@@ -1284,6 +1318,90 @@ class SQLExecutor:
 
         return cast("IDataFrame", df)
 
+    def _execute_with(self, ast: SQLAST) -> IDataFrame:
+        """Execute WITH clause (Common Table Expressions).
+
+        Steps:
+        1. Execute each CTE query and store result
+        2. Register results as temporary views for table resolution
+        3. Execute main query with CTEs available
+        4. Clean up temporary storage
+
+        Args:
+            ast: Parsed SQL AST with "WITH" query type.
+
+        Returns:
+            IDataFrame with query results.
+
+        Raises:
+            QueryExecutionException: If CTE execution fails.
+        """
+        components = ast.components
+        ctes = components.get("ctes", [])
+        main_query = components.get("main_query", "")
+
+        if not main_query:
+            raise QueryExecutionException("WITH clause missing main query")
+
+        # Initialize temporary storage for this query execution
+        # Store original _temp_views if exists (for nested CTEs)
+        original_temp_views = getattr(self, "_temp_views", None)
+        self._temp_views: Dict[str, IDataFrame] = {}
+
+        try:
+            # Step 1: Execute each CTE and store result
+            for cte in ctes:
+                cte_name = cte["name"]
+                cte_query = cte["query"]
+
+                # Parse CTE query (may be SELECT, UNION, or even another WITH)
+                cte_ast = self.parser.parse(cte_query)
+
+                # Execute based on query type
+                if cte_ast.query_type == "SELECT":
+                    cte_result = self._execute_select(cte_ast)
+                elif cte_ast.query_type == "WITH":
+                    # Recursive CTE support (nested WITH)
+                    cte_result = self._execute_with(cte_ast)
+                elif cte_ast.query_type == "UNION":
+                    cte_result = self._execute_union(cte_ast)
+                else:
+                    raise QueryExecutionException(
+                        f"CTE '{cte_name}' must be SELECT, WITH, or UNION, "
+                        f"got {cte_ast.query_type}"
+                    )
+
+                # Store in temporary views for use by subsequent CTEs and main query
+                self._temp_views[cte_name] = cte_result
+
+            # Step 2: Execute main query with CTEs available
+            main_ast = self.parser.parse(main_query)
+
+            if main_ast.query_type == "SELECT":
+                result = self._execute_select(main_ast)
+            elif main_ast.query_type == "UNION":
+                result = self._execute_union(main_ast)
+            elif main_ast.query_type == "INSERT":
+                result = self._execute_insert(main_ast)
+            elif main_ast.query_type == "UPDATE":
+                result = self._execute_update(main_ast)
+            elif main_ast.query_type == "DELETE":
+                result = self._execute_delete(main_ast)
+            else:
+                raise QueryExecutionException(
+                    f"WITH main query must be SELECT/UNION/INSERT/UPDATE/DELETE, "
+                    f"got {main_ast.query_type}"
+                )
+
+            return result
+
+        finally:
+            # Step 3: Restore original temp views (for nested CTE cleanup)
+            if original_temp_views is not None:
+                self._temp_views = original_temp_views
+            elif hasattr(self, "_temp_views"):
+                delattr(self, "_temp_views")
+
     def _execute_union(self, ast: SQLAST) -> IDataFrame:
         """Execute UNION query.
 
@@ -2029,6 +2147,140 @@ class SQLExecutor:
 
         return cast("IDataFrame", DataFrame([], StructType([])))
 
+    def _execute_alter(self, ast: SQLAST) -> IDataFrame:
+        """Execute ALTER TABLE query.
+
+        Supports:
+        - ALTER TABLE table CLUSTER BY (col1, col2) - Enable liquid clustering
+        - ALTER TABLE table CLUSTER BY NONE - Disable clustering
+        - ALTER TABLE table ADD COLUMN col_def - Add column
+        - ALTER TABLE table ALTER COLUMN col TYPE new_type - Change column type
+        - ALTER TABLE table ALTER COLUMN col SET NOT NULL - Set not nullable
+        - ALTER TABLE table ALTER COLUMN col DROP NOT NULL - Drop not null
+        - ALTER TABLE table DROP COLUMN col - Drop column
+        - ALTER TABLE table SET TBLPROPERTIES (...) - Set properties
+
+        For sparkless, most ALTER operations are no-ops but we validate
+        that the table exists. Schema modifications are not persisted
+        since sparkless is designed for testing purposes.
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            Empty DataFrame indicating success.
+
+        Raises:
+            AnalysisException: If table does not exist.
+        """
+        from ...errors import AnalysisException
+
+        components = ast.components
+        _alter_type = components.get("alter_type", "UNKNOWN")  # noqa: F841
+        table_name = components.get("table_name")
+        schema_name = components.get("schema_name")
+
+        # Access storage through catalog
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog.get_storage_backend()
+
+        if schema_name is None:
+            schema_name = storage.get_current_schema()
+
+        # Build qualified table name for error messages
+        qualified_name = f"{schema_name}.{table_name}" if schema_name else table_name
+
+        # Validate table exists
+        if table_name and not storage.table_exists(schema_name, table_name):
+            raise AnalysisException(f"Table {qualified_name} does not exist")
+
+        # For sparkless, ALTER operations are mostly no-ops
+        # We validate the table exists but don't actually modify schema
+        # since sparkless is designed for testing and doesn't need
+        # persistent schema changes
+
+        # Return empty DataFrame to indicate success
+        return cast("IDataFrame", DataFrame([], StructType([])))
+
+    def _execute_vacuum(self, ast: SQLAST) -> IDataFrame:
+        """Execute VACUUM query for Delta tables.
+
+        Syntax:
+            VACUUM table_name [RETAIN n HOURS] [DRY RUN]
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            DataFrame with deleted files (for DRY RUN) or empty (for actual vacuum).
+
+        Raises:
+            AnalysisException: If table does not exist or is not a Delta table.
+        """
+        from ...errors import AnalysisException
+        from ...spark_types import StructField, StringType, StructType
+
+        # Get original query string for parsing
+        original_query = ast.components.get("original_query", "")
+        if not original_query and hasattr(ast, "query"):
+            original_query = ast.query
+
+        query_upper = original_query.upper() if original_query else ""
+
+        # Parse table name: VACUUM table_name
+        match = re.search(r"VACUUM\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
+        if not match:
+            raise AnalysisException("VACUUM requires a table name")
+
+        table_name = match.group(1)
+
+        # Parse schema and table
+        if "." in table_name:
+            schema_name, table_only = table_name.split(".", 1)
+        else:
+            schema_name, table_only = "default", table_name
+
+        # Get table metadata
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog.get_storage_backend()
+
+        if not storage.table_exists(schema_name, table_only):
+            raise AnalysisException(f"Table {table_name} does not exist")
+
+        meta = storage.get_table_metadata(schema_name, table_only)
+
+        if not meta or meta.get("format") != "delta":
+            raise AnalysisException(
+                f"Table {table_name} is not a Delta table. "
+                "VACUUM can only be used with Delta format tables."
+            )
+
+        # Parse RETAIN n HOURS (optional) - validated but not used in mock
+        # In real Delta Lake, this would control retention period
+        re.search(r"RETAIN\s+(\d+)\s+HOURS?", original_query, re.IGNORECASE)
+
+        # Check for DRY RUN
+        is_dry_run = "DRY RUN" in query_upper or "DRY_RUN" in query_upper
+
+        # For sparkless, VACUUM is a no-op since we don't have real Delta files
+        # In DRY RUN mode, return mock list of files that would be deleted
+        # In normal mode, return empty DataFrame
+
+        if is_dry_run:
+            # Return mock list of files
+            mock_files = [
+                {
+                    "path": f"/mock/delta/{table_name.replace('.', '/')}/part-00000.parquet"
+                },
+            ]
+            vacuum_schema = StructType([StructField("path", StringType())])
+            return cast("IDataFrame", DataFrame(mock_files, vacuum_schema, storage))
+        else:
+            # Return empty DataFrame indicating success
+            return cast("IDataFrame", DataFrame([], StructType([])))
+
     def _execute_show(self, ast: SQLAST) -> IDataFrame:
         """Execute SHOW query.
 
@@ -2123,7 +2375,12 @@ class SQLExecutor:
                     storage = self.session.catalog.get_storage_backend()
                 meta = storage.get_table_metadata(schema_name, table_only)
 
-                if not meta or meta.get("format") != "delta":
+                if not meta:
+                    from ...errors import AnalysisException
+
+                    raise AnalysisException(f"Table or view '{table_name}' not found.")
+
+                if meta.get("format") != "delta":
                     from ...errors import AnalysisException
 
                     raise AnalysisException(
@@ -2999,3 +3256,60 @@ class SQLExecutor:
 
         # Fallback: return the expression as-is
         return expr
+
+    def _execute_use(self, ast: SQLAST) -> IDataFrame:
+        """Execute USE query.
+
+        Supports:
+        - USE CATALOG catalog_name: Sets the current catalog
+        - USE DATABASE database_name: Sets the current database
+        - USE SCHEMA schema_name: Sets the current schema
+        - USE database_name: Shorthand for USE DATABASE
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            Empty DataFrame to indicate success.
+
+        Raises:
+            QueryExecutionException: If the operation fails.
+        """
+        from ...errors import AnalysisException
+
+        components = ast.components
+        use_type = components.get("use_type", "UNKNOWN")
+
+        if use_type == "CATALOG":
+            catalog_name = components.get("catalog_name")
+            if not catalog_name:
+                raise QueryExecutionException("Catalog name is required")
+
+            # Set current catalog via catalog API
+            try:
+                self.session.catalog.setCurrentCatalog(catalog_name)
+            except Exception as e:
+                raise QueryExecutionException(
+                    f"Failed to set catalog '{catalog_name}': {str(e)}"
+                )
+
+        elif use_type in ("DATABASE", "SCHEMA"):
+            db_name = components.get("database_name") or components.get("schema_name")
+            if not db_name:
+                raise QueryExecutionException("Database/Schema name is required")
+
+            # Set current database via catalog API
+            try:
+                self.session.catalog.setCurrentDatabase(db_name)
+            except AnalysisException as e:
+                raise QueryExecutionException(str(e))
+            except Exception as e:
+                raise QueryExecutionException(
+                    f"Failed to set database '{db_name}': {str(e)}"
+                )
+
+        else:
+            raise QueryExecutionException(f"Unknown USE type: {use_type}")
+
+        # USE returns empty DataFrame
+        return cast("IDataFrame", DataFrame([], StructType([])))

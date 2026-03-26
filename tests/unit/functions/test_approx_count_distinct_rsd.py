@@ -4,7 +4,6 @@ import pytest
 from sparkless.sql import SparkSession
 import sparkless.sql.functions as F
 from sparkless.window import Window
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestApproxCountDistinctRsd:

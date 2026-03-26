@@ -740,9 +740,37 @@ def create_schema_from_columns(columns: List[str]) -> StructType:
 
 
 def get_row_value(row: Any, key: str, default: Any = None) -> Any:
-    """Get value from Row or dict by key (PySpark-compatible; Row has no .get())."""
+    """Get value from Row or dict by key (PySpark-compatible; Row has no .get()).
+
+    Supports case-insensitive fallback: if exact key is not found,
+    tries case-insensitive matching against available keys.
+    Also supports dot-notation for nested struct access (e.g., "Person.Name").
+    """
     if key in row:
         return row[key]
+    # Case-insensitive fallback for dict rows
+    if isinstance(row, dict):
+        key_lower = key.lower()
+        for actual_key in row:
+            if actual_key.lower() == key_lower:
+                return row[actual_key]
+        # Dot-notation for nested struct access (e.g., "Person.Name")
+        if "." in key:
+            parts = key.split(".", 1)
+            parent_key = parts[0]
+            child_key = parts[1]
+            # Try exact match first, then case-insensitive
+            parent_val = None
+            if parent_key in row:
+                parent_val = row[parent_key]
+            else:
+                parent_lower = parent_key.lower()
+                for actual_key in row:
+                    if actual_key.lower() == parent_lower:
+                        parent_val = row[actual_key]
+                        break
+            if isinstance(parent_val, dict):
+                return get_row_value(parent_val, child_key, default)
     return default
 
 
@@ -858,19 +886,35 @@ class Row:
             self.data = list(zip(names, values))  # Store as list of tuples
             self._data_dict = {name: values[idx] for idx, name in enumerate(names)}
 
+    def _resolve_key_case_insensitive(self, key: str, data_dict: dict) -> str:
+        """Resolve a key using case-insensitive matching.
+
+        Returns the actual key from data_dict that matches case-insensitively,
+        or raises KeyError if no match is found.
+        """
+        key_lower = key.lower()
+        for actual_key in data_dict:
+            if actual_key.lower() == key_lower:
+                return str(actual_key)
+        raise KeyError(f"Key '{key}' not found in row")
+
     def __getitem__(self, key: Any) -> Any:
         """Get item by column name or index (PySpark-compatible)."""
         if isinstance(key, str):
             # Use dict for backward compatibility
             if hasattr(self, "_data_dict"):
-                if key not in self._data_dict:
-                    raise KeyError(f"Key '{key}' not found in row")
-                return self._data_dict[key]
+                if key in self._data_dict:
+                    return self._data_dict[key]
+                # Case-insensitive fallback
+                resolved = self._resolve_key_case_insensitive(key, self._data_dict)
+                return self._data_dict[resolved]
             # Fallback for old format - check if data is dict or list
             data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
-            if key not in data_dict:
-                raise KeyError(f"Key '{key}' not found in row")
-            return data_dict[key]
+            if key in data_dict:
+                return data_dict[key]
+            # Case-insensitive fallback
+            resolved = self._resolve_key_case_insensitive(key, data_dict)
+            return data_dict[resolved]
         # Support integer index access using schema order
         if isinstance(key, int):
             # If data is list of tuples, access directly
@@ -891,12 +935,21 @@ class Row:
         raise TypeError("Row indices must be integers or strings")
 
     def __contains__(self, key: str) -> bool:
-        """Check if key exists."""
+        """Check if key exists (case-insensitive)."""
         if hasattr(self, "_data_dict"):
-            return key in self._data_dict
+            if key in self._data_dict:
+                return True
+            key_lower = key.lower()
+            return any(k.lower() == key_lower for k in self._data_dict)
         if isinstance(self.data, list):
-            return any(k == key for k, v in self.data)
-        return key in self.data
+            if any(k == key for k, v in self.data):
+                return True
+            key_lower = key.lower()
+            return any(k.lower() == key_lower for k, v in self.data)
+        if key in self.data:
+            return True
+        key_lower = key.lower()
+        return any(k.lower() == key_lower for k in self.data)
 
     def values(self) -> ValuesView[Any]:
         """Get values."""
@@ -997,10 +1050,20 @@ class Row:
         if isinstance(self.data, dict):
             if name in self.data:
                 return self.data[name]
+            # Case-insensitive fallback
+            name_lower = name.lower()
+            for actual_key in self.data:
+                if actual_key.lower() == name_lower:
+                    return self.data[actual_key]
         elif isinstance(self.data, list):
             data_dict = dict(self.data)
             if name in data_dict:
                 return data_dict[name]
+            # Case-insensitive fallback
+            name_lower = name.lower()
+            for actual_key in data_dict:
+                if actual_key.lower() == name_lower:
+                    return data_dict[actual_key]
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{name}'"
         )

@@ -201,3 +201,36 @@ class TestIssue374JoinAliasedColumns:
             assert "name" in rows[0].asDict() or "c.name" in rows[0].asDict()
         finally:
             spark.stop()
+
+    def test_alias_dot_notation_left_join(self):
+        """Test left join with F.col('l.id') == F.col('r.id') dot-notation aliases."""
+        import inspect
+
+        test_name = inspect.stack()[1].function
+        spark = SparkSession.builder.appName(
+            self._get_unique_app_name(test_name)
+        ).getOrCreate()
+        try:
+            left = spark.createDataFrame(
+                [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+            )
+            right = spark.createDataFrame(
+                [{"id": 1, "city": "NYC"}, {"id": 3, "city": "LA"}]
+            )
+            left_a = left.alias("l")
+            right_a = right.alias("r")
+            result = left_a.join(right_a, F.col("l.id") == F.col("r.id"), "left")
+            rows = result.collect()
+            assert len(rows) == 2
+            # Convert to dicts for easier assertion
+            rows_dicts = [row.asDict() for row in rows]
+            # Find matched row (id=1 should have city=NYC)
+            matched = [d for d in rows_dicts if d.get("l_id") == 1]
+            assert len(matched) == 1
+            assert matched[0].get("r_city") == "NYC"
+            # Find unmatched row (id=2 should have city=None)
+            unmatched = [d for d in rows_dicts if d.get("l_id") == 2]
+            assert len(unmatched) == 1
+            assert unmatched[0].get("r_city") is None
+        finally:
+            spark.stop()

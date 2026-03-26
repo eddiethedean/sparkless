@@ -4,10 +4,7 @@ PySpark parity tests for Issue #330: Struct field selection with alias.
 These tests verify that Sparkless behavior matches PySpark behavior.
 """
 
-import pytest
-
 from tests.fixtures.spark_imports import get_spark_imports
-from tests.fixtures.spark_backend import BackendType, get_backend_type
 
 
 class TestStructFieldAliasParity:

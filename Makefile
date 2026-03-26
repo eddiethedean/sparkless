@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-cov lint format format-check type-check check-full clean build publish robin-parity-sql-internal
+.PHONY: help install install-dev test test-cov lint format format-check type-check check-full clean build publish
 
 help: ## Show this help message
 	@echo "Sparkless Package Management"
@@ -11,8 +11,8 @@ install: ## Install the package in development mode
 install-dev: ## Install with development dependencies
 	pip install -e ".[dev]"
 
-test: ## Run tests (with Robin backend so skipifs for Robin limitations apply)
-	SPARKLESS_TEST_BACKEND=robin bash tests/run_all_tests.sh
+test: ## Run tests
+	bash tests/run_all_tests.sh
 
 test-cov: ## Run tests with coverage
 	PYTEST_ADDOPTS="--cov=sparkless --cov-report=term-missing --cov-report=html --cov-report=xml" bash tests/run_all_tests.sh
@@ -57,8 +57,5 @@ docs-validate: ## Validate documentation accuracy
 	python scripts/validate_docs_examples.py
 	python scripts/verify_api_signatures.py
 	python scripts/check_doc_accuracy.py
-
-robin-parity-sql-internal: ## Run parity/sql + parity/internal in Robin; save to tests/robin_parity_sql_internal_results.txt
-	SPARKLESS_TEST_BACKEND=robin SPARKLESS_BACKEND=robin python -m pytest tests/parity/sql/ tests/parity/internal/ -v --tb=line -q 2>&1 | tee tests/robin_parity_sql_internal_results.txt
 
 all: clean format type-check test build ## Run all checks and build

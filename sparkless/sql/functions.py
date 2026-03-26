@@ -65,16 +65,15 @@ def __getattr__(name: str) -> object:
     # exists (e.g. Robin backend), expose a stub so "from sparkless.sql.functions import udf"
     # succeeds and callers get a clear NotImplementedError instead of ImportError.
     if name == "udf":
-        attr_value = getattr(F, "pandas_udf", None) or getattr(F, "UDFRegistration", None)
+        attr_value = getattr(F, "pandas_udf", None) or getattr(
+            F, "UDFRegistration", None
+        )
         if attr_value is not None:
             _cached_attrs[name] = attr_value
             return attr_value
 
         def _udf_stub(*args: Any, **kwargs: Any) -> Any:
-            raise NotImplementedError(
-                "udf is not implemented for the Robin backend. "
-                "Use tests/robin_skip_list.json for tests that require UDFs, or see docs/robin_parity_matrix.md."
-            )
+            raise NotImplementedError("udf is not implemented in sparkless.")
 
         _cached_attrs[name] = _udf_stub
         return _udf_stub
